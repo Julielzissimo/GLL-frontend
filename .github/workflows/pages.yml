@@ -1,0 +1,101 @@
+name: Publicar GLL Frontend no GitHub Pages
+
+on:
+  push:
+    branches:
+      - main
+      - homolog
+    paths:
+      - "web/**"
+      - "scripts/build-web.mjs"
+      - "package.json"
+      - ".github/workflows/pages.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: github-pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    if: github.ref_name == 'main' || github.ref_name == 'homolog'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Obter branch que iniciou a publicacao
+        uses: actions/checkout@v6
+
+      - name: Gerar ambiente da branch atual
+        shell: bash
+        run: |
+          if [[ "${GITHUB_REF_NAME}" == "main" ]]; then
+            npm run build:prod
+          else
+            npm run build:homolog
+          fi
+
+      - name: Obter homologacao
+        if: github.ref_name == 'main'
+        uses: actions/checkout@v6
+        with:
+          ref: homolog
+          path: .pages-source/homolog
+
+      - name: Obter producao
+        if: github.ref_name == 'homolog'
+        uses: actions/checkout@v6
+        with:
+          ref: main
+          path: .pages-source/main
+
+      - name: Gerar ambiente complementar
+        shell: bash
+        run: |
+          if [[ "${GITHUB_REF_NAME}" == "main" ]]; then
+            node .pages-source/homolog/scripts/build-web.mjs homolog
+          else
+            node .pages-source/main/scripts/build-web.mjs production
+          fi
+
+      - name: Montar site do GitHub Pages
+        shell: bash
+        run: |
+          rm -rf _site
+          mkdir -p _site/homolog
+
+          if [[ "${GITHUB_REF_NAME}" == "main" ]]; then
+            cp -a dist/prod/. _site/
+            cp -a .pages-source/homolog/dist/homolog/. _site/homolog/
+          else
+            cp -a .pages-source/main/dist/prod/. _site/
+            cp -a dist/homolog/. _site/homolog/
+          fi
+
+          touch _site/.nojekyll
+
+      - name: Configurar GitHub Pages
+        uses: actions/configure-pages@v5
+
+      - name: Enviar artefato do GitHub Pages
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: Publicar no GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

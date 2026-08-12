@@ -1,0 +1,14 @@
+{
+  "name": "gll-web",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build:homolog": "node scripts/build-web.mjs homolog",
+    "build:prod": "node scripts/build-web.mjs production",
+    "build:all": "npm run build:homolog && npm run build:prod",
+    "serve:web": "python -m http.server 4173 --bind 127.0.0.1 --directory web",
+    "serve:homolog": "python -m http.server 4174 --bind 127.0.0.1 --directory dist/homolog",
+    "serve:prod": "python -m http.server 4175 --bind 127.0.0.1 --directory dist/prod"
+  }
+}

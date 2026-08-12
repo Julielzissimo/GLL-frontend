@@ -1,0 +1,695 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>GLL Web</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main id="loginView" class="login-view">
+      <section class="login-brand" aria-label="Apresentação do sistema">
+        <span class="brand-mark">GLL</span>
+        <h1 id="loginTitle">Gerenciador de Licitações Locais</h1>
+        <p>Cadastre, acompanhe e prepare suas propostas comerciais em um só lugar.</p>
+        <ul class="login-features" aria-label="Principais recursos">
+          <li><span aria-hidden="true">✓</span>Acompanhamento por status</li>
+          <li><span aria-hidden="true">✓</span>Checklist documental</li>
+          <li><span aria-hidden="true">✓</span>Propostas comerciais configuráveis</li>
+        </ul>
+      </section>
+
+      <form id="loginForm" class="login-panel login-form">
+        <span class="eyebrow">ACESSO AO SISTEMA</span>
+        <h2>Bem-vindo</h2>
+        <p id="environmentLabel">Entre com suas credenciais para continuar.</p>
+        <label>
+          E-mail
+          <input id="loginEmail" name="email" type="email" autocomplete="username" required />
+        </label>
+        <label>
+          Senha
+          <input id="loginPassword" name="password" type="password" autocomplete="current-password" required />
+        </label>
+        <p id="loginError" class="form-error" role="alert"></p>
+        <button class="primary-action full-action" type="submit">Entrar</button>
+        <p id="loginHint" class="login-hint hidden">Modo local: demo@gll.local / gll-demo-local</p>
+      </form>
+    </main>
+
+    <main id="appView" class="app-view hidden">
+      <aside class="app-sidebar" aria-label="Navegação principal">
+        <button id="homeIconButton" class="app-logo" type="button" aria-label="Ir para a visão geral">
+          <span class="brand-mark">GLL</span>
+          <strong>Licitações</strong>
+        </button>
+        <nav class="app-nav">
+          <button id="navHomeButton" class="nav-link active" type="button" data-navigation-page="home"><span aria-hidden="true">⌂</span>Visão geral</button>
+          <button id="navBidsButton" class="nav-link" type="button" data-navigation-page="bids"><span aria-hidden="true">▤</span>Licitações</button>
+          <button id="navUsersButton" class="nav-link nav-link-disabled" type="button" aria-disabled="true" title="Usuários gerenciados no Supabase" disabled>
+            <span class="nav-users-icon" aria-hidden="true">♙</span>Usuários
+          </button>
+          <button id="navSettingsButton" class="nav-link" type="button" data-navigation-page="settings"><span aria-hidden="true">⚙</span>Configurações</button>
+        </nav>
+        <div class="sidebar-footer">
+          <span class="environment-dot" aria-hidden="true"></span>
+          <div>
+            <strong id="environmentBadge" class="environment-badge">Local</strong>
+            <small id="storageStatus">IndexedDB local</small>
+          </div>
+        </div>
+      </aside>
+
+      <div class="app-main">
+        <header class="topbar">
+          <div class="topbar-location">
+            <button id="menuToggleButton" class="icon-button menu-toggle" type="button" aria-label="Abrir menu">☰</button>
+            <span id="breadcrumbLabel">Visão geral</span>
+          </div>
+          <div class="topbar-actions">
+            <button id="settingsMenuButton" class="icon-button" type="button" aria-label="Abrir atalhos" aria-expanded="false" title="Atalhos">•••</button>
+            <div class="avatar" aria-hidden="true">AD</div>
+            <div class="user-info"><strong id="currentUserName">Administrador</strong><small>Acesso total</small></div>
+            <button id="logoutButton" class="icon-button logout-action" type="button" aria-label="Sair" title="Sair">↪</button>
+            <div id="settingsMenu" class="settings-menu hidden">
+              <button id="viewUsersButton" class="settings-menu-item" type="button" aria-disabled="true" disabled>Usuários gerenciados no Supabase</button>
+            </div>
+          </div>
+        </header>
+
+        <section id="bidsPage" class="workspace">
+          <div id="sidebarPanel" class="hidden" aria-hidden="true"></div>
+          <button id="toggleSidebarButton" class="hidden" type="button" aria-expanded="false" tabindex="-1"></button>
+
+          <section class="content">
+            <section id="homePage" class="content-page">
+              <div class="page-heading">
+                <div>
+                  <span class="eyebrow">PAINEL</span>
+                  <h1 id="homeTitle">Visão geral</h1>
+                  <p>Acompanhe rapidamente a situação das licitações cadastradas.</p>
+                </div>
+                <button class="primary-action" type="button" data-open-new>＋ Nova licitação</button>
+              </div>
+
+              <div class="home-status-grid" aria-label="Atalhos por status">
+                <button class="home-status-card" type="button" data-home-status="Todos"><span>Total de licitações</span><strong id="homeTotalBids">0</strong><small>Carteira cadastrada</small></button>
+                <button class="home-status-card warning" type="button" data-home-status="Em Analise"><span>Em análise</span><strong id="homeAnalysisBids">0</strong><small>Aguardando decisão</small></button>
+                <button class="home-status-card success" type="button" data-home-status="Aprovada"><span>Aprovadas</span><strong id="homeApprovedBids">0</strong><small>Preparar documentação</small></button>
+                <button class="home-status-card info" type="button" data-home-status="Disputada"><span>Disputadas</span><strong id="homeDisputedBids">0</strong><small>Participação realizada</small></button>
+                <button class="home-status-card danger" type="button" data-home-status="Desclassificado"><span>Desclassificadas</span><strong id="homeDisqualifiedBids">0</strong><small>Plano de ação</small></button>
+              </div>
+
+              <div class="dashboard-grid">
+                <section class="section-band upcoming-panel">
+                  <div class="panel-heading"><div><h2>Próximas sessões</h2><p>Licitações ordenadas pela data da sessão.</p></div><button id="viewAllBidsButton" class="text-action" type="button">Ver todas →</button></div>
+                  <div id="upcomingBidsList" class="timeline-list"></div>
+                </section>
+                <section class="section-band pending-panel">
+                  <div class="panel-heading"><div><h2>Pendências documentais</h2><p>Documentos ainda não disponíveis.</p></div></div>
+                  <div id="pendingDocumentsList" class="pending-list"></div>
+                </section>
+              </div>
+            </section>
+
+            <section id="bidCatalogPage" class="content-page hidden">
+              <div class="page-heading">
+                <div><span class="eyebrow">GESTÃO</span><h1>Licitações</h1><p>Consulte, filtre e acompanhe todas as oportunidades cadastradas.</p></div>
+                <button class="primary-action" type="button" data-open-new>＋ Nova licitação</button>
+              </div>
+              <form id="filterForm" class="section-band filter-form">
+                <label>Órgão comprador<input id="filterAgency" type="search" placeholder="Pesquisar órgão..." /></label>
+                <label>Data da sessão<input id="filterDate" type="date" /></label>
+                <label>Status<select id="filterStatus"></select></label>
+                <button class="primary-action" type="submit">Filtrar</button>
+                <button id="clearFiltersButton" class="quiet-action" type="button">Limpar filtros</button>
+              </form>
+              <section class="section-band table-panel">
+                <div class="table-wrap">
+                  <table class="bids-table">
+                    <thead><tr><th>Identificação</th><th>Órgão comprador</th><th>Sessão</th><th>Modalidade</th><th>Status</th><th class="numeric">Itens</th><th class="numeric">Valor final</th><th><span class="visually-hidden">Ações</span></th></tr></thead>
+                    <tbody id="bidList"></tbody>
+                  </table>
+                </div>
+              </section>
+            </section>
+
+          <form id="bidForm" class="section-band">
+            <div class="section-title">
+              <h2>Dados do Edital</h2>
+              <span id="selectedBidLabel">Novo edital</span>
+            </div>
+
+            <div class="form-grid">
+              <label>
+                Identificação do Pregão *
+                <input id="bidId" required />
+              </label>
+              <label>
+                Órgão Comprador *
+                <input id="buyerAgency" required />
+              </label>
+              <label>
+                Data e Hora da Sessão *
+                <input id="sessionDatetime" type="datetime-local" required />
+              </label>
+              <label>
+                Data Limite Proposta
+                <input id="proposalDeadline" type="datetime-local" />
+              </label>
+              <label>
+                Local de Entrega
+                <input id="deliveryPlace" />
+              </label>
+              <label>
+                Link do Edital
+                <input id="editalLink" type="url" />
+              </label>
+              <label>
+                Tipo
+                <select id="bidType"></select>
+              </label>
+              <label>
+                Status
+                <select id="bidStatus"></select>
+              </label>
+            </div>
+
+            <p id="bidFormError" class="form-error" role="alert"></p>
+            <div class="button-row end">
+              <button id="deleteBidButton" class="danger-action" type="button">Excluir Edital</button>
+              <button id="clearBidButton" class="quiet-action" type="button">Novo Edital</button>
+              <button class="primary-action" type="submit">Salvar Edital</button>
+            </div>
+          </form>
+
+          <section id="bidWorkspaceHeader" class="section-band workspace-header hidden">
+            <div>
+              <span class="workspace-kicker">Edital aberto</span>
+              <h2 id="currentBidTitle">Selecione um edital</h2>
+              <p id="currentBidAgency"></p>
+            </div>
+          </section>
+
+          <section id="metricsSection" class="metrics-row" aria-label="Indicadores">
+            <article class="metric">
+              <span>Itens</span>
+              <strong id="metricItemCount">0</strong>
+            </article>
+            <article class="metric">
+              <span>Estimado total</span>
+              <strong id="metricProfit">R$ 0,00</strong>
+            </article>
+            <article class="metric">
+              <span>Valor final total</span>
+              <strong id="metricMargin">R$ 0,00</strong>
+            </article>
+          </section>
+
+          <section id="detailsArea" class="details-area">
+            <div class="tabs" role="tablist" aria-label="Detalhes do edital">
+              <button id="itemsTabButton" class="tab active" type="button">Itens</button>
+              <button id="documentsTabButton" class="tab" type="button">Documentações</button>
+              <button id="budgetTabButton" class="tab" type="button">Modelo de Orçamento</button>
+              <button id="failuresTabButton" class="tab hidden" type="button">Histórico de Falhas</button>
+            </div>
+
+            <div id="itemsPanel" class="tab-panel">
+              <form id="itemForm" class="section-band compact-band">
+                <div class="section-title">
+                  <h2>Itens do Edital</h2>
+                  <span id="selectedItemLabel">Novo item</span>
+                </div>
+                <div class="item-form-grid">
+                  <label class="item-field tiny">
+                    Item Edital *
+                    <input id="itemNumber" type="number" min="0" required />
+                  </label>
+                  <label class="item-field description">
+                    Descrição *
+                    <input id="itemName" required />
+                  </label>
+                  <label class="item-field small">
+                    Unidade de Venda
+                    <select id="salesUnit"></select>
+                  </label>
+                  <label class="item-field currency">
+                    Estimado
+                    <input id="estimatedValue" inputmode="decimal" />
+                  </label>
+                  <label class="item-field currency">
+                    Valor Final
+                    <input id="maxValue" inputmode="decimal" />
+                  </label>
+                  <label class="item-field currency">
+                    Lance Mínimo
+                    <input id="minimumBid" inputmode="decimal" />
+                  </label>
+                  <label class="item-field tiny">
+                    Quantidade
+                    <input id="requiredQuantity" type="number" min="0" />
+                  </label>
+                  <label class="item-field medium">
+                    Marca/Modelo
+                    <input id="brandModel" />
+                  </label>
+                  <label class="item-field technical">
+                    Texto cadastramento técnico
+                    <textarea id="technicalRegistrationText" rows="5"></textarea>
+                  </label>
+                </div>
+                <p id="itemFormError" class="form-error" role="alert"></p>
+                <div class="button-row end">
+                  <button id="deleteItemButton" class="danger-action" type="button">Excluir Item</button>
+                  <button id="clearItemButton" class="quiet-action" type="button">Limpar Item</button>
+                  <button class="primary-action" type="submit">Salvar Item</button>
+                </div>
+              </form>
+
+              <div class="table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Item Edital</th>
+                      <th>Descrição</th>
+                      <th>Marca/Modelo</th>
+                      <th>Unidade</th>
+                      <th>Qtd.</th>
+                      <th>Estimado</th>
+                      <th>Valor Final</th>
+                      <th>Lance Mínimo</th>
+                    </tr>
+                  </thead>
+                  <tbody id="itemsTableBody"></tbody>
+                </table>
+              </div>
+            </div>
+
+            <div id="documentsPanel" class="tab-panel hidden">
+              <form id="documentForm" class="section-band compact-band">
+                <div class="section-title">
+                  <h2>Checklist de Documentações</h2>
+                  <span id="selectedDocumentLabel">Novo documento</span>
+                </div>
+                <div class="form-grid">
+                  <label>
+                    Tipo de Documento *
+                    <input id="documentType" required />
+                  </label>
+                  <label class="check-line inline">
+                    <input id="hasDocument" type="checkbox" />
+                    Possui documento
+                  </label>
+                  <label class="wide full">
+                    Descrição
+                    <textarea id="documentDescription" rows="3"></textarea>
+                  </label>
+                </div>
+                <p id="documentFormError" class="form-error" role="alert"></p>
+                <div class="button-row end">
+                  <button id="deleteDocumentButton" class="danger-action" type="button">Excluir Documento</button>
+                  <button id="clearDocumentButton" class="quiet-action" type="button">Limpar Documento</button>
+                  <button class="primary-action" type="submit">Salvar Documento</button>
+                </div>
+              </form>
+
+              <div class="table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Tipo</th>
+                      <th>Descrição</th>
+                      <th>Possui?</th>
+                    </tr>
+                  </thead>
+                  <tbody id="documentsTableBody"></tbody>
+                </table>
+              </div>
+            </div>
+
+            <div id="failuresPanel" class="tab-panel hidden">
+              <form id="failureForm" class="section-band compact-band">
+                <div class="section-title">
+                  <h2>Histórico de Falhas</h2>
+                  <span id="selectedFailureLabel">Nova falha</span>
+                </div>
+                <div class="form-grid">
+                  <label>
+                    Tipo de Falha *
+                    <input id="failureType" required />
+                  </label>
+                  <label class="wide full">
+                    Descrição *
+                    <textarea id="failureDescription" rows="3" required></textarea>
+                  </label>
+                  <label class="wide full">
+                    Plano de ação
+                    <textarea id="failureActionPlan" rows="3"></textarea>
+                  </label>
+                </div>
+                <p id="failureFormError" class="form-error" role="alert"></p>
+                <div class="button-row end">
+                  <button id="deleteFailureButton" class="danger-action" type="button">Excluir Falha</button>
+                  <button id="clearFailureButton" class="quiet-action" type="button">Limpar Falha</button>
+                  <button class="primary-action" type="submit">Salvar Falha</button>
+                </div>
+              </form>
+
+              <div class="table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Tipo de Falha</th>
+                      <th>Descrição</th>
+                      <th>Plano de ação</th>
+                    </tr>
+                  </thead>
+                  <tbody id="failuresTableBody"></tbody>
+                </table>
+              </div>
+            </div>
+          </section>
+
+          <section id="budgetPage" class="content-page hidden">
+            <section id="budgetModelSection" class="section-band">
+              <div class="section-title">
+                <h2>Modelo de Orçamento</h2>
+                <div class="section-title-actions">
+                  <span id="budgetBidLabel">Selecione um edital</span>
+                  <button id="toggleBudgetPreviewButton" class="quiet-action compact-action" type="button">Ocultar prévia</button>
+                  <button id="toggleBudgetModelButton" class="quiet-action compact-action" type="button">Recolher</button>
+                </div>
+              </div>
+
+              <div id="budgetModelBody">
+                <div id="budgetBuilderLayout" class="budget-builder-layout">
+                  <div class="budget-builder-main">
+                    <form id="budgetSettingsForm" class="budget-settings-form">
+                      <div class="form-grid">
+                        <label>
+                          Orientação da página
+                          <select id="budgetOrientation">
+                            <option value="portrait">Retrato</option>
+                            <option value="landscape">Paisagem</option>
+                          </select>
+                        </label>
+                        <label>
+                          Título do documento
+                          <input id="budgetTitle" />
+                        </label>
+                        <label>
+                          Destinatário
+                          <input id="budgetRecipient" />
+                        </label>
+                        <label>
+                          Processo / modalidade
+                          <input id="budgetProcess" />
+                        </label>
+                        <label>
+                          Validade da proposta
+                          <input id="budgetValidity" />
+                        </label>
+                        <label class="wide full">
+                          Objeto
+                          <textarea id="budgetObject" class="auto-grow-textarea" rows="2"></textarea>
+                        </label>
+                        <label class="wide">
+                          Dados da proponente
+                          <textarea id="budgetProponent" class="auto-grow-textarea" rows="5"></textarea>
+                        </label>
+                        <label class="wide">
+                          Representante legal
+                          <textarea id="budgetRepresentative" class="auto-grow-textarea" rows="5"></textarea>
+                        </label>
+                        <label>
+                          Garantia
+                          <input id="budgetWarranty" />
+                        </label>
+                        <label>
+                          Prazo / local de entrega
+                          <input id="budgetDelivery" />
+                        </label>
+                        <label class="wide full">
+                          Declarações e condições
+                          <textarea id="budgetTerms" class="auto-grow-textarea" rows="5"></textarea>
+                        </label>
+                        <label class="wide">
+                          Dados bancários
+                          <textarea id="budgetPayment" class="auto-grow-textarea" rows="2"></textarea>
+                        </label>
+                        <label>
+                          Local e data
+                          <input id="budgetCityDate" />
+                        </label>
+                        <label>
+                          Assinante
+                          <input id="budgetSigner" />
+                        </label>
+                        <label class="check-line">
+                          <input id="budgetHeaderLogoEnabled" type="checkbox" />
+                          Inserir logo no cabeçalho
+                        </label>
+                        <label>
+                          Arquivo da logo
+                          <input id="budgetHeaderLogoFile" type="file" accept="image/*" />
+                          <span id="budgetHeaderLogoStatus" class="file-status">Nenhum arquivo selecionado</span>
+                        </label>
+                        <label class="check-line">
+                          <input id="budgetWatermarkEnabled" type="checkbox" />
+                          Inserir marca d'água no papel timbrado
+                        </label>
+                        <label>
+                          Arquivo da marca d'água
+                          <input id="budgetWatermarkFile" type="file" accept="image/*" />
+                          <span id="budgetWatermarkStatus" class="file-status">Nenhum arquivo selecionado</span>
+                        </label>
+                        <label>
+                          Opacidade da marca d'água (%)
+                          <input id="budgetWatermarkOpacity" type="number" min="4" max="40" step="1" value="12" />
+                        </label>
+                      </div>
+                    </form>
+
+                    <section class="budget-config-panel">
+                      <div class="section-title compact-title">
+                        <h2>Blocos do Documento</h2>
+                        <span>Configure textos livres, como identificação do pregão, edital, declarações e observações</span>
+                      </div>
+                      <form id="budgetBlockForm" class="user-form">
+                        <div class="form-grid three">
+                          <label>
+                            Nome do bloco
+                            <input id="budgetBlockLabel" placeholder="Identificação do pregão" />
+                          </label>
+                          <label>
+                            Alinhamento
+                            <select id="budgetBlockAlign">
+                              <option value="left">Esquerda</option>
+                              <option value="center">Centralizado</option>
+                              <option value="right">Direita</option>
+                            </select>
+                          </label>
+                          <label>
+                            Tamanho
+                            <select id="budgetBlockSize">
+                              <option value="normal">Normal</option>
+                              <option value="large">Destaque</option>
+                              <option value="small">Compacto</option>
+                            </select>
+                          </label>
+                          <label class="wide full">
+                            Conteúdo
+                            <textarea id="budgetBlockContent" class="auto-grow-textarea" rows="3" placeholder="PROCESSO LICITATÓRIO Nº ...&#10;PREGÃO ELETRÔNICO Nº ..."></textarea>
+                          </label>
+                          <label class="check-line">
+                            <input id="budgetBlockBold" type="checkbox" checked />
+                            Negrito
+                          </label>
+                          <label class="check-line">
+                            <input id="budgetBlockUnderline" type="checkbox" checked />
+                            Sublinhado
+                          </label>
+                          <div class="add-column-control">
+                            <button id="addBudgetBlockButton" class="primary-action" type="button">Adicionar Bloco</button>
+                          </div>
+                        </div>
+                      </form>
+                      <div id="budgetBlocksList" class="column-list"></div>
+                    </section>
+
+                    <div class="shortcut-row" aria-label="Atalhos de colunas">
+                      <button class="quiet-action" type="button" data-budget-shortcut-name="Item Edital" data-budget-shortcut-type="number" data-budget-shortcut-source="item_number">Item Edital</button>
+                      <button class="quiet-action" type="button" data-budget-shortcut-name="Descrição" data-budget-shortcut-type="text" data-budget-shortcut-source="item_name">Descrição</button>
+                      <button class="quiet-action" type="button" data-budget-shortcut-name="Unidade" data-budget-shortcut-type="text" data-budget-shortcut-source="unit">Unidade</button>
+                      <button class="quiet-action" type="button" data-budget-shortcut-name="Quantidade" data-budget-shortcut-type="number" data-budget-shortcut-source="quantity">Quantidade</button>
+                      <button class="quiet-action" type="button" data-budget-shortcut-name="Estimado" data-budget-shortcut-type="currency" data-budget-shortcut-source="estimated_value">Estimado</button>
+                      <button class="quiet-action" type="button" data-budget-shortcut-name="Valor Final" data-budget-shortcut-type="currency" data-budget-shortcut-source="max_value">Valor Final</button>
+                      <button class="quiet-action" type="button" data-budget-shortcut-name="Lance Mínimo" data-budget-shortcut-type="currency" data-budget-shortcut-source="minimum_bid">Lance Mínimo</button>
+                      <button class="quiet-action" type="button" data-budget-shortcut-name="Marca / Modelo" data-budget-shortcut-type="text" data-budget-shortcut-source="brand_model">Marca / Modelo</button>
+                      <button class="quiet-action" type="button" data-budget-shortcut-name="Texto Técnico" data-budget-shortcut-type="text" data-budget-shortcut-source="item_description">Texto Técnico</button>
+                      <button class="quiet-action" type="button" data-budget-shortcut-name="Fabricante" data-budget-shortcut-type="text" data-budget-shortcut-source="manual">Fabricante</button>
+                      <button class="quiet-action" type="button" data-budget-shortcut-name="Valor Total" data-budget-shortcut-type="currency" data-budget-shortcut-source="calculated_total">Valor Total</button>
+                    </div>
+
+                    <form id="budgetColumnForm" class="user-form">
+                      <div class="form-grid three">
+                        <label>
+                          Nome do campo / coluna
+                          <input id="budgetColumnName" />
+                        </label>
+                        <label>
+                          Tipo de conteúdo
+                          <select id="budgetColumnType"></select>
+                        </label>
+                        <label>
+                          Área do documento
+                          <select id="budgetColumnSection"></select>
+                        </label>
+                        <label>
+                          Origem do valor
+                          <select id="budgetColumnSource"></select>
+                        </label>
+                        <label>
+                          Largura da coluna (%)
+                          <input id="budgetColumnWidth" type="number" min="4" max="80" step="1" placeholder="Ex.: 35" />
+                        </label>
+                        <div class="add-column-control">
+                          <button id="addBudgetColumnButton" class="primary-action" type="button">Adicionar</button>
+                        </div>
+                      </div>
+                      <p id="budgetModelError" class="form-error" role="alert"></p>
+                    </form>
+
+                    <div id="budgetColumnsList" class="column-list"></div>
+                    <div class="button-row end">
+                      <button id="clearBudgetModelButton" class="danger-action" type="button">Limpar Modelo</button>
+                      <button id="saveBudgetModelButton" class="primary-action" type="button">Confirmar Modelo</button>
+                    </div>
+                  </div>
+
+                  <aside id="budgetPreviewPanel" class="budget-preview-panel" aria-label="Prévia do documento">
+                    <div class="budget-preview-toolbar">
+                      <strong>Prévia do PDF</strong>
+                      <span id="budgetPreviewFormat" class="file-status">Retrato</span>
+                      <button id="printBudgetPreviewButton" class="quiet-action compact-action" type="button">Imprimir</button>
+                    </div>
+                    <div id="budgetPreview" class="budget-preview-page"></div>
+                  </aside>
+                </div>
+              </div>
+            </section>
+
+            <section class="section-band">
+              <div class="section-title">
+                <h2>Preencher Proposta</h2>
+                <div class="section-title-actions">
+                  <span id="budgetFillStatus">Configure e confirme o modelo antes de preencher</span>
+                  <button id="importBudgetItemsButton" class="quiet-action compact-action" type="button" aria-disabled="true" title="Importação de itens indisponível" disabled>Importar itens</button>
+                </div>
+              </div>
+              <form id="budgetEntryForm" class="budget-entry-form"></form>
+              <p id="budgetEntryError" class="form-error" role="alert"></p>
+              <div class="table-wrap">
+                <table id="budgetTable">
+                  <thead id="budgetTableHead"></thead>
+                  <tbody id="budgetTableBody"></tbody>
+                </table>
+              </div>
+            </section>
+          </section>
+        </section>
+      </section>
+
+      <section id="usersPage" class="users-page hidden">
+        <section class="section-band workspace-header">
+          <div>
+            <span class="workspace-kicker">Equipe</span>
+            <h2>Usuários e acessos</h2>
+            <p>Gerencie quem pode acessar o ambiente.</p>
+          </div>
+        </section>
+
+        <section class="section-band">
+          <div class="section-title">
+            <h2>Usuários com Acesso</h2>
+            <span>Todos os usuários cadastrados entram com acesso total neste protótipo</span>
+          </div>
+
+          <form id="userForm" class="user-form">
+            <div class="form-grid three">
+              <label>
+                Nome
+                <input id="userName" autocomplete="name" />
+              </label>
+              <label>
+                E-mail *
+                <input id="userEmail" type="email" autocomplete="username" required />
+              </label>
+              <label>
+                Perfil
+                <input id="userRole" value="Acesso total" disabled />
+              </label>
+              <label>
+                Senha *
+                <input id="userPassword" type="password" autocomplete="new-password" minlength="6" required />
+              </label>
+              <label>
+                Confirmar senha *
+                <input id="userPasswordConfirm" type="password" autocomplete="new-password" minlength="6" required />
+              </label>
+            </div>
+            <p id="userFormError" class="form-error" role="alert"></p>
+            <div class="button-row end">
+              <button id="clearUserButton" class="quiet-action" type="button">Limpar</button>
+              <button class="primary-action" type="submit">Cadastrar Usuário</button>
+            </div>
+          </form>
+        </section>
+
+        <section class="section-band">
+          <div class="section-title">
+            <h2>Lista de Usuários</h2>
+            <span id="userCountLabel">0 usuários</span>
+          </div>
+          <div class="table-wrap users-table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Nome</th>
+                  <th>E-mail</th>
+                  <th>Perfil</th>
+                  <th>Cadastrado em</th>
+                  <th>Ações</th>
+                </tr>
+              </thead>
+              <tbody id="usersTableBody"></tbody>
+            </table>
+          </div>
+        </section>
+      </section>
+
+      <section id="settingsPage" class="users-page settings-page hidden">
+        <div class="page-heading">
+          <div><span class="eyebrow">SISTEMA</span><h1>Configurações</h1><p>Preferências do ambiente e manutenção da base demonstrativa.</p></div>
+        </div>
+        <div class="settings-grid">
+          <section class="section-band">
+            <h2>Ambiente</h2>
+            <div class="setting-row"><div><strong>Modo de persistência</strong><small>Os dados utilizam a configuração ativa deste ambiente.</small></div><span class="status-pill">IndexedDB / Supabase</span></div>
+            <div class="setting-row"><div><strong>Interface</strong><small>Identidade visual do protótipo aprovado.</small></div><strong>GLL 2.0</strong></div>
+          </section>
+          <section class="section-band danger-zone">
+            <h2>Base de demonstração</h2>
+            <p>Restaure todos os registros locais para os valores iniciais. Esta ação não está disponível nos ambientes conectados ao Supabase.</p>
+            <button id="resetDataButton" class="danger-action" type="button">Restaurar base</button>
+          </section>
+        </div>
+      </section>
+      </div>
+    </main>
+
+    <div id="toast" class="toast" role="status" aria-live="polite"></div>
+    <script src="./env.js"></script>
+    <script type="module" src="./app.js"></script>
+  </body>
+</html>
