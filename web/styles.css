@@ -2310,21 +2310,22 @@ td {
   opacity: 0.55;
 }
 
-.item-name-cell {
-  display: flex;
+.item-number-cell {
+  display: inline-flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 10px;
+  gap: 7px;
 }
 
-.item-won-flag {
-  display: inline-flex;
-  flex: 0 0 auto;
-  padding: 4px 9px;
-  border-radius: 999px;
+.item-won-icon {
+  display: inline-grid;
+  width: 20px;
+  height: 20px;
+  flex: 0 0 20px;
+  place-items: center;
+  border-radius: 50%;
   background: #16784a;
   color: #fff;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 800;
   line-height: 1;
 }

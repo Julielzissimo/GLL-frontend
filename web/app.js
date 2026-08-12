@@ -1591,11 +1591,11 @@ function renderItems(items) {
       const selected = Number(item.id) === Number(appState.currentItemId) ? " selected" : "";
       const won = Boolean(Number(item.is_won));
       const wonClass = won ? " item-won" : "";
-      const wonFlag = won ? `<span class="item-won-flag">Vencido</span>` : "";
+      const wonIcon = won ? `<span class="item-won-icon" role="img" aria-label="Item vencido" title="Item vencido">✓</span>` : "";
       return `
         <tr class="selectable${selected}${wonClass}" data-item-id="${item.id}">
-          <td>${item.item_number}</td>
-          <td><span class="item-name-cell">${escapeHtml(item.name || "")}${wonFlag}</span></td>
+          <td><span class="item-number-cell">${wonIcon}<span>${item.item_number}</span></span></td>
+          <td>${escapeHtml(item.name || "")}</td>
           <td>${escapeHtml(item.brand_model || "")}</td>
           <td>${escapeHtml(item.sales_unit || "")}</td>
           <td class="numeric">${item.required_quantity}</td>
@@ -1684,10 +1684,13 @@ async function saveItem(event) {
   }
   try {
     const data = collectItemData();
-    await store.saveItem(appState.currentBidId, data, appState.currentItemId);
+    const savedBidId = appState.currentBidId;
+    const savedItemNumber = Number(data.item_number);
+    await store.saveItem(savedBidId, data, appState.currentItemId);
     await reloadData();
-    clearItemForm();
-    loadBid(appState.currentBidId);
+    loadBid(savedBidId);
+    const savedItem = currentItems().find((item) => Number(item.item_number) === savedItemNumber);
+    if (savedItem) loadItem(savedItem.id);
     showToast("Item salvo.");
   } catch (error) {
     refs.itemFormError.textContent = error.message;
