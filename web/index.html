@@ -259,10 +259,6 @@
                     Quantidade
                     <input id="requiredQuantity" type="number" min="0" />
                   </label>
-                  <label class="item-field currency">
-                    Lucro do item
-                    <input id="itemProfit" readonly title="Preencha Valor Final e Valor de Custo para exibir o lucro do item." />
-                  </label>
                   <label class="item-field medium">
                     Marca/Modelo
                     <input id="brandModel" />
@@ -270,6 +266,10 @@
                   <label class="item-field technical">
                     Texto cadastramento técnico
                     <textarea id="technicalRegistrationText" rows="5"></textarea>
+                  </label>
+                  <label class="item-field currency">
+                    Lucro do item
+                    <input id="itemProfit" readonly title="Preencha Valor Final e Valor de Custo para exibir o lucro do item." />
                   </label>
                 </div>
                 <p id="itemFormError" class="form-error" role="alert"></p>
@@ -293,6 +293,7 @@
                       <th>Valor de Custo</th>
                       <th>Valor Final</th>
                       <th>Lance Mínimo</th>
+                      <th>Lucro</th>
                     </tr>
                   </thead>
                   <tbody id="itemsTableBody"></tbody>

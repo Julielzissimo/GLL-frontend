@@ -1563,7 +1563,7 @@ function renderMetrics(items) {
 
 function renderItems(items) {
   if (!items.length) {
-    refs.itemsTableBody.innerHTML = `<tr><td colspan="9">Nenhum item cadastrado.</td></tr>`;
+    refs.itemsTableBody.innerHTML = `<tr><td colspan="10">Nenhum item cadastrado.</td></tr>`;
     return;
   }
   refs.itemsTableBody.innerHTML = items
@@ -1580,6 +1580,7 @@ function renderItems(items) {
           <td class="numeric">${money(item.supplier_cost)}</td>
           <td class="numeric">${money(item.max_acceptable_value)}</td>
           <td class="numeric">${money(item.minimum_bid)}</td>
+          <td class="numeric">${formatStoredItemProfit(item)}</td>
         </tr>
       `;
     })
@@ -1588,6 +1589,11 @@ function renderItems(items) {
   refs.itemsTableBody.querySelectorAll("[data-item-id]").forEach((row) => {
     row.addEventListener("click", () => loadItem(Number(row.dataset.itemId)));
   });
+}
+
+function formatStoredItemProfit(item) {
+  if (!Number(item.max_acceptable_value) || !Number(item.supplier_cost)) return "";
+  return money((Number(item.max_acceptable_value) - Number(item.supplier_cost)) * Number(item.required_quantity || 0));
 }
 
 function loadItem(itemId) {
