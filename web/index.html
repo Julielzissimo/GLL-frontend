@@ -203,7 +203,7 @@
               <strong id="metricItemCount">0</strong>
             </article>
             <article class="metric">
-              <span>Estimado total</span>
+              <span>Estimado no Edital total</span>
               <strong id="metricProfit">R$ 0,00</strong>
             </article>
             <article class="metric">
@@ -240,8 +240,12 @@
                     <select id="salesUnit"></select>
                   </label>
                   <label class="item-field currency">
-                    Estimado
+                    Estimado no Edital
                     <input id="estimatedValue" inputmode="decimal" />
+                  </label>
+                  <label class="item-field currency">
+                    Valor de Custo
+                    <input id="supplierCost" inputmode="decimal" />
                   </label>
                   <label class="item-field currency">
                     Valor Final
@@ -281,7 +285,8 @@
                       <th>Marca/Modelo</th>
                       <th>Unidade</th>
                       <th>Qtd.</th>
-                      <th>Estimado</th>
+                      <th>Estimado no Edital</th>
+                      <th>Valor de Custo</th>
                       <th>Valor Final</th>
                       <th>Lance Mínimo</th>
                     </tr>
@@ -528,7 +533,7 @@
                       <button class="quiet-action" type="button" data-budget-shortcut-name="Descrição" data-budget-shortcut-type="text" data-budget-shortcut-source="item_name">Descrição</button>
                       <button class="quiet-action" type="button" data-budget-shortcut-name="Unidade" data-budget-shortcut-type="text" data-budget-shortcut-source="unit">Unidade</button>
                       <button class="quiet-action" type="button" data-budget-shortcut-name="Quantidade" data-budget-shortcut-type="number" data-budget-shortcut-source="quantity">Quantidade</button>
-                      <button class="quiet-action" type="button" data-budget-shortcut-name="Estimado" data-budget-shortcut-type="currency" data-budget-shortcut-source="estimated_value">Estimado</button>
+                      <button class="quiet-action" type="button" data-budget-shortcut-name="Estimado no Edital" data-budget-shortcut-type="currency" data-budget-shortcut-source="estimated_value">Estimado no Edital</button>
                       <button class="quiet-action" type="button" data-budget-shortcut-name="Valor Final" data-budget-shortcut-type="currency" data-budget-shortcut-source="max_value">Valor Final</button>
                       <button class="quiet-action" type="button" data-budget-shortcut-name="Lance Mínimo" data-budget-shortcut-type="currency" data-budget-shortcut-source="minimum_bid">Lance Mínimo</button>
                       <button class="quiet-action" type="button" data-budget-shortcut-name="Marca / Modelo" data-budget-shortcut-type="text" data-budget-shortcut-source="brand_model">Marca / Modelo</button>

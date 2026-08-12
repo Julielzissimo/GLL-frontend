@@ -29,7 +29,7 @@ const BUDGET_SOURCE_OPTIONS = [
   { value: "item_description", label: "Texto cadastramento técnico" },
   { value: "unit", label: "Unidade" },
   { value: "quantity", label: "Quantidade" },
-  { value: "estimated_value", label: "Estimado" },
+  { value: "estimated_value", label: "Estimado no Edital" },
   { value: "max_value", label: "Valor final" },
   { value: "minimum_bid", label: "Lance mínimo" },
   { value: "brand_model", label: "Marca/Modelo" },
@@ -211,6 +211,7 @@ const refs = {
   itemName: $("itemName"),
   salesUnit: $("salesUnit"),
   estimatedValue: $("estimatedValue"),
+  supplierCost: $("supplierCost"),
   maxValue: $("maxValue"),
   minimumBid: $("minimumBid"),
   requiredQuantity: $("requiredQuantity"),
@@ -1095,7 +1096,7 @@ function bindEvents() {
   refs.documentsTabButton.addEventListener("click", () => setPage("documents"));
   refs.budgetTabButton.addEventListener("click", () => setPage("budget"));
   refs.failuresTabButton.addEventListener("click", () => setPage("failures"));
-  for (const input of [refs.estimatedValue, refs.maxValue, refs.minimumBid]) {
+  for (const input of [refs.estimatedValue, refs.supplierCost, refs.maxValue, refs.minimumBid]) {
     input.addEventListener("blur", () => {
       if (input.value.trim()) input.value = money(parseDecimal(input.value, "valor", false));
     });
@@ -1557,7 +1558,7 @@ function renderMetrics(items) {
 
 function renderItems(items) {
   if (!items.length) {
-    refs.itemsTableBody.innerHTML = `<tr><td colspan="8">Nenhum item cadastrado.</td></tr>`;
+    refs.itemsTableBody.innerHTML = `<tr><td colspan="9">Nenhum item cadastrado.</td></tr>`;
     return;
   }
   refs.itemsTableBody.innerHTML = items
@@ -1571,6 +1572,7 @@ function renderItems(items) {
           <td>${escapeHtml(item.sales_unit || "")}</td>
           <td class="numeric">${item.required_quantity}</td>
           <td class="numeric">${money(item.estimated_value)}</td>
+          <td class="numeric">${money(item.supplier_cost)}</td>
           <td class="numeric">${money(item.max_acceptable_value)}</td>
           <td class="numeric">${money(item.minimum_bid)}</td>
         </tr>
@@ -1591,6 +1593,7 @@ function loadItem(itemId) {
   refs.itemName.value = item.name || "";
   refs.salesUnit.value = item.sales_unit || SALES_UNIT_OPTIONS[0];
   refs.estimatedValue.value = item.estimated_value ? money(item.estimated_value) : "";
+  refs.supplierCost.value = item.supplier_cost ? money(item.supplier_cost) : "";
   refs.maxValue.value = item.max_acceptable_value ? money(item.max_acceptable_value) : "";
   refs.minimumBid.value = item.minimum_bid ? money(item.minimum_bid) : "";
   refs.requiredQuantity.value = item.required_quantity ? item.required_quantity : "";
@@ -1640,11 +1643,11 @@ function collectItemData() {
     name,
     description: technicalText,
     technical_registration_text: technicalText,
-    estimated_value: parseDecimal(refs.estimatedValue.value, "Estimado", false),
+    estimated_value: parseDecimal(refs.estimatedValue.value, "Estimado no Edital", false),
     max_acceptable_value: parseDecimal(refs.maxValue.value, "Valor Final", false),
     minimum_bid: parseDecimal(refs.minimumBid.value, "Lance Mínimo", false),
     brand_model: refs.brandModel.value.trim(),
-    supplier_cost: 0,
+    supplier_cost: parseDecimal(refs.supplierCost.value, "Valor de Custo", false),
     supplier_link: "",
     freight_included: 1,
     unit_freight: 0,
