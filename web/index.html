@@ -170,6 +170,15 @@
                 Status
                 <select id="bidStatus"></select>
               </label>
+              <div class="bid-attachment-field">
+                <label for="editalFile">Arquivo do Edital</label>
+                <input id="editalFile" type="file" />
+                <small>Envie um arquivo de até 20 MB. Um novo envio substitui o arquivo atual.</small>
+                <div id="editalAttachmentPanel" class="attachment-panel hidden">
+                  <span id="editalAttachmentName"></span>
+                  <button id="downloadEditalButton" class="quiet-action compact-action" type="button">Baixar arquivo</button>
+                </div>
+              </div>
             </div>
 
             <p id="bidFormError" class="form-error" role="alert"></p>

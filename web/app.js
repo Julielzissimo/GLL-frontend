@@ -9,6 +9,8 @@ const BID_TYPE_OPTIONS = [
   "Outro",
 ];
 const SALES_UNIT_OPTIONS = ["Unidade", "Pacote", "Caixa", "Kilo", "Metro", "Litro", "Par", "Servico", "Outro"];
+const BID_EDITAL_BUCKET = "bid-edital-files";
+const MAX_EDITAL_FILE_SIZE = 20 * 1024 * 1024;
 const BUDGET_COLUMN_TYPES = [
   { value: "number", label: "Numérico" },
   { value: "text", label: "Texto" },
@@ -182,6 +184,10 @@ const refs = {
   proposalDeadline: $("proposalDeadline"),
   deliveryPlace: $("deliveryPlace"),
   editalLink: $("editalLink"),
+  editalFile: $("editalFile"),
+  editalAttachmentPanel: $("editalAttachmentPanel"),
+  editalAttachmentName: $("editalAttachmentName"),
+  downloadEditalButton: $("downloadEditalButton"),
   bidType: $("bidType"),
   bidStatus: $("bidStatus"),
   selectedBidLabel: $("selectedBidLabel"),
@@ -540,6 +546,7 @@ class IndexedDbStore {
       request.onsuccess = () => {
         const existing = request.result;
         bids.put({
+          ...existing,
           ...data,
           created_at: existing?.created_at || now,
           updated_at: now,
@@ -552,6 +559,27 @@ class IndexedDbStore {
         }
       };
     });
+  }
+
+  async saveBidAttachment(bidId, file) {
+    const db = await this.open();
+    const existing = await this.request(db.transaction("bids").objectStore("bids").get(bidId));
+    if (!existing) throw new Error("Salve o edital antes de anexar o arquivo.");
+    const attachment = {
+      edital_file_path: `indexeddb:${bidId}`,
+      edital_file_name: file.name,
+      edital_file_type: file.type || "application/octet-stream",
+      edital_file_size: file.size,
+      edital_file_blob: file,
+      updated_at: timestampNow(),
+    };
+    await this.tx("bids", "readwrite", (bids) => bids.put({ ...existing, ...attachment }));
+    return attachment;
+  }
+
+  async downloadBidAttachment(bid) {
+    if (!bid?.edital_file_blob) throw new Error("O arquivo anexado não está disponível neste navegador.");
+    return bid.edital_file_blob;
   }
 
   async deleteBid(bidId) {
@@ -819,8 +847,50 @@ class SupabaseStore {
     assertSupabase(error);
   }
 
+  async saveBidAttachment(bidId, file, previousPath) {
+    const client = await this.open();
+    const fileName = sanitizeStorageFileName(file.name);
+    const filePath = `${crypto.randomUUID()}/${fileName}`;
+    const { error: uploadError } = await client.storage.from(BID_EDITAL_BUCKET).upload(filePath, file, {
+      contentType: file.type || "application/octet-stream",
+      upsert: false,
+    });
+    assertSupabase(uploadError);
+
+    const attachment = {
+      edital_file_path: filePath,
+      edital_file_name: file.name,
+      edital_file_type: file.type || "application/octet-stream",
+      edital_file_size: file.size,
+    };
+    const { error: updateError } = await client.from("bids").update(attachment).eq("id", bidId);
+    if (updateError) {
+      await client.storage.from(BID_EDITAL_BUCKET).remove([filePath]);
+      assertSupabase(updateError);
+    }
+    if (previousPath && previousPath !== filePath) {
+      const { error: removeError } = await client.storage.from(BID_EDITAL_BUCKET).remove([previousPath]);
+      if (removeError) console.warn("Não foi possível remover o anexo anterior do edital.", removeError);
+    }
+    return attachment;
+  }
+
+  async downloadBidAttachment(bid) {
+    if (!bid?.edital_file_path) throw new Error("Este edital não possui arquivo anexado.");
+    const client = await this.open();
+    const { data, error } = await client.storage.from(BID_EDITAL_BUCKET).download(bid.edital_file_path);
+    assertSupabase(error);
+    return data;
+  }
+
   async deleteBid(bidId) {
     const client = await this.open();
+    const { data: bid, error: readError } = await client.from("bids").select("edital_file_path").eq("id", bidId).maybeSingle();
+    assertSupabase(readError);
+    if (bid?.edital_file_path) {
+      const { error: removeError } = await client.storage.from(BID_EDITAL_BUCKET).remove([bid.edital_file_path]);
+      assertSupabase(removeError);
+    }
     const { error } = await client.from("bids").delete().eq("id", bidId);
     assertSupabase(error);
   }
@@ -989,6 +1059,7 @@ function bindEvents() {
     button.addEventListener("click", () => applyHomeStatusFilter(button.dataset.homeStatus));
   });
   refs.bidForm.addEventListener("submit", saveBid);
+  refs.downloadEditalButton.addEventListener("click", downloadCurrentBidAttachment);
   refs.clearBidButton.addEventListener("click", () => clearBidForm({ openEditor: true }));
   refs.deleteBidButton.addEventListener("click", deleteCurrentBid);
   refs.itemForm.addEventListener("submit", saveItem);
@@ -1256,6 +1327,8 @@ function loadBid(bidId) {
   refs.editalLink.value = bid.edital_link || "";
   refs.bidType.value = bid.bid_type || BID_TYPE_OPTIONS[0];
   refs.bidStatus.value = bid.status || STATUS_OPTIONS[0];
+  refs.editalFile.value = "";
+  renderBidAttachment(bid);
   refs.selectedBidLabel.textContent = bid.id;
   refs.bidFormError.textContent = "";
   const budgetModel = currentBudgetModel();
@@ -1333,6 +1406,7 @@ function clearBidForm(options = {}) {
   appState.originalBidId = null;
   appState.currentFailureId = null;
   refs.bidForm.reset();
+  renderBidAttachment(null);
   refs.bidType.value = BID_TYPE_OPTIONS[0];
   refs.bidStatus.value = STATUS_OPTIONS[0];
   refs.selectedBidLabel.textContent = "Novo edital";
@@ -1356,9 +1430,13 @@ async function saveBid(event) {
   refs.bidFormError.textContent = "";
   try {
     const data = collectBidData();
+    const file = refs.editalFile.files[0];
+    validateEditalFile(file);
     const duplicate = appState.bids.find((bid) => bid.id === data.id && bid.id !== appState.originalBidId);
     if (duplicate) throw new Error("Já existe um edital com esta identificação.");
+    const previousBid = appState.bids.find((bid) => bid.id === appState.originalBidId);
     await store.saveBid(data, appState.originalBidId);
+    if (file) await store.saveBidAttachment(data.id, file, previousBid?.edital_file_path);
     appState.currentBidId = data.id;
     appState.originalBidId = data.id;
     await reloadData();
@@ -1366,6 +1444,47 @@ async function saveBid(event) {
     showToast("Edital salvo.");
   } catch (error) {
     refs.bidFormError.textContent = error.message;
+  }
+}
+
+function validateEditalFile(file) {
+  if (!file) return;
+  if (file.size > MAX_EDITAL_FILE_SIZE) throw new Error("O arquivo do edital deve ter no máximo 20 MB.");
+  if (!file.name.trim()) throw new Error("Selecione um arquivo válido para o edital.");
+}
+
+function renderBidAttachment(bid) {
+  const hasAttachment = Boolean(bid?.edital_file_name && bid?.edital_file_path);
+  refs.editalAttachmentPanel.classList.toggle("hidden", !hasAttachment);
+  refs.editalAttachmentName.textContent = hasAttachment
+    ? `${bid.edital_file_name} (${formatFileSize(bid.edital_file_size)})`
+    : "";
+  refs.downloadEditalButton.disabled = !hasAttachment;
+}
+
+async function downloadCurrentBidAttachment() {
+  refs.bidFormError.textContent = "";
+  const bid = appState.bids.find((row) => row.id === appState.currentBidId);
+  if (!bid?.edital_file_path) {
+    refs.bidFormError.textContent = "Este edital não possui arquivo anexado.";
+    return;
+  }
+  refs.downloadEditalButton.disabled = true;
+  try {
+    const blob = await store.downloadBidAttachment(bid);
+    const objectUrl = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = objectUrl;
+    anchor.download = bid.edital_file_name || "edital";
+    document.body.append(anchor);
+    anchor.click();
+    anchor.remove();
+    setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
+    showToast("Download do edital iniciado.");
+  } catch (error) {
+    refs.bidFormError.textContent = error.message;
+  } finally {
+    refs.downloadEditalButton.disabled = false;
   }
 }
 
@@ -2985,6 +3104,11 @@ function normalizeBidRecord(record) {
     bid_type: record.bid_type || BID_TYPE_OPTIONS[0],
     proposal_deadline: record.proposal_deadline || "",
     status: normalizeBidStatus(record.status),
+    edital_file_path: record.edital_file_path || "",
+    edital_file_name: record.edital_file_name || "",
+    edital_file_type: record.edital_file_type || "",
+    edital_file_size: Number(record.edital_file_size || 0),
+    ...(record.edital_file_blob ? { edital_file_blob: record.edital_file_blob } : {}),
     created_at: record.created_at || timestampNow(),
     updated_at: record.updated_at || timestampNow(),
   };
@@ -3089,6 +3213,22 @@ function sanitizeStorageSuffix(value) {
     .replace(/[^a-z0-9_-]+/g, "-")
     .replace(/^-+|-+$/g, "");
   return suffix || "local";
+}
+
+function sanitizeStorageFileName(value) {
+  const fileName = String(value || "edital")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-zA-Z0-9._-]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+  return fileName || "edital";
+}
+
+function formatFileSize(value) {
+  const bytes = Number(value || 0);
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
 function randomSalt() {
