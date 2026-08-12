@@ -1,4 +1,5 @@
-import { cp, mkdir, rm, writeFile } from "node:fs/promises";
+import { cp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { createHash } from "node:crypto";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -59,6 +60,21 @@ const runtimeConfig = {
 await writeFile(
   resolve(outputDir, "env.js"),
   `window.GLL_CONFIG = ${JSON.stringify(runtimeConfig, null, 2)};\n`,
+  "utf8",
+);
+
+const assetVersion = createHash("sha256")
+  .update(await readFile(resolve(sourceDir, "app.js")))
+  .update(await readFile(resolve(sourceDir, "styles.css")))
+  .digest("hex")
+  .slice(0, 12);
+const outputIndexPath = resolve(outputDir, "index.html");
+const outputIndex = await readFile(outputIndexPath, "utf8");
+await writeFile(
+  outputIndexPath,
+  outputIndex
+    .replace('./styles.css', `./styles.css?v=${assetVersion}`)
+    .replace('./app.js', `./app.js?v=${assetVersion}`),
   "utf8",
 );
 

@@ -1593,7 +1593,11 @@ function renderItems(items) {
 
 function formatStoredItemProfit(item) {
   if (!Number(item.max_acceptable_value) || !Number(item.supplier_cost)) return "";
-  return money((Number(item.max_acceptable_value) - Number(item.supplier_cost)) * Number(item.required_quantity || 0));
+  return money(calculateItemProfit(item.max_acceptable_value, item.supplier_cost, item.required_quantity));
+}
+
+function calculateItemProfit(finalValue, costValue, quantity) {
+  return (Number(finalValue) - Number(costValue)) * Number(quantity || 0);
 }
 
 function loadItem(itemId) {
@@ -3245,7 +3249,7 @@ function updateItemProfit() {
     const finalValue = parseDecimal(refs.maxValue.value, "Valor Final", false);
     const costValue = parseDecimal(refs.supplierCost.value, "Valor de Custo", false);
     const quantity = parseIntOptional(refs.requiredQuantity.value, "Quantidade");
-    refs.itemProfit.value = money((finalValue - costValue) * quantity);
+    refs.itemProfit.value = money(calculateItemProfit(finalValue, costValue, quantity));
     refs.itemProfit.title = "Calculado por (Valor Final - Valor de Custo) × Quantidade.";
   } catch {
     refs.itemProfit.value = "";
