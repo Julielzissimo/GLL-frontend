@@ -1583,7 +1583,7 @@ function renderMetrics(items) {
 
 function renderItems(items) {
   if (!items.length) {
-    refs.itemsTableBody.innerHTML = `<tr><td colspan="10">Nenhum item cadastrado.</td></tr>`;
+    refs.itemsTableBody.innerHTML = `<tr><td colspan="11">Nenhum item cadastrado.</td></tr>`;
     return;
   }
   refs.itemsTableBody.innerHTML = items
@@ -1602,6 +1602,7 @@ function renderItems(items) {
           <td class="numeric">${money(item.estimated_value)}</td>
           <td class="numeric">${money(item.supplier_cost)}</td>
           <td class="numeric">${money(item.max_acceptable_value)}</td>
+          <td class="numeric">${formatStoredProfitMargin(item)}</td>
           <td class="numeric">${money(item.minimum_bid)}</td>
           <td class="numeric">${formatStoredItemProfit(item)}</td>
         </tr>
@@ -1617,6 +1618,11 @@ function renderItems(items) {
 function formatStoredItemProfit(item) {
   if (!Number(item.max_acceptable_value) || !Number(item.supplier_cost)) return "";
   return money(calculateItemProfit(item.max_acceptable_value, item.supplier_cost, item.required_quantity));
+}
+
+function formatStoredProfitMargin(item) {
+  if (item.profit_margin === null || item.profit_margin === undefined || item.profit_margin === "") return "";
+  return formatProfitMargin(item.profit_margin);
 }
 
 function calculateItemProfit(finalValue, costValue, quantity) {
