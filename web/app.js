@@ -9,6 +9,8 @@ const BID_TYPE_OPTIONS = [
   "Outro",
 ];
 const SALES_UNIT_OPTIONS = ["Unidade", "Pacote", "Caixa", "Kilo", "Metro", "Litro", "Par", "Servico", "Outro"];
+const BID_EDITAL_BUCKET = "bid-edital-files";
+const MAX_EDITAL_FILE_SIZE = 20 * 1024 * 1024;
 const BUDGET_COLUMN_TYPES = [
   { value: "number", label: "Numérico" },
   { value: "text", label: "Texto" },
@@ -27,7 +29,7 @@ const BUDGET_SOURCE_OPTIONS = [
   { value: "item_description", label: "Texto cadastramento técnico" },
   { value: "unit", label: "Unidade" },
   { value: "quantity", label: "Quantidade" },
-  { value: "estimated_value", label: "Estimado" },
+  { value: "estimated_value", label: "Estimado no Edital" },
   { value: "max_value", label: "Valor final" },
   { value: "minimum_bid", label: "Lance mínimo" },
   { value: "brand_model", label: "Marca/Modelo" },
@@ -182,6 +184,10 @@ const refs = {
   proposalDeadline: $("proposalDeadline"),
   deliveryPlace: $("deliveryPlace"),
   editalLink: $("editalLink"),
+  editalFile: $("editalFile"),
+  editalAttachmentPanel: $("editalAttachmentPanel"),
+  editalAttachmentName: $("editalAttachmentName"),
+  downloadEditalButton: $("downloadEditalButton"),
   bidType: $("bidType"),
   bidStatus: $("bidStatus"),
   selectedBidLabel: $("selectedBidLabel"),
@@ -205,9 +211,11 @@ const refs = {
   itemName: $("itemName"),
   salesUnit: $("salesUnit"),
   estimatedValue: $("estimatedValue"),
+  supplierCost: $("supplierCost"),
   maxValue: $("maxValue"),
   minimumBid: $("minimumBid"),
   requiredQuantity: $("requiredQuantity"),
+  itemProfit: $("itemProfit"),
   brandModel: $("brandModel"),
   technicalRegistrationText: $("technicalRegistrationText"),
   selectedItemLabel: $("selectedItemLabel"),
@@ -540,6 +548,7 @@ class IndexedDbStore {
       request.onsuccess = () => {
         const existing = request.result;
         bids.put({
+          ...existing,
           ...data,
           created_at: existing?.created_at || now,
           updated_at: now,
@@ -552,6 +561,27 @@ class IndexedDbStore {
         }
       };
     });
+  }
+
+  async saveBidAttachment(bidId, file) {
+    const db = await this.open();
+    const existing = await this.request(db.transaction("bids").objectStore("bids").get(bidId));
+    if (!existing) throw new Error("Salve o edital antes de anexar o arquivo.");
+    const attachment = {
+      edital_file_path: `indexeddb:${bidId}`,
+      edital_file_name: file.name,
+      edital_file_type: file.type || "application/octet-stream",
+      edital_file_size: file.size,
+      edital_file_blob: file,
+      updated_at: timestampNow(),
+    };
+    await this.tx("bids", "readwrite", (bids) => bids.put({ ...existing, ...attachment }));
+    return attachment;
+  }
+
+  async downloadBidAttachment(bid) {
+    if (!bid?.edital_file_blob) throw new Error("O arquivo anexado não está disponível neste navegador.");
+    return bid.edital_file_blob;
   }
 
   async deleteBid(bidId) {
@@ -819,8 +849,50 @@ class SupabaseStore {
     assertSupabase(error);
   }
 
+  async saveBidAttachment(bidId, file, previousPath) {
+    const client = await this.open();
+    const fileName = sanitizeStorageFileName(file.name);
+    const filePath = `${crypto.randomUUID()}/${fileName}`;
+    const { error: uploadError } = await client.storage.from(BID_EDITAL_BUCKET).upload(filePath, file, {
+      contentType: file.type || "application/octet-stream",
+      upsert: false,
+    });
+    assertSupabase(uploadError);
+
+    const attachment = {
+      edital_file_path: filePath,
+      edital_file_name: file.name,
+      edital_file_type: file.type || "application/octet-stream",
+      edital_file_size: file.size,
+    };
+    const { error: updateError } = await client.from("bids").update(attachment).eq("id", bidId);
+    if (updateError) {
+      await client.storage.from(BID_EDITAL_BUCKET).remove([filePath]);
+      assertSupabase(updateError);
+    }
+    if (previousPath && previousPath !== filePath) {
+      const { error: removeError } = await client.storage.from(BID_EDITAL_BUCKET).remove([previousPath]);
+      if (removeError) console.warn("Não foi possível remover o anexo anterior do edital.", removeError);
+    }
+    return attachment;
+  }
+
+  async downloadBidAttachment(bid) {
+    if (!bid?.edital_file_path) throw new Error("Este edital não possui arquivo anexado.");
+    const client = await this.open();
+    const { data, error } = await client.storage.from(BID_EDITAL_BUCKET).download(bid.edital_file_path);
+    assertSupabase(error);
+    return data;
+  }
+
   async deleteBid(bidId) {
     const client = await this.open();
+    const { data: bid, error: readError } = await client.from("bids").select("edital_file_path").eq("id", bidId).maybeSingle();
+    assertSupabase(readError);
+    if (bid?.edital_file_path) {
+      const { error: removeError } = await client.storage.from(BID_EDITAL_BUCKET).remove([bid.edital_file_path]);
+      assertSupabase(removeError);
+    }
     const { error } = await client.from("bids").delete().eq("id", bidId);
     assertSupabase(error);
   }
@@ -989,6 +1061,7 @@ function bindEvents() {
     button.addEventListener("click", () => applyHomeStatusFilter(button.dataset.homeStatus));
   });
   refs.bidForm.addEventListener("submit", saveBid);
+  refs.downloadEditalButton.addEventListener("click", downloadCurrentBidAttachment);
   refs.clearBidButton.addEventListener("click", () => clearBidForm({ openEditor: true }));
   refs.deleteBidButton.addEventListener("click", deleteCurrentBid);
   refs.itemForm.addEventListener("submit", saveItem);
@@ -1024,10 +1097,14 @@ function bindEvents() {
   refs.documentsTabButton.addEventListener("click", () => setPage("documents"));
   refs.budgetTabButton.addEventListener("click", () => setPage("budget"));
   refs.failuresTabButton.addEventListener("click", () => setPage("failures"));
-  for (const input of [refs.estimatedValue, refs.maxValue, refs.minimumBid]) {
+  for (const input of [refs.estimatedValue, refs.supplierCost, refs.maxValue, refs.minimumBid]) {
     input.addEventListener("blur", () => {
       if (input.value.trim()) input.value = money(parseDecimal(input.value, "valor", false));
+      updateItemProfit();
     });
+  }
+  for (const input of [refs.supplierCost, refs.maxValue, refs.requiredQuantity]) {
+    input.addEventListener("input", updateItemProfit);
   }
 }
 
@@ -1256,6 +1333,8 @@ function loadBid(bidId) {
   refs.editalLink.value = bid.edital_link || "";
   refs.bidType.value = bid.bid_type || BID_TYPE_OPTIONS[0];
   refs.bidStatus.value = bid.status || STATUS_OPTIONS[0];
+  refs.editalFile.value = "";
+  renderBidAttachment(bid);
   refs.selectedBidLabel.textContent = bid.id;
   refs.bidFormError.textContent = "";
   const budgetModel = currentBudgetModel();
@@ -1333,6 +1412,7 @@ function clearBidForm(options = {}) {
   appState.originalBidId = null;
   appState.currentFailureId = null;
   refs.bidForm.reset();
+  renderBidAttachment(null);
   refs.bidType.value = BID_TYPE_OPTIONS[0];
   refs.bidStatus.value = STATUS_OPTIONS[0];
   refs.selectedBidLabel.textContent = "Novo edital";
@@ -1356,9 +1436,13 @@ async function saveBid(event) {
   refs.bidFormError.textContent = "";
   try {
     const data = collectBidData();
+    const file = refs.editalFile.files[0];
+    validateEditalFile(file);
     const duplicate = appState.bids.find((bid) => bid.id === data.id && bid.id !== appState.originalBidId);
     if (duplicate) throw new Error("Já existe um edital com esta identificação.");
+    const previousBid = appState.bids.find((bid) => bid.id === appState.originalBidId);
     await store.saveBid(data, appState.originalBidId);
+    if (file) await store.saveBidAttachment(data.id, file, previousBid?.edital_file_path);
     appState.currentBidId = data.id;
     appState.originalBidId = data.id;
     await reloadData();
@@ -1366,6 +1450,47 @@ async function saveBid(event) {
     showToast("Edital salvo.");
   } catch (error) {
     refs.bidFormError.textContent = error.message;
+  }
+}
+
+function validateEditalFile(file) {
+  if (!file) return;
+  if (file.size > MAX_EDITAL_FILE_SIZE) throw new Error("O arquivo do edital deve ter no máximo 20 MB.");
+  if (!file.name.trim()) throw new Error("Selecione um arquivo válido para o edital.");
+}
+
+function renderBidAttachment(bid) {
+  const hasAttachment = Boolean(bid?.edital_file_name && bid?.edital_file_path);
+  refs.editalAttachmentPanel.classList.toggle("hidden", !hasAttachment);
+  refs.editalAttachmentName.textContent = hasAttachment
+    ? `${bid.edital_file_name} (${formatFileSize(bid.edital_file_size)})`
+    : "";
+  refs.downloadEditalButton.disabled = !hasAttachment;
+}
+
+async function downloadCurrentBidAttachment() {
+  refs.bidFormError.textContent = "";
+  const bid = appState.bids.find((row) => row.id === appState.currentBidId);
+  if (!bid?.edital_file_path) {
+    refs.bidFormError.textContent = "Este edital não possui arquivo anexado.";
+    return;
+  }
+  refs.downloadEditalButton.disabled = true;
+  try {
+    const blob = await store.downloadBidAttachment(bid);
+    const objectUrl = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = objectUrl;
+    anchor.download = bid.edital_file_name || "edital";
+    document.body.append(anchor);
+    anchor.click();
+    anchor.remove();
+    setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
+    showToast("Download do edital iniciado.");
+  } catch (error) {
+    refs.bidFormError.textContent = error.message;
+  } finally {
+    refs.downloadEditalButton.disabled = false;
   }
 }
 
@@ -1438,7 +1563,7 @@ function renderMetrics(items) {
 
 function renderItems(items) {
   if (!items.length) {
-    refs.itemsTableBody.innerHTML = `<tr><td colspan="8">Nenhum item cadastrado.</td></tr>`;
+    refs.itemsTableBody.innerHTML = `<tr><td colspan="10">Nenhum item cadastrado.</td></tr>`;
     return;
   }
   refs.itemsTableBody.innerHTML = items
@@ -1452,8 +1577,10 @@ function renderItems(items) {
           <td>${escapeHtml(item.sales_unit || "")}</td>
           <td class="numeric">${item.required_quantity}</td>
           <td class="numeric">${money(item.estimated_value)}</td>
+          <td class="numeric">${money(item.supplier_cost)}</td>
           <td class="numeric">${money(item.max_acceptable_value)}</td>
           <td class="numeric">${money(item.minimum_bid)}</td>
+          <td class="numeric">${formatStoredItemProfit(item)}</td>
         </tr>
       `;
     })
@@ -1464,6 +1591,15 @@ function renderItems(items) {
   });
 }
 
+function formatStoredItemProfit(item) {
+  if (!Number(item.max_acceptable_value) || !Number(item.supplier_cost)) return "";
+  return money(calculateItemProfit(item.max_acceptable_value, item.supplier_cost, item.required_quantity));
+}
+
+function calculateItemProfit(finalValue, costValue, quantity) {
+  return (Number(finalValue) - Number(costValue)) * Number(quantity || 0);
+}
+
 function loadItem(itemId) {
   const item = currentItems().find((row) => Number(row.id) === Number(itemId));
   if (!item) return;
@@ -1472,9 +1608,11 @@ function loadItem(itemId) {
   refs.itemName.value = item.name || "";
   refs.salesUnit.value = item.sales_unit || SALES_UNIT_OPTIONS[0];
   refs.estimatedValue.value = item.estimated_value ? money(item.estimated_value) : "";
+  refs.supplierCost.value = item.supplier_cost ? money(item.supplier_cost) : "";
   refs.maxValue.value = item.max_acceptable_value ? money(item.max_acceptable_value) : "";
   refs.minimumBid.value = item.minimum_bid ? money(item.minimum_bid) : "";
   refs.requiredQuantity.value = item.required_quantity ? item.required_quantity : "";
+  updateItemProfit();
   refs.brandModel.value = item.brand_model || "";
   refs.technicalRegistrationText.value = item.technical_registration_text || item.description || "";
   refs.selectedItemLabel.textContent = `Item ${item.item_number}`;
@@ -1486,6 +1624,7 @@ function clearItemForm() {
   appState.currentItemId = null;
   refs.itemForm.reset();
   refs.salesUnit.value = SALES_UNIT_OPTIONS[0];
+  updateItemProfit();
   refs.selectedItemLabel.textContent = "Novo item";
   refs.itemFormError.textContent = "";
   renderItems(currentItems());
@@ -1521,11 +1660,11 @@ function collectItemData() {
     name,
     description: technicalText,
     technical_registration_text: technicalText,
-    estimated_value: parseDecimal(refs.estimatedValue.value, "Estimado", false),
+    estimated_value: parseDecimal(refs.estimatedValue.value, "Estimado no Edital", false),
     max_acceptable_value: parseDecimal(refs.maxValue.value, "Valor Final", false),
     minimum_bid: parseDecimal(refs.minimumBid.value, "Lance Mínimo", false),
     brand_model: refs.brandModel.value.trim(),
-    supplier_cost: 0,
+    supplier_cost: parseDecimal(refs.supplierCost.value, "Valor de Custo", false),
     supplier_link: "",
     freight_included: 1,
     unit_freight: 0,
@@ -2985,6 +3124,11 @@ function normalizeBidRecord(record) {
     bid_type: record.bid_type || BID_TYPE_OPTIONS[0],
     proposal_deadline: record.proposal_deadline || "",
     status: normalizeBidStatus(record.status),
+    edital_file_path: record.edital_file_path || "",
+    edital_file_name: record.edital_file_name || "",
+    edital_file_type: record.edital_file_type || "",
+    edital_file_size: Number(record.edital_file_size || 0),
+    ...(record.edital_file_blob ? { edital_file_blob: record.edital_file_blob } : {}),
     created_at: record.created_at || timestampNow(),
     updated_at: record.updated_at || timestampNow(),
   };
@@ -3089,6 +3233,44 @@ function sanitizeStorageSuffix(value) {
     .replace(/[^a-z0-9_-]+/g, "-")
     .replace(/^-+|-+$/g, "");
   return suffix || "local";
+}
+
+function updateItemProfit() {
+  const missingMessage = "Preencha Valor Final e Valor de Custo para exibir o lucro do item.";
+  const hasFinalValue = Boolean(refs.maxValue.value.trim());
+  const hasCostValue = Boolean(refs.supplierCost.value.trim());
+  if (!hasFinalValue || !hasCostValue) {
+    refs.itemProfit.value = "";
+    refs.itemProfit.title = missingMessage;
+    return;
+  }
+
+  try {
+    const finalValue = parseDecimal(refs.maxValue.value, "Valor Final", false);
+    const costValue = parseDecimal(refs.supplierCost.value, "Valor de Custo", false);
+    const quantity = parseIntOptional(refs.requiredQuantity.value, "Quantidade");
+    refs.itemProfit.value = money(calculateItemProfit(finalValue, costValue, quantity));
+    refs.itemProfit.title = "Calculado por (Valor Final - Valor de Custo) × Quantidade.";
+  } catch {
+    refs.itemProfit.value = "";
+    refs.itemProfit.title = missingMessage;
+  }
+}
+
+function sanitizeStorageFileName(value) {
+  const fileName = String(value || "edital")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-zA-Z0-9._-]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+  return fileName || "edital";
+}
+
+function formatFileSize(value) {
+  const bytes = Number(value || 0);
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
 function randomSalt() {

@@ -1127,6 +1127,44 @@ th.numeric {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
+input[readonly] {
+  cursor: not-allowed;
+  background: var(--panel-alt);
+  color: var(--text);
+}
+
+.bid-attachment-field {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: 6px;
+}
+
+.bid-attachment-field > label,
+.bid-attachment-field > small {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.attachment-panel {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--panel-alt);
+  padding: 8px 10px;
+}
+
+.attachment-panel span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 600;
+}
+
 .item-form-grid {
   display: grid;
   grid-template-columns: repeat(12, minmax(0, 1fr));
