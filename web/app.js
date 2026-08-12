@@ -151,9 +151,6 @@ const refs = {
   currentUserName: $("currentUserName"),
   toggleSidebarButton: $("toggleSidebarButton"),
   sidebarPanel: $("sidebarPanel"),
-  settingsMenuButton: $("settingsMenuButton"),
-  settingsMenu: $("settingsMenu"),
-  viewUsersButton: $("viewUsersButton"),
   bidsPage: $("bidsPage"),
   homePage: $("homePage"),
   bidCatalogPage: $("bidCatalogPage"),
@@ -979,20 +976,10 @@ function bindEvents() {
   refs.toggleSidebarButton.addEventListener("focus", previewSidebar);
   refs.toggleSidebarButton.addEventListener("blur", clearSidebarPreview);
   refs.sidebarPanel.addEventListener("click", collapseSidebarFromEmptyArea);
-  refs.settingsMenuButton.addEventListener("click", toggleSettingsMenu);
-  refs.logoutButton.addEventListener("click", () => {
-    closeSettingsMenu();
-    logout();
-  });
+  refs.logoutButton.addEventListener("click", logout);
   if (!hasSupabaseConfig()) {
-    refs.resetDataButton.addEventListener("click", () => {
-      closeSettingsMenu();
-      resetSeedData();
-    });
+    refs.resetDataButton.addEventListener("click", resetSeedData);
   }
-  document.addEventListener("click", (event) => {
-    if (!refs.settingsMenu.contains(event.target) && !refs.settingsMenuButton.contains(event.target)) closeSettingsMenu();
-  });
   refs.filterForm.addEventListener("submit", (event) => {
     event.preventDefault();
     renderBids();
@@ -1170,17 +1157,6 @@ function handleBidStatusChange() {
 
 function shouldShowFailureHistory() {
   return Boolean(appState.currentBidId) && refs.bidStatus.value === "Desclassificado";
-}
-
-function toggleSettingsMenu() {
-  const isOpen = !refs.settingsMenu.classList.contains("hidden");
-  refs.settingsMenu.classList.toggle("hidden", isOpen);
-  refs.settingsMenuButton.setAttribute("aria-expanded", String(!isOpen));
-}
-
-function closeSettingsMenu() {
-  refs.settingsMenu.classList.add("hidden");
-  refs.settingsMenuButton.setAttribute("aria-expanded", "false");
 }
 
 function applyHomeStatusFilter(status) {
