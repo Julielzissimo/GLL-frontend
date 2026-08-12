@@ -111,6 +111,7 @@ const appState = {
   currentItemId: null,
   currentDocumentId: null,
   currentFailureId: null,
+  itemMarginCalculationSource: "margin",
   budgetDraftColumns: [],
   budgetDraftSettings: { ...DEFAULT_BUDGET_SETTINGS },
   budgetDraftBlocks: cloneBudgetBlocks(DEFAULT_BUDGET_BLOCKS),
@@ -212,11 +213,15 @@ const refs = {
   salesUnit: $("salesUnit"),
   estimatedValue: $("estimatedValue"),
   supplierCost: $("supplierCost"),
+  profitMargin: $("profitMargin"),
+  valueWithMargin: $("valueWithMargin"),
   maxValue: $("maxValue"),
   minimumBid: $("minimumBid"),
   requiredQuantity: $("requiredQuantity"),
   itemProfit: $("itemProfit"),
   brandModel: $("brandModel"),
+  wonField: $("wonField"),
+  itemWon: $("itemWon"),
   technicalRegistrationText: $("technicalRegistrationText"),
   selectedItemLabel: $("selectedItemLabel"),
   itemFormError: $("itemFormError"),
@@ -1103,9 +1108,14 @@ function bindEvents() {
       updateItemProfit();
     });
   }
-  for (const input of [refs.supplierCost, refs.maxValue, refs.requiredQuantity]) {
-    input.addEventListener("input", updateItemProfit);
-  }
+  refs.profitMargin.addEventListener("input", updateValueWithMarginFromMargin);
+  refs.profitMargin.addEventListener("focus", () => {
+    refs.profitMargin.value = refs.profitMargin.value.replace("%", "");
+  });
+  refs.profitMargin.addEventListener("blur", formatProfitMarginInput);
+  refs.maxValue.addEventListener("input", updateMarginFromFinalValue);
+  refs.supplierCost.addEventListener("input", updateItemPricingFromCost);
+  refs.requiredQuantity.addEventListener("input", updateItemProfit);
 }
 
 async function handleLogin(event) {
@@ -1229,11 +1239,20 @@ function updateBidWorkspaceHeader() {
 
 function handleBidStatusChange() {
   refs.failuresTabButton.classList.toggle("hidden", !shouldShowFailureHistory());
+  updateItemWonVisibility();
   if (appState.activePage === "failures" && !shouldShowFailureHistory()) setPage("items");
 }
 
 function shouldShowFailureHistory() {
   return Boolean(appState.currentBidId) && refs.bidStatus.value === "Desclassificado";
+}
+
+function shouldShowItemWon() {
+  return Boolean(appState.currentBidId) && ["Aprovada", "Desclassificado", "Disputada"].includes(refs.bidStatus.value);
+}
+
+function updateItemWonVisibility() {
+  refs.wonField.classList.toggle("hidden", !shouldShowItemWon());
 }
 
 function applyHomeStatusFilter(status) {
@@ -1533,6 +1552,7 @@ function renderDetails() {
   renderBudgetPage();
   const hasBid = Boolean(appState.currentBidId);
   refs.failuresTabButton.classList.toggle("hidden", !shouldShowFailureHistory());
+  updateItemWonVisibility();
   refs.deleteBidButton.disabled = !hasBid;
   refs.itemForm.querySelectorAll("input, select, textarea, button").forEach((el) => {
     if (el.id !== "clearItemButton") el.disabled = !hasBid;
@@ -1569,10 +1589,13 @@ function renderItems(items) {
   refs.itemsTableBody.innerHTML = items
     .map((item) => {
       const selected = Number(item.id) === Number(appState.currentItemId) ? " selected" : "";
+      const won = Boolean(Number(item.is_won));
+      const wonClass = won ? " item-won" : "";
+      const wonFlag = won ? `<span class="item-won-flag">Vencido</span>` : "";
       return `
-        <tr class="selectable${selected}" data-item-id="${item.id}">
+        <tr class="selectable${selected}${wonClass}" data-item-id="${item.id}">
           <td>${item.item_number}</td>
-          <td>${escapeHtml(item.name || "")}</td>
+          <td><span class="item-name-cell">${escapeHtml(item.name || "")}${wonFlag}</span></td>
           <td>${escapeHtml(item.brand_model || "")}</td>
           <td>${escapeHtml(item.sales_unit || "")}</td>
           <td class="numeric">${item.required_quantity}</td>
@@ -1600,6 +1623,16 @@ function calculateItemProfit(finalValue, costValue, quantity) {
   return (Number(finalValue) - Number(costValue)) * Number(quantity || 0);
 }
 
+function calculateProfitMargin(finalValue, costValue) {
+  const cost = Number(costValue);
+  if (!cost) return null;
+  return ((Number(finalValue) - cost) / cost) * 100;
+}
+
+function calculateValueWithMargin(costValue, marginValue) {
+  return Number(costValue) * (1 + Number(marginValue) / 100);
+}
+
 function loadItem(itemId) {
   const item = currentItems().find((row) => Number(row.id) === Number(itemId));
   if (!item) return;
@@ -1612,8 +1645,12 @@ function loadItem(itemId) {
   refs.maxValue.value = item.max_acceptable_value ? money(item.max_acceptable_value) : "";
   refs.minimumBid.value = item.minimum_bid ? money(item.minimum_bid) : "";
   refs.requiredQuantity.value = item.required_quantity ? item.required_quantity : "";
+  refs.profitMargin.value = item.profit_margin === null ? "" : formatProfitMargin(item.profit_margin);
+  appState.itemMarginCalculationSource = "margin";
+  updateValueWithMargin();
   updateItemProfit();
   refs.brandModel.value = item.brand_model || "";
+  refs.itemWon.checked = Boolean(Number(item.is_won));
   refs.technicalRegistrationText.value = item.technical_registration_text || item.description || "";
   refs.selectedItemLabel.textContent = `Item ${item.item_number}`;
   refs.itemFormError.textContent = "";
@@ -1624,6 +1661,8 @@ function clearItemForm() {
   appState.currentItemId = null;
   refs.itemForm.reset();
   refs.salesUnit.value = SALES_UNIT_OPTIONS[0];
+  appState.itemMarginCalculationSource = "margin";
+  updateValueWithMargin();
   updateItemProfit();
   refs.selectedItemLabel.textContent = "Novo item";
   refs.itemFormError.textContent = "";
@@ -1655,16 +1694,25 @@ function collectItemData() {
   if (!name) throw new Error("Preencha a Descrição.");
   const quantity = parseIntOptional(refs.requiredQuantity.value, "Quantidade Exigida");
   const technicalText = refs.technicalRegistrationText.value.trim();
+  const supplierCost = parseDecimal(refs.supplierCost.value, "Valor de Custo", false);
+  const finalValue = parseDecimal(refs.maxValue.value, "Valor Final", false);
+  const profitMargin = refs.profitMargin.value.trim()
+    ? parseProfitMargin(refs.profitMargin.value)
+    : supplierCost && refs.maxValue.value.trim()
+      ? calculateProfitMargin(finalValue, supplierCost)
+      : null;
   return {
     item_number: itemNumber,
     name,
     description: technicalText,
     technical_registration_text: technicalText,
     estimated_value: parseDecimal(refs.estimatedValue.value, "Estimado no Edital", false),
-    max_acceptable_value: parseDecimal(refs.maxValue.value, "Valor Final", false),
+    max_acceptable_value: finalValue,
     minimum_bid: parseDecimal(refs.minimumBid.value, "Lance Mínimo", false),
     brand_model: refs.brandModel.value.trim(),
-    supplier_cost: parseDecimal(refs.supplierCost.value, "Valor de Custo", false),
+    is_won: refs.itemWon.checked ? 1 : 0,
+    supplier_cost: supplierCost,
+    profit_margin: profitMargin,
     supplier_link: "",
     freight_included: 1,
     unit_freight: 0,
@@ -2763,6 +2811,15 @@ function parseDecimal(value, fieldName, required = true) {
   return number;
 }
 
+function parseProfitMargin(value) {
+  let raw = String(value || "").trim().replace("%", "").replace(/\s/g, "");
+  if (!raw) return null;
+  if (raw.includes(",")) raw = raw.replace(/\./g, "").replace(",", ".");
+  const number = Number(raw);
+  if (!Number.isFinite(number)) throw new Error("Informe uma porcentagem válida para Margem.");
+  return number;
+}
+
 function parseIntRequired(value, fieldName) {
   const raw = String(value || "").trim();
   if (!raw) throw new Error(`Preencha o campo ${fieldName}.`);
@@ -3066,6 +3123,10 @@ function percent(value) {
   return `${Number(value || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%`;
 }
 
+function formatProfitMargin(value) {
+  return `${Number(value || 0).toLocaleString("pt-BR", { minimumFractionDigits: 4, maximumFractionDigits: 4 })}%`;
+}
+
 function formatDateTime(value) {
   if (!value) return "";
   const normalized = value.replace(" ", "T");
@@ -3137,6 +3198,14 @@ function normalizeBidRecord(record) {
 function normalizeItemRecord(record) {
   const legacyExtra = parseItemExtraPayload(record.description);
   const technicalText = record.technical_registration_text ?? legacyExtra.technical_registration_text ?? record.description ?? "";
+  const supplierCost = Number(record.supplier_cost || 0);
+  const finalValue = Number(record.max_acceptable_value || 0);
+  const storedMargin = record.profit_margin ?? legacyExtra.profit_margin;
+  const profitMargin = storedMargin === undefined || storedMargin === null || storedMargin === ""
+    ? supplierCost && finalValue
+      ? calculateProfitMargin(finalValue, supplierCost)
+      : null
+    : Number(storedMargin);
   return {
     id: record.id ? Number(record.id) : undefined,
     bid_id: record.bid_id,
@@ -3148,7 +3217,9 @@ function normalizeItemRecord(record) {
     max_acceptable_value: Number(record.max_acceptable_value || 0),
     minimum_bid: Number(record.minimum_bid ?? legacyExtra.minimum_bid ?? 0),
     brand_model: record.brand_model ?? legacyExtra.brand_model ?? "",
-    supplier_cost: Number(record.supplier_cost || 0),
+    is_won: Number(record.is_won ?? legacyExtra.is_won ?? 0),
+    supplier_cost: supplierCost,
+    profit_margin: profitMargin,
     supplier_link: record.supplier_link || "",
     freight_included: Number(record.freight_included ?? 1),
     unit_freight: Number(record.unit_freight || 0),
@@ -3173,6 +3244,8 @@ function legacySupabaseItemRecord(record) {
     estimated_value,
     minimum_bid,
     brand_model,
+    is_won,
+    profit_margin,
     ...legacyRecord
   } = record;
   return {
@@ -3183,13 +3256,15 @@ function legacySupabaseItemRecord(record) {
       estimated_value: Number(estimated_value || 0),
       minimum_bid: Number(minimum_bid || 0),
       brand_model: brand_model || "",
+      is_won: Number(is_won || 0),
+      profit_margin: profit_margin === undefined || profit_margin === null ? null : Number(profit_margin),
     }),
   };
 }
 
 function isMissingSupabaseColumnError(error) {
   const message = String(error?.message || error?.details || "");
-  return /schema cache|column/i.test(message) && /technical_registration_text|estimated_value|minimum_bid|brand_model/i.test(message);
+  return /schema cache|column/i.test(message) && /technical_registration_text|estimated_value|minimum_bid|brand_model|is_won|profit_margin/i.test(message);
 }
 
 function isMissingFailureHistoryTableError(error) {
@@ -3254,6 +3329,76 @@ function updateItemProfit() {
   } catch {
     refs.itemProfit.value = "";
     refs.itemProfit.title = missingMessage;
+  }
+}
+
+function updateValueWithMarginFromMargin() {
+  appState.itemMarginCalculationSource = "margin";
+  updateValueWithMargin();
+}
+
+function updateMarginFromFinalValue() {
+  appState.itemMarginCalculationSource = "final";
+  const hasFinalValue = Boolean(refs.maxValue.value.trim());
+  const hasCostValue = Boolean(refs.supplierCost.value.trim());
+  if (!hasFinalValue || !hasCostValue) {
+    refs.profitMargin.value = "";
+    refs.valueWithMargin.value = "";
+    updateItemProfit();
+    return;
+  }
+
+  try {
+    const finalValue = parseDecimal(refs.maxValue.value, "Valor Final", false);
+    const costValue = parseDecimal(refs.supplierCost.value, "Valor de Custo", false);
+    const margin = calculateProfitMargin(finalValue, costValue);
+    if (margin === null) {
+      refs.profitMargin.value = "";
+      refs.valueWithMargin.value = "";
+    } else {
+      refs.profitMargin.value = formatProfitMargin(margin);
+      refs.valueWithMargin.value = money(calculateValueWithMargin(costValue, margin));
+    }
+  } catch {
+    refs.profitMargin.value = "";
+    refs.valueWithMargin.value = "";
+  }
+  updateItemProfit();
+}
+
+function updateItemPricingFromCost() {
+  if (appState.itemMarginCalculationSource === "final" && refs.maxValue.value.trim()) {
+    updateMarginFromFinalValue();
+  } else {
+    updateValueWithMargin();
+    updateItemProfit();
+  }
+}
+
+function updateValueWithMargin() {
+  if (!refs.supplierCost.value.trim() || !refs.profitMargin.value.trim()) {
+    refs.valueWithMargin.value = "";
+    return;
+  }
+  try {
+    const costValue = parseDecimal(refs.supplierCost.value, "Valor de Custo", false);
+    const margin = parseProfitMargin(refs.profitMargin.value);
+    refs.valueWithMargin.value = money(calculateValueWithMargin(costValue, margin));
+  } catch {
+    refs.valueWithMargin.value = "";
+  }
+}
+
+function formatProfitMarginInput() {
+  if (!refs.profitMargin.value.trim()) {
+    refs.valueWithMargin.value = "";
+    return;
+  }
+  try {
+    refs.profitMargin.value = formatProfitMargin(parseProfitMargin(refs.profitMargin.value));
+    updateValueWithMargin();
+  } catch {
+    refs.valueWithMargin.value = "";
   }
 }
 

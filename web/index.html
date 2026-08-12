@@ -248,6 +248,14 @@
                     <input id="supplierCost" inputmode="decimal" />
                   </label>
                   <label class="item-field currency">
+                    Margem
+                    <input id="profitMargin" inputmode="decimal" placeholder="0,0000%" />
+                  </label>
+                  <label class="item-field currency">
+                    Valor com margem
+                    <input id="valueWithMargin" readonly title="Calculado com base no Valor de Custo e na Margem." />
+                  </label>
+                  <label class="item-field currency">
                     Valor Final
                     <input id="maxValue" inputmode="decimal" />
                   </label>
@@ -262,6 +270,13 @@
                   <label class="item-field medium">
                     Marca/Modelo
                     <input id="brandModel" />
+                  </label>
+                  <label id="wonField" class="item-field won-field hidden">
+                    <span>Vencido</span>
+                    <span class="switch-control">
+                      <input id="itemWon" type="checkbox" role="switch" aria-label="Vencido" />
+                      <span class="switch-slider" aria-hidden="true"></span>
+                    </span>
                   </label>
                   <label class="item-field technical">
                     Texto cadastramento técnico
