@@ -1012,46 +1012,6 @@ th.numeric {
   background: currentColor;
 }
 
-.settings-menu {
-  position: absolute;
-  top: calc(100% + 8px);
-  right: 0;
-  z-index: 6;
-  width: 180px;
-  display: grid;
-  gap: 4px;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  background: #fff;
-  padding: 6px;
-  box-shadow: var(--shadow);
-}
-
-.settings-menu-item {
-  width: 100%;
-  border: 0;
-  background: transparent;
-  color: var(--text);
-  text-align: left;
-}
-
-.settings-menu-item:hover {
-  background: var(--panel-alt);
-}
-
-.settings-menu-item[aria-disabled="true"] {
-  cursor: not-allowed;
-  color: var(--muted);
-}
-
-.danger-menu-item {
-  color: var(--danger);
-}
-
-.danger-menu-item:hover {
-  background: var(--danger-bg);
-}
-
 .home-hero-copy {
   width: min(720px, 100%);
   align-self: end;
@@ -2493,8 +2453,7 @@ td {
     padding: 0 14px;
   }
 
-  .user-info,
-  #settingsMenuButton {
+  .user-info {
     display: none;
   }
 
