@@ -1127,6 +1127,12 @@ th.numeric {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
+input[readonly] {
+  cursor: not-allowed;
+  background: var(--panel-alt);
+  color: var(--text);
+}
+
 .bid-attachment-field {
   grid-column: 1 / -1;
   display: grid;

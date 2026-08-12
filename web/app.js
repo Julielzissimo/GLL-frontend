@@ -215,6 +215,7 @@ const refs = {
   maxValue: $("maxValue"),
   minimumBid: $("minimumBid"),
   requiredQuantity: $("requiredQuantity"),
+  itemProfit: $("itemProfit"),
   brandModel: $("brandModel"),
   technicalRegistrationText: $("technicalRegistrationText"),
   selectedItemLabel: $("selectedItemLabel"),
@@ -1099,7 +1100,11 @@ function bindEvents() {
   for (const input of [refs.estimatedValue, refs.supplierCost, refs.maxValue, refs.minimumBid]) {
     input.addEventListener("blur", () => {
       if (input.value.trim()) input.value = money(parseDecimal(input.value, "valor", false));
+      updateItemProfit();
     });
+  }
+  for (const input of [refs.supplierCost, refs.maxValue, refs.requiredQuantity]) {
+    input.addEventListener("input", updateItemProfit);
   }
 }
 
@@ -1597,6 +1602,7 @@ function loadItem(itemId) {
   refs.maxValue.value = item.max_acceptable_value ? money(item.max_acceptable_value) : "";
   refs.minimumBid.value = item.minimum_bid ? money(item.minimum_bid) : "";
   refs.requiredQuantity.value = item.required_quantity ? item.required_quantity : "";
+  updateItemProfit();
   refs.brandModel.value = item.brand_model || "";
   refs.technicalRegistrationText.value = item.technical_registration_text || item.description || "";
   refs.selectedItemLabel.textContent = `Item ${item.item_number}`;
@@ -1608,6 +1614,7 @@ function clearItemForm() {
   appState.currentItemId = null;
   refs.itemForm.reset();
   refs.salesUnit.value = SALES_UNIT_OPTIONS[0];
+  updateItemProfit();
   refs.selectedItemLabel.textContent = "Novo item";
   refs.itemFormError.textContent = "";
   renderItems(currentItems());
@@ -3216,6 +3223,28 @@ function sanitizeStorageSuffix(value) {
     .replace(/[^a-z0-9_-]+/g, "-")
     .replace(/^-+|-+$/g, "");
   return suffix || "local";
+}
+
+function updateItemProfit() {
+  const missingMessage = "Preencha Valor Final e Valor de Custo para exibir o lucro do item.";
+  const hasFinalValue = Boolean(refs.maxValue.value.trim());
+  const hasCostValue = Boolean(refs.supplierCost.value.trim());
+  if (!hasFinalValue || !hasCostValue) {
+    refs.itemProfit.value = "";
+    refs.itemProfit.title = missingMessage;
+    return;
+  }
+
+  try {
+    const finalValue = parseDecimal(refs.maxValue.value, "Valor Final", false);
+    const costValue = parseDecimal(refs.supplierCost.value, "Valor de Custo", false);
+    const quantity = parseIntOptional(refs.requiredQuantity.value, "Quantidade");
+    refs.itemProfit.value = money((finalValue - costValue) * quantity);
+    refs.itemProfit.title = "Calculado por (Valor Final - Valor de Custo) × Quantidade.";
+  } catch {
+    refs.itemProfit.value = "";
+    refs.itemProfit.title = missingMessage;
+  }
 }
 
 function sanitizeStorageFileName(value) {
