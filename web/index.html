@@ -248,6 +248,14 @@
                     <input id="supplierCost" inputmode="decimal" />
                   </label>
                   <label class="item-field currency">
+                    Margem
+                    <input id="profitMargin" inputmode="decimal" placeholder="0,0000%" />
+                  </label>
+                  <label class="item-field currency">
+                    Valor com margem
+                    <input id="valueWithMargin" readonly title="Calculado com base no Valor de Custo e na Margem." />
+                  </label>
+                  <label class="item-field currency">
                     Valor Final
                     <input id="maxValue" inputmode="decimal" />
                   </label>
@@ -263,10 +271,25 @@
                     Marca/Modelo
                     <input id="brandModel" />
                   </label>
+                  <label id="wonField" class="item-field won-field hidden">
+                    <span>Vencido</span>
+                    <span class="switch-control">
+                      <input id="itemWon" type="checkbox" role="switch" aria-label="Vencido" />
+                      <span class="switch-slider" aria-hidden="true"></span>
+                    </span>
+                  </label>
                   <label class="item-field technical">
                     Texto cadastramento técnico
                     <textarea id="technicalRegistrationText" rows="5"></textarea>
                   </label>
+                  <div class="item-field supplier-links-field">
+                    <label for="supplierLinkInput">Link do Fornecedor</label>
+                    <div class="supplier-link-entry">
+                      <input id="supplierLinkInput" type="url" inputmode="url" placeholder="https://fornecedor.com/produto" />
+                      <button id="addSupplierLinkButton" class="quiet-action" type="button">Cadastrar</button>
+                    </div>
+                    <div id="supplierLinksList" class="supplier-links-list" aria-live="polite"></div>
+                  </div>
                   <label class="item-field currency">
                     Lucro do item
                     <input id="itemProfit" readonly title="Preencha Valor Final e Valor de Custo para exibir o lucro do item." />
@@ -292,6 +315,7 @@
                       <th>Estimado no Edital</th>
                       <th>Valor de Custo</th>
                       <th>Valor Final</th>
+                      <th>Margem</th>
                       <th>Lance Mínimo</th>
                       <th>Lucro</th>
                     </tr>

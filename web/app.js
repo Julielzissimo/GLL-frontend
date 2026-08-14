@@ -111,6 +111,8 @@ const appState = {
   currentItemId: null,
   currentDocumentId: null,
   currentFailureId: null,
+  itemMarginCalculationSource: "margin",
+  supplierLinksDraft: [],
   budgetDraftColumns: [],
   budgetDraftSettings: { ...DEFAULT_BUDGET_SETTINGS },
   budgetDraftBlocks: cloneBudgetBlocks(DEFAULT_BUDGET_BLOCKS),
@@ -212,12 +214,19 @@ const refs = {
   salesUnit: $("salesUnit"),
   estimatedValue: $("estimatedValue"),
   supplierCost: $("supplierCost"),
+  profitMargin: $("profitMargin"),
+  valueWithMargin: $("valueWithMargin"),
   maxValue: $("maxValue"),
   minimumBid: $("minimumBid"),
   requiredQuantity: $("requiredQuantity"),
   itemProfit: $("itemProfit"),
   brandModel: $("brandModel"),
+  wonField: $("wonField"),
+  itemWon: $("itemWon"),
   technicalRegistrationText: $("technicalRegistrationText"),
+  supplierLinkInput: $("supplierLinkInput"),
+  addSupplierLinkButton: $("addSupplierLinkButton"),
+  supplierLinksList: $("supplierLinksList"),
   selectedItemLabel: $("selectedItemLabel"),
   itemFormError: $("itemFormError"),
   deleteItemButton: $("deleteItemButton"),
@@ -1065,6 +1074,13 @@ function bindEvents() {
   refs.clearBidButton.addEventListener("click", () => clearBidForm({ openEditor: true }));
   refs.deleteBidButton.addEventListener("click", deleteCurrentBid);
   refs.itemForm.addEventListener("submit", saveItem);
+  refs.addSupplierLinkButton.addEventListener("click", addSupplierLink);
+  refs.supplierLinkInput.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      addSupplierLink();
+    }
+  });
   refs.clearItemButton.addEventListener("click", clearItemForm);
   refs.deleteItemButton.addEventListener("click", deleteCurrentItem);
   refs.documentForm.addEventListener("submit", saveDocument);
@@ -1103,9 +1119,14 @@ function bindEvents() {
       updateItemProfit();
     });
   }
-  for (const input of [refs.supplierCost, refs.maxValue, refs.requiredQuantity]) {
-    input.addEventListener("input", updateItemProfit);
-  }
+  refs.profitMargin.addEventListener("input", updateValueWithMarginFromMargin);
+  refs.profitMargin.addEventListener("focus", () => {
+    refs.profitMargin.value = refs.profitMargin.value.replace("%", "");
+  });
+  refs.profitMargin.addEventListener("blur", formatProfitMarginInput);
+  refs.maxValue.addEventListener("input", updateMarginFromFinalValue);
+  refs.supplierCost.addEventListener("input", updateItemPricingFromCost);
+  refs.requiredQuantity.addEventListener("input", updateItemProfit);
 }
 
 async function handleLogin(event) {
@@ -1229,11 +1250,20 @@ function updateBidWorkspaceHeader() {
 
 function handleBidStatusChange() {
   refs.failuresTabButton.classList.toggle("hidden", !shouldShowFailureHistory());
+  updateItemWonVisibility();
   if (appState.activePage === "failures" && !shouldShowFailureHistory()) setPage("items");
 }
 
 function shouldShowFailureHistory() {
   return Boolean(appState.currentBidId) && refs.bidStatus.value === "Desclassificado";
+}
+
+function shouldShowItemWon() {
+  return Boolean(appState.currentBidId) && ["Aprovada", "Desclassificado", "Disputada"].includes(refs.bidStatus.value);
+}
+
+function updateItemWonVisibility() {
+  refs.wonField.classList.toggle("hidden", !shouldShowItemWon());
 }
 
 function applyHomeStatusFilter(status) {
@@ -1533,6 +1563,7 @@ function renderDetails() {
   renderBudgetPage();
   const hasBid = Boolean(appState.currentBidId);
   refs.failuresTabButton.classList.toggle("hidden", !shouldShowFailureHistory());
+  updateItemWonVisibility();
   refs.deleteBidButton.disabled = !hasBid;
   refs.itemForm.querySelectorAll("input, select, textarea, button").forEach((el) => {
     if (el.id !== "clearItemButton") el.disabled = !hasBid;
@@ -1563,15 +1594,18 @@ function renderMetrics(items) {
 
 function renderItems(items) {
   if (!items.length) {
-    refs.itemsTableBody.innerHTML = `<tr><td colspan="10">Nenhum item cadastrado.</td></tr>`;
+    refs.itemsTableBody.innerHTML = `<tr><td colspan="11">Nenhum item cadastrado.</td></tr>`;
     return;
   }
   refs.itemsTableBody.innerHTML = items
     .map((item) => {
       const selected = Number(item.id) === Number(appState.currentItemId) ? " selected" : "";
+      const won = Boolean(Number(item.is_won));
+      const wonClass = won ? " item-won" : "";
+      const wonIcon = won ? `<span class="item-won-icon" role="img" aria-label="Item vencido" title="Item vencido">✓</span>` : "";
       return `
-        <tr class="selectable${selected}" data-item-id="${item.id}">
-          <td>${item.item_number}</td>
+        <tr class="selectable${selected}${wonClass}" data-item-id="${item.id}">
+          <td><span class="item-number-cell">${wonIcon}<span>${item.item_number}</span></span></td>
           <td>${escapeHtml(item.name || "")}</td>
           <td>${escapeHtml(item.brand_model || "")}</td>
           <td>${escapeHtml(item.sales_unit || "")}</td>
@@ -1579,6 +1613,7 @@ function renderItems(items) {
           <td class="numeric">${money(item.estimated_value)}</td>
           <td class="numeric">${money(item.supplier_cost)}</td>
           <td class="numeric">${money(item.max_acceptable_value)}</td>
+          <td class="numeric">${formatStoredProfitMargin(item)}</td>
           <td class="numeric">${money(item.minimum_bid)}</td>
           <td class="numeric">${formatStoredItemProfit(item)}</td>
         </tr>
@@ -1596,8 +1631,23 @@ function formatStoredItemProfit(item) {
   return money(calculateItemProfit(item.max_acceptable_value, item.supplier_cost, item.required_quantity));
 }
 
+function formatStoredProfitMargin(item) {
+  if (item.profit_margin === null || item.profit_margin === undefined || item.profit_margin === "") return "";
+  return formatProfitMargin(item.profit_margin);
+}
+
 function calculateItemProfit(finalValue, costValue, quantity) {
   return (Number(finalValue) - Number(costValue)) * Number(quantity || 0);
+}
+
+function calculateProfitMargin(finalValue, costValue) {
+  const cost = Number(costValue);
+  if (!cost) return null;
+  return ((Number(finalValue) - cost) / cost) * 100;
+}
+
+function calculateValueWithMargin(costValue, marginValue) {
+  return Number(costValue) * (1 + Number(marginValue) / 100);
 }
 
 function loadItem(itemId) {
@@ -1612,9 +1662,15 @@ function loadItem(itemId) {
   refs.maxValue.value = item.max_acceptable_value ? money(item.max_acceptable_value) : "";
   refs.minimumBid.value = item.minimum_bid ? money(item.minimum_bid) : "";
   refs.requiredQuantity.value = item.required_quantity ? item.required_quantity : "";
+  refs.profitMargin.value = item.profit_margin === null ? "" : formatProfitMargin(item.profit_margin);
+  appState.itemMarginCalculationSource = "margin";
+  updateValueWithMargin();
   updateItemProfit();
   refs.brandModel.value = item.brand_model || "";
+  refs.itemWon.checked = Boolean(Number(item.is_won));
   refs.technicalRegistrationText.value = item.technical_registration_text || item.description || "";
+  appState.supplierLinksDraft = [...item.supplier_links];
+  renderSupplierLinks();
   refs.selectedItemLabel.textContent = `Item ${item.item_number}`;
   refs.itemFormError.textContent = "";
   renderItems(currentItems());
@@ -1624,10 +1680,56 @@ function clearItemForm() {
   appState.currentItemId = null;
   refs.itemForm.reset();
   refs.salesUnit.value = SALES_UNIT_OPTIONS[0];
+  appState.supplierLinksDraft = [];
+  renderSupplierLinks();
+  appState.itemMarginCalculationSource = "margin";
+  updateValueWithMargin();
   updateItemProfit();
   refs.selectedItemLabel.textContent = "Novo item";
   refs.itemFormError.textContent = "";
   renderItems(currentItems());
+}
+
+function addSupplierLink() {
+  refs.itemFormError.textContent = "";
+  const link = normalizeUrlValue(refs.supplierLinkInput.value);
+  if (!link) {
+    refs.itemFormError.textContent = "Informe um Link do Fornecedor válido.";
+    return;
+  }
+  if (appState.supplierLinksDraft.some((currentLink) => currentLink.toLowerCase() === link.toLowerCase())) {
+    refs.itemFormError.textContent = "Este Link do Fornecedor já foi cadastrado.";
+    return;
+  }
+  appState.supplierLinksDraft.push(link);
+  refs.supplierLinkInput.value = "";
+  renderSupplierLinks();
+  refs.supplierLinkInput.focus();
+}
+
+function removeSupplierLink(index) {
+  appState.supplierLinksDraft.splice(index, 1);
+  renderSupplierLinks();
+}
+
+function renderSupplierLinks() {
+  if (!appState.supplierLinksDraft.length) {
+    refs.supplierLinksList.innerHTML = `<span class="supplier-links-empty">Nenhum link de fornecedor cadastrado.</span>`;
+    return;
+  }
+  refs.supplierLinksList.innerHTML = appState.supplierLinksDraft
+    .map(
+      (link, index) => `
+        <div class="supplier-link-row">
+          <a href="${escapeHtml(link)}" target="_blank" rel="noopener noreferrer" title="${escapeHtml(link)}">${escapeHtml(link)}</a>
+          <button class="delete-supplier-link" type="button" data-delete-supplier-link="${index}" aria-label="Excluir link ${index + 1}" title="Excluir link">×</button>
+        </div>
+      `
+    )
+    .join("");
+  refs.supplierLinksList.querySelectorAll("[data-delete-supplier-link]").forEach((button) => {
+    button.addEventListener("click", () => removeSupplierLink(Number(button.dataset.deleteSupplierLink)));
+  });
 }
 
 async function saveItem(event) {
@@ -1639,10 +1741,13 @@ async function saveItem(event) {
   }
   try {
     const data = collectItemData();
-    await store.saveItem(appState.currentBidId, data, appState.currentItemId);
+    const savedBidId = appState.currentBidId;
+    const savedItemNumber = Number(data.item_number);
+    await store.saveItem(savedBidId, data, appState.currentItemId);
     await reloadData();
-    clearItemForm();
-    loadBid(appState.currentBidId);
+    loadBid(savedBidId);
+    const savedItem = currentItems().find((item) => Number(item.item_number) === savedItemNumber);
+    if (savedItem) loadItem(savedItem.id);
     showToast("Item salvo.");
   } catch (error) {
     refs.itemFormError.textContent = error.message;
@@ -1655,17 +1760,27 @@ function collectItemData() {
   if (!name) throw new Error("Preencha a Descrição.");
   const quantity = parseIntOptional(refs.requiredQuantity.value, "Quantidade Exigida");
   const technicalText = refs.technicalRegistrationText.value.trim();
+  const supplierCost = parseDecimal(refs.supplierCost.value, "Valor de Custo", false);
+  const finalValue = parseDecimal(refs.maxValue.value, "Valor Final", false);
+  const profitMargin = refs.profitMargin.value.trim()
+    ? parseProfitMargin(refs.profitMargin.value)
+    : supplierCost && refs.maxValue.value.trim()
+      ? calculateProfitMargin(finalValue, supplierCost)
+      : null;
   return {
     item_number: itemNumber,
     name,
     description: technicalText,
     technical_registration_text: technicalText,
     estimated_value: parseDecimal(refs.estimatedValue.value, "Estimado no Edital", false),
-    max_acceptable_value: parseDecimal(refs.maxValue.value, "Valor Final", false),
+    max_acceptable_value: finalValue,
     minimum_bid: parseDecimal(refs.minimumBid.value, "Lance Mínimo", false),
     brand_model: refs.brandModel.value.trim(),
-    supplier_cost: parseDecimal(refs.supplierCost.value, "Valor de Custo", false),
-    supplier_link: "",
+    is_won: refs.itemWon.checked ? 1 : 0,
+    supplier_cost: supplierCost,
+    profit_margin: profitMargin,
+    supplier_link: appState.supplierLinksDraft[0] || "",
+    supplier_links: [...appState.supplierLinksDraft],
     freight_included: 1,
     unit_freight: 0,
     sales_unit: refs.salesUnit.value || SALES_UNIT_OPTIONS[0],
@@ -2763,6 +2878,15 @@ function parseDecimal(value, fieldName, required = true) {
   return number;
 }
 
+function parseProfitMargin(value) {
+  let raw = String(value || "").trim().replace("%", "").replace(/\s/g, "");
+  if (!raw) return null;
+  if (raw.includes(",")) raw = raw.replace(/\./g, "").replace(",", ".");
+  const number = Number(raw);
+  if (!Number.isFinite(number)) throw new Error("Informe uma porcentagem válida para Margem.");
+  return number;
+}
+
 function parseIntRequired(value, fieldName) {
   const raw = String(value || "").trim();
   if (!raw) throw new Error(`Preencha o campo ${fieldName}.`);
@@ -3066,6 +3190,10 @@ function percent(value) {
   return `${Number(value || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%`;
 }
 
+function formatProfitMargin(value) {
+  return `${Number(value || 0).toLocaleString("pt-BR", { minimumFractionDigits: 4, maximumFractionDigits: 4 })}%`;
+}
+
 function formatDateTime(value) {
   if (!value) return "";
   const normalized = value.replace(" ", "T");
@@ -3137,6 +3265,15 @@ function normalizeBidRecord(record) {
 function normalizeItemRecord(record) {
   const legacyExtra = parseItemExtraPayload(record.description);
   const technicalText = record.technical_registration_text ?? legacyExtra.technical_registration_text ?? record.description ?? "";
+  const supplierCost = Number(record.supplier_cost || 0);
+  const finalValue = Number(record.max_acceptable_value || 0);
+  const storedMargin = record.profit_margin ?? legacyExtra.profit_margin;
+  const profitMargin = storedMargin === undefined || storedMargin === null || storedMargin === ""
+    ? supplierCost && finalValue
+      ? calculateProfitMargin(finalValue, supplierCost)
+      : null
+    : Number(storedMargin);
+  const supplierLinks = normalizeSupplierLinks(record.supplier_links ?? legacyExtra.supplier_links, record.supplier_link);
   return {
     id: record.id ? Number(record.id) : undefined,
     bid_id: record.bid_id,
@@ -3148,8 +3285,11 @@ function normalizeItemRecord(record) {
     max_acceptable_value: Number(record.max_acceptable_value || 0),
     minimum_bid: Number(record.minimum_bid ?? legacyExtra.minimum_bid ?? 0),
     brand_model: record.brand_model ?? legacyExtra.brand_model ?? "",
-    supplier_cost: Number(record.supplier_cost || 0),
-    supplier_link: record.supplier_link || "",
+    is_won: Number(record.is_won ?? legacyExtra.is_won ?? 0),
+    supplier_cost: supplierCost,
+    profit_margin: profitMargin,
+    supplier_link: supplierLinks[0] || "",
+    supplier_links: supplierLinks,
     freight_included: Number(record.freight_included ?? 1),
     unit_freight: Number(record.unit_freight || 0),
     sales_unit: record.sales_unit || SALES_UNIT_OPTIONS[0],
@@ -3167,12 +3307,36 @@ function parseItemExtraPayload(value) {
   }
 }
 
+function normalizeSupplierLinks(value, fallbackLink = "") {
+  let links = value;
+  if (typeof links === "string") {
+    try {
+      const parsed = JSON.parse(links);
+      links = Array.isArray(parsed) ? parsed : [links];
+    } catch {
+      links = links ? [links] : [];
+    }
+  }
+  if (!Array.isArray(links)) links = [];
+  if (fallbackLink) links = [...links, fallbackLink];
+  const uniqueLinks = [];
+  for (const link of links) {
+    const normalizedLink = String(link || "").trim();
+    if (!normalizedLink || uniqueLinks.some((currentLink) => currentLink.toLowerCase() === normalizedLink.toLowerCase())) continue;
+    uniqueLinks.push(normalizedLink);
+  }
+  return uniqueLinks;
+}
+
 function legacySupabaseItemRecord(record) {
   const {
     technical_registration_text,
     estimated_value,
     minimum_bid,
     brand_model,
+    is_won,
+    profit_margin,
+    supplier_links,
     ...legacyRecord
   } = record;
   return {
@@ -3183,13 +3347,16 @@ function legacySupabaseItemRecord(record) {
       estimated_value: Number(estimated_value || 0),
       minimum_bid: Number(minimum_bid || 0),
       brand_model: brand_model || "",
+      is_won: Number(is_won || 0),
+      profit_margin: profit_margin === undefined || profit_margin === null ? null : Number(profit_margin),
+      supplier_links: normalizeSupplierLinks(supplier_links, legacyRecord.supplier_link),
     }),
   };
 }
 
 function isMissingSupabaseColumnError(error) {
   const message = String(error?.message || error?.details || "");
-  return /schema cache|column/i.test(message) && /technical_registration_text|estimated_value|minimum_bid|brand_model/i.test(message);
+  return /schema cache|column/i.test(message) && /technical_registration_text|estimated_value|minimum_bid|brand_model|is_won|profit_margin|supplier_links/i.test(message);
 }
 
 function isMissingFailureHistoryTableError(error) {
@@ -3254,6 +3421,76 @@ function updateItemProfit() {
   } catch {
     refs.itemProfit.value = "";
     refs.itemProfit.title = missingMessage;
+  }
+}
+
+function updateValueWithMarginFromMargin() {
+  appState.itemMarginCalculationSource = "margin";
+  updateValueWithMargin();
+}
+
+function updateMarginFromFinalValue() {
+  appState.itemMarginCalculationSource = "final";
+  const hasFinalValue = Boolean(refs.maxValue.value.trim());
+  const hasCostValue = Boolean(refs.supplierCost.value.trim());
+  if (!hasFinalValue || !hasCostValue) {
+    refs.profitMargin.value = "";
+    refs.valueWithMargin.value = "";
+    updateItemProfit();
+    return;
+  }
+
+  try {
+    const finalValue = parseDecimal(refs.maxValue.value, "Valor Final", false);
+    const costValue = parseDecimal(refs.supplierCost.value, "Valor de Custo", false);
+    const margin = calculateProfitMargin(finalValue, costValue);
+    if (margin === null) {
+      refs.profitMargin.value = "";
+      refs.valueWithMargin.value = "";
+    } else {
+      refs.profitMargin.value = formatProfitMargin(margin);
+      refs.valueWithMargin.value = money(calculateValueWithMargin(costValue, margin));
+    }
+  } catch {
+    refs.profitMargin.value = "";
+    refs.valueWithMargin.value = "";
+  }
+  updateItemProfit();
+}
+
+function updateItemPricingFromCost() {
+  if (appState.itemMarginCalculationSource === "final" && refs.maxValue.value.trim()) {
+    updateMarginFromFinalValue();
+  } else {
+    updateValueWithMargin();
+    updateItemProfit();
+  }
+}
+
+function updateValueWithMargin() {
+  if (!refs.supplierCost.value.trim() || !refs.profitMargin.value.trim()) {
+    refs.valueWithMargin.value = "";
+    return;
+  }
+  try {
+    const costValue = parseDecimal(refs.supplierCost.value, "Valor de Custo", false);
+    const margin = parseProfitMargin(refs.profitMargin.value);
+    refs.valueWithMargin.value = money(calculateValueWithMargin(costValue, margin));
+  } catch {
+    refs.valueWithMargin.value = "";
+  }
+}
+
+function formatProfitMarginInput() {
+  if (!refs.profitMargin.value.trim()) {
+    refs.valueWithMargin.value = "";
+    return;
+  }
+  try {
+    refs.profitMargin.value = formatProfitMargin(parseProfitMargin(refs.profitMargin.value));
+    updateValueWithMargin();
+  } catch {
+    refs.valueWithMargin.value = "";
   }
 }
 
