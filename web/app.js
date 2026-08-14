@@ -203,6 +203,7 @@ const refs = {
   metricItemCount: $("metricItemCount"),
   metricProfit: $("metricProfit"),
   metricMargin: $("metricMargin"),
+  metricTotalProfit: $("metricTotalProfit"),
   itemsTabButton: $("itemsTabButton"),
   documentsTabButton: $("documentsTabButton"),
   budgetTabButton: $("budgetTabButton"),
@@ -1611,15 +1612,20 @@ function renderMetrics(items) {
     (acc, item) => {
       acc.estimated += Number(item.estimated_value || 0) * Number(item.required_quantity || 0);
       acc.final += Number(item.max_acceptable_value || 0) * Number(item.required_quantity || 0);
+      if (Number(item.max_acceptable_value) && Number(item.supplier_cost)) {
+        acc.profit += calculateItemProfit(item.max_acceptable_value, item.supplier_cost, item.required_quantity);
+      }
       return acc;
     },
-    { estimated: 0, final: 0 }
+    { estimated: 0, final: 0, profit: 0 }
   );
   refs.metricItemCount.textContent = String(items.length);
   refs.metricProfit.textContent = money(totals.estimated);
   refs.metricMargin.textContent = money(totals.final);
+  refs.metricTotalProfit.textContent = money(totals.profit);
   refs.metricProfit.className = "";
   refs.metricMargin.className = "";
+  refs.metricTotalProfit.className = "";
 }
 
 function renderItems(items) {
