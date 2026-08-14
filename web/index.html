@@ -39,7 +39,7 @@
     </main>
 
     <main id="appView" class="app-view hidden">
-      <aside class="app-sidebar" aria-label="Navegação principal">
+      <aside id="appSidebar" class="app-sidebar" aria-label="Navegação principal">
         <button id="homeIconButton" class="app-logo" type="button" aria-label="Ir para a visão geral">
           <span class="brand-mark">GLL</span>
           <strong>Licitações</strong>
@@ -64,7 +64,15 @@
       <div class="app-main">
         <header class="topbar">
           <div class="topbar-location">
-            <button id="menuToggleButton" class="icon-button menu-toggle" type="button" aria-label="Abrir menu">☰</button>
+            <button
+              id="menuToggleButton"
+              class="icon-button menu-toggle"
+              type="button"
+              aria-label="Recolher menu"
+              aria-controls="appSidebar"
+              aria-expanded="true"
+              title="Recolher menu"
+            >☰</button>
             <span id="breadcrumbLabel">Visão geral</span>
           </div>
           <div class="topbar-actions">

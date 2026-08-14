@@ -1757,6 +1757,11 @@ textarea:focus {
   grid-template-columns: var(--sidebar-width) minmax(0, 1fr);
   min-height: 100vh;
   background: var(--bg);
+  transition: grid-template-columns 180ms ease;
+}
+
+.app-view.desktop-nav-collapsed {
+  grid-template-columns: 0 minmax(0, 1fr);
 }
 
 .app-sidebar {
@@ -1769,6 +1774,13 @@ textarea:focus {
   padding: 22px 16px;
   background: var(--sidebar);
   color: #dce5fb;
+  transition: transform 180ms ease;
+}
+
+.app-view.desktop-nav-collapsed .app-sidebar {
+  width: var(--sidebar-width);
+  transform: translateX(-100%);
+  pointer-events: none;
 }
 
 .app-logo {
@@ -1932,7 +1944,7 @@ textarea:focus {
 }
 
 .menu-toggle {
-  display: none;
+  display: inline-grid;
 }
 
 .avatar {
