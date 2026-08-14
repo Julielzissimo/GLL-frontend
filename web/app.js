@@ -112,6 +112,7 @@ const appState = {
   currentDocumentId: null,
   currentFailureId: null,
   itemMarginCalculationSource: "margin",
+  supplierLinksDraft: [],
   budgetDraftColumns: [],
   budgetDraftSettings: { ...DEFAULT_BUDGET_SETTINGS },
   budgetDraftBlocks: cloneBudgetBlocks(DEFAULT_BUDGET_BLOCKS),
@@ -223,6 +224,9 @@ const refs = {
   wonField: $("wonField"),
   itemWon: $("itemWon"),
   technicalRegistrationText: $("technicalRegistrationText"),
+  supplierLinkInput: $("supplierLinkInput"),
+  addSupplierLinkButton: $("addSupplierLinkButton"),
+  supplierLinksList: $("supplierLinksList"),
   selectedItemLabel: $("selectedItemLabel"),
   itemFormError: $("itemFormError"),
   deleteItemButton: $("deleteItemButton"),
@@ -1070,6 +1074,13 @@ function bindEvents() {
   refs.clearBidButton.addEventListener("click", () => clearBidForm({ openEditor: true }));
   refs.deleteBidButton.addEventListener("click", deleteCurrentBid);
   refs.itemForm.addEventListener("submit", saveItem);
+  refs.addSupplierLinkButton.addEventListener("click", addSupplierLink);
+  refs.supplierLinkInput.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      addSupplierLink();
+    }
+  });
   refs.clearItemButton.addEventListener("click", clearItemForm);
   refs.deleteItemButton.addEventListener("click", deleteCurrentItem);
   refs.documentForm.addEventListener("submit", saveDocument);
@@ -1658,6 +1669,8 @@ function loadItem(itemId) {
   refs.brandModel.value = item.brand_model || "";
   refs.itemWon.checked = Boolean(Number(item.is_won));
   refs.technicalRegistrationText.value = item.technical_registration_text || item.description || "";
+  appState.supplierLinksDraft = [...item.supplier_links];
+  renderSupplierLinks();
   refs.selectedItemLabel.textContent = `Item ${item.item_number}`;
   refs.itemFormError.textContent = "";
   renderItems(currentItems());
@@ -1667,12 +1680,56 @@ function clearItemForm() {
   appState.currentItemId = null;
   refs.itemForm.reset();
   refs.salesUnit.value = SALES_UNIT_OPTIONS[0];
+  appState.supplierLinksDraft = [];
+  renderSupplierLinks();
   appState.itemMarginCalculationSource = "margin";
   updateValueWithMargin();
   updateItemProfit();
   refs.selectedItemLabel.textContent = "Novo item";
   refs.itemFormError.textContent = "";
   renderItems(currentItems());
+}
+
+function addSupplierLink() {
+  refs.itemFormError.textContent = "";
+  const link = normalizeUrlValue(refs.supplierLinkInput.value);
+  if (!link) {
+    refs.itemFormError.textContent = "Informe um Link do Fornecedor válido.";
+    return;
+  }
+  if (appState.supplierLinksDraft.some((currentLink) => currentLink.toLowerCase() === link.toLowerCase())) {
+    refs.itemFormError.textContent = "Este Link do Fornecedor já foi cadastrado.";
+    return;
+  }
+  appState.supplierLinksDraft.push(link);
+  refs.supplierLinkInput.value = "";
+  renderSupplierLinks();
+  refs.supplierLinkInput.focus();
+}
+
+function removeSupplierLink(index) {
+  appState.supplierLinksDraft.splice(index, 1);
+  renderSupplierLinks();
+}
+
+function renderSupplierLinks() {
+  if (!appState.supplierLinksDraft.length) {
+    refs.supplierLinksList.innerHTML = `<span class="supplier-links-empty">Nenhum link de fornecedor cadastrado.</span>`;
+    return;
+  }
+  refs.supplierLinksList.innerHTML = appState.supplierLinksDraft
+    .map(
+      (link, index) => `
+        <div class="supplier-link-row">
+          <a href="${escapeHtml(link)}" target="_blank" rel="noopener noreferrer" title="${escapeHtml(link)}">${escapeHtml(link)}</a>
+          <button class="delete-supplier-link" type="button" data-delete-supplier-link="${index}" aria-label="Excluir link ${index + 1}" title="Excluir link">×</button>
+        </div>
+      `
+    )
+    .join("");
+  refs.supplierLinksList.querySelectorAll("[data-delete-supplier-link]").forEach((button) => {
+    button.addEventListener("click", () => removeSupplierLink(Number(button.dataset.deleteSupplierLink)));
+  });
 }
 
 async function saveItem(event) {
@@ -1722,7 +1779,8 @@ function collectItemData() {
     is_won: refs.itemWon.checked ? 1 : 0,
     supplier_cost: supplierCost,
     profit_margin: profitMargin,
-    supplier_link: "",
+    supplier_link: appState.supplierLinksDraft[0] || "",
+    supplier_links: [...appState.supplierLinksDraft],
     freight_included: 1,
     unit_freight: 0,
     sales_unit: refs.salesUnit.value || SALES_UNIT_OPTIONS[0],
@@ -3215,6 +3273,7 @@ function normalizeItemRecord(record) {
       ? calculateProfitMargin(finalValue, supplierCost)
       : null
     : Number(storedMargin);
+  const supplierLinks = normalizeSupplierLinks(record.supplier_links ?? legacyExtra.supplier_links, record.supplier_link);
   return {
     id: record.id ? Number(record.id) : undefined,
     bid_id: record.bid_id,
@@ -3229,7 +3288,8 @@ function normalizeItemRecord(record) {
     is_won: Number(record.is_won ?? legacyExtra.is_won ?? 0),
     supplier_cost: supplierCost,
     profit_margin: profitMargin,
-    supplier_link: record.supplier_link || "",
+    supplier_link: supplierLinks[0] || "",
+    supplier_links: supplierLinks,
     freight_included: Number(record.freight_included ?? 1),
     unit_freight: Number(record.unit_freight || 0),
     sales_unit: record.sales_unit || SALES_UNIT_OPTIONS[0],
@@ -3247,6 +3307,27 @@ function parseItemExtraPayload(value) {
   }
 }
 
+function normalizeSupplierLinks(value, fallbackLink = "") {
+  let links = value;
+  if (typeof links === "string") {
+    try {
+      const parsed = JSON.parse(links);
+      links = Array.isArray(parsed) ? parsed : [links];
+    } catch {
+      links = links ? [links] : [];
+    }
+  }
+  if (!Array.isArray(links)) links = [];
+  if (fallbackLink) links = [...links, fallbackLink];
+  const uniqueLinks = [];
+  for (const link of links) {
+    const normalizedLink = String(link || "").trim();
+    if (!normalizedLink || uniqueLinks.some((currentLink) => currentLink.toLowerCase() === normalizedLink.toLowerCase())) continue;
+    uniqueLinks.push(normalizedLink);
+  }
+  return uniqueLinks;
+}
+
 function legacySupabaseItemRecord(record) {
   const {
     technical_registration_text,
@@ -3255,6 +3336,7 @@ function legacySupabaseItemRecord(record) {
     brand_model,
     is_won,
     profit_margin,
+    supplier_links,
     ...legacyRecord
   } = record;
   return {
@@ -3267,13 +3349,14 @@ function legacySupabaseItemRecord(record) {
       brand_model: brand_model || "",
       is_won: Number(is_won || 0),
       profit_margin: profit_margin === undefined || profit_margin === null ? null : Number(profit_margin),
+      supplier_links: normalizeSupplierLinks(supplier_links, legacyRecord.supplier_link),
     }),
   };
 }
 
 function isMissingSupabaseColumnError(error) {
   const message = String(error?.message || error?.details || "");
-  return /schema cache|column/i.test(message) && /technical_registration_text|estimated_value|minimum_bid|brand_model|is_won|profit_margin/i.test(message);
+  return /schema cache|column/i.test(message) && /technical_registration_text|estimated_value|minimum_bid|brand_model|is_won|profit_margin|supplier_links/i.test(message);
 }
 
 function isMissingFailureHistoryTableError(error) {

@@ -282,6 +282,14 @@
                     Texto cadastramento técnico
                     <textarea id="technicalRegistrationText" rows="5"></textarea>
                   </label>
+                  <div class="item-field supplier-links-field">
+                    <label for="supplierLinkInput">Link do Fornecedor</label>
+                    <div class="supplier-link-entry">
+                      <input id="supplierLinkInput" type="url" inputmode="url" placeholder="https://fornecedor.com/produto" />
+                      <button id="addSupplierLinkButton" class="quiet-action" type="button">Cadastrar</button>
+                    </div>
+                    <div id="supplierLinksList" class="supplier-links-list" aria-live="polite"></div>
+                  </div>
                   <label class="item-field currency">
                     Lucro do item
                     <input id="itemProfit" readonly title="Preencha Valor Final e Valor de Custo para exibir o lucro do item." />
