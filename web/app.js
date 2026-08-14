@@ -120,6 +120,7 @@ const appState = {
   budgetPreviewVisible: true,
   budgetModelDirty: false,
   sidebarCollapsed: false,
+  appNavigationCollapsed: false,
   draggedBudgetBlockId: null,
   draggedBudgetColumnId: null,
   currentBudgetRowId: null,
@@ -145,6 +146,7 @@ const refs = {
   environmentLabel: $("environmentLabel"),
   environmentBadge: $("environmentBadge"),
   storageStatus: $("storageStatus"),
+  appSidebar: $("appSidebar"),
   homeIconButton: $("homeIconButton"),
   navHomeButton: $("navHomeButton"),
   navBidsButton: $("navBidsButton"),
@@ -1047,10 +1049,8 @@ function bindEvents() {
     button.addEventListener("click", () => clearBidForm({ openEditor: true }));
   });
   refs.viewAllBidsButton.addEventListener("click", () => setPage("bids"));
-  refs.menuToggleButton.addEventListener("click", () => {
-    const isOpen = refs.appView.classList.toggle("mobile-nav-open");
-    refs.menuToggleButton.setAttribute("aria-expanded", String(isOpen));
-  });
+  refs.menuToggleButton.addEventListener("click", toggleMainNavigation);
+  window.addEventListener("resize", updateMainNavigationState);
   refs.toggleSidebarButton.addEventListener("click", toggleSidebar);
   refs.toggleSidebarButton.addEventListener("mouseenter", previewSidebar);
   refs.toggleSidebarButton.addEventListener("mouseleave", clearSidebarPreview);
@@ -1167,6 +1167,36 @@ function logout() {
   refs.loginView.classList.remove("hidden");
   refs.loginPassword.value = "";
   refs.appView.classList.remove("mobile-nav-open");
+  updateMainNavigationState();
+}
+
+function isMobileNavigation() {
+  return window.matchMedia("(max-width: 620px)").matches;
+}
+
+function toggleMainNavigation() {
+  if (isMobileNavigation()) {
+    refs.appView.classList.toggle("mobile-nav-open");
+  } else {
+    appState.appNavigationCollapsed = !appState.appNavigationCollapsed;
+  }
+  updateMainNavigationState();
+}
+
+function updateMainNavigationState() {
+  const isMobile = isMobileNavigation();
+  refs.appView.classList.toggle("desktop-nav-collapsed", !isMobile && appState.appNavigationCollapsed);
+  if (!isMobile) refs.appView.classList.remove("mobile-nav-open");
+
+  const isExpanded = isMobile
+    ? refs.appView.classList.contains("mobile-nav-open")
+    : !appState.appNavigationCollapsed;
+  const actionLabel = isExpanded ? "Recolher menu" : "Expandir menu";
+  refs.menuToggleButton.setAttribute("aria-expanded", String(isExpanded));
+  refs.menuToggleButton.setAttribute("aria-label", actionLabel);
+  refs.menuToggleButton.title = actionLabel;
+  refs.appSidebar.setAttribute("aria-hidden", String(!isExpanded));
+  refs.appSidebar.inert = !isExpanded;
 }
 
 async function resetSeedData() {
@@ -1235,7 +1265,7 @@ function setPage(page) {
     button.classList.toggle("active", button.dataset.navigationPage === primaryPage);
   });
   refs.appView.classList.remove("mobile-nav-open");
-  refs.menuToggleButton.setAttribute("aria-expanded", "false");
+  updateMainNavigationState();
   updateBidWorkspaceHeader();
   updateSidebarVisibility();
   if (showUsers) renderUsers();
