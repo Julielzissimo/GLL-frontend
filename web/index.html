@@ -290,13 +290,6 @@
                     Marca/Modelo
                     <input id="brandModel" />
                   </label>
-                  <label id="wonField" class="item-field won-field hidden">
-                    <span>Vencido</span>
-                    <span class="switch-control">
-                      <input id="itemWon" type="checkbox" role="switch" aria-label="Vencido" />
-                      <span class="switch-slider" aria-hidden="true"></span>
-                    </span>
-                  </label>
                   <label class="item-field technical">
                     Texto cadastramento técnico
                     <textarea id="technicalRegistrationText" rows="5"></textarea>
@@ -337,6 +330,7 @@
                       <th>Margem</th>
                       <th>Lance Mínimo</th>
                       <th>Lucro</th>
+                      <th id="itemWonHeader" class="item-won-header hidden">Item Vencido</th>
                     </tr>
                   </thead>
                   <tbody id="itemsTableBody"></tbody>
