@@ -1,4 +1,5 @@
 ﻿const STATUS_OPTIONS = ["Em Analise", "Aprovada", "Desclassificado", "Disputada"];
+const WON_ITEM_STATUSES = ["Aprovada", "Desclassificado", "Disputada"];
 const BID_TYPE_OPTIONS = [
   "Pregao Eletronico",
   "Pregao Presencial",
@@ -225,8 +226,6 @@ const refs = {
   requiredQuantity: $("requiredQuantity"),
   itemProfit: $("itemProfit"),
   brandModel: $("brandModel"),
-  wonField: $("wonField"),
-  itemWon: $("itemWon"),
   technicalRegistrationText: $("technicalRegistrationText"),
   supplierLinkInput: $("supplierLinkInput"),
   addSupplierLinkButton: $("addSupplierLinkButton"),
@@ -236,6 +235,7 @@ const refs = {
   deleteItemButton: $("deleteItemButton"),
   clearItemButton: $("clearItemButton"),
   itemsTableBody: $("itemsTableBody"),
+  itemWonHeader: $("itemWonHeader"),
   documentForm: $("documentForm"),
   documentType: $("documentType"),
   hasDocument: $("hasDocument"),
@@ -621,6 +621,13 @@ class IndexedDbStore {
     });
   }
 
+  async setItemWon(itemId, isWon) {
+    const existingItems = await this.getAll("items");
+    const item = existingItems.find((record) => Number(record.id) === Number(itemId));
+    if (!item) throw new Error("Item não encontrado.");
+    await this.tx("items", "readwrite", (items) => items.put({ ...item, is_won: isWon ? 1 : 0 }));
+  }
+
   async deleteItem(itemId) {
     await this.tx("items", "readwrite", (items) => items.delete(Number(itemId)));
   }
@@ -922,6 +929,12 @@ class SupabaseStore {
       assertSupabase(legacyError);
       return;
     }
+    assertSupabase(error);
+  }
+
+  async setItemWon(itemId, isWon) {
+    const client = await this.open();
+    const { error } = await client.from("items").update({ is_won: isWon ? 1 : 0 }).eq("id", Number(itemId));
     assertSupabase(error);
   }
 
@@ -1282,7 +1295,8 @@ function updateBidWorkspaceHeader() {
 
 function handleBidStatusChange() {
   refs.failuresTabButton.classList.toggle("hidden", !shouldShowFailureHistory());
-  updateItemWonVisibility();
+  renderMetrics(currentItems());
+  renderItems(currentItems());
   if (appState.activePage === "failures" && !shouldShowFailureHistory()) setPage("items");
 }
 
@@ -1290,12 +1304,8 @@ function shouldShowFailureHistory() {
   return Boolean(appState.currentBidId) && refs.bidStatus.value === "Desclassificado";
 }
 
-function shouldShowItemWon() {
-  return Boolean(appState.currentBidId) && ["Aprovada", "Desclassificado", "Disputada"].includes(refs.bidStatus.value);
-}
-
-function updateItemWonVisibility() {
-  refs.wonField.classList.toggle("hidden", !shouldShowItemWon());
+function shouldUseWonItems() {
+  return Boolean(appState.currentBidId) && WON_ITEM_STATUSES.includes(refs.bidStatus.value);
 }
 
 function applyHomeStatusFilter(status) {
@@ -1595,7 +1605,6 @@ function renderDetails() {
   renderBudgetPage();
   const hasBid = Boolean(appState.currentBidId);
   refs.failuresTabButton.classList.toggle("hidden", !shouldShowFailureHistory());
-  updateItemWonVisibility();
   refs.deleteBidButton.disabled = !hasBid;
   refs.itemForm.querySelectorAll("input, select, textarea, button").forEach((el) => {
     if (el.id !== "clearItemButton") el.disabled = !hasBid;
@@ -1609,11 +1618,12 @@ function renderDetails() {
 }
 
 function renderMetrics(items) {
+  const itemsForTotals = shouldUseWonItems() ? items.filter((item) => Boolean(Number(item.is_won))) : items;
   const missingProfitMarginMessage = "Cadastre o valor de custo e o valor final de todos os itens deste edital para calcular a margem de lucro.";
-  const hasCompleteProfitValues = items.length > 0 && items.every(
+  const hasCompleteProfitValues = itemsForTotals.length > 0 && itemsForTotals.every(
     (item) => Number(item.max_acceptable_value) && Number(item.supplier_cost)
   );
-  const totals = items.reduce(
+  const totals = itemsForTotals.reduce(
     (acc, item) => {
       const quantity = Number(item.required_quantity || 0);
       acc.estimated += Number(item.estimated_value || 0) * quantity;
@@ -1644,19 +1654,23 @@ function renderMetrics(items) {
 }
 
 function renderItems(items) {
+  const showWonItems = shouldUseWonItems();
+  refs.itemWonHeader.classList.toggle("hidden", !showWonItems);
   if (!items.length) {
-    refs.itemsTableBody.innerHTML = `<tr><td colspan="11">Nenhum item cadastrado.</td></tr>`;
+    refs.itemsTableBody.innerHTML = `<tr><td colspan="${showWonItems ? 12 : 11}">Nenhum item cadastrado.</td></tr>`;
     return;
   }
   refs.itemsTableBody.innerHTML = items
     .map((item) => {
       const selected = Number(item.id) === Number(appState.currentItemId) ? " selected" : "";
       const won = Boolean(Number(item.is_won));
-      const wonClass = won ? " item-won" : "";
-      const wonIcon = won ? `<span class="item-won-icon" role="img" aria-label="Item vencido" title="Item vencido">✓</span>` : "";
+      const wonClass = showWonItems && won ? " item-won" : "";
+      const wonCell = showWonItems
+        ? `<td class="item-won-cell"><input class="item-won-checkbox" type="checkbox" data-item-won="${item.id}" aria-label="Marcar item ${item.item_number} como vencido" ${won ? "checked" : ""} /></td>`
+        : "";
       return `
         <tr class="selectable${selected}${wonClass}" data-item-id="${item.id}">
-          <td><span class="item-number-cell">${wonIcon}<span>${item.item_number}</span></span></td>
+          <td>${item.item_number}</td>
           <td>${escapeHtml(item.name || "")}</td>
           <td>${escapeHtml(item.brand_model || "")}</td>
           <td>${escapeHtml(item.sales_unit || "")}</td>
@@ -1667,6 +1681,7 @@ function renderItems(items) {
           <td class="numeric">${formatStoredProfitMargin(item)}</td>
           <td class="numeric">${money(item.minimum_bid)}</td>
           <td class="numeric">${formatStoredItemProfit(item)}</td>
+          ${wonCell}
         </tr>
       `;
     })
@@ -1675,6 +1690,24 @@ function renderItems(items) {
   refs.itemsTableBody.querySelectorAll("[data-item-id]").forEach((row) => {
     row.addEventListener("click", () => loadItem(Number(row.dataset.itemId)));
   });
+  refs.itemsTableBody.querySelectorAll("[data-item-won]").forEach((checkbox) => {
+    checkbox.addEventListener("click", (event) => event.stopPropagation());
+    checkbox.addEventListener("change", () => setItemWon(Number(checkbox.dataset.itemWon), checkbox.checked, checkbox));
+  });
+}
+
+async function setItemWon(itemId, isWon, checkbox) {
+  checkbox.disabled = true;
+  refs.itemFormError.textContent = "";
+  try {
+    await store.setItemWon(itemId, isWon);
+    await reloadData();
+    showToast(isWon ? "Item marcado como vencido." : "Marcação de item vencido removida.");
+  } catch (error) {
+    checkbox.checked = !isWon;
+    checkbox.disabled = false;
+    refs.itemFormError.textContent = error.message;
+  }
 }
 
 function formatStoredItemProfit(item) {
@@ -1718,7 +1751,6 @@ function loadItem(itemId) {
   updateValueWithMargin();
   updateItemProfit();
   refs.brandModel.value = item.brand_model || "";
-  refs.itemWon.checked = Boolean(Number(item.is_won));
   refs.technicalRegistrationText.value = item.technical_registration_text || item.description || "";
   appState.supplierLinksDraft = [...item.supplier_links];
   renderSupplierLinks();
@@ -1818,6 +1850,7 @@ function collectItemData() {
     : supplierCost && refs.maxValue.value.trim()
       ? calculateProfitMargin(finalValue, supplierCost)
       : null;
+  const currentItem = currentItems().find((item) => Number(item.id) === Number(appState.currentItemId));
   return {
     item_number: itemNumber,
     name,
@@ -1827,7 +1860,7 @@ function collectItemData() {
     max_acceptable_value: finalValue,
     minimum_bid: parseDecimal(refs.minimumBid.value, "Lance Mínimo", false),
     brand_model: refs.brandModel.value.trim(),
-    is_won: refs.itemWon.checked ? 1 : 0,
+    is_won: Number(currentItem?.is_won || 0),
     supplier_cost: supplierCost,
     profit_margin: profitMargin,
     supplier_link: appState.supplierLinksDraft[0] || "",
