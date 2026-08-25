@@ -340,7 +340,6 @@ const refs = {
   quotationItemDescription: $("quotationItemDescription"),
   quotationItemModel: $("quotationItemModel"),
   quotationItemManufacturer: $("quotationItemManufacturer"),
-  quotationItemUnit: $("quotationItemUnit"),
   quotationItemTechnicalText: $("quotationItemTechnicalText"),
   quotationItemEstimatedValue: $("quotationItemEstimatedValue"),
   quotationItemSupplierCost: $("quotationItemSupplierCost"),
@@ -349,6 +348,7 @@ const refs = {
   quotationItemFinalBid: $("quotationItemFinalBid"),
   quotationItemQuantity: $("quotationItemQuantity"),
   quotationItemTotal: $("quotationItemTotal"),
+  quotationItemTotalProfit: $("quotationItemTotalProfit"),
   quotationItemFormError: $("quotationItemFormError"),
   deleteQuotationItemButton: $("deleteQuotationItemButton"),
   clearQuotationItemButton: $("clearQuotationItemButton"),
@@ -1281,16 +1281,19 @@ function bindEvents() {
   refs.quotationItemProfitMargin.addEventListener("blur", formatQuotationProfitMarginInput);
   refs.quotationItemFinalBid.addEventListener("input", () => {
     updateQuotationMarginFromFinalBid();
-    updateQuotationItemTotal();
+    updateQuotationItemTotals();
   });
-  refs.quotationItemSupplierCost.addEventListener("input", updateQuotationPricingFromCost);
-  refs.quotationItemQuantity.addEventListener("input", updateQuotationItemTotal);
+  refs.quotationItemSupplierCost.addEventListener("input", () => {
+    updateQuotationPricingFromCost();
+    updateQuotationItemTotals();
+  });
+  refs.quotationItemQuantity.addEventListener("input", updateQuotationItemTotals);
   for (const input of [refs.quotationItemEstimatedValue, refs.quotationItemSupplierCost, refs.quotationItemFinalBid]) {
     input.addEventListener("blur", () => {
       if (input.value.trim()) input.value = money(parseDecimal(input.value, "valor", false));
       if (input === refs.quotationItemSupplierCost) updateQuotationPricingFromCost();
       if (input === refs.quotationItemFinalBid) updateQuotationMarginFromFinalBid();
-      updateQuotationItemTotal();
+      updateQuotationItemTotals();
     });
   }
   refs.userForm.addEventListener("submit", saveUser);
@@ -3151,7 +3154,6 @@ function renderQuotationItems() {
           <td><strong>${escapeHtml(formatNumber(item.item_number))}</strong></td>
           <td><strong>${escapeHtml(item.description || "—")}</strong>${item.model ? `<small class="table-secondary">Modelo: ${escapeHtml(item.model)}</small>` : ""}</td>
           <td>${escapeHtml(item.manufacturer || "—")}</td>
-          <td>${escapeHtml(item.unit || "—")}</td>
           <td class="numeric">${money(item.estimated_value)}</td>
           <td class="numeric">${money(item.supplier_cost)}</td>
           <td class="numeric">${formatQuotationProfitMargin(item)}</td>
@@ -3159,6 +3161,7 @@ function renderQuotationItems() {
           <td class="numeric">${money(item.final_bid)}</td>
           <td class="numeric">${escapeHtml(formatNumber(item.quantity))}</td>
           <td class="numeric"><strong>${money(item.total)}</strong></td>
+          <td class="numeric"><strong>${money(calculateItemProfit(item.final_bid, item.supplier_cost, item.quantity))}</strong></td>
           <td><button class="text-action" type="button" data-edit-quotation-item="${item.id}">Editar</button></td>
         </tr>`;
     })
@@ -3190,7 +3193,6 @@ function loadQuotationItem(itemId) {
   refs.quotationItemDescription.value = item.description;
   refs.quotationItemModel.value = item.model;
   refs.quotationItemManufacturer.value = item.manufacturer;
-  refs.quotationItemUnit.value = item.unit;
   refs.quotationItemTechnicalText.value = item.technical_text;
   refs.quotationItemEstimatedValue.value = money(item.estimated_value);
   refs.quotationItemSupplierCost.value = item.supplier_cost ? money(item.supplier_cost) : "";
@@ -3201,7 +3203,7 @@ function loadQuotationItem(itemId) {
   refs.quotationItemFormError.textContent = "";
   refs.deleteQuotationItemButton.classList.remove("hidden");
   updateQuotationValueWithMargin();
-  updateQuotationItemTotal();
+  updateQuotationItemTotals();
   resizeTextarea(refs.quotationItemTechnicalText);
   renderQuotationItems();
   refs.quotationItemForm.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -3212,6 +3214,7 @@ function clearQuotationItemForm() {
   refs.quotationItemForm.reset();
   refs.quotationItemQuantity.value = "1";
   refs.quotationItemTotal.value = money(0);
+  refs.quotationItemTotalProfit.value = money(0);
   appState.quotationMarginCalculationSource = "margin";
   updateQuotationValueWithMargin();
   refs.quotationItemFormError.textContent = "";
@@ -3250,7 +3253,6 @@ async function saveQuotationItem(event) {
         description: refs.quotationItemDescription.value.trim(),
         model: refs.quotationItemModel.value.trim(),
         manufacturer: refs.quotationItemManufacturer.value.trim(),
-        unit: refs.quotationItemUnit.value.trim(),
         technical_text: refs.quotationItemTechnicalText.value.trim(),
         estimated_value: parseDecimal(refs.quotationItemEstimatedValue.value, "Valor Estimado", false),
         supplier_cost: supplierCost,
@@ -3282,15 +3284,18 @@ async function deleteCurrentQuotationItem() {
   }
 }
 
-function updateQuotationItemTotal() {
+function updateQuotationItemTotals() {
   try {
     const finalBid = parseDecimal(refs.quotationItemFinalBid.value, "Lance Final", false);
+    const supplierCost = parseDecimal(refs.quotationItemSupplierCost.value, "Valor de Custo", false);
     const quantity = refs.quotationItemQuantity.value.trim()
       ? parseDecimal(refs.quotationItemQuantity.value, "Quantidade", false)
       : 1;
     refs.quotationItemTotal.value = money(finalBid * quantity);
+    refs.quotationItemTotalProfit.value = money(calculateItemProfit(finalBid, supplierCost, quantity));
   } catch {
     refs.quotationItemTotal.value = money(0);
+    refs.quotationItemTotalProfit.value = money(0);
   }
 }
 
@@ -4079,7 +4084,6 @@ function normalizeQuotationItemRecord(record) {
     description: record.description || "",
     model: record.model || "",
     manufacturer: record.manufacturer || "",
-    unit: record.unit || "",
     technical_text: record.technical_text || "",
     estimated_value: Number(record.estimated_value || 0),
     supplier_cost: supplierCost,

@@ -744,10 +744,6 @@
                 Marca/Fabricante
                 <input id="quotationItemManufacturer" />
               </label>
-              <label>
-                Unidade
-                <input id="quotationItemUnit" />
-              </label>
               <label class="quotation-technical-field">
                 Texto Técnico
                 <textarea id="quotationItemTechnicalText" class="auto-grow-textarea" rows="3"></textarea>
@@ -786,6 +782,11 @@
                   <input id="quotationItemTotal" value="R$ 0,00" readonly aria-describedby="quotationTotalHint" />
                   <small id="quotationTotalHint">Lance Final × Quantidade</small>
                 </label>
+                <label>
+                  Lucro Total
+                  <input id="quotationItemTotalProfit" value="R$ 0,00" readonly aria-describedby="quotationTotalProfitHint" />
+                  <small id="quotationTotalProfitHint">(Lance Final − Valor de Custo) × Quantidade</small>
+                </label>
               </div>
             </div>
 
@@ -804,7 +805,6 @@
                   <th>ITEM</th>
                   <th>Descrição / Modelo</th>
                   <th>Marca/Fabricante</th>
-                  <th>Unidade</th>
                   <th class="numeric">Valor Estimado</th>
                   <th class="numeric">Valor de Custo</th>
                   <th class="numeric">Margem</th>
@@ -812,6 +812,7 @@
                   <th class="numeric">Lance Final</th>
                   <th class="numeric">Quantidade</th>
                   <th class="numeric">Total</th>
+                  <th class="numeric">Lucro Total</th>
                   <th><span class="visually-hidden">Ações</span></th>
                 </tr>
               </thead>
