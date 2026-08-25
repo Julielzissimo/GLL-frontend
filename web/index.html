@@ -47,6 +47,7 @@
         <nav class="app-nav">
           <button id="navHomeButton" class="nav-link active" type="button" data-navigation-page="home"><span aria-hidden="true">⌂</span>Visão geral</button>
           <button id="navBidsButton" class="nav-link" type="button" data-navigation-page="bids"><span aria-hidden="true">▤</span>Licitações</button>
+          <button id="navQuotationsButton" class="nav-link" type="button" data-navigation-page="quotations"><span aria-hidden="true">▧</span>Orçamento</button>
           <button id="navUsersButton" class="nav-link nav-link-disabled" type="button" aria-disabled="true" title="Usuários gerenciados no Supabase" disabled>
             <span class="nav-users-icon" aria-hidden="true">♙</span>Usuários
           </button>
@@ -650,6 +651,158 @@
               </div>
             </section>
           </section>
+        </section>
+      </section>
+
+      <section id="quotationsPage" class="users-page quotations-page hidden">
+        <div class="page-heading">
+          <div>
+            <span class="eyebrow">GESTÃO</span>
+            <h1>Orçamentos</h1>
+            <p>Cadastre orçamentos e acompanhe os valores de cada item.</p>
+          </div>
+          <button id="newQuotationButton" class="primary-action" type="button">＋ Novo orçamento</button>
+        </div>
+
+        <section class="section-band table-panel">
+          <div class="section-title">
+            <h2>Orçamentos cadastrados</h2>
+            <span id="quotationCountLabel">0 orçamentos</span>
+          </div>
+          <div class="table-wrap">
+            <table class="quotations-table">
+              <thead>
+                <tr>
+                  <th>Data de abertura</th>
+                  <th>Edital</th>
+                  <th>Cidade / CEP</th>
+                  <th class="numeric">Itens</th>
+                  <th class="numeric">Total</th>
+                  <th><span class="visually-hidden">Ações</span></th>
+                </tr>
+              </thead>
+              <tbody id="quotationsTableBody"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <form id="quotationForm" class="section-band">
+          <div class="section-title">
+            <h2>Dados do orçamento</h2>
+            <span id="selectedQuotationLabel">Novo orçamento</span>
+          </div>
+          <div class="form-grid quotation-header-grid">
+            <label>
+              Data de Abertura
+              <input id="quotationOpeningDate" type="date" />
+            </label>
+            <label>
+              Edital *
+              <input id="quotationEdital" required />
+            </label>
+            <label>
+              Cidade
+              <input id="quotationCity" />
+            </label>
+            <label>
+              CEP
+              <input id="quotationCep" inputmode="numeric" maxlength="9" placeholder="00000-000" />
+            </label>
+          </div>
+          <p id="quotationFormError" class="form-error" role="alert"></p>
+          <div class="button-row end">
+            <button id="deleteQuotationButton" class="danger-action hidden" type="button">Excluir orçamento</button>
+            <button id="clearQuotationButton" class="quiet-action" type="button">Limpar</button>
+            <button class="primary-action" type="submit">Salvar orçamento</button>
+          </div>
+        </form>
+
+        <section id="quotationItemsSection" class="section-band hidden">
+          <div class="section-title">
+            <div>
+              <h2>Itens do orçamento</h2>
+              <span id="quotationItemsStatus">Salve o orçamento para cadastrar itens</span>
+            </div>
+            <span id="quotationGrandTotal" class="quotation-grand-total">Total: R$ 0,00</span>
+          </div>
+
+          <form id="quotationItemForm">
+            <div class="form-grid quotation-item-grid">
+              <label>
+                ITEM *
+                <input id="quotationItemNumber" type="number" min="0" step="1" required />
+              </label>
+              <label class="quotation-description-field">
+                Descrição
+                <input id="quotationItemDescription" />
+              </label>
+              <label>
+                Modelo
+                <input id="quotationItemModel" />
+              </label>
+              <label>
+                Marca/Fabricante
+                <input id="quotationItemManufacturer" />
+              </label>
+              <label>
+                Unidade
+                <input id="quotationItemUnit" />
+              </label>
+              <label class="quotation-technical-field">
+                Texto Técnico
+                <textarea id="quotationItemTechnicalText" class="auto-grow-textarea" rows="3"></textarea>
+              </label>
+            </div>
+
+            <div class="quotation-values-section">
+              <h3>Valores</h3>
+              <div class="form-grid quotation-values-grid">
+                <label>
+                  Valor Estimado
+                  <input id="quotationItemEstimatedValue" inputmode="decimal" placeholder="R$ 0,00" />
+                </label>
+                <label>
+                  Lance Final
+                  <input id="quotationItemFinalBid" inputmode="decimal" placeholder="R$ 0,00" />
+                </label>
+                <label>
+                  Quantidade
+                  <input id="quotationItemQuantity" type="number" min="0" step="any" value="1" />
+                </label>
+                <label>
+                  Total
+                  <input id="quotationItemTotal" value="R$ 0,00" readonly aria-describedby="quotationTotalHint" />
+                  <small id="quotationTotalHint">Lance Final × Quantidade</small>
+                </label>
+              </div>
+            </div>
+
+            <p id="quotationItemFormError" class="form-error" role="alert"></p>
+            <div class="button-row end">
+              <button id="deleteQuotationItemButton" class="danger-action hidden" type="button">Excluir item</button>
+              <button id="clearQuotationItemButton" class="quiet-action" type="button">Limpar</button>
+              <button class="primary-action" type="submit">Salvar item</button>
+            </div>
+          </form>
+
+          <div class="table-wrap quotation-items-table-wrap">
+            <table class="quotation-items-table">
+              <thead>
+                <tr>
+                  <th>ITEM</th>
+                  <th>Descrição / Modelo</th>
+                  <th>Marca/Fabricante</th>
+                  <th>Unidade</th>
+                  <th class="numeric">Valor Estimado</th>
+                  <th class="numeric">Lance Final</th>
+                  <th class="numeric">Quantidade</th>
+                  <th class="numeric">Total</th>
+                  <th><span class="visually-hidden">Ações</span></th>
+                </tr>
+              </thead>
+              <tbody id="quotationItemsTableBody"></tbody>
+            </table>
+          </div>
         </section>
       </section>
 

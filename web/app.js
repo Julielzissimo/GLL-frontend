@@ -112,6 +112,8 @@ const appState = {
   currentItemId: null,
   currentDocumentId: null,
   currentFailureId: null,
+  currentQuotationId: null,
+  currentQuotationItemId: null,
   itemMarginCalculationSource: "margin",
   supplierLinksDraft: [],
   budgetDraftColumns: [],
@@ -131,6 +133,8 @@ const appState = {
   failureHistory: [],
   budgetModels: [],
   budgetRows: [],
+  quotations: [],
+  quotationItems: [],
   users: [],
 };
 
@@ -151,6 +155,7 @@ const refs = {
   homeIconButton: $("homeIconButton"),
   navHomeButton: $("navHomeButton"),
   navBidsButton: $("navBidsButton"),
+  navQuotationsButton: $("navQuotationsButton"),
   navUsersButton: $("navUsersButton"),
   navSettingsButton: $("navSettingsButton"),
   menuToggleButton: $("menuToggleButton"),
@@ -313,6 +318,37 @@ const refs = {
   budgetEntryError: $("budgetEntryError"),
   budgetTableHead: $("budgetTableHead"),
   budgetTableBody: $("budgetTableBody"),
+  quotationsPage: $("quotationsPage"),
+  newQuotationButton: $("newQuotationButton"),
+  quotationCountLabel: $("quotationCountLabel"),
+  quotationsTableBody: $("quotationsTableBody"),
+  quotationForm: $("quotationForm"),
+  selectedQuotationLabel: $("selectedQuotationLabel"),
+  quotationOpeningDate: $("quotationOpeningDate"),
+  quotationEdital: $("quotationEdital"),
+  quotationCity: $("quotationCity"),
+  quotationCep: $("quotationCep"),
+  quotationFormError: $("quotationFormError"),
+  deleteQuotationButton: $("deleteQuotationButton"),
+  clearQuotationButton: $("clearQuotationButton"),
+  quotationItemsSection: $("quotationItemsSection"),
+  quotationItemsStatus: $("quotationItemsStatus"),
+  quotationGrandTotal: $("quotationGrandTotal"),
+  quotationItemForm: $("quotationItemForm"),
+  quotationItemNumber: $("quotationItemNumber"),
+  quotationItemDescription: $("quotationItemDescription"),
+  quotationItemModel: $("quotationItemModel"),
+  quotationItemManufacturer: $("quotationItemManufacturer"),
+  quotationItemUnit: $("quotationItemUnit"),
+  quotationItemTechnicalText: $("quotationItemTechnicalText"),
+  quotationItemEstimatedValue: $("quotationItemEstimatedValue"),
+  quotationItemFinalBid: $("quotationItemFinalBid"),
+  quotationItemQuantity: $("quotationItemQuantity"),
+  quotationItemTotal: $("quotationItemTotal"),
+  quotationItemFormError: $("quotationItemFormError"),
+  deleteQuotationItemButton: $("deleteQuotationItemButton"),
+  clearQuotationItemButton: $("clearQuotationItemButton"),
+  quotationItemsTableBody: $("quotationItemsTableBody"),
   userForm: $("userForm"),
   userName: $("userName"),
   userEmail: $("userEmail"),
@@ -379,7 +415,7 @@ class IndexedDbStore {
     this.requiresAuthenticationBeforeData = false;
     const storageSuffix = sanitizeStorageSuffix(GLL_CONFIG.storageSuffix || GLL_CONFIG.environment);
     this.dbName = `gll-web-data-v4-${storageSuffix}`;
-    this.version = 2;
+    this.version = 3;
     this.authDbName = `gll-web-auth-v2-${storageSuffix}`;
     this.authVersion = 1;
     this.db = null;
@@ -415,6 +451,11 @@ class IndexedDbStore {
         if (!db.objectStoreNames.contains("budget_rows")) {
           const store = db.createObjectStore("budget_rows", { keyPath: "id", autoIncrement: true });
           store.createIndex("bid_id", "bid_id", { unique: false });
+        }
+        if (!db.objectStoreNames.contains("quotations")) db.createObjectStore("quotations", { keyPath: "id", autoIncrement: true });
+        if (!db.objectStoreNames.contains("quotation_items")) {
+          const store = db.createObjectStore("quotation_items", { keyPath: "id", autoIncrement: true });
+          store.createIndex("quotation_id", "quotation_id", { unique: false });
         }
         if (!db.objectStoreNames.contains("meta")) db.createObjectStore("meta", { keyPath: "key" });
       };
@@ -486,15 +527,17 @@ class IndexedDbStore {
 
   async clearAll() {
     await this.tx(
-      ["bids", "items", "documents", "failure_history", "budget_models", "budget_rows", "meta"],
+      ["bids", "items", "documents", "failure_history", "budget_models", "budget_rows", "quotations", "quotation_items", "meta"],
       "readwrite",
-      ([bids, items, documents, failures, models, rows, meta]) => {
+      ([bids, items, documents, failures, models, rows, quotations, quotationItems, meta]) => {
       bids.clear();
       items.clear();
       documents.clear();
       failures.clear();
       models.clear();
       rows.clear();
+      quotations.clear();
+      quotationItems.clear();
       meta.clear();
     });
   }
@@ -687,6 +730,56 @@ class IndexedDbStore {
   async deleteBudgetRow(rowId) {
     await this.tx("budget_rows", "readwrite", (rows) => rows.delete(Number(rowId)));
   }
+
+  async saveQuotation(quotationData, quotationId) {
+    const existing = quotationId
+      ? (await this.getAll("quotations")).find((quotation) => Number(quotation.id) === Number(quotationId))
+      : null;
+    const now = timestampNow();
+    const record = normalizeQuotationRecord({
+      ...existing,
+      ...quotationData,
+      id: quotationId || undefined,
+      created_at: existing?.created_at || now,
+      updated_at: now,
+    });
+    let savedId;
+    await this.tx("quotations", "readwrite", (quotations) => {
+      if (!record.id) delete record.id;
+      const request = quotations.put(record);
+      request.onsuccess = () => {
+        savedId = request.result;
+      };
+    });
+    return Number(savedId);
+  }
+
+  async deleteQuotation(quotationId) {
+    await this.tx(["quotations", "quotation_items"], "readwrite", ([quotations, quotationItems]) => {
+      quotations.delete(Number(quotationId));
+      deleteChildrenByIndex(quotationItems, "quotation_id", Number(quotationId));
+    });
+  }
+
+  async saveQuotationItem(quotationId, itemData, itemId) {
+    const existingItems = await this.getAll("quotation_items");
+    const duplicate = existingItems.find(
+      (item) =>
+        Number(item.quotation_id) === Number(quotationId) &&
+        Number(item.item_number) === Number(itemData.item_number) &&
+        Number(item.id) !== Number(itemId)
+    );
+    if (duplicate) throw new Error("Já existe um item com este número neste orçamento.");
+    const record = normalizeQuotationItemRecord({ ...itemData, id: itemId || undefined, quotation_id: quotationId });
+    await this.tx("quotation_items", "readwrite", (quotationItems) => {
+      if (!record.id) delete record.id;
+      quotationItems.put(record);
+    });
+  }
+
+  async deleteQuotationItem(itemId) {
+    await this.tx("quotation_items", "readwrite", (quotationItems) => quotationItems.delete(Number(itemId)));
+  }
 }
 
 class SupabaseStore {
@@ -773,6 +866,8 @@ class SupabaseStore {
 
   async applySeed(seedData) {
     const client = await this.open();
+    await deleteAllSupabaseRows(client, "quotation_items", "id");
+    await deleteAllSupabaseRows(client, "quotations", "id");
     await deleteAllSupabaseRows(client, "budget_rows", "id");
     await deleteAllSupabaseRows(client, "budget_models", "bid_id");
     await deleteOptionalSupabaseRows(client, "failure_history", "id");
@@ -1014,6 +1109,51 @@ class SupabaseStore {
     const { error } = await client.from("budget_rows").delete().eq("id", Number(rowId));
     assertSupabase(error);
   }
+
+  async saveQuotation(quotationData, quotationId) {
+    const client = await this.open();
+    const now = timestampNow();
+    if (quotationId) {
+      const { data, error } = await client
+        .from("quotations")
+        .update({ ...quotationData, updated_at: now })
+        .eq("id", Number(quotationId))
+        .select("id")
+        .single();
+      assertSupabase(error);
+      return Number(data.id);
+    }
+    const { data, error } = await client
+      .from("quotations")
+      .insert({ ...quotationData, created_at: now, updated_at: now })
+      .select("id")
+      .single();
+    assertSupabase(error);
+    return Number(data.id);
+  }
+
+  async deleteQuotation(quotationId) {
+    const client = await this.open();
+    const { error } = await client.from("quotations").delete().eq("id", Number(quotationId));
+    assertSupabase(error);
+  }
+
+  async saveQuotationItem(quotationId, itemData, itemId) {
+    const client = await this.open();
+    const record = normalizeQuotationItemRecord({ ...itemData, id: itemId || undefined, quotation_id: quotationId });
+    const { id, total, ...payload } = record;
+    const operation = id
+      ? client.from("quotation_items").update(payload).eq("id", Number(id))
+      : client.from("quotation_items").insert(payload);
+    const { error } = await operation;
+    assertSupabase(error);
+  }
+
+  async deleteQuotationItem(itemId) {
+    const client = await this.open();
+    const { error } = await client.from("quotation_items").delete().eq("id", Number(itemId));
+    assertSupabase(error);
+  }
 }
 
 const store = createStore();
@@ -1122,6 +1262,22 @@ function bindEvents() {
   refs.clearBudgetModelButton.addEventListener("click", clearBudgetModel);
   refs.printBudgetPreviewButton.addEventListener("click", () => window.print());
   refs.budgetEntryForm.addEventListener("submit", saveBudgetEntry);
+  refs.newQuotationButton.addEventListener("click", clearQuotationForm);
+  refs.quotationForm.addEventListener("submit", saveQuotation);
+  refs.clearQuotationButton.addEventListener("click", clearQuotationForm);
+  refs.deleteQuotationButton.addEventListener("click", deleteCurrentQuotation);
+  refs.quotationCep.addEventListener("input", formatQuotationCepInput);
+  refs.quotationItemForm.addEventListener("submit", saveQuotationItem);
+  refs.clearQuotationItemButton.addEventListener("click", clearQuotationItemForm);
+  refs.deleteQuotationItemButton.addEventListener("click", deleteCurrentQuotationItem);
+  refs.quotationItemFinalBid.addEventListener("input", updateQuotationItemTotal);
+  refs.quotationItemQuantity.addEventListener("input", updateQuotationItemTotal);
+  for (const input of [refs.quotationItemEstimatedValue, refs.quotationItemFinalBid]) {
+    input.addEventListener("blur", () => {
+      if (input.value.trim()) input.value = money(parseDecimal(input.value, "valor", false));
+      updateQuotationItemTotal();
+    });
+  }
   refs.userForm.addEventListener("submit", saveUser);
   refs.clearUserButton.addEventListener("click", clearUserForm);
   refs.itemsTabButton.addEventListener("click", () => setPage("items"));
@@ -1232,9 +1388,16 @@ async function reloadData() {
   appState.failureHistory = (await store.getAll("failure_history")).map(normalizeFailureRecord).sort((a, b) => Number(a.id || 0) - Number(b.id || 0));
   appState.budgetModels = await store.getAll("budget_models");
   appState.budgetRows = (await store.getAll("budget_rows")).sort((a, b) => Number(a.id || 0) - Number(b.id || 0));
+  appState.quotations = (await store.getAll("quotations"))
+    .map(normalizeQuotationRecord)
+    .sort((a, b) => Number(b.id || 0) - Number(a.id || 0));
+  appState.quotationItems = (await store.getAll("quotation_items"))
+    .map(normalizeQuotationItemRecord)
+    .sort((a, b) => Number(a.item_number || 0) - Number(b.item_number || 0));
   appState.users = (await store.getUsers()).sort((a, b) => String(a.name).localeCompare(String(b.name)));
   renderBids();
   renderDetails();
+  renderQuotations();
   renderUsers();
 }
 
@@ -1250,13 +1413,15 @@ function setPage(page) {
   appState.activePage = page;
   const showUsers = page === "users";
   const showSettings = page === "settings";
+  const showQuotations = page === "quotations";
   const showHome = page === "home";
   const showCatalog = page === "bids";
   const showEditor = page === "edit";
   const showDetail = detailPages.includes(page);
-  refs.bidsPage.classList.toggle("hidden", showUsers || showSettings);
+  refs.bidsPage.classList.toggle("hidden", showUsers || showSettings || showQuotations);
   refs.usersPage.classList.toggle("hidden", !showUsers);
   refs.settingsPage.classList.toggle("hidden", !showSettings);
+  refs.quotationsPage.classList.toggle("hidden", !showQuotations);
   refs.homePage.classList.toggle("hidden", !showHome);
   refs.bidCatalogPage.classList.toggle("hidden", !showCatalog);
   refs.bidForm.classList.toggle("hidden", !showEditor && !showDetail);
@@ -1267,14 +1432,14 @@ function setPage(page) {
   refs.documentsPanel.classList.toggle("hidden", page !== "documents");
   refs.failuresPanel.classList.toggle("hidden", page !== "failures");
   refs.budgetPage.classList.toggle("hidden", page !== "budget");
-  refs.appView.classList.toggle("users-active", showUsers || showSettings);
+  refs.appView.classList.toggle("users-active", showUsers || showSettings || showQuotations);
   refs.itemsTabButton.classList.toggle("active", page === "items");
   refs.documentsTabButton.classList.toggle("active", page === "documents");
   refs.budgetTabButton.classList.toggle("active", page === "budget");
   refs.failuresTabButton.classList.toggle("active", page === "failures");
   refs.failuresTabButton.classList.toggle("hidden", !shouldShowFailureHistory());
-  const primaryPage = showUsers ? "users" : showSettings ? "settings" : showHome ? "home" : "bids";
-  const pageLabels = { home: "Visão geral", bids: "Licitações", users: "Usuários", settings: "Configurações" };
+  const primaryPage = showUsers ? "users" : showSettings ? "settings" : showQuotations ? "quotations" : showHome ? "home" : "bids";
+  const pageLabels = { home: "Visão geral", bids: "Licitações", quotations: "Orçamento", users: "Usuários", settings: "Configurações" };
   refs.breadcrumbLabel.textContent = pageLabels[primaryPage];
   document.querySelectorAll("[data-navigation-page]").forEach((button) => {
     button.classList.toggle("active", button.dataset.navigationPage === primaryPage);
@@ -1284,6 +1449,7 @@ function setPage(page) {
   updateBidWorkspaceHeader();
   updateSidebarVisibility();
   if (showUsers) renderUsers();
+  if (showQuotations) renderQuotations();
   if (page === "budget") renderBudgetPage();
 }
 
@@ -2812,6 +2978,307 @@ function budgetValueFromItem(column, item) {
   }
 }
 
+function currentQuotation() {
+  return appState.quotations.find((quotation) => Number(quotation.id) === Number(appState.currentQuotationId)) || null;
+}
+
+function currentQuotationItems() {
+  if (!appState.currentQuotationId) return [];
+  return appState.quotationItems.filter((item) => Number(item.quotation_id) === Number(appState.currentQuotationId));
+}
+
+function renderQuotations() {
+  const count = appState.quotations.length;
+  refs.quotationCountLabel.textContent = `${count} ${count === 1 ? "orçamento" : "orçamentos"}`;
+  if (!count) {
+    refs.quotationsTableBody.innerHTML = `<tr><td colspan="6"><div class="empty-state compact-empty">Nenhum orçamento cadastrado.</div></td></tr>`;
+  } else {
+    refs.quotationsTableBody.innerHTML = appState.quotations
+      .map((quotation) => {
+        const items = appState.quotationItems.filter((item) => Number(item.quotation_id) === Number(quotation.id));
+        const total = items.reduce((sum, item) => sum + Number(item.total || 0), 0);
+        const selected = Number(quotation.id) === Number(appState.currentQuotationId) ? " selected" : "";
+        const location = [quotation.city, quotation.cep].filter(Boolean).join(" · ") || "—";
+        return `
+          <tr class="selectable${selected}" tabindex="0" data-quotation-id="${quotation.id}">
+            <td>${escapeHtml(formatDateOnly(quotation.opening_date) || "—")}</td>
+            <td><strong>${escapeHtml(quotation.edital)}</strong></td>
+            <td>${escapeHtml(location)}</td>
+            <td class="numeric">${items.length}</td>
+            <td class="numeric"><strong>${money(total)}</strong></td>
+            <td><button class="text-action" type="button" data-edit-quotation="${quotation.id}">Editar</button></td>
+          </tr>`;
+      })
+      .join("");
+  }
+
+  refs.quotationsTableBody.querySelectorAll("[data-quotation-id]").forEach((row) => {
+    const open = () => loadQuotation(Number(row.dataset.quotationId));
+    row.addEventListener("click", open);
+    row.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        open();
+      }
+    });
+  });
+  refs.quotationsTableBody.querySelectorAll("[data-edit-quotation]").forEach((button) => {
+    button.addEventListener("click", (event) => {
+      event.stopPropagation();
+      loadQuotation(Number(button.dataset.editQuotation));
+    });
+  });
+  renderQuotationItems();
+}
+
+function loadQuotation(quotationId, options = {}) {
+  const quotation = appState.quotations.find((row) => Number(row.id) === Number(quotationId));
+  if (!quotation) return;
+  appState.currentQuotationId = quotation.id;
+  appState.currentQuotationItemId = null;
+  refs.quotationOpeningDate.value = toDateInputValue(quotation.opening_date);
+  refs.quotationEdital.value = quotation.edital;
+  refs.quotationCity.value = quotation.city;
+  refs.quotationCep.value = formatCep(quotation.cep);
+  refs.selectedQuotationLabel.textContent = `Edital ${quotation.edital}`;
+  refs.quotationFormError.textContent = "";
+  refs.deleteQuotationButton.classList.remove("hidden");
+  clearQuotationItemForm();
+  renderQuotations();
+  setPage("quotations");
+  if (options.scroll !== false) refs.quotationForm.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+function clearQuotationForm() {
+  appState.currentQuotationId = null;
+  appState.currentQuotationItemId = null;
+  refs.quotationForm.reset();
+  refs.selectedQuotationLabel.textContent = "Novo orçamento";
+  refs.quotationFormError.textContent = "";
+  refs.deleteQuotationButton.classList.add("hidden");
+  clearQuotationItemForm();
+  renderQuotations();
+  refs.quotationEdital.focus();
+}
+
+async function saveQuotation(event) {
+  event.preventDefault();
+  refs.quotationFormError.textContent = "";
+  const edital = refs.quotationEdital.value.trim();
+  if (!edital) {
+    refs.quotationFormError.textContent = "Preencha o campo Edital.";
+    refs.quotationEdital.focus();
+    return;
+  }
+  const cepDigits = refs.quotationCep.value.replace(/\D/g, "");
+  if (cepDigits && cepDigits.length !== 8) {
+    refs.quotationFormError.textContent = "Informe um CEP com 8 dígitos.";
+    refs.quotationCep.focus();
+    return;
+  }
+  try {
+    const savedId = await store.saveQuotation(
+      {
+        opening_date: refs.quotationOpeningDate.value || null,
+        edital,
+        city: refs.quotationCity.value.trim(),
+        cep: formatCep(cepDigits),
+      },
+      appState.currentQuotationId
+    );
+    appState.currentQuotationId = savedId;
+    await reloadData();
+    loadQuotation(savedId, { scroll: false });
+    showToast("Orçamento salvo.");
+  } catch (error) {
+    refs.quotationFormError.textContent = error.message;
+  }
+}
+
+async function deleteCurrentQuotation() {
+  const quotation = currentQuotation();
+  if (!quotation) return;
+  if (!confirm(`Excluir o orçamento do edital ${quotation.edital} e todos os seus itens?`)) return;
+  try {
+    await store.deleteQuotation(quotation.id);
+    appState.currentQuotationId = null;
+    appState.currentQuotationItemId = null;
+    refs.quotationForm.reset();
+    await reloadData();
+    clearQuotationForm();
+    showToast("Orçamento excluído.");
+  } catch (error) {
+    refs.quotationFormError.textContent = error.message;
+  }
+}
+
+function renderQuotationItems() {
+  const quotation = currentQuotation();
+  refs.quotationItemsSection.classList.toggle("hidden", !quotation);
+  if (!quotation) {
+    refs.quotationItemsTableBody.innerHTML = "";
+    refs.quotationGrandTotal.textContent = `Total: ${money(0)}`;
+    return;
+  }
+  const items = currentQuotationItems();
+  const grandTotal = items.reduce((sum, item) => sum + Number(item.total || 0), 0);
+  refs.quotationItemsStatus.textContent = `${items.length} ${items.length === 1 ? "item cadastrado" : "itens cadastrados"}`;
+  refs.quotationGrandTotal.textContent = `Total: ${money(grandTotal)}`;
+  if (!items.length) {
+    refs.quotationItemsTableBody.innerHTML = `<tr><td colspan="9"><div class="empty-state compact-empty">Nenhum item cadastrado neste orçamento.</div></td></tr>`;
+    return;
+  }
+  refs.quotationItemsTableBody.innerHTML = items
+    .map((item) => {
+      const selected = Number(item.id) === Number(appState.currentQuotationItemId) ? " selected" : "";
+      return `
+        <tr class="selectable${selected}" tabindex="0" data-quotation-item-id="${item.id}">
+          <td><strong>${escapeHtml(formatNumber(item.item_number))}</strong></td>
+          <td><strong>${escapeHtml(item.description || "—")}</strong>${item.model ? `<small class="table-secondary">Modelo: ${escapeHtml(item.model)}</small>` : ""}</td>
+          <td>${escapeHtml(item.manufacturer || "—")}</td>
+          <td>${escapeHtml(item.unit || "—")}</td>
+          <td class="numeric">${money(item.estimated_value)}</td>
+          <td class="numeric">${money(item.final_bid)}</td>
+          <td class="numeric">${escapeHtml(formatNumber(item.quantity))}</td>
+          <td class="numeric"><strong>${money(item.total)}</strong></td>
+          <td><button class="text-action" type="button" data-edit-quotation-item="${item.id}">Editar</button></td>
+        </tr>`;
+    })
+    .join("");
+
+  refs.quotationItemsTableBody.querySelectorAll("[data-quotation-item-id]").forEach((row) => {
+    const open = () => loadQuotationItem(Number(row.dataset.quotationItemId));
+    row.addEventListener("click", open);
+    row.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        open();
+      }
+    });
+  });
+  refs.quotationItemsTableBody.querySelectorAll("[data-edit-quotation-item]").forEach((button) => {
+    button.addEventListener("click", (event) => {
+      event.stopPropagation();
+      loadQuotationItem(Number(button.dataset.editQuotationItem));
+    });
+  });
+}
+
+function loadQuotationItem(itemId) {
+  const item = currentQuotationItems().find((row) => Number(row.id) === Number(itemId));
+  if (!item) return;
+  appState.currentQuotationItemId = item.id;
+  refs.quotationItemNumber.value = formatNumber(item.item_number);
+  refs.quotationItemDescription.value = item.description;
+  refs.quotationItemModel.value = item.model;
+  refs.quotationItemManufacturer.value = item.manufacturer;
+  refs.quotationItemUnit.value = item.unit;
+  refs.quotationItemTechnicalText.value = item.technical_text;
+  refs.quotationItemEstimatedValue.value = money(item.estimated_value);
+  refs.quotationItemFinalBid.value = money(item.final_bid);
+  refs.quotationItemQuantity.value = formatNumber(item.quantity);
+  refs.quotationItemFormError.textContent = "";
+  refs.deleteQuotationItemButton.classList.remove("hidden");
+  updateQuotationItemTotal();
+  resizeTextarea(refs.quotationItemTechnicalText);
+  renderQuotationItems();
+  refs.quotationItemForm.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+function clearQuotationItemForm() {
+  appState.currentQuotationItemId = null;
+  refs.quotationItemForm.reset();
+  refs.quotationItemQuantity.value = "1";
+  refs.quotationItemTotal.value = money(0);
+  refs.quotationItemFormError.textContent = "";
+  refs.deleteQuotationItemButton.classList.add("hidden");
+  resizeTextarea(refs.quotationItemTechnicalText);
+  renderQuotationItems();
+}
+
+async function saveQuotationItem(event) {
+  event.preventDefault();
+  refs.quotationItemFormError.textContent = "";
+  if (!appState.currentQuotationId) {
+    refs.quotationItemFormError.textContent = "Salve o orçamento antes de cadastrar itens.";
+    return;
+  }
+  try {
+    const itemNumber = parseIntRequired(refs.quotationItemNumber.value, "ITEM");
+    const duplicate = currentQuotationItems().find(
+      (item) => Number(item.item_number) === Number(itemNumber) && Number(item.id) !== Number(appState.currentQuotationItemId)
+    );
+    if (duplicate) throw new Error("Já existe um item com este número neste orçamento.");
+    const quantity = refs.quotationItemQuantity.value.trim()
+      ? parseDecimal(refs.quotationItemQuantity.value, "Quantidade", false)
+      : 1;
+    await store.saveQuotationItem(
+      appState.currentQuotationId,
+      {
+        item_number: itemNumber,
+        description: refs.quotationItemDescription.value.trim(),
+        model: refs.quotationItemModel.value.trim(),
+        manufacturer: refs.quotationItemManufacturer.value.trim(),
+        unit: refs.quotationItemUnit.value.trim(),
+        technical_text: refs.quotationItemTechnicalText.value.trim(),
+        estimated_value: parseDecimal(refs.quotationItemEstimatedValue.value, "Valor Estimado", false),
+        final_bid: parseDecimal(refs.quotationItemFinalBid.value, "Lance Final", false),
+        quantity,
+      },
+      appState.currentQuotationItemId
+    );
+    await reloadData();
+    clearQuotationItemForm();
+    showToast("Item do orçamento salvo.");
+  } catch (error) {
+    refs.quotationItemFormError.textContent = error.message;
+  }
+}
+
+async function deleteCurrentQuotationItem() {
+  if (!appState.currentQuotationItemId) return;
+  if (!confirm("Excluir o item selecionado deste orçamento?")) return;
+  try {
+    await store.deleteQuotationItem(appState.currentQuotationItemId);
+    appState.currentQuotationItemId = null;
+    await reloadData();
+    clearQuotationItemForm();
+    showToast("Item excluído.");
+  } catch (error) {
+    refs.quotationItemFormError.textContent = error.message;
+  }
+}
+
+function updateQuotationItemTotal() {
+  try {
+    const finalBid = parseDecimal(refs.quotationItemFinalBid.value, "Lance Final", false);
+    const quantity = refs.quotationItemQuantity.value.trim()
+      ? parseDecimal(refs.quotationItemQuantity.value, "Quantidade", false)
+      : 1;
+    refs.quotationItemTotal.value = money(finalBid * quantity);
+  } catch {
+    refs.quotationItemTotal.value = money(0);
+  }
+}
+
+function formatQuotationCepInput() {
+  refs.quotationCep.value = formatCep(refs.quotationCep.value);
+}
+
+function formatCep(value) {
+  const digits = String(value || "").replace(/\D/g, "").slice(0, 8);
+  return digits.length > 5 ? `${digits.slice(0, 5)}-${digits.slice(5)}` : digits;
+}
+
+function formatDateOnly(value) {
+  const match = String(value || "").match(/^(\d{4})-(\d{2})-(\d{2})/);
+  return match ? `${match[3]}/${match[2]}/${match[1]}` : "";
+}
+
+function formatNumber(value) {
+  return Number(value || 0).toLocaleString("pt-BR", { maximumFractionDigits: 4 });
+}
+
 async function saveUser(event) {
   event.preventDefault();
   refs.userFormError.textContent = "";
@@ -3474,6 +3941,37 @@ function normalizeFailureRecord(record) {
   };
 }
 
+function normalizeQuotationRecord(record) {
+  return {
+    id: record.id ? Number(record.id) : undefined,
+    opening_date: record.opening_date || "",
+    edital: String(record.edital || "").trim(),
+    city: record.city || "",
+    cep: formatCep(record.cep),
+    created_at: record.created_at || timestampNow(),
+    updated_at: record.updated_at || timestampNow(),
+  };
+}
+
+function normalizeQuotationItemRecord(record) {
+  const finalBid = Number(record.final_bid || 0);
+  const quantity = record.quantity === undefined || record.quantity === null || record.quantity === "" ? 1 : Number(record.quantity);
+  return {
+    id: record.id ? Number(record.id) : undefined,
+    quotation_id: Number(record.quotation_id),
+    item_number: Number(record.item_number || 0),
+    description: record.description || "",
+    model: record.model || "",
+    manufacturer: record.manufacturer || "",
+    unit: record.unit || "",
+    technical_text: record.technical_text || "",
+    estimated_value: Number(record.estimated_value || 0),
+    final_bid: finalBid,
+    quantity,
+    total: record.total === undefined || record.total === null ? finalBid * quantity : Number(record.total),
+  };
+}
+
 function normalizeEmail(email) {
   return String(email || "").trim().toLowerCase();
 }
@@ -3636,6 +4134,13 @@ function updateChildrenBidId(storeRef, oldBidId, newBidId) {
 
 function deleteChildrenByBid(storeRef, bidId) {
   const request = storeRef.index("bid_id").getAll(bidId);
+  request.onsuccess = () => {
+    for (const row of request.result || []) storeRef.delete(row.id);
+  };
+}
+
+function deleteChildrenByIndex(storeRef, indexName, parentId) {
+  const request = storeRef.index(indexName).getAll(parentId);
   request.onsuccess = () => {
     for (const row of request.result || []) storeRef.delete(row.id);
   };

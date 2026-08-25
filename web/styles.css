@@ -1612,6 +1612,7 @@ tr.warning-row {
 body {
   background: var(--bg);
   font-family: Inter, "Segoe UI", Arial, sans-serif;
+  overflow-x: hidden;
 }
 
 button,
@@ -2493,6 +2494,92 @@ tr.item-won td {
   border: 0;
 }
 
+.quotation-header-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.quotations-page,
+.quotations-page .section-band {
+  min-width: 0;
+}
+
+.quotation-item-grid {
+  grid-template-columns: minmax(110px, 0.55fr) minmax(220px, 1.6fr) repeat(3, minmax(160px, 1fr));
+}
+
+.quotation-description-field {
+  grid-column: span 2;
+}
+
+.quotation-technical-field {
+  grid-column: 1 / -1;
+}
+
+.quotation-values-section {
+  margin-top: 22px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border);
+}
+
+.quotation-values-section h3 {
+  margin: 0 0 16px;
+  color: var(--text);
+  font-size: 15px;
+}
+
+.quotation-values-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.quotation-values-grid label small {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.quotation-grand-total {
+  display: inline-flex;
+  align-items: center;
+  min-height: 34px;
+  padding: 7px 12px;
+  border-radius: 999px;
+  background: var(--success-bg);
+  color: var(--success) !important;
+  font-size: 14px !important;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.quotations-page .table-panel > .section-title {
+  margin: 0;
+  padding: 20px 22px;
+  border-bottom: 1px solid var(--border);
+}
+
+.quotations-table {
+  min-width: 860px;
+}
+
+.quotation-items-table-wrap {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  margin-top: 22px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+
+.quotation-items-table {
+  min-width: 1260px;
+}
+
+.table-secondary {
+  display: block;
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
 .toast {
   right: 28px;
   bottom: 28px;
@@ -2513,6 +2600,16 @@ tr.item-won td {
 
   .filter-form {
     grid-template-columns: 1fr 1fr;
+  }
+
+  .quotation-header-grid,
+  .quotation-item-grid,
+  .quotation-values-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .quotation-description-field {
+    grid-column: span 1;
   }
 }
 
@@ -2632,6 +2729,12 @@ tr.item-won td {
   .form-grid,
   .metrics-row,
   .settings-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .quotation-header-grid,
+  .quotation-item-grid,
+  .quotation-values-grid {
     grid-template-columns: 1fr;
   }
 
