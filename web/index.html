@@ -762,6 +762,18 @@
                   <input id="quotationItemEstimatedValue" inputmode="decimal" placeholder="R$ 0,00" />
                 </label>
                 <label>
+                  Valor de Custo
+                  <input id="quotationItemSupplierCost" inputmode="decimal" placeholder="R$ 0,00" />
+                </label>
+                <label>
+                  Margem
+                  <input id="quotationItemProfitMargin" inputmode="decimal" placeholder="0,0000%" />
+                </label>
+                <label>
+                  Valor com margem
+                  <input id="quotationItemValueWithMargin" readonly title="Calculado com base no Valor de Custo e na Margem." />
+                </label>
+                <label>
                   Lance Final
                   <input id="quotationItemFinalBid" inputmode="decimal" placeholder="R$ 0,00" />
                 </label>
@@ -794,6 +806,9 @@
                   <th>Marca/Fabricante</th>
                   <th>Unidade</th>
                   <th class="numeric">Valor Estimado</th>
+                  <th class="numeric">Valor de Custo</th>
+                  <th class="numeric">Margem</th>
+                  <th class="numeric">Valor com margem</th>
                   <th class="numeric">Lance Final</th>
                   <th class="numeric">Quantidade</th>
                   <th class="numeric">Total</th>

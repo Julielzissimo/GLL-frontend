@@ -115,6 +115,7 @@ const appState = {
   currentQuotationId: null,
   currentQuotationItemId: null,
   itemMarginCalculationSource: "margin",
+  quotationMarginCalculationSource: "margin",
   supplierLinksDraft: [],
   budgetDraftColumns: [],
   budgetDraftSettings: { ...DEFAULT_BUDGET_SETTINGS },
@@ -342,6 +343,9 @@ const refs = {
   quotationItemUnit: $("quotationItemUnit"),
   quotationItemTechnicalText: $("quotationItemTechnicalText"),
   quotationItemEstimatedValue: $("quotationItemEstimatedValue"),
+  quotationItemSupplierCost: $("quotationItemSupplierCost"),
+  quotationItemProfitMargin: $("quotationItemProfitMargin"),
+  quotationItemValueWithMargin: $("quotationItemValueWithMargin"),
   quotationItemFinalBid: $("quotationItemFinalBid"),
   quotationItemQuantity: $("quotationItemQuantity"),
   quotationItemTotal: $("quotationItemTotal"),
@@ -1270,11 +1274,22 @@ function bindEvents() {
   refs.quotationItemForm.addEventListener("submit", saveQuotationItem);
   refs.clearQuotationItemButton.addEventListener("click", clearQuotationItemForm);
   refs.deleteQuotationItemButton.addEventListener("click", deleteCurrentQuotationItem);
-  refs.quotationItemFinalBid.addEventListener("input", updateQuotationItemTotal);
+  refs.quotationItemProfitMargin.addEventListener("input", updateQuotationValueWithMarginFromMargin);
+  refs.quotationItemProfitMargin.addEventListener("focus", () => {
+    refs.quotationItemProfitMargin.value = refs.quotationItemProfitMargin.value.replace("%", "");
+  });
+  refs.quotationItemProfitMargin.addEventListener("blur", formatQuotationProfitMarginInput);
+  refs.quotationItemFinalBid.addEventListener("input", () => {
+    updateQuotationMarginFromFinalBid();
+    updateQuotationItemTotal();
+  });
+  refs.quotationItemSupplierCost.addEventListener("input", updateQuotationPricingFromCost);
   refs.quotationItemQuantity.addEventListener("input", updateQuotationItemTotal);
-  for (const input of [refs.quotationItemEstimatedValue, refs.quotationItemFinalBid]) {
+  for (const input of [refs.quotationItemEstimatedValue, refs.quotationItemSupplierCost, refs.quotationItemFinalBid]) {
     input.addEventListener("blur", () => {
       if (input.value.trim()) input.value = money(parseDecimal(input.value, "valor", false));
+      if (input === refs.quotationItemSupplierCost) updateQuotationPricingFromCost();
+      if (input === refs.quotationItemFinalBid) updateQuotationMarginFromFinalBid();
       updateQuotationItemTotal();
     });
   }
@@ -3125,7 +3140,7 @@ function renderQuotationItems() {
   refs.quotationItemsStatus.textContent = `${items.length} ${items.length === 1 ? "item cadastrado" : "itens cadastrados"}`;
   refs.quotationGrandTotal.textContent = `Total: ${money(grandTotal)}`;
   if (!items.length) {
-    refs.quotationItemsTableBody.innerHTML = `<tr><td colspan="9"><div class="empty-state compact-empty">Nenhum item cadastrado neste orçamento.</div></td></tr>`;
+    refs.quotationItemsTableBody.innerHTML = `<tr><td colspan="12"><div class="empty-state compact-empty">Nenhum item cadastrado neste orçamento.</div></td></tr>`;
     return;
   }
   refs.quotationItemsTableBody.innerHTML = items
@@ -3138,6 +3153,9 @@ function renderQuotationItems() {
           <td>${escapeHtml(item.manufacturer || "—")}</td>
           <td>${escapeHtml(item.unit || "—")}</td>
           <td class="numeric">${money(item.estimated_value)}</td>
+          <td class="numeric">${money(item.supplier_cost)}</td>
+          <td class="numeric">${formatQuotationProfitMargin(item)}</td>
+          <td class="numeric">${formatQuotationValueWithMargin(item)}</td>
           <td class="numeric">${money(item.final_bid)}</td>
           <td class="numeric">${escapeHtml(formatNumber(item.quantity))}</td>
           <td class="numeric"><strong>${money(item.total)}</strong></td>
@@ -3175,10 +3193,14 @@ function loadQuotationItem(itemId) {
   refs.quotationItemUnit.value = item.unit;
   refs.quotationItemTechnicalText.value = item.technical_text;
   refs.quotationItemEstimatedValue.value = money(item.estimated_value);
+  refs.quotationItemSupplierCost.value = item.supplier_cost ? money(item.supplier_cost) : "";
+  refs.quotationItemProfitMargin.value = item.profit_margin === null ? "" : formatProfitMargin(item.profit_margin);
   refs.quotationItemFinalBid.value = money(item.final_bid);
   refs.quotationItemQuantity.value = formatNumber(item.quantity);
+  appState.quotationMarginCalculationSource = "margin";
   refs.quotationItemFormError.textContent = "";
   refs.deleteQuotationItemButton.classList.remove("hidden");
+  updateQuotationValueWithMargin();
   updateQuotationItemTotal();
   resizeTextarea(refs.quotationItemTechnicalText);
   renderQuotationItems();
@@ -3190,6 +3212,8 @@ function clearQuotationItemForm() {
   refs.quotationItemForm.reset();
   refs.quotationItemQuantity.value = "1";
   refs.quotationItemTotal.value = money(0);
+  appState.quotationMarginCalculationSource = "margin";
+  updateQuotationValueWithMargin();
   refs.quotationItemFormError.textContent = "";
   refs.deleteQuotationItemButton.classList.add("hidden");
   resizeTextarea(refs.quotationItemTechnicalText);
@@ -3212,6 +3236,13 @@ async function saveQuotationItem(event) {
     const quantity = refs.quotationItemQuantity.value.trim()
       ? parseDecimal(refs.quotationItemQuantity.value, "Quantidade", false)
       : 1;
+    const supplierCost = parseDecimal(refs.quotationItemSupplierCost.value, "Valor de Custo", false);
+    const finalBid = parseDecimal(refs.quotationItemFinalBid.value, "Lance Final", false);
+    const profitMargin = refs.quotationItemProfitMargin.value.trim()
+      ? parseProfitMargin(refs.quotationItemProfitMargin.value)
+      : supplierCost && refs.quotationItemFinalBid.value.trim()
+        ? calculateProfitMargin(finalBid, supplierCost)
+        : null;
     await store.saveQuotationItem(
       appState.currentQuotationId,
       {
@@ -3222,7 +3253,9 @@ async function saveQuotationItem(event) {
         unit: refs.quotationItemUnit.value.trim(),
         technical_text: refs.quotationItemTechnicalText.value.trim(),
         estimated_value: parseDecimal(refs.quotationItemEstimatedValue.value, "Valor Estimado", false),
-        final_bid: parseDecimal(refs.quotationItemFinalBid.value, "Lance Final", false),
+        supplier_cost: supplierCost,
+        profit_margin: profitMargin,
+        final_bid: finalBid,
         quantity,
       },
       appState.currentQuotationItemId
@@ -3258,6 +3291,82 @@ function updateQuotationItemTotal() {
     refs.quotationItemTotal.value = money(finalBid * quantity);
   } catch {
     refs.quotationItemTotal.value = money(0);
+  }
+}
+
+function formatQuotationProfitMargin(item) {
+  if (item.profit_margin === null || item.profit_margin === undefined || item.profit_margin === "") return "—";
+  return formatProfitMargin(item.profit_margin);
+}
+
+function formatQuotationValueWithMargin(item) {
+  if (!Number(item.supplier_cost) || item.profit_margin === null || item.profit_margin === undefined || item.profit_margin === "") return "—";
+  return money(calculateValueWithMargin(item.supplier_cost, item.profit_margin));
+}
+
+function updateQuotationValueWithMarginFromMargin() {
+  appState.quotationMarginCalculationSource = "margin";
+  updateQuotationValueWithMargin();
+}
+
+function updateQuotationMarginFromFinalBid() {
+  appState.quotationMarginCalculationSource = "final";
+  const hasFinalBid = Boolean(refs.quotationItemFinalBid.value.trim());
+  const hasCostValue = Boolean(refs.quotationItemSupplierCost.value.trim());
+  if (!hasFinalBid || !hasCostValue) {
+    refs.quotationItemProfitMargin.value = "";
+    refs.quotationItemValueWithMargin.value = "";
+    return;
+  }
+  try {
+    const finalBid = parseDecimal(refs.quotationItemFinalBid.value, "Lance Final", false);
+    const costValue = parseDecimal(refs.quotationItemSupplierCost.value, "Valor de Custo", false);
+    const margin = calculateProfitMargin(finalBid, costValue);
+    if (margin === null) {
+      refs.quotationItemProfitMargin.value = "";
+      refs.quotationItemValueWithMargin.value = "";
+    } else {
+      refs.quotationItemProfitMargin.value = formatProfitMargin(margin);
+      refs.quotationItemValueWithMargin.value = money(calculateValueWithMargin(costValue, margin));
+    }
+  } catch {
+    refs.quotationItemProfitMargin.value = "";
+    refs.quotationItemValueWithMargin.value = "";
+  }
+}
+
+function updateQuotationPricingFromCost() {
+  if (appState.quotationMarginCalculationSource === "final" && refs.quotationItemFinalBid.value.trim()) {
+    updateQuotationMarginFromFinalBid();
+  } else {
+    updateQuotationValueWithMargin();
+  }
+}
+
+function updateQuotationValueWithMargin() {
+  if (!refs.quotationItemSupplierCost.value.trim() || !refs.quotationItemProfitMargin.value.trim()) {
+    refs.quotationItemValueWithMargin.value = "";
+    return;
+  }
+  try {
+    const costValue = parseDecimal(refs.quotationItemSupplierCost.value, "Valor de Custo", false);
+    const margin = parseProfitMargin(refs.quotationItemProfitMargin.value);
+    refs.quotationItemValueWithMargin.value = money(calculateValueWithMargin(costValue, margin));
+  } catch {
+    refs.quotationItemValueWithMargin.value = "";
+  }
+}
+
+function formatQuotationProfitMarginInput() {
+  if (!refs.quotationItemProfitMargin.value.trim()) {
+    refs.quotationItemValueWithMargin.value = "";
+    return;
+  }
+  try {
+    refs.quotationItemProfitMargin.value = formatProfitMargin(parseProfitMargin(refs.quotationItemProfitMargin.value));
+    updateQuotationValueWithMargin();
+  } catch {
+    refs.quotationItemValueWithMargin.value = "";
   }
 }
 
@@ -3955,6 +4064,13 @@ function normalizeQuotationRecord(record) {
 
 function normalizeQuotationItemRecord(record) {
   const finalBid = Number(record.final_bid || 0);
+  const supplierCost = Number(record.supplier_cost || 0);
+  const storedMargin = record.profit_margin;
+  const profitMargin = storedMargin === undefined || storedMargin === null || storedMargin === ""
+    ? supplierCost && finalBid
+      ? calculateProfitMargin(finalBid, supplierCost)
+      : null
+    : Number(storedMargin);
   const quantity = record.quantity === undefined || record.quantity === null || record.quantity === "" ? 1 : Number(record.quantity);
   return {
     id: record.id ? Number(record.id) : undefined,
@@ -3966,6 +4082,8 @@ function normalizeQuotationItemRecord(record) {
     unit: record.unit || "",
     technical_text: record.technical_text || "",
     estimated_value: Number(record.estimated_value || 0),
+    supplier_cost: supplierCost,
+    profit_margin: profitMargin,
     final_bid: finalBid,
     quantity,
     total: record.total === undefined || record.total === null ? finalBid * quantity : Number(record.total),
