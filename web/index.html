@@ -47,6 +47,7 @@
         <nav class="app-nav">
           <button id="navHomeButton" class="nav-link active" type="button" data-navigation-page="home"><span aria-hidden="true">⌂</span>Visão geral</button>
           <button id="navBidsButton" class="nav-link" type="button" data-navigation-page="bids"><span aria-hidden="true">▤</span>Licitações</button>
+          <button id="navQuotationsButton" class="nav-link" type="button" data-navigation-page="quotations"><span aria-hidden="true">▧</span>Orçamento</button>
           <button id="navUsersButton" class="nav-link nav-link-disabled" type="button" aria-disabled="true" title="Usuários gerenciados no Supabase" disabled>
             <span class="nav-users-icon" aria-hidden="true">♙</span>Usuários
           </button>
@@ -235,7 +236,6 @@
             <div class="tabs" role="tablist" aria-label="Detalhes do edital">
               <button id="itemsTabButton" class="tab active" type="button">Itens</button>
               <button id="documentsTabButton" class="tab" type="button">Documentações</button>
-              <button id="budgetTabButton" class="tab" type="button">Modelo de Orçamento</button>
               <button id="failuresTabButton" class="tab hidden" type="button">Histórico de Falhas</button>
             </div>
 
@@ -423,233 +423,171 @@
             </div>
           </section>
 
-          <section id="budgetPage" class="content-page hidden">
-            <section id="budgetModelSection" class="section-band">
-              <div class="section-title">
-                <h2>Modelo de Orçamento</h2>
-                <div class="section-title-actions">
-                  <span id="budgetBidLabel">Selecione um edital</span>
-                  <button id="toggleBudgetPreviewButton" class="quiet-action compact-action" type="button">Ocultar prévia</button>
-                  <button id="toggleBudgetModelButton" class="quiet-action compact-action" type="button">Recolher</button>
-                </div>
+      <section id="quotationsPage" class="users-page quotations-page hidden">
+        <div class="page-heading">
+          <div>
+            <span class="eyebrow">GESTÃO</span>
+            <h1>Orçamentos</h1>
+            <p>Cadastre orçamentos e acompanhe os valores de cada item.</p>
+          </div>
+          <button id="newQuotationButton" class="primary-action" type="button">＋ Novo orçamento</button>
+        </div>
+
+        <section class="section-band table-panel">
+          <div class="section-title">
+            <h2>Orçamentos cadastrados</h2>
+            <span id="quotationCountLabel">0 orçamentos</span>
+          </div>
+          <div class="table-wrap">
+            <table class="quotations-table">
+              <thead>
+                <tr>
+                  <th>Data de abertura</th>
+                  <th>Edital</th>
+                  <th>Cidade / CEP</th>
+                  <th class="numeric">Itens</th>
+                  <th class="numeric">Total</th>
+                  <th><span class="visually-hidden">Ações</span></th>
+                </tr>
+              </thead>
+              <tbody id="quotationsTableBody"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <form id="quotationForm" class="section-band">
+          <div class="section-title">
+            <h2>Dados do orçamento</h2>
+            <span id="selectedQuotationLabel">Novo orçamento</span>
+          </div>
+          <div class="form-grid quotation-header-grid">
+            <label>
+              Data de Abertura
+              <input id="quotationOpeningDate" type="date" />
+            </label>
+            <label>
+              Edital *
+              <input id="quotationEdital" required />
+            </label>
+            <label>
+              Cidade
+              <input id="quotationCity" />
+            </label>
+            <label>
+              CEP
+              <input id="quotationCep" inputmode="numeric" maxlength="9" placeholder="00000-000" />
+            </label>
+          </div>
+          <p id="quotationFormError" class="form-error" role="alert"></p>
+          <div class="button-row end">
+            <button id="deleteQuotationButton" class="danger-action hidden" type="button">Excluir orçamento</button>
+            <button id="clearQuotationButton" class="quiet-action" type="button">Limpar</button>
+            <button class="primary-action" type="submit">Salvar orçamento</button>
+          </div>
+        </form>
+
+        <section id="quotationItemsSection" class="section-band hidden">
+          <div class="section-title">
+            <div>
+              <h2>Itens do orçamento</h2>
+              <span id="quotationItemsStatus">Salve o orçamento para cadastrar itens</span>
+            </div>
+            <span id="quotationGrandTotal" class="quotation-grand-total">Total: R$ 0,00</span>
+          </div>
+
+          <form id="quotationItemForm">
+            <div class="form-grid quotation-item-grid">
+              <label>
+                ITEM *
+                <input id="quotationItemNumber" type="number" min="0" step="1" required />
+              </label>
+              <label class="quotation-description-field">
+                Descrição
+                <input id="quotationItemDescription" />
+              </label>
+              <label>
+                Modelo
+                <input id="quotationItemModel" />
+              </label>
+              <label>
+                Marca/Fabricante
+                <input id="quotationItemManufacturer" />
+              </label>
+              <label class="quotation-technical-field">
+                Texto Técnico
+                <textarea id="quotationItemTechnicalText" class="auto-grow-textarea" rows="3"></textarea>
+              </label>
+            </div>
+
+            <div class="quotation-values-section">
+              <h3>Valores</h3>
+              <div class="form-grid quotation-values-grid">
+                <label>
+                  Valor Estimado
+                  <input id="quotationItemEstimatedValue" inputmode="decimal" placeholder="R$ 0,00" />
+                </label>
+                <label>
+                  Valor de Custo
+                  <input id="quotationItemSupplierCost" inputmode="decimal" placeholder="R$ 0,00" />
+                </label>
+                <label>
+                  Margem
+                  <input id="quotationItemProfitMargin" inputmode="decimal" placeholder="0,0000%" />
+                </label>
+                <label>
+                  Valor com margem
+                  <input id="quotationItemValueWithMargin" readonly title="Calculado com base no Valor de Custo e na Margem." />
+                </label>
+                <label>
+                  Lance Final
+                  <input id="quotationItemFinalBid" inputmode="decimal" placeholder="R$ 0,00" />
+                </label>
+                <label>
+                  Quantidade
+                  <input id="quotationItemQuantity" type="number" min="0" step="any" value="1" />
+                </label>
+                <label>
+                  Total
+                  <input id="quotationItemTotal" value="R$ 0,00" readonly aria-describedby="quotationTotalHint" />
+                  <small id="quotationTotalHint">Lance Final × Quantidade</small>
+                </label>
+                <label>
+                  Lucro Total
+                  <input id="quotationItemTotalProfit" value="R$ 0,00" readonly aria-describedby="quotationTotalProfitHint" />
+                  <small id="quotationTotalProfitHint">(Lance Final − Valor de Custo) × Quantidade</small>
+                </label>
               </div>
+            </div>
 
-              <div id="budgetModelBody">
-                <div id="budgetBuilderLayout" class="budget-builder-layout">
-                  <div class="budget-builder-main">
-                    <form id="budgetSettingsForm" class="budget-settings-form">
-                      <div class="form-grid">
-                        <label>
-                          Orientação da página
-                          <select id="budgetOrientation">
-                            <option value="portrait">Retrato</option>
-                            <option value="landscape">Paisagem</option>
-                          </select>
-                        </label>
-                        <label>
-                          Título do documento
-                          <input id="budgetTitle" />
-                        </label>
-                        <label>
-                          Destinatário
-                          <input id="budgetRecipient" />
-                        </label>
-                        <label>
-                          Processo / modalidade
-                          <input id="budgetProcess" />
-                        </label>
-                        <label>
-                          Validade da proposta
-                          <input id="budgetValidity" />
-                        </label>
-                        <label class="wide full">
-                          Objeto
-                          <textarea id="budgetObject" class="auto-grow-textarea" rows="2"></textarea>
-                        </label>
-                        <label class="wide">
-                          Dados da proponente
-                          <textarea id="budgetProponent" class="auto-grow-textarea" rows="5"></textarea>
-                        </label>
-                        <label class="wide">
-                          Representante legal
-                          <textarea id="budgetRepresentative" class="auto-grow-textarea" rows="5"></textarea>
-                        </label>
-                        <label>
-                          Garantia
-                          <input id="budgetWarranty" />
-                        </label>
-                        <label>
-                          Prazo / local de entrega
-                          <input id="budgetDelivery" />
-                        </label>
-                        <label class="wide full">
-                          Declarações e condições
-                          <textarea id="budgetTerms" class="auto-grow-textarea" rows="5"></textarea>
-                        </label>
-                        <label class="wide">
-                          Dados bancários
-                          <textarea id="budgetPayment" class="auto-grow-textarea" rows="2"></textarea>
-                        </label>
-                        <label>
-                          Local e data
-                          <input id="budgetCityDate" />
-                        </label>
-                        <label>
-                          Assinante
-                          <input id="budgetSigner" />
-                        </label>
-                        <label class="check-line">
-                          <input id="budgetHeaderLogoEnabled" type="checkbox" />
-                          Inserir logo no cabeçalho
-                        </label>
-                        <label>
-                          Arquivo da logo
-                          <input id="budgetHeaderLogoFile" type="file" accept="image/*" />
-                          <span id="budgetHeaderLogoStatus" class="file-status">Nenhum arquivo selecionado</span>
-                        </label>
-                        <label class="check-line">
-                          <input id="budgetWatermarkEnabled" type="checkbox" />
-                          Inserir marca d'água no papel timbrado
-                        </label>
-                        <label>
-                          Arquivo da marca d'água
-                          <input id="budgetWatermarkFile" type="file" accept="image/*" />
-                          <span id="budgetWatermarkStatus" class="file-status">Nenhum arquivo selecionado</span>
-                        </label>
-                        <label>
-                          Opacidade da marca d'água (%)
-                          <input id="budgetWatermarkOpacity" type="number" min="4" max="40" step="1" value="12" />
-                        </label>
-                      </div>
-                    </form>
+            <p id="quotationItemFormError" class="form-error" role="alert"></p>
+            <div class="button-row end">
+              <button id="deleteQuotationItemButton" class="danger-action hidden" type="button">Excluir item</button>
+              <button id="clearQuotationItemButton" class="quiet-action" type="button">Limpar</button>
+              <button class="primary-action" type="submit">Salvar item</button>
+            </div>
+          </form>
 
-                    <section class="budget-config-panel">
-                      <div class="section-title compact-title">
-                        <h2>Blocos do Documento</h2>
-                        <span>Configure textos livres, como identificação do pregão, edital, declarações e observações</span>
-                      </div>
-                      <form id="budgetBlockForm" class="user-form">
-                        <div class="form-grid three">
-                          <label>
-                            Nome do bloco
-                            <input id="budgetBlockLabel" placeholder="Identificação do pregão" />
-                          </label>
-                          <label>
-                            Alinhamento
-                            <select id="budgetBlockAlign">
-                              <option value="left">Esquerda</option>
-                              <option value="center">Centralizado</option>
-                              <option value="right">Direita</option>
-                            </select>
-                          </label>
-                          <label>
-                            Tamanho
-                            <select id="budgetBlockSize">
-                              <option value="normal">Normal</option>
-                              <option value="large">Destaque</option>
-                              <option value="small">Compacto</option>
-                            </select>
-                          </label>
-                          <label class="wide full">
-                            Conteúdo
-                            <textarea id="budgetBlockContent" class="auto-grow-textarea" rows="3" placeholder="PROCESSO LICITATÓRIO Nº ...&#10;PREGÃO ELETRÔNICO Nº ..."></textarea>
-                          </label>
-                          <label class="check-line">
-                            <input id="budgetBlockBold" type="checkbox" checked />
-                            Negrito
-                          </label>
-                          <label class="check-line">
-                            <input id="budgetBlockUnderline" type="checkbox" checked />
-                            Sublinhado
-                          </label>
-                          <div class="add-column-control">
-                            <button id="addBudgetBlockButton" class="primary-action" type="button">Adicionar Bloco</button>
-                          </div>
-                        </div>
-                      </form>
-                      <div id="budgetBlocksList" class="column-list"></div>
-                    </section>
-
-                    <div class="shortcut-row" aria-label="Atalhos de colunas">
-                      <button class="quiet-action" type="button" data-budget-shortcut-name="Item Edital" data-budget-shortcut-type="number" data-budget-shortcut-source="item_number">Item Edital</button>
-                      <button class="quiet-action" type="button" data-budget-shortcut-name="Descrição" data-budget-shortcut-type="text" data-budget-shortcut-source="item_name">Descrição</button>
-                      <button class="quiet-action" type="button" data-budget-shortcut-name="Unidade" data-budget-shortcut-type="text" data-budget-shortcut-source="unit">Unidade</button>
-                      <button class="quiet-action" type="button" data-budget-shortcut-name="Quantidade" data-budget-shortcut-type="number" data-budget-shortcut-source="quantity">Quantidade</button>
-                      <button class="quiet-action" type="button" data-budget-shortcut-name="Estimado no Edital" data-budget-shortcut-type="currency" data-budget-shortcut-source="estimated_value">Estimado no Edital</button>
-                      <button class="quiet-action" type="button" data-budget-shortcut-name="Valor Final" data-budget-shortcut-type="currency" data-budget-shortcut-source="max_value">Valor Final</button>
-                      <button class="quiet-action" type="button" data-budget-shortcut-name="Lance Mínimo" data-budget-shortcut-type="currency" data-budget-shortcut-source="minimum_bid">Lance Mínimo</button>
-                      <button class="quiet-action" type="button" data-budget-shortcut-name="Marca / Modelo" data-budget-shortcut-type="text" data-budget-shortcut-source="brand_model">Marca / Modelo</button>
-                      <button class="quiet-action" type="button" data-budget-shortcut-name="Texto Técnico" data-budget-shortcut-type="text" data-budget-shortcut-source="item_description">Texto Técnico</button>
-                      <button class="quiet-action" type="button" data-budget-shortcut-name="Fabricante" data-budget-shortcut-type="text" data-budget-shortcut-source="manual">Fabricante</button>
-                      <button class="quiet-action" type="button" data-budget-shortcut-name="Valor Total" data-budget-shortcut-type="currency" data-budget-shortcut-source="calculated_total">Valor Total</button>
-                    </div>
-
-                    <form id="budgetColumnForm" class="user-form">
-                      <div class="form-grid three">
-                        <label>
-                          Nome do campo / coluna
-                          <input id="budgetColumnName" />
-                        </label>
-                        <label>
-                          Tipo de conteúdo
-                          <select id="budgetColumnType"></select>
-                        </label>
-                        <label>
-                          Área do documento
-                          <select id="budgetColumnSection"></select>
-                        </label>
-                        <label>
-                          Origem do valor
-                          <select id="budgetColumnSource"></select>
-                        </label>
-                        <label>
-                          Largura da coluna (%)
-                          <input id="budgetColumnWidth" type="number" min="4" max="80" step="1" placeholder="Ex.: 35" />
-                        </label>
-                        <div class="add-column-control">
-                          <button id="addBudgetColumnButton" class="primary-action" type="button">Adicionar</button>
-                        </div>
-                      </div>
-                      <p id="budgetModelError" class="form-error" role="alert"></p>
-                    </form>
-
-                    <div id="budgetColumnsList" class="column-list"></div>
-                    <div class="button-row end">
-                      <button id="clearBudgetModelButton" class="danger-action" type="button">Limpar Modelo</button>
-                      <button id="saveBudgetModelButton" class="primary-action" type="button">Confirmar Modelo</button>
-                    </div>
-                  </div>
-
-                  <aside id="budgetPreviewPanel" class="budget-preview-panel" aria-label="Prévia do documento">
-                    <div class="budget-preview-toolbar">
-                      <strong>Prévia do PDF</strong>
-                      <span id="budgetPreviewFormat" class="file-status">Retrato</span>
-                      <button id="printBudgetPreviewButton" class="quiet-action compact-action" type="button">Imprimir</button>
-                    </div>
-                    <div id="budgetPreview" class="budget-preview-page"></div>
-                  </aside>
-                </div>
-              </div>
-            </section>
-
-            <section class="section-band">
-              <div class="section-title">
-                <h2>Preencher Proposta</h2>
-                <div class="section-title-actions">
-                  <span id="budgetFillStatus">Configure e confirme o modelo antes de preencher</span>
-                  <button id="importBudgetItemsButton" class="quiet-action compact-action" type="button" aria-disabled="true" title="Importação de itens indisponível" disabled>Importar itens</button>
-                </div>
-              </div>
-              <form id="budgetEntryForm" class="budget-entry-form"></form>
-              <p id="budgetEntryError" class="form-error" role="alert"></p>
-              <div class="table-wrap">
-                <table id="budgetTable">
-                  <thead id="budgetTableHead"></thead>
-                  <tbody id="budgetTableBody"></tbody>
-                </table>
-              </div>
-            </section>
-          </section>
+          <div class="table-wrap quotation-items-table-wrap">
+            <table class="quotation-items-table">
+              <thead>
+                <tr>
+                  <th>ITEM</th>
+                  <th>Descrição / Modelo</th>
+                  <th>Marca/Fabricante</th>
+                  <th class="numeric">Valor Estimado</th>
+                  <th class="numeric">Valor de Custo</th>
+                  <th class="numeric">Margem</th>
+                  <th class="numeric">Valor com margem</th>
+                  <th class="numeric">Lance Final</th>
+                  <th class="numeric">Quantidade</th>
+                  <th class="numeric">Total</th>
+                  <th class="numeric">Lucro Total</th>
+                  <th><span class="visually-hidden">Ações</span></th>
+                </tr>
+              </thead>
+              <tbody id="quotationItemsTableBody"></tbody>
+            </table>
+          </div>
         </section>
       </section>
 

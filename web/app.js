@@ -12,76 +12,6 @@ const BID_TYPE_OPTIONS = [
 const SALES_UNIT_OPTIONS = ["Unidade", "Pacote", "Caixa", "Kilo", "Metro", "Litro", "Par", "Servico", "Outro"];
 const BID_EDITAL_BUCKET = "bid-edital-files";
 const MAX_EDITAL_FILE_SIZE = 20 * 1024 * 1024;
-const BUDGET_COLUMN_TYPES = [
-  { value: "number", label: "Numérico" },
-  { value: "text", label: "Texto" },
-  { value: "currency", label: "Moeda (R$)" },
-];
-const BUDGET_SECTION_OPTIONS = [
-  { value: "table", label: "Tabela de itens" },
-  { value: "header", label: "Cabeçalho" },
-  { value: "terms", label: "Condições" },
-  { value: "signature", label: "Assinatura" },
-];
-const BUDGET_SOURCE_OPTIONS = [
-  { value: "manual", label: "Preenchimento manual" },
-  { value: "item_number", label: "Item Edital" },
-  { value: "item_name", label: "Descrição do item" },
-  { value: "item_description", label: "Texto cadastramento técnico" },
-  { value: "unit", label: "Unidade" },
-  { value: "quantity", label: "Quantidade" },
-  { value: "estimated_value", label: "Estimado no Edital" },
-  { value: "max_value", label: "Valor final" },
-  { value: "minimum_bid", label: "Lance mínimo" },
-  { value: "brand_model", label: "Marca/Modelo" },
-  { value: "calculated_total", label: "Total calculado" },
-];
-const BUDGET_ALIGNMENT_OPTIONS = ["left", "center", "right"];
-const BUDGET_BLOCK_SIZE_OPTIONS = ["small", "normal", "large"];
-const DEFAULT_BUDGET_SETTINGS = {
-  orientation: "portrait",
-  title: "PROPOSTA COMERCIAL",
-  recipient: "",
-  process: "",
-  object: "",
-  proponent: "Preencha os dados cadastrais do proponente.",
-  representative: "Preencha os dados do representante.",
-  payment: "",
-  terms:
-    "Declaramos que nos preços propostos encontram-se incluídas todas as despesas, custos diretos e indiretos, fretes, impostos, taxas, seguros e demais encargos necessários ao fornecimento do objeto.\n\nDeclaramos estar de pleno acordo com as exigências, condições gerais e especiais estabelecidas no edital.",
-  validity: "60 (sessenta) dias",
-  warranty: "Conforme termo de referência, edital e seus anexos.",
-  delivery: "",
-  cityDate: "",
-  signer: "",
-  headerLogoEnabled: false,
-  headerLogoImage: "",
-  headerLogoName: "",
-  watermarkEnabled: false,
-  watermarkImage: "",
-  watermarkName: "",
-  watermarkOpacity: 12,
-};
-const DEFAULT_BUDGET_BLOCKS = [
-  {
-    id: "block_process",
-    label: "Identificação do pregão",
-    content: "PROCESSO LICITATÓRIO Nº ...\nPREGÃO ELETRÔNICO Nº ...",
-    align: "center",
-    bold: true,
-    underline: true,
-    size: "normal",
-  },
-  {
-    id: "block_title",
-    label: "Título da proposta",
-    content: "PROPOSTA COMERCIAL",
-    align: "center",
-    bold: true,
-    underline: true,
-    size: "large",
-  },
-];
 const DEFAULT_ADMIN = {
   email: "demo@gll.local",
   name: "Usuário local",
@@ -112,25 +42,19 @@ const appState = {
   currentItemId: null,
   currentDocumentId: null,
   currentFailureId: null,
+  currentQuotationId: null,
+  currentQuotationItemId: null,
   itemMarginCalculationSource: "margin",
+  quotationMarginCalculationSource: "margin",
   supplierLinksDraft: [],
-  budgetDraftColumns: [],
-  budgetDraftSettings: { ...DEFAULT_BUDGET_SETTINGS },
-  budgetDraftBlocks: cloneBudgetBlocks(DEFAULT_BUDGET_BLOCKS),
-  budgetModelCollapsed: false,
-  budgetPreviewVisible: true,
-  budgetModelDirty: false,
   sidebarCollapsed: false,
   appNavigationCollapsed: false,
-  draggedBudgetBlockId: null,
-  draggedBudgetColumnId: null,
-  currentBudgetRowId: null,
   bids: [],
   items: [],
   documents: [],
   failureHistory: [],
-  budgetModels: [],
-  budgetRows: [],
+  quotations: [],
+  quotationItems: [],
   users: [],
 };
 
@@ -151,6 +75,7 @@ const refs = {
   homeIconButton: $("homeIconButton"),
   navHomeButton: $("navHomeButton"),
   navBidsButton: $("navBidsButton"),
+  navQuotationsButton: $("navQuotationsButton"),
   navUsersButton: $("navUsersButton"),
   navSettingsButton: $("navSettingsButton"),
   menuToggleButton: $("menuToggleButton"),
@@ -208,7 +133,6 @@ const refs = {
   metricTotalProfitMargin: $("metricTotalProfitMargin"),
   itemsTabButton: $("itemsTabButton"),
   documentsTabButton: $("documentsTabButton"),
-  budgetTabButton: $("budgetTabButton"),
   failuresTabButton: $("failuresTabButton"),
   itemsPanel: $("itemsPanel"),
   documentsPanel: $("documentsPanel"),
@@ -254,65 +178,40 @@ const refs = {
   deleteFailureButton: $("deleteFailureButton"),
   clearFailureButton: $("clearFailureButton"),
   failuresTableBody: $("failuresTableBody"),
-  budgetPage: $("budgetPage"),
-  budgetBuilderLayout: $("budgetBuilderLayout"),
-  budgetModelSection: $("budgetModelSection"),
-  budgetModelBody: $("budgetModelBody"),
-  toggleBudgetModelButton: $("toggleBudgetModelButton"),
-  toggleBudgetPreviewButton: $("toggleBudgetPreviewButton"),
-  budgetBidLabel: $("budgetBidLabel"),
-  budgetSettingsForm: $("budgetSettingsForm"),
-  budgetOrientation: $("budgetOrientation"),
-  budgetTitle: $("budgetTitle"),
-  budgetRecipient: $("budgetRecipient"),
-  budgetProcess: $("budgetProcess"),
-  budgetObject: $("budgetObject"),
-  budgetProponent: $("budgetProponent"),
-  budgetRepresentative: $("budgetRepresentative"),
-  budgetPayment: $("budgetPayment"),
-  budgetTerms: $("budgetTerms"),
-  budgetValidity: $("budgetValidity"),
-  budgetWarranty: $("budgetWarranty"),
-  budgetDelivery: $("budgetDelivery"),
-  budgetCityDate: $("budgetCityDate"),
-  budgetSigner: $("budgetSigner"),
-  budgetHeaderLogoEnabled: $("budgetHeaderLogoEnabled"),
-  budgetHeaderLogoFile: $("budgetHeaderLogoFile"),
-  budgetHeaderLogoStatus: $("budgetHeaderLogoStatus"),
-  budgetWatermarkEnabled: $("budgetWatermarkEnabled"),
-  budgetWatermarkFile: $("budgetWatermarkFile"),
-  budgetWatermarkStatus: $("budgetWatermarkStatus"),
-  budgetWatermarkOpacity: $("budgetWatermarkOpacity"),
-  budgetBlockForm: $("budgetBlockForm"),
-  budgetBlockLabel: $("budgetBlockLabel"),
-  budgetBlockAlign: $("budgetBlockAlign"),
-  budgetBlockSize: $("budgetBlockSize"),
-  budgetBlockContent: $("budgetBlockContent"),
-  budgetBlockBold: $("budgetBlockBold"),
-  budgetBlockUnderline: $("budgetBlockUnderline"),
-  addBudgetBlockButton: $("addBudgetBlockButton"),
-  budgetBlocksList: $("budgetBlocksList"),
-  budgetColumnForm: $("budgetColumnForm"),
-  budgetColumnName: $("budgetColumnName"),
-  budgetColumnType: $("budgetColumnType"),
-  budgetColumnSection: $("budgetColumnSection"),
-  budgetColumnSource: $("budgetColumnSource"),
-  budgetColumnWidth: $("budgetColumnWidth"),
-  addBudgetColumnButton: $("addBudgetColumnButton"),
-  budgetModelError: $("budgetModelError"),
-  budgetColumnsList: $("budgetColumnsList"),
-  clearBudgetModelButton: $("clearBudgetModelButton"),
-  saveBudgetModelButton: $("saveBudgetModelButton"),
-  budgetFillStatus: $("budgetFillStatus"),
-  importBudgetItemsButton: $("importBudgetItemsButton"),
-  printBudgetPreviewButton: $("printBudgetPreviewButton"),
-  budgetPreviewPanel: $("budgetPreviewPanel"),
-  budgetPreviewFormat: $("budgetPreviewFormat"),
-  budgetPreview: $("budgetPreview"),
-  budgetEntryForm: $("budgetEntryForm"),
-  budgetEntryError: $("budgetEntryError"),
-  budgetTableHead: $("budgetTableHead"),
-  budgetTableBody: $("budgetTableBody"),
+  quotationsPage: $("quotationsPage"),
+  newQuotationButton: $("newQuotationButton"),
+  quotationCountLabel: $("quotationCountLabel"),
+  quotationsTableBody: $("quotationsTableBody"),
+  quotationForm: $("quotationForm"),
+  selectedQuotationLabel: $("selectedQuotationLabel"),
+  quotationOpeningDate: $("quotationOpeningDate"),
+  quotationEdital: $("quotationEdital"),
+  quotationCity: $("quotationCity"),
+  quotationCep: $("quotationCep"),
+  quotationFormError: $("quotationFormError"),
+  deleteQuotationButton: $("deleteQuotationButton"),
+  clearQuotationButton: $("clearQuotationButton"),
+  quotationItemsSection: $("quotationItemsSection"),
+  quotationItemsStatus: $("quotationItemsStatus"),
+  quotationGrandTotal: $("quotationGrandTotal"),
+  quotationItemForm: $("quotationItemForm"),
+  quotationItemNumber: $("quotationItemNumber"),
+  quotationItemDescription: $("quotationItemDescription"),
+  quotationItemModel: $("quotationItemModel"),
+  quotationItemManufacturer: $("quotationItemManufacturer"),
+  quotationItemTechnicalText: $("quotationItemTechnicalText"),
+  quotationItemEstimatedValue: $("quotationItemEstimatedValue"),
+  quotationItemSupplierCost: $("quotationItemSupplierCost"),
+  quotationItemProfitMargin: $("quotationItemProfitMargin"),
+  quotationItemValueWithMargin: $("quotationItemValueWithMargin"),
+  quotationItemFinalBid: $("quotationItemFinalBid"),
+  quotationItemQuantity: $("quotationItemQuantity"),
+  quotationItemTotal: $("quotationItemTotal"),
+  quotationItemTotalProfit: $("quotationItemTotalProfit"),
+  quotationItemFormError: $("quotationItemFormError"),
+  deleteQuotationItemButton: $("deleteQuotationItemButton"),
+  clearQuotationItemButton: $("clearQuotationItemButton"),
+  quotationItemsTableBody: $("quotationItemsTableBody"),
   userForm: $("userForm"),
   userName: $("userName"),
   userEmail: $("userEmail"),
@@ -379,7 +278,7 @@ class IndexedDbStore {
     this.requiresAuthenticationBeforeData = false;
     const storageSuffix = sanitizeStorageSuffix(GLL_CONFIG.storageSuffix || GLL_CONFIG.environment);
     this.dbName = `gll-web-data-v4-${storageSuffix}`;
-    this.version = 2;
+    this.version = 3;
     this.authDbName = `gll-web-auth-v2-${storageSuffix}`;
     this.authVersion = 1;
     this.db = null;
@@ -411,10 +310,10 @@ class IndexedDbStore {
           const store = db.createObjectStore("failure_history", { keyPath: "id", autoIncrement: true });
           store.createIndex("bid_id", "bid_id", { unique: false });
         }
-        if (!db.objectStoreNames.contains("budget_models")) db.createObjectStore("budget_models", { keyPath: "bid_id" });
-        if (!db.objectStoreNames.contains("budget_rows")) {
-          const store = db.createObjectStore("budget_rows", { keyPath: "id", autoIncrement: true });
-          store.createIndex("bid_id", "bid_id", { unique: false });
+        if (!db.objectStoreNames.contains("quotations")) db.createObjectStore("quotations", { keyPath: "id", autoIncrement: true });
+        if (!db.objectStoreNames.contains("quotation_items")) {
+          const store = db.createObjectStore("quotation_items", { keyPath: "id", autoIncrement: true });
+          store.createIndex("quotation_id", "quotation_id", { unique: false });
         }
         if (!db.objectStoreNames.contains("meta")) db.createObjectStore("meta", { keyPath: "key" });
       };
@@ -486,15 +385,15 @@ class IndexedDbStore {
 
   async clearAll() {
     await this.tx(
-      ["bids", "items", "documents", "failure_history", "budget_models", "budget_rows", "meta"],
+      ["bids", "items", "documents", "failure_history", "quotations", "quotation_items", "meta"],
       "readwrite",
-      ([bids, items, documents, failures, models, rows, meta]) => {
+      ([bids, items, documents, failures, quotations, quotationItems, meta]) => {
       bids.clear();
       items.clear();
       documents.clear();
       failures.clear();
-      models.clear();
-      rows.clear();
+      quotations.clear();
+      quotationItems.clear();
       meta.clear();
     });
   }
@@ -550,10 +449,6 @@ class IndexedDbStore {
     await this.authTx("users", "readwrite", (users) => users.delete(normalizeEmail(email)));
   }
 
-  async getPrivateSettings() {
-    return null;
-  }
-
   async saveBid(data, originalId) {
     const now = timestampNow();
     await this.tx(["bids", "items", "documents", "failure_history"], "readwrite", ([bids, items, documents, failures]) => {
@@ -598,13 +493,11 @@ class IndexedDbStore {
   }
 
   async deleteBid(bidId) {
-    await this.tx(["bids", "items", "documents", "failure_history", "budget_models", "budget_rows"], "readwrite", ([bids, items, documents, failures, models, rows]) => {
+    await this.tx(["bids", "items", "documents", "failure_history"], "readwrite", ([bids, items, documents, failures]) => {
       bids.delete(bidId);
       deleteChildrenByBid(items, bidId);
       deleteChildrenByBid(documents, bidId);
       deleteChildrenByBid(failures, bidId);
-      models.delete(bidId);
-      deleteChildrenByBid(rows, bidId);
     });
   }
 
@@ -656,36 +549,54 @@ class IndexedDbStore {
     await this.tx("failure_history", "readwrite", (failures) => failures.delete(Number(failureId)));
   }
 
-  async saveBudgetModel(bidId, columns) {
-    const record = {
-      bid_id: bidId,
-      columns,
-      updated_at: timestampNow(),
-    };
-    await this.tx("budget_models", "readwrite", (models) => models.put(record));
-  }
-
-  async deleteBudgetModel(bidId) {
-    await this.tx(["budget_models", "budget_rows"], "readwrite", ([models, rows]) => {
-      models.delete(bidId);
-      deleteChildrenByBid(rows, bidId);
+  async saveQuotation(quotationData, quotationId) {
+    const existing = quotationId
+      ? (await this.getAll("quotations")).find((quotation) => Number(quotation.id) === Number(quotationId))
+      : null;
+    const now = timestampNow();
+    const record = normalizeQuotationRecord({
+      ...existing,
+      ...quotationData,
+      id: quotationId || undefined,
+      created_at: existing?.created_at || now,
+      updated_at: now,
     });
-  }
-
-  async saveBudgetRow(bidId, values, rowId) {
-    await this.tx("budget_rows", "readwrite", (rows) => {
-      const record = {
-        bid_id: bidId,
-        values,
-        created_at: timestampNow(),
+    let savedId;
+    await this.tx("quotations", "readwrite", (quotations) => {
+      if (!record.id) delete record.id;
+      const request = quotations.put(record);
+      request.onsuccess = () => {
+        savedId = request.result;
       };
-      if (rowId) record.id = Number(rowId);
-      rows.put(record);
+    });
+    return Number(savedId);
+  }
+
+  async deleteQuotation(quotationId) {
+    await this.tx(["quotations", "quotation_items"], "readwrite", ([quotations, quotationItems]) => {
+      quotations.delete(Number(quotationId));
+      deleteChildrenByIndex(quotationItems, "quotation_id", Number(quotationId));
     });
   }
 
-  async deleteBudgetRow(rowId) {
-    await this.tx("budget_rows", "readwrite", (rows) => rows.delete(Number(rowId)));
+  async saveQuotationItem(quotationId, itemData, itemId) {
+    const existingItems = await this.getAll("quotation_items");
+    const duplicate = existingItems.find(
+      (item) =>
+        Number(item.quotation_id) === Number(quotationId) &&
+        Number(item.item_number) === Number(itemData.item_number) &&
+        Number(item.id) !== Number(itemId)
+    );
+    if (duplicate) throw new Error("Já existe um item com este número neste orçamento.");
+    const record = normalizeQuotationItemRecord({ ...itemData, id: itemId || undefined, quotation_id: quotationId });
+    await this.tx("quotation_items", "readwrite", (quotationItems) => {
+      if (!record.id) delete record.id;
+      quotationItems.put(record);
+    });
+  }
+
+  async deleteQuotationItem(itemId) {
+    await this.tx("quotation_items", "readwrite", (quotationItems) => quotationItems.delete(Number(itemId)));
   }
 }
 
@@ -755,14 +666,6 @@ class SupabaseStore {
     return data;
   }
 
-  async getPrivateSettings() {
-    const client = await this.open();
-    const { data, error } = await client.from("app_settings").select("value").eq("key", "budget_defaults").maybeSingle();
-    if (isMissingAppSettingsTableError(error)) return null;
-    assertSupabase(error);
-    return data?.value || null;
-  }
-
   async seedIfEmpty(seedData) {
     const client = await this.open();
     const { data, error } = await client.from("bids").select("id").limit(1);
@@ -773,8 +676,8 @@ class SupabaseStore {
 
   async applySeed(seedData) {
     const client = await this.open();
-    await deleteAllSupabaseRows(client, "budget_rows", "id");
-    await deleteAllSupabaseRows(client, "budget_models", "bid_id");
+    await deleteAllSupabaseRows(client, "quotation_items", "id");
+    await deleteAllSupabaseRows(client, "quotations", "id");
     await deleteOptionalSupabaseRows(client, "failure_history", "id");
     await deleteAllSupabaseRows(client, "documents", "id");
     await deleteAllSupabaseRows(client, "items", "id");
@@ -978,40 +881,48 @@ class SupabaseStore {
     assertSupabase(error);
   }
 
-  async saveBudgetModel(bidId, columns) {
+  async saveQuotation(quotationData, quotationId) {
     const client = await this.open();
-    const { error } = await client.from("budget_models").upsert({
-      bid_id: bidId,
-      columns,
-      updated_at: timestampNow(),
-    });
+    const now = timestampNow();
+    if (quotationId) {
+      const { data, error } = await client
+        .from("quotations")
+        .update({ ...quotationData, updated_at: now })
+        .eq("id", Number(quotationId))
+        .select("id")
+        .single();
+      assertSupabase(error);
+      return Number(data.id);
+    }
+    const { data, error } = await client
+      .from("quotations")
+      .insert({ ...quotationData, created_at: now, updated_at: now })
+      .select("id")
+      .single();
+    assertSupabase(error);
+    return Number(data.id);
+  }
+
+  async deleteQuotation(quotationId) {
+    const client = await this.open();
+    const { error } = await client.from("quotations").delete().eq("id", Number(quotationId));
     assertSupabase(error);
   }
 
-  async deleteBudgetModel(bidId) {
+  async saveQuotationItem(quotationId, itemData, itemId) {
     const client = await this.open();
-    const { error: rowsError } = await client.from("budget_rows").delete().eq("bid_id", bidId);
-    assertSupabase(rowsError);
-    const { error } = await client.from("budget_models").delete().eq("bid_id", bidId);
-    assertSupabase(error);
-  }
-
-  async saveBudgetRow(bidId, values, rowId) {
-    const client = await this.open();
-    const operation = rowId
-      ? client.from("budget_rows").update({ values }).eq("id", Number(rowId))
-      : client.from("budget_rows").insert({
-          bid_id: bidId,
-          values,
-          created_at: timestampNow(),
-        });
+    const record = normalizeQuotationItemRecord({ ...itemData, id: itemId || undefined, quotation_id: quotationId });
+    const { id, total, ...payload } = record;
+    const operation = id
+      ? client.from("quotation_items").update(payload).eq("id", Number(id))
+      : client.from("quotation_items").insert(payload);
     const { error } = await operation;
     assertSupabase(error);
   }
 
-  async deleteBudgetRow(rowId) {
+  async deleteQuotationItem(itemId) {
     const client = await this.open();
-    const { error } = await client.from("budget_rows").delete().eq("id", Number(rowId));
+    const { error } = await client.from("quotation_items").delete().eq("id", Number(itemId));
     assertSupabase(error);
   }
 }
@@ -1045,9 +956,6 @@ function populateOptions() {
   refs.bidStatus.innerHTML = optionList(STATUS_OPTIONS);
   refs.bidType.innerHTML = optionList(BID_TYPE_OPTIONS);
   refs.salesUnit.innerHTML = optionList(SALES_UNIT_OPTIONS);
-  refs.budgetColumnType.innerHTML = BUDGET_COLUMN_TYPES.map((type) => `<option value="${type.value}">${type.label}</option>`).join("");
-  refs.budgetColumnSection.innerHTML = BUDGET_SECTION_OPTIONS.map((section) => `<option value="${section.value}">${section.label}</option>`).join("");
-  refs.budgetColumnSource.innerHTML = BUDGET_SOURCE_OPTIONS.map((source) => `<option value="${source.value}">${source.label}</option>`).join("");
 }
 
 function optionList(values) {
@@ -1105,28 +1013,40 @@ function bindEvents() {
   refs.clearFailureButton.addEventListener("click", clearFailureForm);
   refs.deleteFailureButton.addEventListener("click", deleteCurrentFailure);
   refs.bidStatus.addEventListener("change", handleBidStatusChange);
-  refs.addBudgetColumnButton.addEventListener("click", addBudgetColumn);
-  refs.addBudgetBlockButton.addEventListener("click", addBudgetBlock);
-  refs.toggleBudgetModelButton.addEventListener("click", toggleBudgetModel);
-  refs.toggleBudgetPreviewButton.addEventListener("click", toggleBudgetPreview);
-  refs.budgetSettingsForm.addEventListener("input", updateBudgetSettingsDraft);
-  refs.budgetSettingsForm.addEventListener("change", updateBudgetSettingsDraft);
-  refs.budgetHeaderLogoFile.addEventListener("change", () => handleBudgetImageUpload("headerLogo"));
-  refs.budgetWatermarkFile.addEventListener("change", () => handleBudgetImageUpload("watermark"));
-  document.querySelectorAll("[data-budget-shortcut-name]").forEach((button) => {
-    button.addEventListener("click", () =>
-      addBudgetShortcutColumn(button.dataset.budgetShortcutName, button.dataset.budgetShortcutType, button.dataset.budgetShortcutSource)
-    );
+  refs.newQuotationButton.addEventListener("click", clearQuotationForm);
+  refs.quotationForm.addEventListener("submit", saveQuotation);
+  refs.clearQuotationButton.addEventListener("click", clearQuotationForm);
+  refs.deleteQuotationButton.addEventListener("click", deleteCurrentQuotation);
+  refs.quotationCep.addEventListener("input", formatQuotationCepInput);
+  refs.quotationItemForm.addEventListener("submit", saveQuotationItem);
+  refs.clearQuotationItemButton.addEventListener("click", clearQuotationItemForm);
+  refs.deleteQuotationItemButton.addEventListener("click", deleteCurrentQuotationItem);
+  refs.quotationItemProfitMargin.addEventListener("input", updateQuotationValueWithMarginFromMargin);
+  refs.quotationItemProfitMargin.addEventListener("focus", () => {
+    refs.quotationItemProfitMargin.value = refs.quotationItemProfitMargin.value.replace("%", "");
   });
-  refs.saveBudgetModelButton.addEventListener("click", saveBudgetModel);
-  refs.clearBudgetModelButton.addEventListener("click", clearBudgetModel);
-  refs.printBudgetPreviewButton.addEventListener("click", () => window.print());
-  refs.budgetEntryForm.addEventListener("submit", saveBudgetEntry);
+  refs.quotationItemProfitMargin.addEventListener("blur", formatQuotationProfitMarginInput);
+  refs.quotationItemFinalBid.addEventListener("input", () => {
+    updateQuotationMarginFromFinalBid();
+    updateQuotationItemTotals();
+  });
+  refs.quotationItemSupplierCost.addEventListener("input", () => {
+    updateQuotationPricingFromCost();
+    updateQuotationItemTotals();
+  });
+  refs.quotationItemQuantity.addEventListener("input", updateQuotationItemTotals);
+  for (const input of [refs.quotationItemEstimatedValue, refs.quotationItemSupplierCost, refs.quotationItemFinalBid]) {
+    input.addEventListener("blur", () => {
+      if (input.value.trim()) input.value = money(parseDecimal(input.value, "valor", false));
+      if (input === refs.quotationItemSupplierCost) updateQuotationPricingFromCost();
+      if (input === refs.quotationItemFinalBid) updateQuotationMarginFromFinalBid();
+      updateQuotationItemTotals();
+    });
+  }
   refs.userForm.addEventListener("submit", saveUser);
   refs.clearUserButton.addEventListener("click", clearUserForm);
   refs.itemsTabButton.addEventListener("click", () => setPage("items"));
   refs.documentsTabButton.addEventListener("click", () => setPage("documents"));
-  refs.budgetTabButton.addEventListener("click", () => setPage("budget"));
   refs.failuresTabButton.addEventListener("click", () => setPage("failures"));
   for (const input of [refs.estimatedValue, refs.supplierCost, refs.maxValue, refs.minimumBid]) {
     input.addEventListener("blur", () => {
@@ -1157,8 +1077,6 @@ async function handleLogin(event) {
     }
     appState.authenticated = true;
     appState.currentUserEmail = user.email;
-    const privateSettings = await store.getPrivateSettings();
-    if (privateSettings) Object.assign(DEFAULT_BUDGET_SETTINGS, privateSettings);
     refs.currentUserName.textContent = user.name || user.email;
     refs.loginView.classList.add("hidden");
     refs.appView.classList.remove("hidden");
@@ -1230,16 +1148,21 @@ async function reloadData() {
   appState.items = (await store.getAll("items")).map(normalizeItemRecord).sort((a, b) => Number(a.item_number) - Number(b.item_number));
   appState.documents = (await store.getAll("documents")).sort((a, b) => String(a.document_type).localeCompare(String(b.document_type)));
   appState.failureHistory = (await store.getAll("failure_history")).map(normalizeFailureRecord).sort((a, b) => Number(a.id || 0) - Number(b.id || 0));
-  appState.budgetModels = await store.getAll("budget_models");
-  appState.budgetRows = (await store.getAll("budget_rows")).sort((a, b) => Number(a.id || 0) - Number(b.id || 0));
+  appState.quotations = (await store.getAll("quotations"))
+    .map(normalizeQuotationRecord)
+    .sort((a, b) => Number(b.id || 0) - Number(a.id || 0));
+  appState.quotationItems = (await store.getAll("quotation_items"))
+    .map(normalizeQuotationItemRecord)
+    .sort((a, b) => Number(a.item_number || 0) - Number(b.item_number || 0));
   appState.users = (await store.getUsers()).sort((a, b) => String(a.name).localeCompare(String(b.name)));
   renderBids();
   renderDetails();
+  renderQuotations();
   renderUsers();
 }
 
 function setPage(page) {
-  const detailPages = ["items", "documents", "budget", "failures"];
+  const detailPages = ["items", "documents", "failures"];
   if (page === "users") page = "settings";
   if (detailPages.includes(page) && !appState.currentBidId) {
     page = "home";
@@ -1250,13 +1173,15 @@ function setPage(page) {
   appState.activePage = page;
   const showUsers = page === "users";
   const showSettings = page === "settings";
+  const showQuotations = page === "quotations";
   const showHome = page === "home";
   const showCatalog = page === "bids";
   const showEditor = page === "edit";
   const showDetail = detailPages.includes(page);
-  refs.bidsPage.classList.toggle("hidden", showUsers || showSettings);
+  refs.bidsPage.classList.toggle("hidden", showUsers || showSettings || showQuotations);
   refs.usersPage.classList.toggle("hidden", !showUsers);
   refs.settingsPage.classList.toggle("hidden", !showSettings);
+  refs.quotationsPage.classList.toggle("hidden", !showQuotations);
   refs.homePage.classList.toggle("hidden", !showHome);
   refs.bidCatalogPage.classList.toggle("hidden", !showCatalog);
   refs.bidForm.classList.toggle("hidden", !showEditor && !showDetail);
@@ -1266,15 +1191,13 @@ function setPage(page) {
   refs.itemsPanel.classList.toggle("hidden", page !== "items");
   refs.documentsPanel.classList.toggle("hidden", page !== "documents");
   refs.failuresPanel.classList.toggle("hidden", page !== "failures");
-  refs.budgetPage.classList.toggle("hidden", page !== "budget");
-  refs.appView.classList.toggle("users-active", showUsers || showSettings);
+  refs.appView.classList.toggle("users-active", showUsers || showSettings || showQuotations);
   refs.itemsTabButton.classList.toggle("active", page === "items");
   refs.documentsTabButton.classList.toggle("active", page === "documents");
-  refs.budgetTabButton.classList.toggle("active", page === "budget");
   refs.failuresTabButton.classList.toggle("active", page === "failures");
   refs.failuresTabButton.classList.toggle("hidden", !shouldShowFailureHistory());
-  const primaryPage = showUsers ? "users" : showSettings ? "settings" : showHome ? "home" : "bids";
-  const pageLabels = { home: "Visão geral", bids: "Licitações", users: "Usuários", settings: "Configurações" };
+  const primaryPage = showUsers ? "users" : showSettings ? "settings" : showQuotations ? "quotations" : showHome ? "home" : "bids";
+  const pageLabels = { home: "Visão geral", bids: "Licitações", quotations: "Orçamento", users: "Usuários", settings: "Configurações" };
   refs.breadcrumbLabel.textContent = pageLabels[primaryPage];
   document.querySelectorAll("[data-navigation-page]").forEach((button) => {
     button.classList.toggle("active", button.dataset.navigationPage === primaryPage);
@@ -1284,7 +1207,7 @@ function setPage(page) {
   updateBidWorkspaceHeader();
   updateSidebarVisibility();
   if (showUsers) renderUsers();
-  if (page === "budget") renderBudgetPage();
+  if (showQuotations) renderQuotations();
 }
 
 function updateBidWorkspaceHeader() {
@@ -1409,12 +1332,6 @@ function loadBid(bidId) {
   renderBidAttachment(bid);
   refs.selectedBidLabel.textContent = bid.id;
   refs.bidFormError.textContent = "";
-  const budgetModel = currentBudgetModel();
-  appState.budgetDraftColumns = budgetModel?.columns ? cloneColumns(budgetModel.columns) : [];
-  appState.budgetDraftSettings = budgetModel?.settings ? cloneBudgetSettings(budgetModel.settings) : defaultBudgetSettingsForBid(bid);
-  appState.budgetDraftBlocks = budgetModel?.blocks?.length ? cloneBudgetBlocks(budgetModel.blocks) : cloneBudgetBlocks(DEFAULT_BUDGET_BLOCKS);
-  appState.budgetModelDirty = false;
-  appState.currentBudgetRowId = null;
   clearItemForm();
   clearDocumentForm();
   clearFailureForm();
@@ -1489,12 +1406,6 @@ function clearBidForm(options = {}) {
   refs.bidStatus.value = STATUS_OPTIONS[0];
   refs.selectedBidLabel.textContent = "Novo edital";
   refs.bidFormError.textContent = "";
-  appState.budgetDraftColumns = [];
-  appState.budgetDraftSettings = { ...DEFAULT_BUDGET_SETTINGS };
-  appState.budgetDraftBlocks = cloneBudgetBlocks(DEFAULT_BUDGET_BLOCKS);
-  appState.budgetModelDirty = false;
-  appState.budgetModelCollapsed = false;
-  appState.currentBudgetRowId = null;
   clearItemForm();
   clearDocumentForm();
   clearFailureForm();
@@ -1602,7 +1513,6 @@ function renderDetails() {
   renderItems(items);
   renderDocuments(documents);
   renderFailures(failures);
-  renderBudgetPage();
   const hasBid = Boolean(appState.currentBidId);
   refs.failuresTabButton.classList.toggle("hidden", !shouldShowFailureHistory());
   refs.deleteBidButton.disabled = !hasBid;
@@ -2065,751 +1975,401 @@ async function deleteCurrentFailure() {
   showToast("Falha excluída.");
 }
 
-function addBudgetColumn() {
-  refs.budgetModelError.textContent = "";
-  if (!appState.currentBidId) {
-    refs.budgetModelError.textContent = "Selecione um edital antes de configurar o modelo.";
-    return;
-  }
-  const name = refs.budgetColumnName.value.trim();
-  const type = refs.budgetColumnType.value;
-  const section = refs.budgetColumnSection.value;
-  const source = refs.budgetColumnSource.value;
-  const width = parseBudgetColumnWidth(refs.budgetColumnWidth.value);
-  if (!name) {
-    refs.budgetModelError.textContent = "Informe o nome da coluna.";
-    return;
-  }
-  addBudgetColumnToDraft(name, type, section, source, width);
-  refs.budgetColumnName.value = "";
-  refs.budgetColumnWidth.value = "";
-  renderBudgetPage();
+function currentQuotation() {
+  return appState.quotations.find((quotation) => Number(quotation.id) === Number(appState.currentQuotationId)) || null;
 }
 
-function addBudgetShortcutColumn(name, type, source = "manual") {
-  refs.budgetModelError.textContent = "";
-  if (!appState.currentBidId) {
-    refs.budgetModelError.textContent = "Selecione um edital antes de configurar o modelo.";
-    return;
-  }
-  addBudgetColumnToDraft(name, type, "table", source);
-  renderBudgetPage();
+function currentQuotationItems() {
+  if (!appState.currentQuotationId) return [];
+  return appState.quotationItems.filter((item) => Number(item.quotation_id) === Number(appState.currentQuotationId));
 }
 
-function addBudgetColumnToDraft(name, type, section = "table", source = "manual", width = "") {
-  appState.budgetDraftColumns.push({
-    id: `col_${Date.now()}_${Math.random().toString(16).slice(2)}`,
-    name,
-    type,
-    section,
-    source,
-    width,
-  });
-  markBudgetModelDirty();
-}
-
-function addBudgetBlock() {
-  refs.budgetModelError.textContent = "";
-  if (!appState.currentBidId) {
-    refs.budgetModelError.textContent = "Selecione um edital antes de adicionar blocos.";
-    return;
-  }
-  const block = collectBudgetBlockForm();
-  if (!block.content) {
-    refs.budgetModelError.textContent = "Informe o conteúdo do bloco.";
-    return;
-  }
-  appState.budgetDraftBlocks.push(block);
-  refs.budgetBlockForm.reset();
-  refs.budgetBlockAlign.value = "center";
-  refs.budgetBlockSize.value = "normal";
-  refs.budgetBlockBold.checked = true;
-  refs.budgetBlockUnderline.checked = true;
-  markBudgetModelDirty();
-  renderBudgetPage();
-}
-
-function toggleBudgetModel() {
-  appState.budgetModelCollapsed = !appState.budgetModelCollapsed;
-  renderBudgetPage();
-}
-
-function toggleBudgetPreview() {
-  appState.budgetPreviewVisible = !appState.budgetPreviewVisible;
-  renderBudgetPage();
-}
-
-async function saveBudgetModel() {
-  refs.budgetModelError.textContent = "";
-  if (!appState.currentBidId) {
-    refs.budgetModelError.textContent = "Selecione um edital antes de confirmar o modelo.";
-    return;
-  }
-  if (!appState.budgetDraftColumns.length) {
-    refs.budgetModelError.textContent = "Adicione ao menos uma coluna ao modelo.";
-    return;
-  }
-  appState.budgetDraftSettings = collectBudgetSettings();
-  await store.saveBudgetModel(appState.currentBidId, {
-    version: 2,
-    settings: cloneBudgetSettings(appState.budgetDraftSettings),
-    blocks: cloneBudgetBlocks(appState.budgetDraftBlocks),
-    columns: cloneColumns(appState.budgetDraftColumns),
-  });
-  appState.budgetModelCollapsed = false;
-  appState.budgetModelDirty = false;
-  appState.currentBudgetRowId = null;
-  await reloadData();
-  setPage("budget");
-  showToast("Modelo de orçamento confirmado.");
-}
-
-async function clearBudgetModel() {
-  refs.budgetModelError.textContent = "";
-  if (!appState.currentBidId) {
-    refs.budgetModelError.textContent = "Selecione um edital.";
-    return;
-  }
-  if (!confirm("Limpar o modelo e as propostas preenchidas para este edital?")) return;
-  await store.deleteBudgetModel(appState.currentBidId);
-  appState.budgetDraftColumns = [];
-  appState.budgetDraftSettings = defaultBudgetSettingsForBid(currentBid());
-  appState.budgetDraftBlocks = cloneBudgetBlocks(DEFAULT_BUDGET_BLOCKS);
-  appState.budgetModelDirty = false;
-  appState.budgetModelCollapsed = false;
-  appState.currentBudgetRowId = null;
-  await reloadData();
-  setPage("budget");
-  showToast("Modelo de orçamento limpo.");
-}
-
-async function saveBudgetEntry(event) {
-  event.preventDefault();
-  refs.budgetEntryError.textContent = "";
-  const model = currentBudgetModel();
-  if (!appState.currentBidId || !model?.columns?.length) {
-    refs.budgetEntryError.textContent = "Confirme o modelo antes de preencher a proposta.";
-    return;
-  }
-  try {
-    const values = {};
-    applyBudgetAutoTotal(model);
-    for (const column of budgetTableColumns(model)) {
-      const input = refs.budgetEntryForm.querySelector(`[data-budget-column="${column.id}"]`);
-      values[column.id] = normalizeBudgetValue(input?.value || "", column);
-    }
-    await store.saveBudgetRow(appState.currentBidId, values, appState.currentBudgetRowId);
-    appState.currentBudgetRowId = null;
-    refs.budgetEntryForm.reset();
-    await reloadData();
-    loadBid(appState.currentBidId);
-    setPage("budget");
-    showToast("Linha da proposta salva.");
-  } catch (error) {
-    refs.budgetEntryError.textContent = error.message;
-  }
-}
-
-async function deleteBudgetRow(rowId) {
-  if (!confirm("Excluir esta linha da proposta?")) return;
-  await store.deleteBudgetRow(rowId);
-  if (Number(appState.currentBudgetRowId) === Number(rowId)) {
-    appState.currentBudgetRowId = null;
-    refs.budgetEntryForm.reset();
-  }
-  await reloadData();
-  setPage("budget");
-  showToast("Linha excluída.");
-}
-
-function renderBudgetPage() {
-  const bid = appState.bids.find((row) => row.id === appState.currentBidId);
-  const model = currentBudgetModel();
-  const hasBid = Boolean(bid);
-  if (hasBid && !appState.budgetDraftSettings) appState.budgetDraftSettings = defaultBudgetSettingsForBid(bid);
-  refs.budgetBidLabel.textContent = hasBid ? bid.id : "Selecione um edital";
-  refs.budgetModelBody.classList.toggle("hidden", appState.budgetModelCollapsed);
-  refs.toggleBudgetModelButton.textContent = appState.budgetModelCollapsed ? "Expandir" : "Recolher";
-  refs.toggleBudgetModelButton.disabled = !hasBid;
-  refs.toggleBudgetPreviewButton.textContent = appState.budgetPreviewVisible ? "Ocultar prévia" : "Exibir prévia";
-  refs.toggleBudgetPreviewButton.disabled = !hasBid;
-  refs.budgetBuilderLayout.classList.toggle("preview-hidden", !appState.budgetPreviewVisible);
-  refs.budgetPreviewPanel.classList.toggle("hidden", !appState.budgetPreviewVisible);
-  updateSidebarVisibility();
-  refs.budgetSettingsForm.querySelectorAll("input, select, textarea").forEach((el) => {
-    el.disabled = !hasBid;
-  });
-  refs.budgetBlockForm.querySelectorAll("input, select, textarea, button").forEach((el) => {
-    el.disabled = !hasBid;
-  });
-  refs.budgetColumnForm.querySelectorAll("input, select, button").forEach((el) => {
-    el.disabled = !hasBid;
-  });
-  document.querySelectorAll("[data-budget-shortcut-name]").forEach((button) => {
-    button.disabled = !hasBid;
-  });
-  refs.saveBudgetModelButton.disabled = !hasBid;
-  refs.clearBudgetModelButton.disabled = !hasBid;
-  refs.importBudgetItemsButton.disabled = true;
-  refs.printBudgetPreviewButton.disabled = !hasBid || !appState.budgetPreviewVisible;
-  fillBudgetSettingsForm(hasBid ? appState.budgetDraftSettings : { ...DEFAULT_BUDGET_SETTINGS });
-  renderBudgetBlocks();
-  renderBudgetColumns();
-  renderBudgetEntryForm(model);
-  renderBudgetTable(model);
-  renderBudgetPreview(draftBudgetModel());
-  if (appState.budgetModelDirty && !refs.budgetModelError.textContent) {
-    refs.budgetModelError.textContent = "Modelo alterado. Clique em Confirmar Modelo para salvar as mudanças.";
-  }
-}
-
-function renderBudgetColumns() {
-  if (!appState.currentBidId) {
-    refs.budgetColumnsList.innerHTML = `<div class="empty-state">Selecione um edital para configurar o modelo.</div>`;
-    return;
-  }
-  if (!appState.budgetDraftColumns.length) {
-    refs.budgetColumnsList.innerHTML = `<div class="empty-state">Nenhuma coluna configurada para este modelo.</div>`;
-    return;
-  }
-  refs.budgetColumnsList.innerHTML = appState.budgetDraftColumns
-    .map(
-      (column, index) => `
-        <div class="column-row" draggable="true" data-budget-column-row="${column.id}">
-          <span>${index + 1}</span>
-          <div>
-            <strong>${escapeHtml(column.name)}</strong>
-            <small>${escapeHtml(budgetSectionLabel(column.section))} · ${escapeHtml(budgetSourceLabel(column.source))}</small>
-          </div>
-          <label class="inline-width-control">
-            Largura %
-            <input type="number" min="4" max="80" step="1" value="${escapeHtml(column.width || "")}" data-budget-column-width="${column.id}" placeholder="Auto" />
-          </label>
-          <button class="danger-action compact-action" type="button" data-remove-budget-column="${column.id}">Remover</button>
-        </div>
-      `
-    )
-    .join("");
-  refs.budgetColumnsList.querySelectorAll("[data-remove-budget-column]").forEach((button) => {
-    button.addEventListener("click", () => {
-      const columnId = button.getAttribute("data-remove-budget-column");
-      appState.budgetDraftColumns = appState.budgetDraftColumns.filter((column) => column.id !== columnId);
-      markBudgetModelDirty();
-      renderBudgetPage();
-    });
-  });
-  refs.budgetColumnsList.querySelectorAll("[data-budget-column-width]").forEach((input) => {
-    const updateColumnWidth = () => {
-      const column = appState.budgetDraftColumns.find((draftColumn) => draftColumn.id === input.dataset.budgetColumnWidth);
-      if (!column) return;
-      column.width = parseBudgetColumnWidth(input.value);
-      markBudgetModelDirty();
-      renderBudgetPreview(draftBudgetModel());
-    };
-    input.addEventListener("input", updateColumnWidth);
-    input.addEventListener("change", () => {
-      updateColumnWidth();
-      const column = appState.budgetDraftColumns.find((draftColumn) => draftColumn.id === input.dataset.budgetColumnWidth);
-      if (column) input.value = column.width || "";
-    });
-  });
-  refs.budgetColumnsList.querySelectorAll("[data-budget-column-row]").forEach((row) => {
-    row.addEventListener("dragstart", (event) => {
-      appState.draggedBudgetColumnId = row.getAttribute("data-budget-column-row");
-      row.classList.add("dragging");
-      event.dataTransfer.effectAllowed = "move";
-    });
-    row.addEventListener("dragend", () => {
-      appState.draggedBudgetColumnId = null;
-      row.classList.remove("dragging");
-    });
-    row.addEventListener("dragover", (event) => {
-      event.preventDefault();
-      event.dataTransfer.dropEffect = "move";
-    });
-    row.addEventListener("drop", (event) => {
-      event.preventDefault();
-      const targetId = row.getAttribute("data-budget-column-row");
-      reorderBudgetColumn(appState.draggedBudgetColumnId, targetId);
-    });
-  });
-}
-
-function reorderBudgetColumn(sourceId, targetId) {
-  if (!sourceId || !targetId || sourceId === targetId) return;
-  const sourceIndex = appState.budgetDraftColumns.findIndex((column) => column.id === sourceId);
-  const targetIndex = appState.budgetDraftColumns.findIndex((column) => column.id === targetId);
-  if (sourceIndex < 0 || targetIndex < 0) return;
-  const [moved] = appState.budgetDraftColumns.splice(sourceIndex, 1);
-  appState.budgetDraftColumns.splice(targetIndex, 0, moved);
-  markBudgetModelDirty();
-  renderBudgetPage();
-}
-
-function markBudgetModelDirty() {
-  appState.budgetModelDirty = true;
-}
-
-function renderBudgetBlocks() {
-  if (!appState.currentBidId) {
-    refs.budgetBlocksList.innerHTML = `<div class="empty-state">Selecione um edital para configurar os blocos.</div>`;
-    return;
-  }
-  if (!appState.budgetDraftBlocks.length) {
-    refs.budgetBlocksList.innerHTML = `<div class="empty-state">Nenhum bloco configurado.</div>`;
-    return;
-  }
-  refs.budgetBlocksList.innerHTML = appState.budgetDraftBlocks
-    .map(
-      (block, index) => `
-        <div class="column-row block-row" draggable="true" data-budget-block-row="${block.id}">
-          <span>${index + 1}</span>
-          <div>
-            <strong>${escapeHtml(block.label || "Bloco do documento")}</strong>
-            <small>${escapeHtml(budgetBlockSummary(block))}</small>
-          </div>
-          <small>${escapeHtml(block.content || "").slice(0, 80)}</small>
-          <button class="danger-action compact-action" type="button" data-remove-budget-block="${block.id}">Remover</button>
-        </div>
-      `
-    )
-    .join("");
-  refs.budgetBlocksList.querySelectorAll("[data-remove-budget-block]").forEach((button) => {
-    button.addEventListener("click", () => {
-      const blockId = button.getAttribute("data-remove-budget-block");
-      appState.budgetDraftBlocks = appState.budgetDraftBlocks.filter((block) => block.id !== blockId);
-      markBudgetModelDirty();
-      renderBudgetPage();
-    });
-  });
-  refs.budgetBlocksList.querySelectorAll("[data-budget-block-row]").forEach((row) => {
-    row.addEventListener("dragstart", (event) => {
-      appState.draggedBudgetBlockId = row.getAttribute("data-budget-block-row");
-      row.classList.add("dragging");
-      event.dataTransfer.effectAllowed = "move";
-    });
-    row.addEventListener("dragend", () => {
-      appState.draggedBudgetBlockId = null;
-      row.classList.remove("dragging");
-    });
-    row.addEventListener("dragover", (event) => {
-      event.preventDefault();
-      event.dataTransfer.dropEffect = "move";
-    });
-    row.addEventListener("drop", (event) => {
-      event.preventDefault();
-      reorderBudgetBlock(appState.draggedBudgetBlockId, row.getAttribute("data-budget-block-row"));
-    });
-  });
-}
-
-function reorderBudgetBlock(sourceId, targetId) {
-  if (!sourceId || !targetId || sourceId === targetId) return;
-  const sourceIndex = appState.budgetDraftBlocks.findIndex((block) => block.id === sourceId);
-  const targetIndex = appState.budgetDraftBlocks.findIndex((block) => block.id === targetId);
-  if (sourceIndex < 0 || targetIndex < 0) return;
-  const [moved] = appState.budgetDraftBlocks.splice(sourceIndex, 1);
-  appState.budgetDraftBlocks.splice(targetIndex, 0, moved);
-  markBudgetModelDirty();
-  renderBudgetPage();
-}
-
-function renderBudgetEntryForm(model) {
-  const tableColumns = budgetTableColumns(model);
-  if (!appState.currentBidId) {
-    refs.budgetFillStatus.textContent = "Selecione um edital.";
-    refs.budgetEntryForm.innerHTML = "";
-    return;
-  }
-  if (!tableColumns.length) {
-    refs.budgetFillStatus.textContent = "Configure e confirme o modelo antes de preencher.";
-    refs.budgetEntryForm.innerHTML = "";
-    return;
-  }
-  refs.budgetFillStatus.textContent = appState.currentBudgetRowId
-    ? "Editando linha selecionada"
-    : `${tableColumns.length} colunas da tabela configuradas`;
-  refs.budgetEntryForm.innerHTML = `
-    <div class="form-grid three">
-      ${tableColumns.map((column) => budgetInputMarkup(column)).join("")}
-    </div>
-    <div class="button-row end">
-      <button class="primary-action" type="submit">Salvar Linha</button>
-    </div>
-  `;
-  bindBudgetAutoTotal(model);
-  bindAutoGrowTextareas(refs.budgetEntryForm);
-  const selectedRow = currentBudgetRows().find((row) => Number(row.id) === Number(appState.currentBudgetRowId));
-  if (selectedRow) fillBudgetEntryForm(model, selectedRow);
-}
-
-function renderBudgetTable(model) {
-  const tableColumns = budgetTableColumns(model);
-  if (!tableColumns.length) {
-    refs.budgetTableHead.innerHTML = "";
-    refs.budgetTableBody.innerHTML = `<tr><td>Nenhum modelo confirmado.</td></tr>`;
-    return;
-  }
-  refs.budgetTableHead.innerHTML = `
-    <tr>
-      ${tableColumns.map((column) => `<th>${escapeHtml(column.name)}</th>`).join("")}
-      <th>Ações</th>
-    </tr>
-  `;
-  const rows = currentBudgetRows();
-  if (!rows.length) {
-    refs.budgetTableBody.innerHTML = `<tr><td colspan="${tableColumns.length + 1}">Nenhuma linha preenchida.</td></tr>`;
-    return;
-  }
-  refs.budgetTableBody.innerHTML = rows
-    .map(
-      (row) => {
-        const selected = Number(row.id) === Number(appState.currentBudgetRowId) ? " selected" : "";
+function renderQuotations() {
+  const count = appState.quotations.length;
+  refs.quotationCountLabel.textContent = `${count} ${count === 1 ? "orçamento" : "orçamentos"}`;
+  if (!count) {
+    refs.quotationsTableBody.innerHTML = `<tr><td colspan="6"><div class="empty-state compact-empty">Nenhum orçamento cadastrado.</div></td></tr>`;
+  } else {
+    refs.quotationsTableBody.innerHTML = appState.quotations
+      .map((quotation) => {
+        const items = appState.quotationItems.filter((item) => Number(item.quotation_id) === Number(quotation.id));
+        const total = items.reduce((sum, item) => sum + Number(item.total || 0), 0);
+        const selected = Number(quotation.id) === Number(appState.currentQuotationId) ? " selected" : "";
+        const location = [quotation.city, quotation.cep].filter(Boolean).join(" · ") || "—";
         return `
-        <tr class="selectable${selected}" data-budget-row-id="${row.id}">
-          ${tableColumns.map((column) => `<td>${formatBudgetCellHtml(row.values?.[column.id], column)}</td>`).join("")}
-          <td><button class="danger-action compact-action" type="button" data-delete-budget-row="${row.id}">Excluir</button></td>
-        </tr>
-      `;
+          <tr class="selectable${selected}" tabindex="0" data-quotation-id="${quotation.id}">
+            <td>${escapeHtml(formatDateOnly(quotation.opening_date) || "—")}</td>
+            <td><strong>${escapeHtml(quotation.edital)}</strong></td>
+            <td>${escapeHtml(location)}</td>
+            <td class="numeric">${items.length}</td>
+            <td class="numeric"><strong>${money(total)}</strong></td>
+            <td><button class="text-action" type="button" data-edit-quotation="${quotation.id}">Editar</button></td>
+          </tr>`;
+      })
+      .join("");
+  }
+
+  refs.quotationsTableBody.querySelectorAll("[data-quotation-id]").forEach((row) => {
+    const open = () => loadQuotation(Number(row.dataset.quotationId));
+    row.addEventListener("click", open);
+    row.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        open();
       }
-    )
-    .join("");
-  refs.budgetTableBody.querySelectorAll("[data-budget-row-id]").forEach((row) => {
-    row.addEventListener("click", (event) => {
-      if (event.target.closest("button, a")) return;
-      loadBudgetRowForEditing(row.dataset.budgetRowId);
     });
   });
-  refs.budgetTableBody.querySelectorAll("[data-delete-budget-row]").forEach((button) => {
-    button.addEventListener("click", () => deleteBudgetRow(button.dataset.deleteBudgetRow));
+  refs.quotationsTableBody.querySelectorAll("[data-edit-quotation]").forEach((button) => {
+    button.addEventListener("click", (event) => {
+      event.stopPropagation();
+      loadQuotation(Number(button.dataset.editQuotation));
+    });
   });
+  renderQuotationItems();
 }
 
-function loadBudgetRowForEditing(rowId) {
-  const model = currentBudgetModel();
-  const row = currentBudgetRows().find((budgetRow) => Number(budgetRow.id) === Number(rowId));
-  if (!model || !row) return;
-  appState.currentBudgetRowId = row.id;
-  fillBudgetEntryForm(model, row);
-  renderBudgetTable(model);
-  refs.budgetFillStatus.textContent = "Editando linha selecionada";
+function loadQuotation(quotationId, options = {}) {
+  const quotation = appState.quotations.find((row) => Number(row.id) === Number(quotationId));
+  if (!quotation) return;
+  appState.currentQuotationId = quotation.id;
+  appState.currentQuotationItemId = null;
+  refs.quotationOpeningDate.value = toDateInputValue(quotation.opening_date);
+  refs.quotationEdital.value = quotation.edital;
+  refs.quotationCity.value = quotation.city;
+  refs.quotationCep.value = formatCep(quotation.cep);
+  refs.selectedQuotationLabel.textContent = `Edital ${quotation.edital}`;
+  refs.quotationFormError.textContent = "";
+  refs.deleteQuotationButton.classList.remove("hidden");
+  clearQuotationItemForm();
+  renderQuotations();
+  setPage("quotations");
+  if (options.scroll !== false) refs.quotationForm.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
-function fillBudgetEntryForm(model, row) {
-  for (const column of model.columns) {
-    const input = refs.budgetEntryForm.querySelector(`[data-budget-column="${column.id}"]`);
-    if (!input) continue;
-    input.value = budgetInputValue(row.values?.[column.id], column.type);
-    if (input.classList.contains("auto-grow-textarea")) resizeTextarea(input);
-  }
-  applyBudgetAutoTotal(model);
+function clearQuotationForm() {
+  appState.currentQuotationId = null;
+  appState.currentQuotationItemId = null;
+  refs.quotationForm.reset();
+  refs.selectedQuotationLabel.textContent = "Novo orçamento";
+  refs.quotationFormError.textContent = "";
+  refs.deleteQuotationButton.classList.add("hidden");
+  clearQuotationItemForm();
+  renderQuotations();
+  refs.quotationEdital.focus();
 }
 
-async function importBudgetItemsToProposal() {
-  refs.budgetEntryError.textContent = "";
-  const model = currentBudgetModel();
-  const tableColumns = budgetTableColumns(model);
-  const items = currentItems();
-  if (!appState.currentBidId || !tableColumns.length) {
-    refs.budgetEntryError.textContent = "Confirme o modelo antes de importar itens.";
+async function saveQuotation(event) {
+  event.preventDefault();
+  refs.quotationFormError.textContent = "";
+  const edital = refs.quotationEdital.value.trim();
+  if (!edital) {
+    refs.quotationFormError.textContent = "Preencha o campo Edital.";
+    refs.quotationEdital.focus();
     return;
   }
-  if (!items.length) {
-    refs.budgetEntryError.textContent = "Cadastre itens neste edital antes de importar.";
-    return;
-  }
-  const existingRows = currentBudgetRows();
-  if (existingRows.length && !confirm("Substituir as linhas preenchidas pelos itens cadastrados?")) return;
-  for (const row of existingRows) await store.deleteBudgetRow(row.id);
-  for (const item of items) {
-    const values = {};
-    for (const column of tableColumns) {
-      values[column.id] = normalizeBudgetValue(budgetValueFromItem(column, item), column);
-    }
-    await store.saveBudgetRow(appState.currentBidId, values);
-  }
-  await reloadData();
-  setPage("budget");
-  showToast("Itens importados para a proposta.");
-}
-
-function updateBudgetSettingsDraft() {
-  if (!appState.currentBidId) return;
-  appState.budgetDraftSettings = collectBudgetSettings();
-  markBudgetModelDirty();
-  renderBudgetPreview(draftBudgetModel());
-}
-
-async function handleBudgetImageUpload(kind) {
-  if (!appState.currentBidId) return;
-  const fileInput = kind === "headerLogo" ? refs.budgetHeaderLogoFile : refs.budgetWatermarkFile;
-  const statusRef = kind === "headerLogo" ? refs.budgetHeaderLogoStatus : refs.budgetWatermarkStatus;
-  const file = fileInput.files?.[0];
-  if (!file) return;
-  if (!file.type.startsWith("image/")) {
-    statusRef.textContent = "Selecione um arquivo de imagem.";
-    fileInput.value = "";
+  const cepDigits = refs.quotationCep.value.replace(/\D/g, "");
+  if (cepDigits && cepDigits.length !== 8) {
+    refs.quotationFormError.textContent = "Informe um CEP com 8 dígitos.";
+    refs.quotationCep.focus();
     return;
   }
   try {
-    const dataUrl = await readFileAsDataUrl(file);
-    appState.budgetDraftSettings = collectBudgetSettings();
-    appState.budgetDraftSettings[`${kind}Image`] = dataUrl;
-    appState.budgetDraftSettings[`${kind}Name`] = file.name;
-    if (kind === "headerLogo") appState.budgetDraftSettings.headerLogoEnabled = true;
-    if (kind === "watermark") appState.budgetDraftSettings.watermarkEnabled = true;
-    markBudgetModelDirty();
-    fillBudgetSettingsForm(appState.budgetDraftSettings);
-    renderBudgetPreview(draftBudgetModel());
-  } catch (_error) {
-    statusRef.textContent = "Não foi possível carregar a imagem.";
+    const savedId = await store.saveQuotation(
+      {
+        opening_date: refs.quotationOpeningDate.value || null,
+        edital,
+        city: refs.quotationCity.value.trim(),
+        cep: formatCep(cepDigits),
+      },
+      appState.currentQuotationId
+    );
+    appState.currentQuotationId = savedId;
+    await reloadData();
+    loadQuotation(savedId, { scroll: false });
+    showToast("Orçamento salvo.");
+  } catch (error) {
+    refs.quotationFormError.textContent = error.message;
   }
 }
 
-function readFileAsDataUrl(file) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result);
-    reader.onerror = () => reject(reader.error);
-    reader.readAsDataURL(file);
-  });
+async function deleteCurrentQuotation() {
+  const quotation = currentQuotation();
+  if (!quotation) return;
+  if (!confirm(`Excluir o orçamento do edital ${quotation.edital} e todos os seus itens?`)) return;
+  try {
+    await store.deleteQuotation(quotation.id);
+    appState.currentQuotationId = null;
+    appState.currentQuotationItemId = null;
+    refs.quotationForm.reset();
+    await reloadData();
+    clearQuotationForm();
+    showToast("Orçamento excluído.");
+  } catch (error) {
+    refs.quotationFormError.textContent = error.message;
+  }
 }
 
-function collectBudgetBlockForm() {
-  return normalizeBudgetBlock({
-    id: `block_${Date.now()}_${Math.random().toString(16).slice(2)}`,
-    label: refs.budgetBlockLabel.value.trim(),
-    content: refs.budgetBlockContent.value.trim(),
-    align: refs.budgetBlockAlign.value,
-    bold: refs.budgetBlockBold.checked,
-    underline: refs.budgetBlockUnderline.checked,
-    size: refs.budgetBlockSize.value,
-  });
-}
-
-function collectBudgetSettings() {
-  const existingSettings = appState.budgetDraftSettings || {};
-  return {
-    orientation: refs.budgetOrientation.value,
-    title: refs.budgetTitle.value.trim(),
-    recipient: refs.budgetRecipient.value.trim(),
-    process: refs.budgetProcess.value.trim(),
-    object: refs.budgetObject.value.trim(),
-    proponent: refs.budgetProponent.value.trim(),
-    representative: refs.budgetRepresentative.value.trim(),
-    payment: refs.budgetPayment.value.trim(),
-    terms: refs.budgetTerms.value.trim(),
-    validity: refs.budgetValidity.value.trim(),
-    warranty: refs.budgetWarranty.value.trim(),
-    delivery: refs.budgetDelivery.value.trim(),
-    cityDate: refs.budgetCityDate.value.trim(),
-    signer: refs.budgetSigner.value.trim(),
-    headerLogoEnabled: refs.budgetHeaderLogoEnabled.checked,
-    headerLogoImage: existingSettings.headerLogoImage || "",
-    headerLogoName: existingSettings.headerLogoName || "",
-    watermarkEnabled: refs.budgetWatermarkEnabled.checked,
-    watermarkImage: existingSettings.watermarkImage || "",
-    watermarkName: existingSettings.watermarkName || "",
-    watermarkOpacity: parseBudgetWatermarkOpacity(refs.budgetWatermarkOpacity.value),
-  };
-}
-
-function fillBudgetSettingsForm(settings) {
-  const nextSettings = { ...DEFAULT_BUDGET_SETTINGS, ...(settings || {}) };
-  refs.budgetOrientation.value = nextSettings.orientation === "landscape" ? "landscape" : "portrait";
-  refs.budgetTitle.value = nextSettings.title || "";
-  refs.budgetRecipient.value = nextSettings.recipient || "";
-  refs.budgetProcess.value = nextSettings.process || "";
-  refs.budgetObject.value = nextSettings.object || "";
-  refs.budgetProponent.value = nextSettings.proponent || "";
-  refs.budgetRepresentative.value = nextSettings.representative || "";
-  refs.budgetPayment.value = nextSettings.payment || "";
-  refs.budgetTerms.value = nextSettings.terms || "";
-  refs.budgetValidity.value = nextSettings.validity || "";
-  refs.budgetWarranty.value = nextSettings.warranty || "";
-  refs.budgetDelivery.value = nextSettings.delivery || "";
-  refs.budgetCityDate.value = nextSettings.cityDate || "";
-  refs.budgetSigner.value = nextSettings.signer || "";
-  refs.budgetHeaderLogoEnabled.checked = Boolean(nextSettings.headerLogoEnabled);
-  refs.budgetHeaderLogoStatus.textContent = nextSettings.headerLogoName || "Nenhum arquivo selecionado";
-  refs.budgetWatermarkEnabled.checked = Boolean(nextSettings.watermarkEnabled);
-  refs.budgetWatermarkStatus.textContent = nextSettings.watermarkName || "Nenhum arquivo selecionado";
-  refs.budgetWatermarkOpacity.value = parseBudgetWatermarkOpacity(nextSettings.watermarkOpacity);
-  bindAutoGrowTextareas(refs.budgetSettingsForm);
-  bindAutoGrowTextareas(refs.budgetBlockForm);
-}
-
-function renderBudgetPreview(model) {
-  const bid = currentBid();
-  if (!bid) {
-    refs.budgetPreview.classList.remove("landscape", "portrait");
-    refs.budgetBuilderLayout.classList.remove("preview-landscape");
-    refs.budgetPreviewFormat.textContent = "Retrato";
-    refs.budgetPreview.innerHTML = `<div class="empty-state">Selecione um edital para visualizar a proposta.</div>`;
+function renderQuotationItems() {
+  const quotation = currentQuotation();
+  refs.quotationItemsSection.classList.toggle("hidden", !quotation);
+  if (!quotation) {
+    refs.quotationItemsTableBody.innerHTML = "";
+    refs.quotationGrandTotal.textContent = `Total: ${money(0)}`;
     return;
   }
-  const settings = { ...defaultBudgetSettingsForBid(bid), ...(model?.settings || {}) };
-  const blocks = model?.blocks?.length ? cloneBudgetBlocks(model.blocks) : [];
-  const tableColumns = budgetTableColumns(model);
-  const rows = currentBudgetRows();
-  const total = calculateBudgetRowsTotal(model, rows);
-  const isLandscape = settings.orientation === "landscape";
-  refs.budgetPreview.classList.toggle("landscape", isLandscape);
-  refs.budgetPreview.classList.toggle("portrait", !isLandscape);
-  refs.budgetBuilderLayout.classList.toggle("preview-landscape", isLandscape && appState.budgetPreviewVisible);
-  refs.budgetPreviewFormat.textContent = isLandscape ? "Paisagem" : "Retrato";
-  refs.budgetPreview.innerHTML = `
-    <article class="proposal-paper ${isLandscape ? "landscape" : "portrait"}">
-      ${budgetWatermarkMarkup(settings)}
-      ${budgetHeaderLogoMarkup(settings)}
-      ${
-        blocks.length
-          ? renderBudgetBlocksPreview(blocks)
-          : `<header class="proposal-header">
-              <p>${escapeHtml(settings.recipient || bid.buyer_agency || "")}</p>
-              <h3>${escapeHtml(settings.title || "PROPOSTA COMERCIAL")}</h3>
-              <span>${escapeHtml(settings.process || bid.id || "")}</span>
-            </header>`
-      }
-      ${settings.object ? `<section><h4>Objeto</h4><p>${escapeHtml(settings.object)}</p></section>` : ""}
-      <section class="proposal-two-columns">
-        <div>
-          <h4>Dados da proponente</h4>
-          <p>${formatMultiline(settings.proponent)}</p>
-        </div>
-        <div>
-          <h4>Representante legal</h4>
-          <p>${formatMultiline(settings.representative)}</p>
-        </div>
-      </section>
-      <section>
-        <h4>Itens da proposta</h4>
-        ${proposalPreviewTable(tableColumns, rows)}
-        <p class="proposal-total">Valor global: ${money(total)}</p>
-      </section>
-      <section class="proposal-details">
-        <p><strong>Validade:</strong> ${escapeHtml(settings.validity || "")}</p>
-        <p><strong>Garantia:</strong> ${escapeHtml(settings.warranty || "")}</p>
-        <p><strong>Entrega:</strong> ${escapeHtml(settings.delivery || bid.delivery_place || "")}</p>
-        ${settings.payment ? `<p><strong>Dados bancários:</strong> ${escapeHtml(settings.payment)}</p>` : ""}
-      </section>
-      ${settings.terms ? `<section><h4>Declarações</h4><p>${formatMultiline(settings.terms)}</p></section>` : ""}
-      <footer class="proposal-signature">
-        <p>${escapeHtml(settings.cityDate || "")}</p>
-        <div></div>
-        <strong>${escapeHtml(settings.signer || "")}</strong>
-      </footer>
-    </article>
-  `;
-}
-
-function budgetHeaderLogoMarkup(settings) {
-  if (!settings.headerLogoEnabled || !settings.headerLogoImage) return "";
-  return `
-    <div class="proposal-header-logo">
-      <img src="${escapeHtml(settings.headerLogoImage)}" alt="Logo da empresa" />
-    </div>
-  `;
-}
-
-function budgetWatermarkMarkup(settings) {
-  if (!settings.watermarkEnabled || !settings.watermarkImage) return "";
-  const opacity = parseBudgetWatermarkOpacity(settings.watermarkOpacity) / 100;
-  return `
-    <img class="proposal-watermark" src="${escapeHtml(settings.watermarkImage)}" alt="" style="opacity: ${opacity};" />
-  `;
-}
-
-function renderBudgetBlocksPreview(blocks) {
-  return blocks
-    .map(
-      (block) => `
-        <section class="proposal-free-block align-${escapeHtml(block.align)} size-${escapeHtml(block.size)}${block.bold ? " is-bold" : ""}${
-        block.underline ? " is-underlined" : ""
-      }">
-          <p>${formatMultiline(block.content)}</p>
-        </section>
-      `
-    )
-    .join("");
-}
-
-function proposalPreviewTable(columns, rows) {
-  if (!columns.length) return `<div class="empty-state">Configure as colunas da tabela.</div>`;
-  const previewRows = rows.length ? rows : [{ values: previewValuesForColumns(columns) }];
-  return `
-    <div class="proposal-table-wrap">
-      <table class="proposal-table">
-        ${budgetColumnGroupMarkup(columns)}
-        <thead>
-          <tr>${columns.map((column) => `<th>${escapeHtml(column.name)}</th>`).join("")}</tr>
-        </thead>
-        <tbody>
-          ${previewRows
-            .map((row) => `<tr>${columns.map((column) => `<td>${formatBudgetCellHtml(row.values?.[column.id], column)}</td>`).join("")}</tr>`)
-            .join("")}
-        </tbody>
-      </table>
-    </div>
-  `;
-}
-
-function budgetColumnGroupMarkup(columns) {
-  const hasWidths = columns.some((column) => Number(column.width || 0) > 0);
-  if (!hasWidths) return "";
-  return `<colgroup>${columns
-    .map((column) => {
-      const width = Number(column.width || 0);
-      return width > 0 ? `<col style="width: ${width}%;" />` : "<col />";
-    })
-    .join("")}</colgroup>`;
-}
-
-function previewValuesForColumns(columns) {
-  return columns.reduce((acc, column) => {
-    acc[column.id] = column.type === "currency" ? 0 : column.type === "number" ? 1 : "A preencher";
-    return acc;
-  }, {});
-}
-
-function calculateBudgetRowsTotal(model, rows) {
-  const totalColumn = findBudgetColumnByName(model, "Valor Total") || findBudgetColumnByName(model, "Valor Total (R$)");
-  if (!totalColumn) return 0;
-  return rows.reduce((sum, row) => sum + Number(row.values?.[totalColumn.id] || 0), 0);
-}
-
-function budgetValueFromItem(column, item) {
-  const unitValue = Number(item.max_acceptable_value || 0);
-  const quantity = Number(item.required_quantity || 0);
-  const technicalText = item.technical_registration_text || item.description || "";
-  switch (column.source) {
-    case "item_number":
-      return item.item_number;
-    case "item_name":
-      return item.name || "";
-    case "item_description":
-      return technicalText;
-    case "unit":
-      return item.sales_unit || "";
-    case "quantity":
-      return quantity;
-    case "estimated_value":
-      return item.estimated_value || 0;
-    case "max_value":
-      return unitValue;
-    case "minimum_bid":
-      return item.minimum_bid || 0;
-    case "brand_model":
-      return item.brand_model || "";
-    case "supplier_cost":
-      return item.supplier_cost || 0;
-    case "supplier_link":
-      return item.supplier_link || "";
-    case "calculated_total":
-      return unitValue * quantity;
-    default:
-      return "";
+  const items = currentQuotationItems();
+  const grandTotal = items.reduce((sum, item) => sum + Number(item.total || 0), 0);
+  refs.quotationItemsStatus.textContent = `${items.length} ${items.length === 1 ? "item cadastrado" : "itens cadastrados"}`;
+  refs.quotationGrandTotal.textContent = `Total: ${money(grandTotal)}`;
+  if (!items.length) {
+    refs.quotationItemsTableBody.innerHTML = `<tr><td colspan="12"><div class="empty-state compact-empty">Nenhum item cadastrado neste orçamento.</div></td></tr>`;
+    return;
   }
+  refs.quotationItemsTableBody.innerHTML = items
+    .map((item) => {
+      const selected = Number(item.id) === Number(appState.currentQuotationItemId) ? " selected" : "";
+      return `
+        <tr class="selectable${selected}" tabindex="0" data-quotation-item-id="${item.id}">
+          <td><strong>${escapeHtml(formatNumber(item.item_number))}</strong></td>
+          <td><strong>${escapeHtml(item.description || "—")}</strong>${item.model ? `<small class="table-secondary">Modelo: ${escapeHtml(item.model)}</small>` : ""}</td>
+          <td>${escapeHtml(item.manufacturer || "—")}</td>
+          <td class="numeric">${money(item.estimated_value)}</td>
+          <td class="numeric">${money(item.supplier_cost)}</td>
+          <td class="numeric">${formatQuotationProfitMargin(item)}</td>
+          <td class="numeric">${formatQuotationValueWithMargin(item)}</td>
+          <td class="numeric">${money(item.final_bid)}</td>
+          <td class="numeric">${escapeHtml(formatNumber(item.quantity))}</td>
+          <td class="numeric"><strong>${money(item.total)}</strong></td>
+          <td class="numeric"><strong>${money(calculateItemProfit(item.final_bid, item.supplier_cost, item.quantity))}</strong></td>
+          <td><button class="text-action" type="button" data-edit-quotation-item="${item.id}">Editar</button></td>
+        </tr>`;
+    })
+    .join("");
+
+  refs.quotationItemsTableBody.querySelectorAll("[data-quotation-item-id]").forEach((row) => {
+    const open = () => loadQuotationItem(Number(row.dataset.quotationItemId));
+    row.addEventListener("click", open);
+    row.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        open();
+      }
+    });
+  });
+  refs.quotationItemsTableBody.querySelectorAll("[data-edit-quotation-item]").forEach((button) => {
+    button.addEventListener("click", (event) => {
+      event.stopPropagation();
+      loadQuotationItem(Number(button.dataset.editQuotationItem));
+    });
+  });
+}
+
+function loadQuotationItem(itemId) {
+  const item = currentQuotationItems().find((row) => Number(row.id) === Number(itemId));
+  if (!item) return;
+  appState.currentQuotationItemId = item.id;
+  refs.quotationItemNumber.value = formatNumber(item.item_number);
+  refs.quotationItemDescription.value = item.description;
+  refs.quotationItemModel.value = item.model;
+  refs.quotationItemManufacturer.value = item.manufacturer;
+  refs.quotationItemTechnicalText.value = item.technical_text;
+  refs.quotationItemEstimatedValue.value = money(item.estimated_value);
+  refs.quotationItemSupplierCost.value = item.supplier_cost ? money(item.supplier_cost) : "";
+  refs.quotationItemProfitMargin.value = item.profit_margin === null ? "" : formatProfitMargin(item.profit_margin);
+  refs.quotationItemFinalBid.value = money(item.final_bid);
+  refs.quotationItemQuantity.value = formatNumber(item.quantity);
+  appState.quotationMarginCalculationSource = "margin";
+  refs.quotationItemFormError.textContent = "";
+  refs.deleteQuotationItemButton.classList.remove("hidden");
+  updateQuotationValueWithMargin();
+  updateQuotationItemTotals();
+  resizeTextarea(refs.quotationItemTechnicalText);
+  renderQuotationItems();
+  refs.quotationItemForm.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+function clearQuotationItemForm() {
+  appState.currentQuotationItemId = null;
+  refs.quotationItemForm.reset();
+  refs.quotationItemQuantity.value = "1";
+  refs.quotationItemTotal.value = money(0);
+  refs.quotationItemTotalProfit.value = money(0);
+  appState.quotationMarginCalculationSource = "margin";
+  updateQuotationValueWithMargin();
+  refs.quotationItemFormError.textContent = "";
+  refs.deleteQuotationItemButton.classList.add("hidden");
+  resizeTextarea(refs.quotationItemTechnicalText);
+  renderQuotationItems();
+}
+
+async function saveQuotationItem(event) {
+  event.preventDefault();
+  refs.quotationItemFormError.textContent = "";
+  if (!appState.currentQuotationId) {
+    refs.quotationItemFormError.textContent = "Salve o orçamento antes de cadastrar itens.";
+    return;
+  }
+  try {
+    const itemNumber = parseIntRequired(refs.quotationItemNumber.value, "ITEM");
+    const duplicate = currentQuotationItems().find(
+      (item) => Number(item.item_number) === Number(itemNumber) && Number(item.id) !== Number(appState.currentQuotationItemId)
+    );
+    if (duplicate) throw new Error("Já existe um item com este número neste orçamento.");
+    const quantity = refs.quotationItemQuantity.value.trim()
+      ? parseDecimal(refs.quotationItemQuantity.value, "Quantidade", false)
+      : 1;
+    const supplierCost = parseDecimal(refs.quotationItemSupplierCost.value, "Valor de Custo", false);
+    const finalBid = parseDecimal(refs.quotationItemFinalBid.value, "Lance Final", false);
+    const profitMargin = refs.quotationItemProfitMargin.value.trim()
+      ? parseProfitMargin(refs.quotationItemProfitMargin.value)
+      : supplierCost && refs.quotationItemFinalBid.value.trim()
+        ? calculateProfitMargin(finalBid, supplierCost)
+        : null;
+    await store.saveQuotationItem(
+      appState.currentQuotationId,
+      {
+        item_number: itemNumber,
+        description: refs.quotationItemDescription.value.trim(),
+        model: refs.quotationItemModel.value.trim(),
+        manufacturer: refs.quotationItemManufacturer.value.trim(),
+        technical_text: refs.quotationItemTechnicalText.value.trim(),
+        estimated_value: parseDecimal(refs.quotationItemEstimatedValue.value, "Valor Estimado", false),
+        supplier_cost: supplierCost,
+        profit_margin: profitMargin,
+        final_bid: finalBid,
+        quantity,
+      },
+      appState.currentQuotationItemId
+    );
+    await reloadData();
+    clearQuotationItemForm();
+    showToast("Item do orçamento salvo.");
+  } catch (error) {
+    refs.quotationItemFormError.textContent = error.message;
+  }
+}
+
+async function deleteCurrentQuotationItem() {
+  if (!appState.currentQuotationItemId) return;
+  if (!confirm("Excluir o item selecionado deste orçamento?")) return;
+  try {
+    await store.deleteQuotationItem(appState.currentQuotationItemId);
+    appState.currentQuotationItemId = null;
+    await reloadData();
+    clearQuotationItemForm();
+    showToast("Item excluído.");
+  } catch (error) {
+    refs.quotationItemFormError.textContent = error.message;
+  }
+}
+
+function updateQuotationItemTotals() {
+  try {
+    const finalBid = parseDecimal(refs.quotationItemFinalBid.value, "Lance Final", false);
+    const supplierCost = parseDecimal(refs.quotationItemSupplierCost.value, "Valor de Custo", false);
+    const quantity = refs.quotationItemQuantity.value.trim()
+      ? parseDecimal(refs.quotationItemQuantity.value, "Quantidade", false)
+      : 1;
+    refs.quotationItemTotal.value = money(finalBid * quantity);
+    refs.quotationItemTotalProfit.value = money(calculateItemProfit(finalBid, supplierCost, quantity));
+  } catch {
+    refs.quotationItemTotal.value = money(0);
+    refs.quotationItemTotalProfit.value = money(0);
+  }
+}
+
+function formatQuotationProfitMargin(item) {
+  if (item.profit_margin === null || item.profit_margin === undefined || item.profit_margin === "") return "—";
+  return formatProfitMargin(item.profit_margin);
+}
+
+function formatQuotationValueWithMargin(item) {
+  if (!Number(item.supplier_cost) || item.profit_margin === null || item.profit_margin === undefined || item.profit_margin === "") return "—";
+  return money(calculateValueWithMargin(item.supplier_cost, item.profit_margin));
+}
+
+function updateQuotationValueWithMarginFromMargin() {
+  appState.quotationMarginCalculationSource = "margin";
+  updateQuotationValueWithMargin();
+}
+
+function updateQuotationMarginFromFinalBid() {
+  appState.quotationMarginCalculationSource = "final";
+  const hasFinalBid = Boolean(refs.quotationItemFinalBid.value.trim());
+  const hasCostValue = Boolean(refs.quotationItemSupplierCost.value.trim());
+  if (!hasFinalBid || !hasCostValue) {
+    refs.quotationItemProfitMargin.value = "";
+    refs.quotationItemValueWithMargin.value = "";
+    return;
+  }
+  try {
+    const finalBid = parseDecimal(refs.quotationItemFinalBid.value, "Lance Final", false);
+    const costValue = parseDecimal(refs.quotationItemSupplierCost.value, "Valor de Custo", false);
+    const margin = calculateProfitMargin(finalBid, costValue);
+    if (margin === null) {
+      refs.quotationItemProfitMargin.value = "";
+      refs.quotationItemValueWithMargin.value = "";
+    } else {
+      refs.quotationItemProfitMargin.value = formatProfitMargin(margin);
+      refs.quotationItemValueWithMargin.value = money(calculateValueWithMargin(costValue, margin));
+    }
+  } catch {
+    refs.quotationItemProfitMargin.value = "";
+    refs.quotationItemValueWithMargin.value = "";
+  }
+}
+
+function updateQuotationPricingFromCost() {
+  if (appState.quotationMarginCalculationSource === "final" && refs.quotationItemFinalBid.value.trim()) {
+    updateQuotationMarginFromFinalBid();
+  } else {
+    updateQuotationValueWithMargin();
+  }
+}
+
+function updateQuotationValueWithMargin() {
+  if (!refs.quotationItemSupplierCost.value.trim() || !refs.quotationItemProfitMargin.value.trim()) {
+    refs.quotationItemValueWithMargin.value = "";
+    return;
+  }
+  try {
+    const costValue = parseDecimal(refs.quotationItemSupplierCost.value, "Valor de Custo", false);
+    const margin = parseProfitMargin(refs.quotationItemProfitMargin.value);
+    refs.quotationItemValueWithMargin.value = money(calculateValueWithMargin(costValue, margin));
+  } catch {
+    refs.quotationItemValueWithMargin.value = "";
+  }
+}
+
+function formatQuotationProfitMarginInput() {
+  if (!refs.quotationItemProfitMargin.value.trim()) {
+    refs.quotationItemValueWithMargin.value = "";
+    return;
+  }
+  try {
+    refs.quotationItemProfitMargin.value = formatProfitMargin(parseProfitMargin(refs.quotationItemProfitMargin.value));
+    updateQuotationValueWithMargin();
+  } catch {
+    refs.quotationItemValueWithMargin.value = "";
+  }
+}
+
+function formatQuotationCepInput() {
+  refs.quotationCep.value = formatCep(refs.quotationCep.value);
+}
+
+function formatCep(value) {
+  const digits = String(value || "").replace(/\D/g, "").slice(0, 8);
+  return digits.length > 5 ? `${digits.slice(0, 5)}-${digits.slice(5)}` : digits;
+}
+
+function formatDateOnly(value) {
+  const match = String(value || "").match(/^(\d{4})-(\d{2})-(\d{2})/);
+  return match ? `${match[3]}/${match[2]}/${match[1]}` : "";
+}
+
+function formatNumber(value) {
+  return Number(value || 0).toLocaleString("pt-BR", { maximumFractionDigits: 4 });
 }
 
 async function saveUser(event) {
@@ -2912,27 +2472,6 @@ function currentBid() {
   return appState.bids.find((row) => row.id === appState.currentBidId) || null;
 }
 
-function currentBudgetModel() {
-  if (!appState.currentBidId) return null;
-  const model = appState.budgetModels.find((row) => row.bid_id === appState.currentBidId) || null;
-  return model ? normalizeBudgetModel(model) : null;
-}
-
-function currentBudgetRows() {
-  if (!appState.currentBidId) return [];
-  return appState.budgetRows.filter((row) => row.bid_id === appState.currentBidId);
-}
-
-function draftBudgetModel() {
-  if (!appState.currentBidId) return null;
-  return {
-    bid_id: appState.currentBidId,
-    settings: cloneBudgetSettings(appState.budgetDraftSettings),
-    blocks: cloneBudgetBlocks(appState.budgetDraftBlocks),
-    columns: cloneColumns(appState.budgetDraftColumns),
-  };
-}
-
 function calculateBidSummary(bidId) {
   return appState.items
     .filter((item) => item.bid_id === bidId)
@@ -2989,28 +2528,6 @@ function parseIntOptional(value, fieldName) {
   return number;
 }
 
-function findBudgetColumnByName(model, expectedName) {
-  const normalized = normalizeColumnName(expectedName);
-  return model?.columns?.find((column) => normalizeColumnName(column.name) === normalized) || null;
-}
-
-function normalizeColumnName(name) {
-  return String(name || "")
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .trim()
-    .toLowerCase();
-}
-
-function parseFlexibleNumber(value) {
-  let raw = String(value || "").trim();
-  if (!raw) return NaN;
-  raw = raw.replace(/[^\d,.-]/g, "");
-  if (raw.includes(",")) raw = raw.replace(/\./g, "").replace(",", ".");
-  const number = Number(raw);
-  return Number.isFinite(number) ? number : NaN;
-}
-
 function bindAutoGrowTextareas(scope) {
   scope.querySelectorAll(".auto-grow-textarea").forEach((textarea) => {
     textarea.addEventListener("input", () => resizeTextarea(textarea));
@@ -3021,109 +2538,6 @@ function bindAutoGrowTextareas(scope) {
 function resizeTextarea(textarea) {
   textarea.style.height = "auto";
   textarea.style.height = `${textarea.scrollHeight}px`;
-}
-
-function bindBudgetAutoTotal(model) {
-  const unitColumn = findBudgetColumnByName(model, "Valor Final") || findBudgetColumnByName(model, "Valor Unitário");
-  const quantityColumn = findBudgetColumnByName(model, "Quantidade");
-  const totalColumn = findBudgetColumnByName(model, "Valor total");
-  if (!unitColumn || !quantityColumn || !totalColumn) return;
-  const unitInput = refs.budgetEntryForm.querySelector(`[data-budget-column="${unitColumn.id}"]`);
-  const quantityInput = refs.budgetEntryForm.querySelector(`[data-budget-column="${quantityColumn.id}"]`);
-  const totalInput = refs.budgetEntryForm.querySelector(`[data-budget-column="${totalColumn.id}"]`);
-  if (!unitInput || !quantityInput || !totalInput) return;
-  totalInput.readOnly = true;
-  totalInput.classList.add("calculated-input");
-  const update = () => applyBudgetAutoTotal(model);
-  unitInput.addEventListener("input", update);
-  quantityInput.addEventListener("input", update);
-  update();
-}
-
-function applyBudgetAutoTotal(model) {
-  const unitColumn = findBudgetColumnByName(model, "Valor Final") || findBudgetColumnByName(model, "Valor Unitário");
-  const quantityColumn = findBudgetColumnByName(model, "Quantidade");
-  const totalColumn = findBudgetColumnByName(model, "Valor total");
-  if (!unitColumn || !quantityColumn || !totalColumn) return;
-  const unitInput = refs.budgetEntryForm.querySelector(`[data-budget-column="${unitColumn.id}"]`);
-  const quantityInput = refs.budgetEntryForm.querySelector(`[data-budget-column="${quantityColumn.id}"]`);
-  const totalInput = refs.budgetEntryForm.querySelector(`[data-budget-column="${totalColumn.id}"]`);
-  if (!unitInput || !quantityInput || !totalInput) return;
-  if (!unitInput.value.trim() || !quantityInput.value.trim()) {
-    totalInput.value = "";
-    return;
-  }
-  let unitValue = 0;
-  try {
-    unitValue = parseDecimal(unitInput.value, "Valor Final", false);
-  } catch (_error) {
-    totalInput.value = "";
-    return;
-  }
-  const quantityValue = parseFlexibleNumber(quantityInput.value);
-  if (!Number.isFinite(quantityValue)) {
-    totalInput.value = "";
-    return;
-  }
-  totalInput.value = money(unitValue * quantityValue);
-}
-
-function normalizeBudgetValue(value, column) {
-  const raw = String(value || "").trim();
-  if (!raw) return "";
-  if (column.type === "number") {
-    const number = Number(raw.replace(",", "."));
-    if (Number.isNaN(number)) throw new Error(`Informe um valor numérico válido para ${column.name}.`);
-    return number;
-  }
-  if (column.type === "currency") {
-    return parseDecimal(raw, column.name, false);
-  }
-  return raw;
-}
-
-function budgetInputMarkup(column) {
-  if (normalizeColumnName(column.name) === "descricao") {
-    return `
-      <label class="full">
-        ${escapeHtml(column.name)}
-        <textarea class="auto-grow-textarea" data-budget-column="${column.id}" rows="2"></textarea>
-      </label>
-    `;
-  }
-  const inputType = column.type === "number" ? "number" : "text";
-  const inputMode = column.type === "currency" ? "decimal" : column.type === "number" ? "decimal" : "text";
-  const placeholder = column.type === "currency" ? "R$ 0,00" : "";
-  return `
-    <label>
-      ${escapeHtml(column.name)}
-      <input data-budget-column="${column.id}" type="${inputType}" inputmode="${inputMode}" placeholder="${placeholder}" />
-    </label>
-  `;
-}
-
-function formatBudgetValue(value, type) {
-  if (value === "" || value === null || value === undefined) return "";
-  if (type === "currency") return money(value);
-  if (type === "number") return Number(value).toLocaleString("pt-BR");
-  return String(value);
-}
-
-function budgetInputValue(value, type) {
-  if (value === "" || value === null || value === undefined) return "";
-  if (type === "currency") return money(value);
-  return String(value);
-}
-
-function formatBudgetCellHtml(value, column) {
-  const formattedValue = formatBudgetValue(value, column.type);
-  if (normalizeColumnName(column.name) === "fornecedor") {
-    const url = normalizeUrlValue(formattedValue);
-    if (url) {
-      return `<a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(formattedValue)}</a>`;
-    }
-  }
-  return escapeHtml(formattedValue);
 }
 
 function normalizeUrlValue(value) {
@@ -3138,132 +2552,6 @@ function normalizeUrlValue(value) {
   } catch {
     return "";
   }
-}
-
-function budgetTypeLabel(type) {
-  return BUDGET_COLUMN_TYPES.find((option) => option.value === type)?.label || type;
-}
-
-function budgetSectionLabel(section) {
-  return BUDGET_SECTION_OPTIONS.find((option) => option.value === section)?.label || "Tabela de itens";
-}
-
-function budgetSourceLabel(source) {
-  return BUDGET_SOURCE_OPTIONS.find((option) => option.value === source)?.label || "Preenchimento manual";
-}
-
-function budgetTableColumns(model) {
-  return (model?.columns || []).filter((column) => (column.section || "table") === "table");
-}
-
-function normalizeBudgetModel(model) {
-  const payload = model?.columns;
-  if (Array.isArray(payload)) {
-    return {
-      ...model,
-      settings: defaultBudgetSettingsForBid(currentBid()),
-      blocks: cloneBudgetBlocks(DEFAULT_BUDGET_BLOCKS),
-      columns: payload.map(normalizeBudgetColumn),
-    };
-  }
-  const settings = {
-    ...defaultBudgetSettingsForBid(currentBid()),
-    ...(payload?.settings || {}),
-  };
-  const blocks = Array.isArray(payload?.blocks) ? payload.blocks : DEFAULT_BUDGET_BLOCKS;
-  const columns = Array.isArray(payload?.columns) ? payload.columns : [];
-  return {
-    ...model,
-    settings,
-    blocks: blocks.map(normalizeBudgetBlock),
-    columns: columns.map(normalizeBudgetColumn),
-  };
-}
-
-function normalizeBudgetColumn(column) {
-  return {
-    id: column.id || `col_${Date.now()}_${Math.random().toString(16).slice(2)}`,
-    name: column.name || "Campo",
-    type: BUDGET_COLUMN_TYPES.some((type) => type.value === column.type) ? column.type : "text",
-    section: BUDGET_SECTION_OPTIONS.some((section) => section.value === column.section) ? column.section : "table",
-    source: BUDGET_SOURCE_OPTIONS.some((source) => source.value === column.source) ? column.source : "manual",
-    width: parseBudgetColumnWidth(column.width),
-  };
-}
-
-function createBudgetColumn(name, type, section = "table", source = "manual") {
-  return normalizeBudgetColumn({
-    id: `col_${Date.now()}_${Math.random().toString(16).slice(2)}`,
-    name,
-    type,
-    section,
-    source,
-    width: "",
-  });
-}
-
-function cloneColumns(columns) {
-  return (columns || []).map((column) => ({ ...normalizeBudgetColumn(column) }));
-}
-
-function cloneBudgetSettings(settings) {
-  const nextSettings = { ...DEFAULT_BUDGET_SETTINGS, ...(settings || {}) };
-  nextSettings.orientation = nextSettings.orientation === "landscape" ? "landscape" : "portrait";
-  nextSettings.headerLogoEnabled = Boolean(nextSettings.headerLogoEnabled);
-  nextSettings.watermarkEnabled = Boolean(nextSettings.watermarkEnabled);
-  nextSettings.watermarkOpacity = parseBudgetWatermarkOpacity(nextSettings.watermarkOpacity);
-  return nextSettings;
-}
-
-function normalizeBudgetBlock(block) {
-  return {
-    id: block.id || `block_${Date.now()}_${Math.random().toString(16).slice(2)}`,
-    label: block.label || "Bloco do documento",
-    content: block.content || "",
-    align: BUDGET_ALIGNMENT_OPTIONS.includes(block.align) ? block.align : "left",
-    bold: Boolean(block.bold),
-    underline: Boolean(block.underline),
-    size: BUDGET_BLOCK_SIZE_OPTIONS.includes(block.size) ? block.size : "normal",
-  };
-}
-
-function cloneBudgetBlocks(blocks) {
-  return (blocks || []).map((block) => ({ ...normalizeBudgetBlock(block) }));
-}
-
-function budgetBlockSummary(block) {
-  const styles = [
-    block.align === "center" ? "Centralizado" : block.align === "right" ? "Direita" : "Esquerda",
-    block.bold ? "negrito" : "",
-    block.underline ? "sublinhado" : "",
-    block.size === "large" ? "destaque" : block.size === "small" ? "compacto" : "",
-  ].filter(Boolean);
-  return styles.join(" · ");
-}
-
-function parseBudgetColumnWidth(value) {
-  const number = Number(value || 0);
-  if (!Number.isFinite(number) || number <= 0) return "";
-  return Math.min(80, Math.max(4, Math.round(number)));
-}
-
-function parseBudgetWatermarkOpacity(value) {
-  const number = Number(value || DEFAULT_BUDGET_SETTINGS.watermarkOpacity);
-  if (!Number.isFinite(number)) return DEFAULT_BUDGET_SETTINGS.watermarkOpacity;
-  return Math.min(40, Math.max(4, Math.round(number)));
-}
-
-function defaultBudgetSettingsForBid(bid) {
-  return {
-    ...DEFAULT_BUDGET_SETTINGS,
-    recipient: bid?.buyer_agency || DEFAULT_BUDGET_SETTINGS.recipient,
-    process: bid?.id || DEFAULT_BUDGET_SETTINGS.process,
-    delivery: bid?.delivery_place || DEFAULT_BUDGET_SETTINGS.delivery,
-  };
-}
-
-function formatMultiline(value) {
-  return escapeHtml(value || "").replace(/\n/g, "<br>");
 }
 
 function money(value) {
@@ -3448,11 +2736,6 @@ function isMissingFailureHistoryTableError(error) {
   return Boolean(error) && /failure_history|relation/i.test(message) && /does not exist|schema cache|not find|could not find/i.test(message);
 }
 
-function isMissingAppSettingsTableError(error) {
-  const message = String(error?.message || error?.details || "");
-  return Boolean(error) && /app_settings|relation/i.test(message) && /does not exist|schema cache|not find|could not find/i.test(message);
-}
-
 function normalizeDocumentRecord(record) {
   return {
     id: record.id ? Number(record.id) : undefined,
@@ -3471,6 +2754,45 @@ function normalizeFailureRecord(record) {
     description: record.description || "",
     action_plan: record.action_plan || "",
     created_at: record.created_at || timestampNow(),
+  };
+}
+
+function normalizeQuotationRecord(record) {
+  return {
+    id: record.id ? Number(record.id) : undefined,
+    opening_date: record.opening_date || "",
+    edital: String(record.edital || "").trim(),
+    city: record.city || "",
+    cep: formatCep(record.cep),
+    created_at: record.created_at || timestampNow(),
+    updated_at: record.updated_at || timestampNow(),
+  };
+}
+
+function normalizeQuotationItemRecord(record) {
+  const finalBid = Number(record.final_bid || 0);
+  const supplierCost = Number(record.supplier_cost || 0);
+  const storedMargin = record.profit_margin;
+  const profitMargin = storedMargin === undefined || storedMargin === null || storedMargin === ""
+    ? supplierCost && finalBid
+      ? calculateProfitMargin(finalBid, supplierCost)
+      : null
+    : Number(storedMargin);
+  const quantity = record.quantity === undefined || record.quantity === null || record.quantity === "" ? 1 : Number(record.quantity);
+  return {
+    id: record.id ? Number(record.id) : undefined,
+    quotation_id: Number(record.quotation_id),
+    item_number: Number(record.item_number || 0),
+    description: record.description || "",
+    model: record.model || "",
+    manufacturer: record.manufacturer || "",
+    technical_text: record.technical_text || "",
+    estimated_value: Number(record.estimated_value || 0),
+    supplier_cost: supplierCost,
+    profit_margin: profitMargin,
+    final_bid: finalBid,
+    quantity,
+    total: record.total === undefined || record.total === null ? finalBid * quantity : Number(record.total),
   };
 }
 
@@ -3636,6 +2958,13 @@ function updateChildrenBidId(storeRef, oldBidId, newBidId) {
 
 function deleteChildrenByBid(storeRef, bidId) {
   const request = storeRef.index("bid_id").getAll(bidId);
+  request.onsuccess = () => {
+    for (const row of request.result || []) storeRef.delete(row.id);
+  };
+}
+
+function deleteChildrenByIndex(storeRef, indexName, parentId) {
+  const request = storeRef.index(indexName).getAll(parentId);
   request.onsuccess = () => {
     for (const row of request.result || []) storeRef.delete(row.id);
   };
