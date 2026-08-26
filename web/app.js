@@ -12,76 +12,6 @@ const BID_TYPE_OPTIONS = [
 const SALES_UNIT_OPTIONS = ["Unidade", "Pacote", "Caixa", "Kilo", "Metro", "Litro", "Par", "Servico", "Outro"];
 const BID_EDITAL_BUCKET = "bid-edital-files";
 const MAX_EDITAL_FILE_SIZE = 20 * 1024 * 1024;
-const BUDGET_COLUMN_TYPES = [
-  { value: "number", label: "Numérico" },
-  { value: "text", label: "Texto" },
-  { value: "currency", label: "Moeda (R$)" },
-];
-const BUDGET_SECTION_OPTIONS = [
-  { value: "table", label: "Tabela de itens" },
-  { value: "header", label: "Cabeçalho" },
-  { value: "terms", label: "Condições" },
-  { value: "signature", label: "Assinatura" },
-];
-const BUDGET_SOURCE_OPTIONS = [
-  { value: "manual", label: "Preenchimento manual" },
-  { value: "item_number", label: "Item Edital" },
-  { value: "item_name", label: "Descrição do item" },
-  { value: "item_description", label: "Texto cadastramento técnico" },
-  { value: "unit", label: "Unidade" },
-  { value: "quantity", label: "Quantidade" },
-  { value: "estimated_value", label: "Estimado no Edital" },
-  { value: "max_value", label: "Valor final" },
-  { value: "minimum_bid", label: "Lance mínimo" },
-  { value: "brand_model", label: "Marca/Modelo" },
-  { value: "calculated_total", label: "Total calculado" },
-];
-const BUDGET_ALIGNMENT_OPTIONS = ["left", "center", "right"];
-const BUDGET_BLOCK_SIZE_OPTIONS = ["small", "normal", "large"];
-const DEFAULT_BUDGET_SETTINGS = {
-  orientation: "portrait",
-  title: "PROPOSTA COMERCIAL",
-  recipient: "",
-  process: "",
-  object: "",
-  proponent: "Preencha os dados cadastrais do proponente.",
-  representative: "Preencha os dados do representante.",
-  payment: "",
-  terms:
-    "Declaramos que nos preços propostos encontram-se incluídas todas as despesas, custos diretos e indiretos, fretes, impostos, taxas, seguros e demais encargos necessários ao fornecimento do objeto.\n\nDeclaramos estar de pleno acordo com as exigências, condições gerais e especiais estabelecidas no edital.",
-  validity: "60 (sessenta) dias",
-  warranty: "Conforme termo de referência, edital e seus anexos.",
-  delivery: "",
-  cityDate: "",
-  signer: "",
-  headerLogoEnabled: false,
-  headerLogoImage: "",
-  headerLogoName: "",
-  watermarkEnabled: false,
-  watermarkImage: "",
-  watermarkName: "",
-  watermarkOpacity: 12,
-};
-const DEFAULT_BUDGET_BLOCKS = [
-  {
-    id: "block_process",
-    label: "Identificação do pregão",
-    content: "PROCESSO LICITATÓRIO Nº ...\nPREGÃO ELETRÔNICO Nº ...",
-    align: "center",
-    bold: true,
-    underline: true,
-    size: "normal",
-  },
-  {
-    id: "block_title",
-    label: "Título da proposta",
-    content: "PROPOSTA COMERCIAL",
-    align: "center",
-    bold: true,
-    underline: true,
-    size: "large",
-  },
-];
 const DEFAULT_ADMIN = {
   email: "demo@gll.local",
   name: "Usuário local",
@@ -117,23 +47,12 @@ const appState = {
   itemMarginCalculationSource: "margin",
   quotationMarginCalculationSource: "margin",
   supplierLinksDraft: [],
-  budgetDraftColumns: [],
-  budgetDraftSettings: { ...DEFAULT_BUDGET_SETTINGS },
-  budgetDraftBlocks: cloneBudgetBlocks(DEFAULT_BUDGET_BLOCKS),
-  budgetModelCollapsed: false,
-  budgetPreviewVisible: true,
-  budgetModelDirty: false,
   sidebarCollapsed: false,
   appNavigationCollapsed: false,
-  draggedBudgetBlockId: null,
-  draggedBudgetColumnId: null,
-  currentBudgetRowId: null,
   bids: [],
   items: [],
   documents: [],
   failureHistory: [],
-  budgetModels: [],
-  budgetRows: [],
   quotations: [],
   quotationItems: [],
   users: [],
@@ -214,7 +133,6 @@ const refs = {
   metricTotalProfitMargin: $("metricTotalProfitMargin"),
   itemsTabButton: $("itemsTabButton"),
   documentsTabButton: $("documentsTabButton"),
-  budgetTabButton: $("budgetTabButton"),
   failuresTabButton: $("failuresTabButton"),
   itemsPanel: $("itemsPanel"),
   documentsPanel: $("documentsPanel"),
@@ -260,65 +178,6 @@ const refs = {
   deleteFailureButton: $("deleteFailureButton"),
   clearFailureButton: $("clearFailureButton"),
   failuresTableBody: $("failuresTableBody"),
-  budgetPage: $("budgetPage"),
-  budgetBuilderLayout: $("budgetBuilderLayout"),
-  budgetModelSection: $("budgetModelSection"),
-  budgetModelBody: $("budgetModelBody"),
-  toggleBudgetModelButton: $("toggleBudgetModelButton"),
-  toggleBudgetPreviewButton: $("toggleBudgetPreviewButton"),
-  budgetBidLabel: $("budgetBidLabel"),
-  budgetSettingsForm: $("budgetSettingsForm"),
-  budgetOrientation: $("budgetOrientation"),
-  budgetTitle: $("budgetTitle"),
-  budgetRecipient: $("budgetRecipient"),
-  budgetProcess: $("budgetProcess"),
-  budgetObject: $("budgetObject"),
-  budgetProponent: $("budgetProponent"),
-  budgetRepresentative: $("budgetRepresentative"),
-  budgetPayment: $("budgetPayment"),
-  budgetTerms: $("budgetTerms"),
-  budgetValidity: $("budgetValidity"),
-  budgetWarranty: $("budgetWarranty"),
-  budgetDelivery: $("budgetDelivery"),
-  budgetCityDate: $("budgetCityDate"),
-  budgetSigner: $("budgetSigner"),
-  budgetHeaderLogoEnabled: $("budgetHeaderLogoEnabled"),
-  budgetHeaderLogoFile: $("budgetHeaderLogoFile"),
-  budgetHeaderLogoStatus: $("budgetHeaderLogoStatus"),
-  budgetWatermarkEnabled: $("budgetWatermarkEnabled"),
-  budgetWatermarkFile: $("budgetWatermarkFile"),
-  budgetWatermarkStatus: $("budgetWatermarkStatus"),
-  budgetWatermarkOpacity: $("budgetWatermarkOpacity"),
-  budgetBlockForm: $("budgetBlockForm"),
-  budgetBlockLabel: $("budgetBlockLabel"),
-  budgetBlockAlign: $("budgetBlockAlign"),
-  budgetBlockSize: $("budgetBlockSize"),
-  budgetBlockContent: $("budgetBlockContent"),
-  budgetBlockBold: $("budgetBlockBold"),
-  budgetBlockUnderline: $("budgetBlockUnderline"),
-  addBudgetBlockButton: $("addBudgetBlockButton"),
-  budgetBlocksList: $("budgetBlocksList"),
-  budgetColumnForm: $("budgetColumnForm"),
-  budgetColumnName: $("budgetColumnName"),
-  budgetColumnType: $("budgetColumnType"),
-  budgetColumnSection: $("budgetColumnSection"),
-  budgetColumnSource: $("budgetColumnSource"),
-  budgetColumnWidth: $("budgetColumnWidth"),
-  addBudgetColumnButton: $("addBudgetColumnButton"),
-  budgetModelError: $("budgetModelError"),
-  budgetColumnsList: $("budgetColumnsList"),
-  clearBudgetModelButton: $("clearBudgetModelButton"),
-  saveBudgetModelButton: $("saveBudgetModelButton"),
-  budgetFillStatus: $("budgetFillStatus"),
-  importBudgetItemsButton: $("importBudgetItemsButton"),
-  printBudgetPreviewButton: $("printBudgetPreviewButton"),
-  budgetPreviewPanel: $("budgetPreviewPanel"),
-  budgetPreviewFormat: $("budgetPreviewFormat"),
-  budgetPreview: $("budgetPreview"),
-  budgetEntryForm: $("budgetEntryForm"),
-  budgetEntryError: $("budgetEntryError"),
-  budgetTableHead: $("budgetTableHead"),
-  budgetTableBody: $("budgetTableBody"),
   quotationsPage: $("quotationsPage"),
   newQuotationButton: $("newQuotationButton"),
   quotationCountLabel: $("quotationCountLabel"),
@@ -451,11 +310,6 @@ class IndexedDbStore {
           const store = db.createObjectStore("failure_history", { keyPath: "id", autoIncrement: true });
           store.createIndex("bid_id", "bid_id", { unique: false });
         }
-        if (!db.objectStoreNames.contains("budget_models")) db.createObjectStore("budget_models", { keyPath: "bid_id" });
-        if (!db.objectStoreNames.contains("budget_rows")) {
-          const store = db.createObjectStore("budget_rows", { keyPath: "id", autoIncrement: true });
-          store.createIndex("bid_id", "bid_id", { unique: false });
-        }
         if (!db.objectStoreNames.contains("quotations")) db.createObjectStore("quotations", { keyPath: "id", autoIncrement: true });
         if (!db.objectStoreNames.contains("quotation_items")) {
           const store = db.createObjectStore("quotation_items", { keyPath: "id", autoIncrement: true });
@@ -531,15 +385,13 @@ class IndexedDbStore {
 
   async clearAll() {
     await this.tx(
-      ["bids", "items", "documents", "failure_history", "budget_models", "budget_rows", "quotations", "quotation_items", "meta"],
+      ["bids", "items", "documents", "failure_history", "quotations", "quotation_items", "meta"],
       "readwrite",
-      ([bids, items, documents, failures, models, rows, quotations, quotationItems, meta]) => {
+      ([bids, items, documents, failures, quotations, quotationItems, meta]) => {
       bids.clear();
       items.clear();
       documents.clear();
       failures.clear();
-      models.clear();
-      rows.clear();
       quotations.clear();
       quotationItems.clear();
       meta.clear();
@@ -597,10 +449,6 @@ class IndexedDbStore {
     await this.authTx("users", "readwrite", (users) => users.delete(normalizeEmail(email)));
   }
 
-  async getPrivateSettings() {
-    return null;
-  }
-
   async saveBid(data, originalId) {
     const now = timestampNow();
     await this.tx(["bids", "items", "documents", "failure_history"], "readwrite", ([bids, items, documents, failures]) => {
@@ -645,13 +493,11 @@ class IndexedDbStore {
   }
 
   async deleteBid(bidId) {
-    await this.tx(["bids", "items", "documents", "failure_history", "budget_models", "budget_rows"], "readwrite", ([bids, items, documents, failures, models, rows]) => {
+    await this.tx(["bids", "items", "documents", "failure_history"], "readwrite", ([bids, items, documents, failures]) => {
       bids.delete(bidId);
       deleteChildrenByBid(items, bidId);
       deleteChildrenByBid(documents, bidId);
       deleteChildrenByBid(failures, bidId);
-      models.delete(bidId);
-      deleteChildrenByBid(rows, bidId);
     });
   }
 
@@ -701,38 +547,6 @@ class IndexedDbStore {
 
   async deleteFailure(failureId) {
     await this.tx("failure_history", "readwrite", (failures) => failures.delete(Number(failureId)));
-  }
-
-  async saveBudgetModel(bidId, columns) {
-    const record = {
-      bid_id: bidId,
-      columns,
-      updated_at: timestampNow(),
-    };
-    await this.tx("budget_models", "readwrite", (models) => models.put(record));
-  }
-
-  async deleteBudgetModel(bidId) {
-    await this.tx(["budget_models", "budget_rows"], "readwrite", ([models, rows]) => {
-      models.delete(bidId);
-      deleteChildrenByBid(rows, bidId);
-    });
-  }
-
-  async saveBudgetRow(bidId, values, rowId) {
-    await this.tx("budget_rows", "readwrite", (rows) => {
-      const record = {
-        bid_id: bidId,
-        values,
-        created_at: timestampNow(),
-      };
-      if (rowId) record.id = Number(rowId);
-      rows.put(record);
-    });
-  }
-
-  async deleteBudgetRow(rowId) {
-    await this.tx("budget_rows", "readwrite", (rows) => rows.delete(Number(rowId)));
   }
 
   async saveQuotation(quotationData, quotationId) {
@@ -852,14 +666,6 @@ class SupabaseStore {
     return data;
   }
 
-  async getPrivateSettings() {
-    const client = await this.open();
-    const { data, error } = await client.from("app_settings").select("value").eq("key", "budget_defaults").maybeSingle();
-    if (isMissingAppSettingsTableError(error)) return null;
-    assertSupabase(error);
-    return data?.value || null;
-  }
-
   async seedIfEmpty(seedData) {
     const client = await this.open();
     const { data, error } = await client.from("bids").select("id").limit(1);
@@ -872,8 +678,6 @@ class SupabaseStore {
     const client = await this.open();
     await deleteAllSupabaseRows(client, "quotation_items", "id");
     await deleteAllSupabaseRows(client, "quotations", "id");
-    await deleteAllSupabaseRows(client, "budget_rows", "id");
-    await deleteAllSupabaseRows(client, "budget_models", "bid_id");
     await deleteOptionalSupabaseRows(client, "failure_history", "id");
     await deleteAllSupabaseRows(client, "documents", "id");
     await deleteAllSupabaseRows(client, "items", "id");
@@ -1077,43 +881,6 @@ class SupabaseStore {
     assertSupabase(error);
   }
 
-  async saveBudgetModel(bidId, columns) {
-    const client = await this.open();
-    const { error } = await client.from("budget_models").upsert({
-      bid_id: bidId,
-      columns,
-      updated_at: timestampNow(),
-    });
-    assertSupabase(error);
-  }
-
-  async deleteBudgetModel(bidId) {
-    const client = await this.open();
-    const { error: rowsError } = await client.from("budget_rows").delete().eq("bid_id", bidId);
-    assertSupabase(rowsError);
-    const { error } = await client.from("budget_models").delete().eq("bid_id", bidId);
-    assertSupabase(error);
-  }
-
-  async saveBudgetRow(bidId, values, rowId) {
-    const client = await this.open();
-    const operation = rowId
-      ? client.from("budget_rows").update({ values }).eq("id", Number(rowId))
-      : client.from("budget_rows").insert({
-          bid_id: bidId,
-          values,
-          created_at: timestampNow(),
-        });
-    const { error } = await operation;
-    assertSupabase(error);
-  }
-
-  async deleteBudgetRow(rowId) {
-    const client = await this.open();
-    const { error } = await client.from("budget_rows").delete().eq("id", Number(rowId));
-    assertSupabase(error);
-  }
-
   async saveQuotation(quotationData, quotationId) {
     const client = await this.open();
     const now = timestampNow();
@@ -1189,9 +956,6 @@ function populateOptions() {
   refs.bidStatus.innerHTML = optionList(STATUS_OPTIONS);
   refs.bidType.innerHTML = optionList(BID_TYPE_OPTIONS);
   refs.salesUnit.innerHTML = optionList(SALES_UNIT_OPTIONS);
-  refs.budgetColumnType.innerHTML = BUDGET_COLUMN_TYPES.map((type) => `<option value="${type.value}">${type.label}</option>`).join("");
-  refs.budgetColumnSection.innerHTML = BUDGET_SECTION_OPTIONS.map((section) => `<option value="${section.value}">${section.label}</option>`).join("");
-  refs.budgetColumnSource.innerHTML = BUDGET_SOURCE_OPTIONS.map((source) => `<option value="${source.value}">${source.label}</option>`).join("");
 }
 
 function optionList(values) {
@@ -1249,23 +1013,6 @@ function bindEvents() {
   refs.clearFailureButton.addEventListener("click", clearFailureForm);
   refs.deleteFailureButton.addEventListener("click", deleteCurrentFailure);
   refs.bidStatus.addEventListener("change", handleBidStatusChange);
-  refs.addBudgetColumnButton.addEventListener("click", addBudgetColumn);
-  refs.addBudgetBlockButton.addEventListener("click", addBudgetBlock);
-  refs.toggleBudgetModelButton.addEventListener("click", toggleBudgetModel);
-  refs.toggleBudgetPreviewButton.addEventListener("click", toggleBudgetPreview);
-  refs.budgetSettingsForm.addEventListener("input", updateBudgetSettingsDraft);
-  refs.budgetSettingsForm.addEventListener("change", updateBudgetSettingsDraft);
-  refs.budgetHeaderLogoFile.addEventListener("change", () => handleBudgetImageUpload("headerLogo"));
-  refs.budgetWatermarkFile.addEventListener("change", () => handleBudgetImageUpload("watermark"));
-  document.querySelectorAll("[data-budget-shortcut-name]").forEach((button) => {
-    button.addEventListener("click", () =>
-      addBudgetShortcutColumn(button.dataset.budgetShortcutName, button.dataset.budgetShortcutType, button.dataset.budgetShortcutSource)
-    );
-  });
-  refs.saveBudgetModelButton.addEventListener("click", saveBudgetModel);
-  refs.clearBudgetModelButton.addEventListener("click", clearBudgetModel);
-  refs.printBudgetPreviewButton.addEventListener("click", () => window.print());
-  refs.budgetEntryForm.addEventListener("submit", saveBudgetEntry);
   refs.newQuotationButton.addEventListener("click", clearQuotationForm);
   refs.quotationForm.addEventListener("submit", saveQuotation);
   refs.clearQuotationButton.addEventListener("click", clearQuotationForm);
@@ -1300,7 +1047,6 @@ function bindEvents() {
   refs.clearUserButton.addEventListener("click", clearUserForm);
   refs.itemsTabButton.addEventListener("click", () => setPage("items"));
   refs.documentsTabButton.addEventListener("click", () => setPage("documents"));
-  refs.budgetTabButton.addEventListener("click", () => setPage("budget"));
   refs.failuresTabButton.addEventListener("click", () => setPage("failures"));
   for (const input of [refs.estimatedValue, refs.supplierCost, refs.maxValue, refs.minimumBid]) {
     input.addEventListener("blur", () => {
@@ -1331,8 +1077,6 @@ async function handleLogin(event) {
     }
     appState.authenticated = true;
     appState.currentUserEmail = user.email;
-    const privateSettings = await store.getPrivateSettings();
-    if (privateSettings) Object.assign(DEFAULT_BUDGET_SETTINGS, privateSettings);
     refs.currentUserName.textContent = user.name || user.email;
     refs.loginView.classList.add("hidden");
     refs.appView.classList.remove("hidden");
@@ -1404,8 +1148,6 @@ async function reloadData() {
   appState.items = (await store.getAll("items")).map(normalizeItemRecord).sort((a, b) => Number(a.item_number) - Number(b.item_number));
   appState.documents = (await store.getAll("documents")).sort((a, b) => String(a.document_type).localeCompare(String(b.document_type)));
   appState.failureHistory = (await store.getAll("failure_history")).map(normalizeFailureRecord).sort((a, b) => Number(a.id || 0) - Number(b.id || 0));
-  appState.budgetModels = await store.getAll("budget_models");
-  appState.budgetRows = (await store.getAll("budget_rows")).sort((a, b) => Number(a.id || 0) - Number(b.id || 0));
   appState.quotations = (await store.getAll("quotations"))
     .map(normalizeQuotationRecord)
     .sort((a, b) => Number(b.id || 0) - Number(a.id || 0));
@@ -1420,7 +1162,7 @@ async function reloadData() {
 }
 
 function setPage(page) {
-  const detailPages = ["items", "documents", "budget", "failures"];
+  const detailPages = ["items", "documents", "failures"];
   if (page === "users") page = "settings";
   if (detailPages.includes(page) && !appState.currentBidId) {
     page = "home";
@@ -1449,11 +1191,9 @@ function setPage(page) {
   refs.itemsPanel.classList.toggle("hidden", page !== "items");
   refs.documentsPanel.classList.toggle("hidden", page !== "documents");
   refs.failuresPanel.classList.toggle("hidden", page !== "failures");
-  refs.budgetPage.classList.toggle("hidden", page !== "budget");
   refs.appView.classList.toggle("users-active", showUsers || showSettings || showQuotations);
   refs.itemsTabButton.classList.toggle("active", page === "items");
   refs.documentsTabButton.classList.toggle("active", page === "documents");
-  refs.budgetTabButton.classList.toggle("active", page === "budget");
   refs.failuresTabButton.classList.toggle("active", page === "failures");
   refs.failuresTabButton.classList.toggle("hidden", !shouldShowFailureHistory());
   const primaryPage = showUsers ? "users" : showSettings ? "settings" : showQuotations ? "quotations" : showHome ? "home" : "bids";
@@ -1468,7 +1208,6 @@ function setPage(page) {
   updateSidebarVisibility();
   if (showUsers) renderUsers();
   if (showQuotations) renderQuotations();
-  if (page === "budget") renderBudgetPage();
 }
 
 function updateBidWorkspaceHeader() {
@@ -1593,12 +1332,6 @@ function loadBid(bidId) {
   renderBidAttachment(bid);
   refs.selectedBidLabel.textContent = bid.id;
   refs.bidFormError.textContent = "";
-  const budgetModel = currentBudgetModel();
-  appState.budgetDraftColumns = budgetModel?.columns ? cloneColumns(budgetModel.columns) : [];
-  appState.budgetDraftSettings = budgetModel?.settings ? cloneBudgetSettings(budgetModel.settings) : defaultBudgetSettingsForBid(bid);
-  appState.budgetDraftBlocks = budgetModel?.blocks?.length ? cloneBudgetBlocks(budgetModel.blocks) : cloneBudgetBlocks(DEFAULT_BUDGET_BLOCKS);
-  appState.budgetModelDirty = false;
-  appState.currentBudgetRowId = null;
   clearItemForm();
   clearDocumentForm();
   clearFailureForm();
@@ -1673,12 +1406,6 @@ function clearBidForm(options = {}) {
   refs.bidStatus.value = STATUS_OPTIONS[0];
   refs.selectedBidLabel.textContent = "Novo edital";
   refs.bidFormError.textContent = "";
-  appState.budgetDraftColumns = [];
-  appState.budgetDraftSettings = { ...DEFAULT_BUDGET_SETTINGS };
-  appState.budgetDraftBlocks = cloneBudgetBlocks(DEFAULT_BUDGET_BLOCKS);
-  appState.budgetModelDirty = false;
-  appState.budgetModelCollapsed = false;
-  appState.currentBudgetRowId = null;
   clearItemForm();
   clearDocumentForm();
   clearFailureForm();
@@ -1786,7 +1513,6 @@ function renderDetails() {
   renderItems(items);
   renderDocuments(documents);
   renderFailures(failures);
-  renderBudgetPage();
   const hasBid = Boolean(appState.currentBidId);
   refs.failuresTabButton.classList.toggle("hidden", !shouldShowFailureHistory());
   refs.deleteBidButton.disabled = !hasBid;
@@ -2247,753 +1973,6 @@ async function deleteCurrentFailure() {
   loadBid(appState.currentBidId);
   setPage("failures");
   showToast("Falha excluída.");
-}
-
-function addBudgetColumn() {
-  refs.budgetModelError.textContent = "";
-  if (!appState.currentBidId) {
-    refs.budgetModelError.textContent = "Selecione um edital antes de configurar o modelo.";
-    return;
-  }
-  const name = refs.budgetColumnName.value.trim();
-  const type = refs.budgetColumnType.value;
-  const section = refs.budgetColumnSection.value;
-  const source = refs.budgetColumnSource.value;
-  const width = parseBudgetColumnWidth(refs.budgetColumnWidth.value);
-  if (!name) {
-    refs.budgetModelError.textContent = "Informe o nome da coluna.";
-    return;
-  }
-  addBudgetColumnToDraft(name, type, section, source, width);
-  refs.budgetColumnName.value = "";
-  refs.budgetColumnWidth.value = "";
-  renderBudgetPage();
-}
-
-function addBudgetShortcutColumn(name, type, source = "manual") {
-  refs.budgetModelError.textContent = "";
-  if (!appState.currentBidId) {
-    refs.budgetModelError.textContent = "Selecione um edital antes de configurar o modelo.";
-    return;
-  }
-  addBudgetColumnToDraft(name, type, "table", source);
-  renderBudgetPage();
-}
-
-function addBudgetColumnToDraft(name, type, section = "table", source = "manual", width = "") {
-  appState.budgetDraftColumns.push({
-    id: `col_${Date.now()}_${Math.random().toString(16).slice(2)}`,
-    name,
-    type,
-    section,
-    source,
-    width,
-  });
-  markBudgetModelDirty();
-}
-
-function addBudgetBlock() {
-  refs.budgetModelError.textContent = "";
-  if (!appState.currentBidId) {
-    refs.budgetModelError.textContent = "Selecione um edital antes de adicionar blocos.";
-    return;
-  }
-  const block = collectBudgetBlockForm();
-  if (!block.content) {
-    refs.budgetModelError.textContent = "Informe o conteúdo do bloco.";
-    return;
-  }
-  appState.budgetDraftBlocks.push(block);
-  refs.budgetBlockForm.reset();
-  refs.budgetBlockAlign.value = "center";
-  refs.budgetBlockSize.value = "normal";
-  refs.budgetBlockBold.checked = true;
-  refs.budgetBlockUnderline.checked = true;
-  markBudgetModelDirty();
-  renderBudgetPage();
-}
-
-function toggleBudgetModel() {
-  appState.budgetModelCollapsed = !appState.budgetModelCollapsed;
-  renderBudgetPage();
-}
-
-function toggleBudgetPreview() {
-  appState.budgetPreviewVisible = !appState.budgetPreviewVisible;
-  renderBudgetPage();
-}
-
-async function saveBudgetModel() {
-  refs.budgetModelError.textContent = "";
-  if (!appState.currentBidId) {
-    refs.budgetModelError.textContent = "Selecione um edital antes de confirmar o modelo.";
-    return;
-  }
-  if (!appState.budgetDraftColumns.length) {
-    refs.budgetModelError.textContent = "Adicione ao menos uma coluna ao modelo.";
-    return;
-  }
-  appState.budgetDraftSettings = collectBudgetSettings();
-  await store.saveBudgetModel(appState.currentBidId, {
-    version: 2,
-    settings: cloneBudgetSettings(appState.budgetDraftSettings),
-    blocks: cloneBudgetBlocks(appState.budgetDraftBlocks),
-    columns: cloneColumns(appState.budgetDraftColumns),
-  });
-  appState.budgetModelCollapsed = false;
-  appState.budgetModelDirty = false;
-  appState.currentBudgetRowId = null;
-  await reloadData();
-  setPage("budget");
-  showToast("Modelo de orçamento confirmado.");
-}
-
-async function clearBudgetModel() {
-  refs.budgetModelError.textContent = "";
-  if (!appState.currentBidId) {
-    refs.budgetModelError.textContent = "Selecione um edital.";
-    return;
-  }
-  if (!confirm("Limpar o modelo e as propostas preenchidas para este edital?")) return;
-  await store.deleteBudgetModel(appState.currentBidId);
-  appState.budgetDraftColumns = [];
-  appState.budgetDraftSettings = defaultBudgetSettingsForBid(currentBid());
-  appState.budgetDraftBlocks = cloneBudgetBlocks(DEFAULT_BUDGET_BLOCKS);
-  appState.budgetModelDirty = false;
-  appState.budgetModelCollapsed = false;
-  appState.currentBudgetRowId = null;
-  await reloadData();
-  setPage("budget");
-  showToast("Modelo de orçamento limpo.");
-}
-
-async function saveBudgetEntry(event) {
-  event.preventDefault();
-  refs.budgetEntryError.textContent = "";
-  const model = currentBudgetModel();
-  if (!appState.currentBidId || !model?.columns?.length) {
-    refs.budgetEntryError.textContent = "Confirme o modelo antes de preencher a proposta.";
-    return;
-  }
-  try {
-    const values = {};
-    applyBudgetAutoTotal(model);
-    for (const column of budgetTableColumns(model)) {
-      const input = refs.budgetEntryForm.querySelector(`[data-budget-column="${column.id}"]`);
-      values[column.id] = normalizeBudgetValue(input?.value || "", column);
-    }
-    await store.saveBudgetRow(appState.currentBidId, values, appState.currentBudgetRowId);
-    appState.currentBudgetRowId = null;
-    refs.budgetEntryForm.reset();
-    await reloadData();
-    loadBid(appState.currentBidId);
-    setPage("budget");
-    showToast("Linha da proposta salva.");
-  } catch (error) {
-    refs.budgetEntryError.textContent = error.message;
-  }
-}
-
-async function deleteBudgetRow(rowId) {
-  if (!confirm("Excluir esta linha da proposta?")) return;
-  await store.deleteBudgetRow(rowId);
-  if (Number(appState.currentBudgetRowId) === Number(rowId)) {
-    appState.currentBudgetRowId = null;
-    refs.budgetEntryForm.reset();
-  }
-  await reloadData();
-  setPage("budget");
-  showToast("Linha excluída.");
-}
-
-function renderBudgetPage() {
-  const bid = appState.bids.find((row) => row.id === appState.currentBidId);
-  const model = currentBudgetModel();
-  const hasBid = Boolean(bid);
-  if (hasBid && !appState.budgetDraftSettings) appState.budgetDraftSettings = defaultBudgetSettingsForBid(bid);
-  refs.budgetBidLabel.textContent = hasBid ? bid.id : "Selecione um edital";
-  refs.budgetModelBody.classList.toggle("hidden", appState.budgetModelCollapsed);
-  refs.toggleBudgetModelButton.textContent = appState.budgetModelCollapsed ? "Expandir" : "Recolher";
-  refs.toggleBudgetModelButton.disabled = !hasBid;
-  refs.toggleBudgetPreviewButton.textContent = appState.budgetPreviewVisible ? "Ocultar prévia" : "Exibir prévia";
-  refs.toggleBudgetPreviewButton.disabled = !hasBid;
-  refs.budgetBuilderLayout.classList.toggle("preview-hidden", !appState.budgetPreviewVisible);
-  refs.budgetPreviewPanel.classList.toggle("hidden", !appState.budgetPreviewVisible);
-  updateSidebarVisibility();
-  refs.budgetSettingsForm.querySelectorAll("input, select, textarea").forEach((el) => {
-    el.disabled = !hasBid;
-  });
-  refs.budgetBlockForm.querySelectorAll("input, select, textarea, button").forEach((el) => {
-    el.disabled = !hasBid;
-  });
-  refs.budgetColumnForm.querySelectorAll("input, select, button").forEach((el) => {
-    el.disabled = !hasBid;
-  });
-  document.querySelectorAll("[data-budget-shortcut-name]").forEach((button) => {
-    button.disabled = !hasBid;
-  });
-  refs.saveBudgetModelButton.disabled = !hasBid;
-  refs.clearBudgetModelButton.disabled = !hasBid;
-  refs.importBudgetItemsButton.disabled = true;
-  refs.printBudgetPreviewButton.disabled = !hasBid || !appState.budgetPreviewVisible;
-  fillBudgetSettingsForm(hasBid ? appState.budgetDraftSettings : { ...DEFAULT_BUDGET_SETTINGS });
-  renderBudgetBlocks();
-  renderBudgetColumns();
-  renderBudgetEntryForm(model);
-  renderBudgetTable(model);
-  renderBudgetPreview(draftBudgetModel());
-  if (appState.budgetModelDirty && !refs.budgetModelError.textContent) {
-    refs.budgetModelError.textContent = "Modelo alterado. Clique em Confirmar Modelo para salvar as mudanças.";
-  }
-}
-
-function renderBudgetColumns() {
-  if (!appState.currentBidId) {
-    refs.budgetColumnsList.innerHTML = `<div class="empty-state">Selecione um edital para configurar o modelo.</div>`;
-    return;
-  }
-  if (!appState.budgetDraftColumns.length) {
-    refs.budgetColumnsList.innerHTML = `<div class="empty-state">Nenhuma coluna configurada para este modelo.</div>`;
-    return;
-  }
-  refs.budgetColumnsList.innerHTML = appState.budgetDraftColumns
-    .map(
-      (column, index) => `
-        <div class="column-row" draggable="true" data-budget-column-row="${column.id}">
-          <span>${index + 1}</span>
-          <div>
-            <strong>${escapeHtml(column.name)}</strong>
-            <small>${escapeHtml(budgetSectionLabel(column.section))} · ${escapeHtml(budgetSourceLabel(column.source))}</small>
-          </div>
-          <label class="inline-width-control">
-            Largura %
-            <input type="number" min="4" max="80" step="1" value="${escapeHtml(column.width || "")}" data-budget-column-width="${column.id}" placeholder="Auto" />
-          </label>
-          <button class="danger-action compact-action" type="button" data-remove-budget-column="${column.id}">Remover</button>
-        </div>
-      `
-    )
-    .join("");
-  refs.budgetColumnsList.querySelectorAll("[data-remove-budget-column]").forEach((button) => {
-    button.addEventListener("click", () => {
-      const columnId = button.getAttribute("data-remove-budget-column");
-      appState.budgetDraftColumns = appState.budgetDraftColumns.filter((column) => column.id !== columnId);
-      markBudgetModelDirty();
-      renderBudgetPage();
-    });
-  });
-  refs.budgetColumnsList.querySelectorAll("[data-budget-column-width]").forEach((input) => {
-    const updateColumnWidth = () => {
-      const column = appState.budgetDraftColumns.find((draftColumn) => draftColumn.id === input.dataset.budgetColumnWidth);
-      if (!column) return;
-      column.width = parseBudgetColumnWidth(input.value);
-      markBudgetModelDirty();
-      renderBudgetPreview(draftBudgetModel());
-    };
-    input.addEventListener("input", updateColumnWidth);
-    input.addEventListener("change", () => {
-      updateColumnWidth();
-      const column = appState.budgetDraftColumns.find((draftColumn) => draftColumn.id === input.dataset.budgetColumnWidth);
-      if (column) input.value = column.width || "";
-    });
-  });
-  refs.budgetColumnsList.querySelectorAll("[data-budget-column-row]").forEach((row) => {
-    row.addEventListener("dragstart", (event) => {
-      appState.draggedBudgetColumnId = row.getAttribute("data-budget-column-row");
-      row.classList.add("dragging");
-      event.dataTransfer.effectAllowed = "move";
-    });
-    row.addEventListener("dragend", () => {
-      appState.draggedBudgetColumnId = null;
-      row.classList.remove("dragging");
-    });
-    row.addEventListener("dragover", (event) => {
-      event.preventDefault();
-      event.dataTransfer.dropEffect = "move";
-    });
-    row.addEventListener("drop", (event) => {
-      event.preventDefault();
-      const targetId = row.getAttribute("data-budget-column-row");
-      reorderBudgetColumn(appState.draggedBudgetColumnId, targetId);
-    });
-  });
-}
-
-function reorderBudgetColumn(sourceId, targetId) {
-  if (!sourceId || !targetId || sourceId === targetId) return;
-  const sourceIndex = appState.budgetDraftColumns.findIndex((column) => column.id === sourceId);
-  const targetIndex = appState.budgetDraftColumns.findIndex((column) => column.id === targetId);
-  if (sourceIndex < 0 || targetIndex < 0) return;
-  const [moved] = appState.budgetDraftColumns.splice(sourceIndex, 1);
-  appState.budgetDraftColumns.splice(targetIndex, 0, moved);
-  markBudgetModelDirty();
-  renderBudgetPage();
-}
-
-function markBudgetModelDirty() {
-  appState.budgetModelDirty = true;
-}
-
-function renderBudgetBlocks() {
-  if (!appState.currentBidId) {
-    refs.budgetBlocksList.innerHTML = `<div class="empty-state">Selecione um edital para configurar os blocos.</div>`;
-    return;
-  }
-  if (!appState.budgetDraftBlocks.length) {
-    refs.budgetBlocksList.innerHTML = `<div class="empty-state">Nenhum bloco configurado.</div>`;
-    return;
-  }
-  refs.budgetBlocksList.innerHTML = appState.budgetDraftBlocks
-    .map(
-      (block, index) => `
-        <div class="column-row block-row" draggable="true" data-budget-block-row="${block.id}">
-          <span>${index + 1}</span>
-          <div>
-            <strong>${escapeHtml(block.label || "Bloco do documento")}</strong>
-            <small>${escapeHtml(budgetBlockSummary(block))}</small>
-          </div>
-          <small>${escapeHtml(block.content || "").slice(0, 80)}</small>
-          <button class="danger-action compact-action" type="button" data-remove-budget-block="${block.id}">Remover</button>
-        </div>
-      `
-    )
-    .join("");
-  refs.budgetBlocksList.querySelectorAll("[data-remove-budget-block]").forEach((button) => {
-    button.addEventListener("click", () => {
-      const blockId = button.getAttribute("data-remove-budget-block");
-      appState.budgetDraftBlocks = appState.budgetDraftBlocks.filter((block) => block.id !== blockId);
-      markBudgetModelDirty();
-      renderBudgetPage();
-    });
-  });
-  refs.budgetBlocksList.querySelectorAll("[data-budget-block-row]").forEach((row) => {
-    row.addEventListener("dragstart", (event) => {
-      appState.draggedBudgetBlockId = row.getAttribute("data-budget-block-row");
-      row.classList.add("dragging");
-      event.dataTransfer.effectAllowed = "move";
-    });
-    row.addEventListener("dragend", () => {
-      appState.draggedBudgetBlockId = null;
-      row.classList.remove("dragging");
-    });
-    row.addEventListener("dragover", (event) => {
-      event.preventDefault();
-      event.dataTransfer.dropEffect = "move";
-    });
-    row.addEventListener("drop", (event) => {
-      event.preventDefault();
-      reorderBudgetBlock(appState.draggedBudgetBlockId, row.getAttribute("data-budget-block-row"));
-    });
-  });
-}
-
-function reorderBudgetBlock(sourceId, targetId) {
-  if (!sourceId || !targetId || sourceId === targetId) return;
-  const sourceIndex = appState.budgetDraftBlocks.findIndex((block) => block.id === sourceId);
-  const targetIndex = appState.budgetDraftBlocks.findIndex((block) => block.id === targetId);
-  if (sourceIndex < 0 || targetIndex < 0) return;
-  const [moved] = appState.budgetDraftBlocks.splice(sourceIndex, 1);
-  appState.budgetDraftBlocks.splice(targetIndex, 0, moved);
-  markBudgetModelDirty();
-  renderBudgetPage();
-}
-
-function renderBudgetEntryForm(model) {
-  const tableColumns = budgetTableColumns(model);
-  if (!appState.currentBidId) {
-    refs.budgetFillStatus.textContent = "Selecione um edital.";
-    refs.budgetEntryForm.innerHTML = "";
-    return;
-  }
-  if (!tableColumns.length) {
-    refs.budgetFillStatus.textContent = "Configure e confirme o modelo antes de preencher.";
-    refs.budgetEntryForm.innerHTML = "";
-    return;
-  }
-  refs.budgetFillStatus.textContent = appState.currentBudgetRowId
-    ? "Editando linha selecionada"
-    : `${tableColumns.length} colunas da tabela configuradas`;
-  refs.budgetEntryForm.innerHTML = `
-    <div class="form-grid three">
-      ${tableColumns.map((column) => budgetInputMarkup(column)).join("")}
-    </div>
-    <div class="button-row end">
-      <button class="primary-action" type="submit">Salvar Linha</button>
-    </div>
-  `;
-  bindBudgetAutoTotal(model);
-  bindAutoGrowTextareas(refs.budgetEntryForm);
-  const selectedRow = currentBudgetRows().find((row) => Number(row.id) === Number(appState.currentBudgetRowId));
-  if (selectedRow) fillBudgetEntryForm(model, selectedRow);
-}
-
-function renderBudgetTable(model) {
-  const tableColumns = budgetTableColumns(model);
-  if (!tableColumns.length) {
-    refs.budgetTableHead.innerHTML = "";
-    refs.budgetTableBody.innerHTML = `<tr><td>Nenhum modelo confirmado.</td></tr>`;
-    return;
-  }
-  refs.budgetTableHead.innerHTML = `
-    <tr>
-      ${tableColumns.map((column) => `<th>${escapeHtml(column.name)}</th>`).join("")}
-      <th>Ações</th>
-    </tr>
-  `;
-  const rows = currentBudgetRows();
-  if (!rows.length) {
-    refs.budgetTableBody.innerHTML = `<tr><td colspan="${tableColumns.length + 1}">Nenhuma linha preenchida.</td></tr>`;
-    return;
-  }
-  refs.budgetTableBody.innerHTML = rows
-    .map(
-      (row) => {
-        const selected = Number(row.id) === Number(appState.currentBudgetRowId) ? " selected" : "";
-        return `
-        <tr class="selectable${selected}" data-budget-row-id="${row.id}">
-          ${tableColumns.map((column) => `<td>${formatBudgetCellHtml(row.values?.[column.id], column)}</td>`).join("")}
-          <td><button class="danger-action compact-action" type="button" data-delete-budget-row="${row.id}">Excluir</button></td>
-        </tr>
-      `;
-      }
-    )
-    .join("");
-  refs.budgetTableBody.querySelectorAll("[data-budget-row-id]").forEach((row) => {
-    row.addEventListener("click", (event) => {
-      if (event.target.closest("button, a")) return;
-      loadBudgetRowForEditing(row.dataset.budgetRowId);
-    });
-  });
-  refs.budgetTableBody.querySelectorAll("[data-delete-budget-row]").forEach((button) => {
-    button.addEventListener("click", () => deleteBudgetRow(button.dataset.deleteBudgetRow));
-  });
-}
-
-function loadBudgetRowForEditing(rowId) {
-  const model = currentBudgetModel();
-  const row = currentBudgetRows().find((budgetRow) => Number(budgetRow.id) === Number(rowId));
-  if (!model || !row) return;
-  appState.currentBudgetRowId = row.id;
-  fillBudgetEntryForm(model, row);
-  renderBudgetTable(model);
-  refs.budgetFillStatus.textContent = "Editando linha selecionada";
-}
-
-function fillBudgetEntryForm(model, row) {
-  for (const column of model.columns) {
-    const input = refs.budgetEntryForm.querySelector(`[data-budget-column="${column.id}"]`);
-    if (!input) continue;
-    input.value = budgetInputValue(row.values?.[column.id], column.type);
-    if (input.classList.contains("auto-grow-textarea")) resizeTextarea(input);
-  }
-  applyBudgetAutoTotal(model);
-}
-
-async function importBudgetItemsToProposal() {
-  refs.budgetEntryError.textContent = "";
-  const model = currentBudgetModel();
-  const tableColumns = budgetTableColumns(model);
-  const items = currentItems();
-  if (!appState.currentBidId || !tableColumns.length) {
-    refs.budgetEntryError.textContent = "Confirme o modelo antes de importar itens.";
-    return;
-  }
-  if (!items.length) {
-    refs.budgetEntryError.textContent = "Cadastre itens neste edital antes de importar.";
-    return;
-  }
-  const existingRows = currentBudgetRows();
-  if (existingRows.length && !confirm("Substituir as linhas preenchidas pelos itens cadastrados?")) return;
-  for (const row of existingRows) await store.deleteBudgetRow(row.id);
-  for (const item of items) {
-    const values = {};
-    for (const column of tableColumns) {
-      values[column.id] = normalizeBudgetValue(budgetValueFromItem(column, item), column);
-    }
-    await store.saveBudgetRow(appState.currentBidId, values);
-  }
-  await reloadData();
-  setPage("budget");
-  showToast("Itens importados para a proposta.");
-}
-
-function updateBudgetSettingsDraft() {
-  if (!appState.currentBidId) return;
-  appState.budgetDraftSettings = collectBudgetSettings();
-  markBudgetModelDirty();
-  renderBudgetPreview(draftBudgetModel());
-}
-
-async function handleBudgetImageUpload(kind) {
-  if (!appState.currentBidId) return;
-  const fileInput = kind === "headerLogo" ? refs.budgetHeaderLogoFile : refs.budgetWatermarkFile;
-  const statusRef = kind === "headerLogo" ? refs.budgetHeaderLogoStatus : refs.budgetWatermarkStatus;
-  const file = fileInput.files?.[0];
-  if (!file) return;
-  if (!file.type.startsWith("image/")) {
-    statusRef.textContent = "Selecione um arquivo de imagem.";
-    fileInput.value = "";
-    return;
-  }
-  try {
-    const dataUrl = await readFileAsDataUrl(file);
-    appState.budgetDraftSettings = collectBudgetSettings();
-    appState.budgetDraftSettings[`${kind}Image`] = dataUrl;
-    appState.budgetDraftSettings[`${kind}Name`] = file.name;
-    if (kind === "headerLogo") appState.budgetDraftSettings.headerLogoEnabled = true;
-    if (kind === "watermark") appState.budgetDraftSettings.watermarkEnabled = true;
-    markBudgetModelDirty();
-    fillBudgetSettingsForm(appState.budgetDraftSettings);
-    renderBudgetPreview(draftBudgetModel());
-  } catch (_error) {
-    statusRef.textContent = "Não foi possível carregar a imagem.";
-  }
-}
-
-function readFileAsDataUrl(file) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result);
-    reader.onerror = () => reject(reader.error);
-    reader.readAsDataURL(file);
-  });
-}
-
-function collectBudgetBlockForm() {
-  return normalizeBudgetBlock({
-    id: `block_${Date.now()}_${Math.random().toString(16).slice(2)}`,
-    label: refs.budgetBlockLabel.value.trim(),
-    content: refs.budgetBlockContent.value.trim(),
-    align: refs.budgetBlockAlign.value,
-    bold: refs.budgetBlockBold.checked,
-    underline: refs.budgetBlockUnderline.checked,
-    size: refs.budgetBlockSize.value,
-  });
-}
-
-function collectBudgetSettings() {
-  const existingSettings = appState.budgetDraftSettings || {};
-  return {
-    orientation: refs.budgetOrientation.value,
-    title: refs.budgetTitle.value.trim(),
-    recipient: refs.budgetRecipient.value.trim(),
-    process: refs.budgetProcess.value.trim(),
-    object: refs.budgetObject.value.trim(),
-    proponent: refs.budgetProponent.value.trim(),
-    representative: refs.budgetRepresentative.value.trim(),
-    payment: refs.budgetPayment.value.trim(),
-    terms: refs.budgetTerms.value.trim(),
-    validity: refs.budgetValidity.value.trim(),
-    warranty: refs.budgetWarranty.value.trim(),
-    delivery: refs.budgetDelivery.value.trim(),
-    cityDate: refs.budgetCityDate.value.trim(),
-    signer: refs.budgetSigner.value.trim(),
-    headerLogoEnabled: refs.budgetHeaderLogoEnabled.checked,
-    headerLogoImage: existingSettings.headerLogoImage || "",
-    headerLogoName: existingSettings.headerLogoName || "",
-    watermarkEnabled: refs.budgetWatermarkEnabled.checked,
-    watermarkImage: existingSettings.watermarkImage || "",
-    watermarkName: existingSettings.watermarkName || "",
-    watermarkOpacity: parseBudgetWatermarkOpacity(refs.budgetWatermarkOpacity.value),
-  };
-}
-
-function fillBudgetSettingsForm(settings) {
-  const nextSettings = { ...DEFAULT_BUDGET_SETTINGS, ...(settings || {}) };
-  refs.budgetOrientation.value = nextSettings.orientation === "landscape" ? "landscape" : "portrait";
-  refs.budgetTitle.value = nextSettings.title || "";
-  refs.budgetRecipient.value = nextSettings.recipient || "";
-  refs.budgetProcess.value = nextSettings.process || "";
-  refs.budgetObject.value = nextSettings.object || "";
-  refs.budgetProponent.value = nextSettings.proponent || "";
-  refs.budgetRepresentative.value = nextSettings.representative || "";
-  refs.budgetPayment.value = nextSettings.payment || "";
-  refs.budgetTerms.value = nextSettings.terms || "";
-  refs.budgetValidity.value = nextSettings.validity || "";
-  refs.budgetWarranty.value = nextSettings.warranty || "";
-  refs.budgetDelivery.value = nextSettings.delivery || "";
-  refs.budgetCityDate.value = nextSettings.cityDate || "";
-  refs.budgetSigner.value = nextSettings.signer || "";
-  refs.budgetHeaderLogoEnabled.checked = Boolean(nextSettings.headerLogoEnabled);
-  refs.budgetHeaderLogoStatus.textContent = nextSettings.headerLogoName || "Nenhum arquivo selecionado";
-  refs.budgetWatermarkEnabled.checked = Boolean(nextSettings.watermarkEnabled);
-  refs.budgetWatermarkStatus.textContent = nextSettings.watermarkName || "Nenhum arquivo selecionado";
-  refs.budgetWatermarkOpacity.value = parseBudgetWatermarkOpacity(nextSettings.watermarkOpacity);
-  bindAutoGrowTextareas(refs.budgetSettingsForm);
-  bindAutoGrowTextareas(refs.budgetBlockForm);
-}
-
-function renderBudgetPreview(model) {
-  const bid = currentBid();
-  if (!bid) {
-    refs.budgetPreview.classList.remove("landscape", "portrait");
-    refs.budgetBuilderLayout.classList.remove("preview-landscape");
-    refs.budgetPreviewFormat.textContent = "Retrato";
-    refs.budgetPreview.innerHTML = `<div class="empty-state">Selecione um edital para visualizar a proposta.</div>`;
-    return;
-  }
-  const settings = { ...defaultBudgetSettingsForBid(bid), ...(model?.settings || {}) };
-  const blocks = model?.blocks?.length ? cloneBudgetBlocks(model.blocks) : [];
-  const tableColumns = budgetTableColumns(model);
-  const rows = currentBudgetRows();
-  const total = calculateBudgetRowsTotal(model, rows);
-  const isLandscape = settings.orientation === "landscape";
-  refs.budgetPreview.classList.toggle("landscape", isLandscape);
-  refs.budgetPreview.classList.toggle("portrait", !isLandscape);
-  refs.budgetBuilderLayout.classList.toggle("preview-landscape", isLandscape && appState.budgetPreviewVisible);
-  refs.budgetPreviewFormat.textContent = isLandscape ? "Paisagem" : "Retrato";
-  refs.budgetPreview.innerHTML = `
-    <article class="proposal-paper ${isLandscape ? "landscape" : "portrait"}">
-      ${budgetWatermarkMarkup(settings)}
-      ${budgetHeaderLogoMarkup(settings)}
-      ${
-        blocks.length
-          ? renderBudgetBlocksPreview(blocks)
-          : `<header class="proposal-header">
-              <p>${escapeHtml(settings.recipient || bid.buyer_agency || "")}</p>
-              <h3>${escapeHtml(settings.title || "PROPOSTA COMERCIAL")}</h3>
-              <span>${escapeHtml(settings.process || bid.id || "")}</span>
-            </header>`
-      }
-      ${settings.object ? `<section><h4>Objeto</h4><p>${escapeHtml(settings.object)}</p></section>` : ""}
-      <section class="proposal-two-columns">
-        <div>
-          <h4>Dados da proponente</h4>
-          <p>${formatMultiline(settings.proponent)}</p>
-        </div>
-        <div>
-          <h4>Representante legal</h4>
-          <p>${formatMultiline(settings.representative)}</p>
-        </div>
-      </section>
-      <section>
-        <h4>Itens da proposta</h4>
-        ${proposalPreviewTable(tableColumns, rows)}
-        <p class="proposal-total">Valor global: ${money(total)}</p>
-      </section>
-      <section class="proposal-details">
-        <p><strong>Validade:</strong> ${escapeHtml(settings.validity || "")}</p>
-        <p><strong>Garantia:</strong> ${escapeHtml(settings.warranty || "")}</p>
-        <p><strong>Entrega:</strong> ${escapeHtml(settings.delivery || bid.delivery_place || "")}</p>
-        ${settings.payment ? `<p><strong>Dados bancários:</strong> ${escapeHtml(settings.payment)}</p>` : ""}
-      </section>
-      ${settings.terms ? `<section><h4>Declarações</h4><p>${formatMultiline(settings.terms)}</p></section>` : ""}
-      <footer class="proposal-signature">
-        <p>${escapeHtml(settings.cityDate || "")}</p>
-        <div></div>
-        <strong>${escapeHtml(settings.signer || "")}</strong>
-      </footer>
-    </article>
-  `;
-}
-
-function budgetHeaderLogoMarkup(settings) {
-  if (!settings.headerLogoEnabled || !settings.headerLogoImage) return "";
-  return `
-    <div class="proposal-header-logo">
-      <img src="${escapeHtml(settings.headerLogoImage)}" alt="Logo da empresa" />
-    </div>
-  `;
-}
-
-function budgetWatermarkMarkup(settings) {
-  if (!settings.watermarkEnabled || !settings.watermarkImage) return "";
-  const opacity = parseBudgetWatermarkOpacity(settings.watermarkOpacity) / 100;
-  return `
-    <img class="proposal-watermark" src="${escapeHtml(settings.watermarkImage)}" alt="" style="opacity: ${opacity};" />
-  `;
-}
-
-function renderBudgetBlocksPreview(blocks) {
-  return blocks
-    .map(
-      (block) => `
-        <section class="proposal-free-block align-${escapeHtml(block.align)} size-${escapeHtml(block.size)}${block.bold ? " is-bold" : ""}${
-        block.underline ? " is-underlined" : ""
-      }">
-          <p>${formatMultiline(block.content)}</p>
-        </section>
-      `
-    )
-    .join("");
-}
-
-function proposalPreviewTable(columns, rows) {
-  if (!columns.length) return `<div class="empty-state">Configure as colunas da tabela.</div>`;
-  const previewRows = rows.length ? rows : [{ values: previewValuesForColumns(columns) }];
-  return `
-    <div class="proposal-table-wrap">
-      <table class="proposal-table">
-        ${budgetColumnGroupMarkup(columns)}
-        <thead>
-          <tr>${columns.map((column) => `<th>${escapeHtml(column.name)}</th>`).join("")}</tr>
-        </thead>
-        <tbody>
-          ${previewRows
-            .map((row) => `<tr>${columns.map((column) => `<td>${formatBudgetCellHtml(row.values?.[column.id], column)}</td>`).join("")}</tr>`)
-            .join("")}
-        </tbody>
-      </table>
-    </div>
-  `;
-}
-
-function budgetColumnGroupMarkup(columns) {
-  const hasWidths = columns.some((column) => Number(column.width || 0) > 0);
-  if (!hasWidths) return "";
-  return `<colgroup>${columns
-    .map((column) => {
-      const width = Number(column.width || 0);
-      return width > 0 ? `<col style="width: ${width}%;" />` : "<col />";
-    })
-    .join("")}</colgroup>`;
-}
-
-function previewValuesForColumns(columns) {
-  return columns.reduce((acc, column) => {
-    acc[column.id] = column.type === "currency" ? 0 : column.type === "number" ? 1 : "A preencher";
-    return acc;
-  }, {});
-}
-
-function calculateBudgetRowsTotal(model, rows) {
-  const totalColumn = findBudgetColumnByName(model, "Valor Total") || findBudgetColumnByName(model, "Valor Total (R$)");
-  if (!totalColumn) return 0;
-  return rows.reduce((sum, row) => sum + Number(row.values?.[totalColumn.id] || 0), 0);
-}
-
-function budgetValueFromItem(column, item) {
-  const unitValue = Number(item.max_acceptable_value || 0);
-  const quantity = Number(item.required_quantity || 0);
-  const technicalText = item.technical_registration_text || item.description || "";
-  switch (column.source) {
-    case "item_number":
-      return item.item_number;
-    case "item_name":
-      return item.name || "";
-    case "item_description":
-      return technicalText;
-    case "unit":
-      return item.sales_unit || "";
-    case "quantity":
-      return quantity;
-    case "estimated_value":
-      return item.estimated_value || 0;
-    case "max_value":
-      return unitValue;
-    case "minimum_bid":
-      return item.minimum_bid || 0;
-    case "brand_model":
-      return item.brand_model || "";
-    case "supplier_cost":
-      return item.supplier_cost || 0;
-    case "supplier_link":
-      return item.supplier_link || "";
-    case "calculated_total":
-      return unitValue * quantity;
-    default:
-      return "";
-  }
 }
 
 function currentQuotation() {
@@ -3493,27 +2472,6 @@ function currentBid() {
   return appState.bids.find((row) => row.id === appState.currentBidId) || null;
 }
 
-function currentBudgetModel() {
-  if (!appState.currentBidId) return null;
-  const model = appState.budgetModels.find((row) => row.bid_id === appState.currentBidId) || null;
-  return model ? normalizeBudgetModel(model) : null;
-}
-
-function currentBudgetRows() {
-  if (!appState.currentBidId) return [];
-  return appState.budgetRows.filter((row) => row.bid_id === appState.currentBidId);
-}
-
-function draftBudgetModel() {
-  if (!appState.currentBidId) return null;
-  return {
-    bid_id: appState.currentBidId,
-    settings: cloneBudgetSettings(appState.budgetDraftSettings),
-    blocks: cloneBudgetBlocks(appState.budgetDraftBlocks),
-    columns: cloneColumns(appState.budgetDraftColumns),
-  };
-}
-
 function calculateBidSummary(bidId) {
   return appState.items
     .filter((item) => item.bid_id === bidId)
@@ -3570,28 +2528,6 @@ function parseIntOptional(value, fieldName) {
   return number;
 }
 
-function findBudgetColumnByName(model, expectedName) {
-  const normalized = normalizeColumnName(expectedName);
-  return model?.columns?.find((column) => normalizeColumnName(column.name) === normalized) || null;
-}
-
-function normalizeColumnName(name) {
-  return String(name || "")
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .trim()
-    .toLowerCase();
-}
-
-function parseFlexibleNumber(value) {
-  let raw = String(value || "").trim();
-  if (!raw) return NaN;
-  raw = raw.replace(/[^\d,.-]/g, "");
-  if (raw.includes(",")) raw = raw.replace(/\./g, "").replace(",", ".");
-  const number = Number(raw);
-  return Number.isFinite(number) ? number : NaN;
-}
-
 function bindAutoGrowTextareas(scope) {
   scope.querySelectorAll(".auto-grow-textarea").forEach((textarea) => {
     textarea.addEventListener("input", () => resizeTextarea(textarea));
@@ -3602,109 +2538,6 @@ function bindAutoGrowTextareas(scope) {
 function resizeTextarea(textarea) {
   textarea.style.height = "auto";
   textarea.style.height = `${textarea.scrollHeight}px`;
-}
-
-function bindBudgetAutoTotal(model) {
-  const unitColumn = findBudgetColumnByName(model, "Valor Final") || findBudgetColumnByName(model, "Valor Unitário");
-  const quantityColumn = findBudgetColumnByName(model, "Quantidade");
-  const totalColumn = findBudgetColumnByName(model, "Valor total");
-  if (!unitColumn || !quantityColumn || !totalColumn) return;
-  const unitInput = refs.budgetEntryForm.querySelector(`[data-budget-column="${unitColumn.id}"]`);
-  const quantityInput = refs.budgetEntryForm.querySelector(`[data-budget-column="${quantityColumn.id}"]`);
-  const totalInput = refs.budgetEntryForm.querySelector(`[data-budget-column="${totalColumn.id}"]`);
-  if (!unitInput || !quantityInput || !totalInput) return;
-  totalInput.readOnly = true;
-  totalInput.classList.add("calculated-input");
-  const update = () => applyBudgetAutoTotal(model);
-  unitInput.addEventListener("input", update);
-  quantityInput.addEventListener("input", update);
-  update();
-}
-
-function applyBudgetAutoTotal(model) {
-  const unitColumn = findBudgetColumnByName(model, "Valor Final") || findBudgetColumnByName(model, "Valor Unitário");
-  const quantityColumn = findBudgetColumnByName(model, "Quantidade");
-  const totalColumn = findBudgetColumnByName(model, "Valor total");
-  if (!unitColumn || !quantityColumn || !totalColumn) return;
-  const unitInput = refs.budgetEntryForm.querySelector(`[data-budget-column="${unitColumn.id}"]`);
-  const quantityInput = refs.budgetEntryForm.querySelector(`[data-budget-column="${quantityColumn.id}"]`);
-  const totalInput = refs.budgetEntryForm.querySelector(`[data-budget-column="${totalColumn.id}"]`);
-  if (!unitInput || !quantityInput || !totalInput) return;
-  if (!unitInput.value.trim() || !quantityInput.value.trim()) {
-    totalInput.value = "";
-    return;
-  }
-  let unitValue = 0;
-  try {
-    unitValue = parseDecimal(unitInput.value, "Valor Final", false);
-  } catch (_error) {
-    totalInput.value = "";
-    return;
-  }
-  const quantityValue = parseFlexibleNumber(quantityInput.value);
-  if (!Number.isFinite(quantityValue)) {
-    totalInput.value = "";
-    return;
-  }
-  totalInput.value = money(unitValue * quantityValue);
-}
-
-function normalizeBudgetValue(value, column) {
-  const raw = String(value || "").trim();
-  if (!raw) return "";
-  if (column.type === "number") {
-    const number = Number(raw.replace(",", "."));
-    if (Number.isNaN(number)) throw new Error(`Informe um valor numérico válido para ${column.name}.`);
-    return number;
-  }
-  if (column.type === "currency") {
-    return parseDecimal(raw, column.name, false);
-  }
-  return raw;
-}
-
-function budgetInputMarkup(column) {
-  if (normalizeColumnName(column.name) === "descricao") {
-    return `
-      <label class="full">
-        ${escapeHtml(column.name)}
-        <textarea class="auto-grow-textarea" data-budget-column="${column.id}" rows="2"></textarea>
-      </label>
-    `;
-  }
-  const inputType = column.type === "number" ? "number" : "text";
-  const inputMode = column.type === "currency" ? "decimal" : column.type === "number" ? "decimal" : "text";
-  const placeholder = column.type === "currency" ? "R$ 0,00" : "";
-  return `
-    <label>
-      ${escapeHtml(column.name)}
-      <input data-budget-column="${column.id}" type="${inputType}" inputmode="${inputMode}" placeholder="${placeholder}" />
-    </label>
-  `;
-}
-
-function formatBudgetValue(value, type) {
-  if (value === "" || value === null || value === undefined) return "";
-  if (type === "currency") return money(value);
-  if (type === "number") return Number(value).toLocaleString("pt-BR");
-  return String(value);
-}
-
-function budgetInputValue(value, type) {
-  if (value === "" || value === null || value === undefined) return "";
-  if (type === "currency") return money(value);
-  return String(value);
-}
-
-function formatBudgetCellHtml(value, column) {
-  const formattedValue = formatBudgetValue(value, column.type);
-  if (normalizeColumnName(column.name) === "fornecedor") {
-    const url = normalizeUrlValue(formattedValue);
-    if (url) {
-      return `<a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(formattedValue)}</a>`;
-    }
-  }
-  return escapeHtml(formattedValue);
 }
 
 function normalizeUrlValue(value) {
@@ -3719,132 +2552,6 @@ function normalizeUrlValue(value) {
   } catch {
     return "";
   }
-}
-
-function budgetTypeLabel(type) {
-  return BUDGET_COLUMN_TYPES.find((option) => option.value === type)?.label || type;
-}
-
-function budgetSectionLabel(section) {
-  return BUDGET_SECTION_OPTIONS.find((option) => option.value === section)?.label || "Tabela de itens";
-}
-
-function budgetSourceLabel(source) {
-  return BUDGET_SOURCE_OPTIONS.find((option) => option.value === source)?.label || "Preenchimento manual";
-}
-
-function budgetTableColumns(model) {
-  return (model?.columns || []).filter((column) => (column.section || "table") === "table");
-}
-
-function normalizeBudgetModel(model) {
-  const payload = model?.columns;
-  if (Array.isArray(payload)) {
-    return {
-      ...model,
-      settings: defaultBudgetSettingsForBid(currentBid()),
-      blocks: cloneBudgetBlocks(DEFAULT_BUDGET_BLOCKS),
-      columns: payload.map(normalizeBudgetColumn),
-    };
-  }
-  const settings = {
-    ...defaultBudgetSettingsForBid(currentBid()),
-    ...(payload?.settings || {}),
-  };
-  const blocks = Array.isArray(payload?.blocks) ? payload.blocks : DEFAULT_BUDGET_BLOCKS;
-  const columns = Array.isArray(payload?.columns) ? payload.columns : [];
-  return {
-    ...model,
-    settings,
-    blocks: blocks.map(normalizeBudgetBlock),
-    columns: columns.map(normalizeBudgetColumn),
-  };
-}
-
-function normalizeBudgetColumn(column) {
-  return {
-    id: column.id || `col_${Date.now()}_${Math.random().toString(16).slice(2)}`,
-    name: column.name || "Campo",
-    type: BUDGET_COLUMN_TYPES.some((type) => type.value === column.type) ? column.type : "text",
-    section: BUDGET_SECTION_OPTIONS.some((section) => section.value === column.section) ? column.section : "table",
-    source: BUDGET_SOURCE_OPTIONS.some((source) => source.value === column.source) ? column.source : "manual",
-    width: parseBudgetColumnWidth(column.width),
-  };
-}
-
-function createBudgetColumn(name, type, section = "table", source = "manual") {
-  return normalizeBudgetColumn({
-    id: `col_${Date.now()}_${Math.random().toString(16).slice(2)}`,
-    name,
-    type,
-    section,
-    source,
-    width: "",
-  });
-}
-
-function cloneColumns(columns) {
-  return (columns || []).map((column) => ({ ...normalizeBudgetColumn(column) }));
-}
-
-function cloneBudgetSettings(settings) {
-  const nextSettings = { ...DEFAULT_BUDGET_SETTINGS, ...(settings || {}) };
-  nextSettings.orientation = nextSettings.orientation === "landscape" ? "landscape" : "portrait";
-  nextSettings.headerLogoEnabled = Boolean(nextSettings.headerLogoEnabled);
-  nextSettings.watermarkEnabled = Boolean(nextSettings.watermarkEnabled);
-  nextSettings.watermarkOpacity = parseBudgetWatermarkOpacity(nextSettings.watermarkOpacity);
-  return nextSettings;
-}
-
-function normalizeBudgetBlock(block) {
-  return {
-    id: block.id || `block_${Date.now()}_${Math.random().toString(16).slice(2)}`,
-    label: block.label || "Bloco do documento",
-    content: block.content || "",
-    align: BUDGET_ALIGNMENT_OPTIONS.includes(block.align) ? block.align : "left",
-    bold: Boolean(block.bold),
-    underline: Boolean(block.underline),
-    size: BUDGET_BLOCK_SIZE_OPTIONS.includes(block.size) ? block.size : "normal",
-  };
-}
-
-function cloneBudgetBlocks(blocks) {
-  return (blocks || []).map((block) => ({ ...normalizeBudgetBlock(block) }));
-}
-
-function budgetBlockSummary(block) {
-  const styles = [
-    block.align === "center" ? "Centralizado" : block.align === "right" ? "Direita" : "Esquerda",
-    block.bold ? "negrito" : "",
-    block.underline ? "sublinhado" : "",
-    block.size === "large" ? "destaque" : block.size === "small" ? "compacto" : "",
-  ].filter(Boolean);
-  return styles.join(" · ");
-}
-
-function parseBudgetColumnWidth(value) {
-  const number = Number(value || 0);
-  if (!Number.isFinite(number) || number <= 0) return "";
-  return Math.min(80, Math.max(4, Math.round(number)));
-}
-
-function parseBudgetWatermarkOpacity(value) {
-  const number = Number(value || DEFAULT_BUDGET_SETTINGS.watermarkOpacity);
-  if (!Number.isFinite(number)) return DEFAULT_BUDGET_SETTINGS.watermarkOpacity;
-  return Math.min(40, Math.max(4, Math.round(number)));
-}
-
-function defaultBudgetSettingsForBid(bid) {
-  return {
-    ...DEFAULT_BUDGET_SETTINGS,
-    recipient: bid?.buyer_agency || DEFAULT_BUDGET_SETTINGS.recipient,
-    process: bid?.id || DEFAULT_BUDGET_SETTINGS.process,
-    delivery: bid?.delivery_place || DEFAULT_BUDGET_SETTINGS.delivery,
-  };
-}
-
-function formatMultiline(value) {
-  return escapeHtml(value || "").replace(/\n/g, "<br>");
 }
 
 function money(value) {
@@ -4027,11 +2734,6 @@ function isMissingSupabaseColumnError(error) {
 function isMissingFailureHistoryTableError(error) {
   const message = String(error?.message || error?.details || "");
   return Boolean(error) && /failure_history|relation/i.test(message) && /does not exist|schema cache|not find|could not find/i.test(message);
-}
-
-function isMissingAppSettingsTableError(error) {
-  const message = String(error?.message || error?.details || "");
-  return Boolean(error) && /app_settings|relation/i.test(message) && /does not exist|schema cache|not find|could not find/i.test(message);
 }
 
 function normalizeDocumentRecord(record) {
