@@ -184,8 +184,10 @@ const refs = {
   quotationsTableBody: $("quotationsTableBody"),
   quotationForm: $("quotationForm"),
   selectedQuotationLabel: $("selectedQuotationLabel"),
+  quotationId: $("quotationId"),
   quotationOpeningDate: $("quotationOpeningDate"),
   quotationEdital: $("quotationEdital"),
+  quotationAgency: $("quotationAgency"),
   quotationCity: $("quotationCity"),
   quotationCep: $("quotationCep"),
   quotationFormError: $("quotationFormError"),
@@ -2056,8 +2058,10 @@ function loadQuotation(quotationId, options = {}) {
   closeQuotationItemModal();
   appState.currentQuotationId = quotation.id;
   appState.currentQuotationItemId = null;
+  refs.quotationId.value = String(quotation.id);
   refs.quotationOpeningDate.value = toDateInputValue(quotation.opening_date);
   refs.quotationEdital.value = quotation.edital;
+  refs.quotationAgency.value = quotation.agency;
   refs.quotationCity.value = quotation.city;
   refs.quotationCep.value = formatCep(quotation.cep);
   refs.selectedQuotationLabel.textContent = `Edital ${quotation.edital}`;
@@ -2074,6 +2078,7 @@ function clearQuotationForm() {
   appState.currentQuotationId = null;
   appState.currentQuotationItemId = null;
   refs.quotationForm.reset();
+  refs.quotationId.value = "";
   refs.selectedQuotationLabel.textContent = "Novo orçamento";
   refs.quotationFormError.textContent = "";
   refs.deleteQuotationButton.classList.add("hidden");
@@ -2102,6 +2107,7 @@ async function saveQuotation(event) {
       {
         opening_date: refs.quotationOpeningDate.value || null,
         edital,
+        agency: refs.quotationAgency.value.trim(),
         city: refs.quotationCity.value.trim(),
         cep: formatCep(cepDigits),
       },
@@ -2820,6 +2826,7 @@ function normalizeQuotationRecord(record) {
     id: record.id ? Number(record.id) : undefined,
     opening_date: record.opening_date || "",
     edital: String(record.edital || "").trim(),
+    agency: record.agency || "",
     city: record.city || "",
     cep: formatCep(record.cep),
     created_at: record.created_at || timestampNow(),
