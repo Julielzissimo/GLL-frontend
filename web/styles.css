@@ -2137,9 +2137,18 @@ tr.item-won td {
 }
 
 .quotation-values-grid label .quotation-final-margin-indicator {
+  position: absolute;
+  bottom: 0;
+  left: 0;
   color: var(--success);
   font-size: 12px;
   font-weight: 800;
+  line-height: 16px;
+}
+
+.quotation-final-bid-field {
+  position: relative;
+  padding-bottom: 18px;
 }
 
 .quotation-margin-calculator {
