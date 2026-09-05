@@ -44,8 +44,8 @@ const appState = {
   currentFailureId: null,
   currentQuotationId: null,
   currentQuotationItemId: null,
+  quotationItemFormBaseline: "",
   itemMarginCalculationSource: "margin",
-  quotationMarginCalculationSource: "margin",
   supplierLinksDraft: [],
   sidebarCollapsed: false,
   appNavigationCollapsed: false,
@@ -184,8 +184,10 @@ const refs = {
   quotationsTableBody: $("quotationsTableBody"),
   quotationForm: $("quotationForm"),
   selectedQuotationLabel: $("selectedQuotationLabel"),
+  quotationId: $("quotationId"),
   quotationOpeningDate: $("quotationOpeningDate"),
   quotationEdital: $("quotationEdital"),
+  quotationAgency: $("quotationAgency"),
   quotationCity: $("quotationCity"),
   quotationCep: $("quotationCep"),
   quotationFormError: $("quotationFormError"),
@@ -194,6 +196,13 @@ const refs = {
   quotationItemsSection: $("quotationItemsSection"),
   quotationItemsStatus: $("quotationItemsStatus"),
   quotationGrandTotal: $("quotationGrandTotal"),
+  openQuotationItemModalButton: $("openQuotationItemModalButton"),
+  quotationItemModal: $("quotationItemModal"),
+  quotationItemModalTitle: $("quotationItemModalTitle"),
+  closeQuotationItemModalButton: $("closeQuotationItemModalButton"),
+  quotationItemDiscardModal: $("quotationItemDiscardModal"),
+  continueEditingQuotationItemButton: $("continueEditingQuotationItemButton"),
+  discardQuotationItemChangesButton: $("discardQuotationItemChangesButton"),
   quotationItemForm: $("quotationItemForm"),
   quotationItemNumber: $("quotationItemNumber"),
   quotationItemDescription: $("quotationItemDescription"),
@@ -205,6 +214,7 @@ const refs = {
   quotationItemProfitMargin: $("quotationItemProfitMargin"),
   quotationItemValueWithMargin: $("quotationItemValueWithMargin"),
   quotationItemFinalBid: $("quotationItemFinalBid"),
+  quotationFinalBidMarginIndicator: $("quotationFinalBidMarginIndicator"),
   quotationItemQuantity: $("quotationItemQuantity"),
   quotationItemTotal: $("quotationItemTotal"),
   quotationItemTotalProfit: $("quotationItemTotalProfit"),
@@ -1018,8 +1028,21 @@ function bindEvents() {
   refs.clearQuotationButton.addEventListener("click", clearQuotationForm);
   refs.deleteQuotationButton.addEventListener("click", deleteCurrentQuotation);
   refs.quotationCep.addEventListener("input", formatQuotationCepInput);
+  refs.openQuotationItemModalButton.addEventListener("click", openQuotationItemModal);
+  refs.closeQuotationItemModalButton.addEventListener("click", requestCloseQuotationItemModal);
+  refs.quotationItemModal.addEventListener("close", () => clearQuotationItemForm());
+  refs.quotationItemModal.addEventListener("cancel", (event) => {
+    event.preventDefault();
+    setTimeout(requestCloseQuotationItemModal, 0);
+  });
+  refs.quotationItemModal.addEventListener("click", (event) => {
+    if (event.target === refs.quotationItemModal) requestCloseQuotationItemModal();
+  });
+  refs.continueEditingQuotationItemButton.addEventListener("click", () => refs.quotationItemDiscardModal.close());
+  refs.discardQuotationItemChangesButton.addEventListener("click", discardQuotationItemChanges);
+  bindAutoGrowTextareas(refs.quotationItemForm);
   refs.quotationItemForm.addEventListener("submit", saveQuotationItem);
-  refs.clearQuotationItemButton.addEventListener("click", clearQuotationItemForm);
+  refs.clearQuotationItemButton.addEventListener("click", () => clearQuotationItemForm({ focus: true }));
   refs.deleteQuotationItemButton.addEventListener("click", deleteCurrentQuotationItem);
   refs.quotationItemProfitMargin.addEventListener("input", updateQuotationValueWithMarginFromMargin);
   refs.quotationItemProfitMargin.addEventListener("focus", () => {
@@ -1027,19 +1050,20 @@ function bindEvents() {
   });
   refs.quotationItemProfitMargin.addEventListener("blur", formatQuotationProfitMarginInput);
   refs.quotationItemFinalBid.addEventListener("input", () => {
-    updateQuotationMarginFromFinalBid();
+    updateQuotationFinalBidMarginIndicator();
     updateQuotationItemTotals();
   });
   refs.quotationItemSupplierCost.addEventListener("input", () => {
-    updateQuotationPricingFromCost();
+    updateQuotationValueWithMargin();
+    updateQuotationFinalBidMarginIndicator();
     updateQuotationItemTotals();
   });
   refs.quotationItemQuantity.addEventListener("input", updateQuotationItemTotals);
   for (const input of [refs.quotationItemEstimatedValue, refs.quotationItemSupplierCost, refs.quotationItemFinalBid]) {
     input.addEventListener("blur", () => {
       if (input.value.trim()) input.value = money(parseDecimal(input.value, "valor", false));
-      if (input === refs.quotationItemSupplierCost) updateQuotationPricingFromCost();
-      if (input === refs.quotationItemFinalBid) updateQuotationMarginFromFinalBid();
+      if (input === refs.quotationItemSupplierCost) updateQuotationValueWithMargin();
+      if (input === refs.quotationItemSupplierCost || input === refs.quotationItemFinalBid) updateQuotationFinalBidMarginIndicator();
       updateQuotationItemTotals();
     });
   }
@@ -2031,10 +2055,13 @@ function renderQuotations() {
 function loadQuotation(quotationId, options = {}) {
   const quotation = appState.quotations.find((row) => Number(row.id) === Number(quotationId));
   if (!quotation) return;
+  closeQuotationItemModal();
   appState.currentQuotationId = quotation.id;
   appState.currentQuotationItemId = null;
+  refs.quotationId.value = String(quotation.id);
   refs.quotationOpeningDate.value = toDateInputValue(quotation.opening_date);
   refs.quotationEdital.value = quotation.edital;
+  refs.quotationAgency.value = quotation.agency;
   refs.quotationCity.value = quotation.city;
   refs.quotationCep.value = formatCep(quotation.cep);
   refs.selectedQuotationLabel.textContent = `Edital ${quotation.edital}`;
@@ -2047,9 +2074,11 @@ function loadQuotation(quotationId, options = {}) {
 }
 
 function clearQuotationForm() {
+  closeQuotationItemModal();
   appState.currentQuotationId = null;
   appState.currentQuotationItemId = null;
   refs.quotationForm.reset();
+  refs.quotationId.value = "";
   refs.selectedQuotationLabel.textContent = "Novo orçamento";
   refs.quotationFormError.textContent = "";
   refs.deleteQuotationButton.classList.add("hidden");
@@ -2078,6 +2107,7 @@ async function saveQuotation(event) {
       {
         opening_date: refs.quotationOpeningDate.value || null,
         edital,
+        agency: refs.quotationAgency.value.trim(),
         city: refs.quotationCity.value.trim(),
         cep: formatCep(cepDigits),
       },
@@ -2164,6 +2194,57 @@ function renderQuotationItems() {
   });
 }
 
+function openQuotationItemModal() {
+  if (!currentQuotation()) return;
+  clearQuotationItemForm();
+  refs.quotationItemModal.showModal();
+  requestAnimationFrame(() => refs.quotationItemNumber.focus());
+}
+
+function closeQuotationItemModal() {
+  if (refs.quotationItemDiscardModal.open) refs.quotationItemDiscardModal.close();
+  if (refs.quotationItemModal.open) {
+    refs.quotationItemModal.close();
+  }
+}
+
+function requestCloseQuotationItemModal() {
+  if (!refs.quotationItemModal.open) return;
+  if (!quotationItemFormHasUnsavedChanges()) {
+    closeQuotationItemModal();
+    return;
+  }
+  if (!refs.quotationItemDiscardModal.open) refs.quotationItemDiscardModal.showModal();
+}
+
+function discardQuotationItemChanges() {
+  refs.quotationItemDiscardModal.close();
+  closeQuotationItemModal();
+}
+
+function quotationItemFormSnapshot() {
+  return JSON.stringify([
+    refs.quotationItemNumber.value,
+    refs.quotationItemDescription.value,
+    refs.quotationItemModel.value,
+    refs.quotationItemManufacturer.value,
+    refs.quotationItemTechnicalText.value,
+    refs.quotationItemEstimatedValue.value,
+    refs.quotationItemSupplierCost.value,
+    refs.quotationItemProfitMargin.value,
+    refs.quotationItemFinalBid.value,
+    refs.quotationItemQuantity.value,
+  ]);
+}
+
+function markQuotationItemFormPristine() {
+  appState.quotationItemFormBaseline = quotationItemFormSnapshot();
+}
+
+function quotationItemFormHasUnsavedChanges() {
+  return quotationItemFormSnapshot() !== appState.quotationItemFormBaseline;
+}
+
 function loadQuotationItem(itemId) {
   const item = currentQuotationItems().find((row) => Number(row.id) === Number(itemId));
   if (!item) return;
@@ -2178,28 +2259,34 @@ function loadQuotationItem(itemId) {
   refs.quotationItemProfitMargin.value = item.profit_margin === null ? "" : formatProfitMargin(item.profit_margin);
   refs.quotationItemFinalBid.value = money(item.final_bid);
   refs.quotationItemQuantity.value = formatNumber(item.quantity);
-  appState.quotationMarginCalculationSource = "margin";
   refs.quotationItemFormError.textContent = "";
   refs.deleteQuotationItemButton.classList.remove("hidden");
+  refs.quotationItemModalTitle.textContent = "Editar item";
   updateQuotationValueWithMargin();
+  updateQuotationFinalBidMarginIndicator();
   updateQuotationItemTotals();
   resizeTextarea(refs.quotationItemTechnicalText);
   renderQuotationItems();
-  refs.quotationItemForm.scrollIntoView({ behavior: "smooth", block: "start" });
+  markQuotationItemFormPristine();
+  if (!refs.quotationItemModal.open) refs.quotationItemModal.showModal();
+  requestAnimationFrame(() => refs.quotationItemNumber.focus());
 }
 
-function clearQuotationItemForm() {
+function clearQuotationItemForm(options = {}) {
   appState.currentQuotationItemId = null;
   refs.quotationItemForm.reset();
   refs.quotationItemQuantity.value = "1";
   refs.quotationItemTotal.value = money(0);
   refs.quotationItemTotalProfit.value = money(0);
-  appState.quotationMarginCalculationSource = "margin";
   updateQuotationValueWithMargin();
+  updateQuotationFinalBidMarginIndicator();
   refs.quotationItemFormError.textContent = "";
   refs.deleteQuotationItemButton.classList.add("hidden");
+  refs.quotationItemModalTitle.textContent = "Cadastrar item";
   resizeTextarea(refs.quotationItemTechnicalText);
   renderQuotationItems();
+  markQuotationItemFormPristine();
+  if (options.focus && refs.quotationItemModal.open) refs.quotationItemNumber.focus();
 }
 
 async function saveQuotationItem(event) {
@@ -2210,6 +2297,7 @@ async function saveQuotationItem(event) {
     return;
   }
   try {
+    const isEditing = Boolean(appState.currentQuotationItemId);
     const itemNumber = parseIntRequired(refs.quotationItemNumber.value, "ITEM");
     const duplicate = currentQuotationItems().find(
       (item) => Number(item.item_number) === Number(itemNumber) && Number(item.id) !== Number(appState.currentQuotationItemId)
@@ -2222,9 +2310,7 @@ async function saveQuotationItem(event) {
     const finalBid = parseDecimal(refs.quotationItemFinalBid.value, "Lance Final", false);
     const profitMargin = refs.quotationItemProfitMargin.value.trim()
       ? parseProfitMargin(refs.quotationItemProfitMargin.value)
-      : supplierCost && refs.quotationItemFinalBid.value.trim()
-        ? calculateProfitMargin(finalBid, supplierCost)
-        : null;
+      : null;
     await store.saveQuotationItem(
       appState.currentQuotationId,
       {
@@ -2242,8 +2328,8 @@ async function saveQuotationItem(event) {
       appState.currentQuotationItemId
     );
     await reloadData();
-    clearQuotationItemForm();
-    showToast("Item do orçamento salvo.");
+    clearQuotationItemForm({ focus: true });
+    showToast(isEditing ? "Item do orçamento atualizado." : "Item do orçamento cadastrado.");
   } catch (error) {
     refs.quotationItemFormError.textContent = error.message;
   }
@@ -2289,42 +2375,20 @@ function formatQuotationValueWithMargin(item) {
 }
 
 function updateQuotationValueWithMarginFromMargin() {
-  appState.quotationMarginCalculationSource = "margin";
   updateQuotationValueWithMargin();
 }
 
-function updateQuotationMarginFromFinalBid() {
-  appState.quotationMarginCalculationSource = "final";
+function updateQuotationFinalBidMarginIndicator() {
   const hasFinalBid = Boolean(refs.quotationItemFinalBid.value.trim());
-  const hasCostValue = Boolean(refs.quotationItemSupplierCost.value.trim());
-  if (!hasFinalBid || !hasCostValue) {
-    refs.quotationItemProfitMargin.value = "";
-    refs.quotationItemValueWithMargin.value = "";
-    return;
-  }
+  refs.quotationFinalBidMarginIndicator.classList.toggle("hidden", !hasFinalBid);
+  refs.quotationFinalBidMarginIndicator.textContent = "Margem: -%";
+  if (!hasFinalBid || !refs.quotationItemSupplierCost.value.trim()) return;
   try {
     const finalBid = parseDecimal(refs.quotationItemFinalBid.value, "Lance Final", false);
     const costValue = parseDecimal(refs.quotationItemSupplierCost.value, "Valor de Custo", false);
     const margin = calculateProfitMargin(finalBid, costValue);
-    if (margin === null) {
-      refs.quotationItemProfitMargin.value = "";
-      refs.quotationItemValueWithMargin.value = "";
-    } else {
-      refs.quotationItemProfitMargin.value = formatProfitMargin(margin);
-      refs.quotationItemValueWithMargin.value = money(calculateValueWithMargin(costValue, margin));
-    }
-  } catch {
-    refs.quotationItemProfitMargin.value = "";
-    refs.quotationItemValueWithMargin.value = "";
-  }
-}
-
-function updateQuotationPricingFromCost() {
-  if (appState.quotationMarginCalculationSource === "final" && refs.quotationItemFinalBid.value.trim()) {
-    updateQuotationMarginFromFinalBid();
-  } else {
-    updateQuotationValueWithMargin();
-  }
+    if (margin !== null) refs.quotationFinalBidMarginIndicator.textContent = `Margem: ${percent(margin)}`;
+  } catch {}
 }
 
 function updateQuotationValueWithMargin() {
@@ -2762,6 +2826,7 @@ function normalizeQuotationRecord(record) {
     id: record.id ? Number(record.id) : undefined,
     opening_date: record.opening_date || "",
     edital: String(record.edital || "").trim(),
+    agency: record.agency || "",
     city: record.city || "",
     cep: formatCep(record.cep),
     created_at: record.created_at || timestampNow(),
@@ -2773,11 +2838,7 @@ function normalizeQuotationItemRecord(record) {
   const finalBid = Number(record.final_bid || 0);
   const supplierCost = Number(record.supplier_cost || 0);
   const storedMargin = record.profit_margin;
-  const profitMargin = storedMargin === undefined || storedMargin === null || storedMargin === ""
-    ? supplierCost && finalBid
-      ? calculateProfitMargin(finalBid, supplierCost)
-      : null
-    : Number(storedMargin);
+  const profitMargin = storedMargin === undefined || storedMargin === null || storedMargin === "" ? null : Number(storedMargin);
   const quantity = record.quantity === undefined || record.quantity === null || record.quantity === "" ? 1 : Number(record.quantity);
   return {
     id: record.id ? Number(record.id) : undefined,
