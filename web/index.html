@@ -556,7 +556,7 @@
                 </div>
 
                 <div class="quotation-values-section">
-                  <h3>Valores</h3>
+                  <h3>Valores do item</h3>
                   <div class="form-grid quotation-values-grid">
                     <label>
                       Valor Estimado
@@ -567,16 +567,9 @@
                       <input id="quotationItemSupplierCost" inputmode="decimal" placeholder="R$ 0,00" />
                     </label>
                     <label>
-                      Margem
-                      <input id="quotationItemProfitMargin" inputmode="decimal" placeholder="0,0000%" />
-                    </label>
-                    <label>
-                      Valor com margem
-                      <input id="quotationItemValueWithMargin" readonly title="Calculado com base no Valor de Custo e na Margem." />
-                    </label>
-                    <label>
                       Lance Final
-                      <input id="quotationItemFinalBid" inputmode="decimal" placeholder="R$ 0,00" />
+                      <input id="quotationItemFinalBid" inputmode="decimal" placeholder="R$ 0,00" aria-label="Lance Final" />
+                      <small id="quotationFinalBidMarginIndicator" class="quotation-final-margin-indicator hidden" aria-live="polite">Margem: -%</small>
                     </label>
                     <label>
                       Quantidade
@@ -591,6 +584,23 @@
                       Lucro Total
                       <input id="quotationItemTotalProfit" value="R$ 0,00" readonly aria-describedby="quotationTotalProfitHint" />
                       <small id="quotationTotalProfitHint">(Lance Final − Valor de Custo) × Quantidade</small>
+                    </label>
+                  </div>
+                </div>
+
+                <div class="quotation-margin-calculator" aria-labelledby="quotationMarginCalculatorTitle">
+                  <div class="quotation-margin-calculator-heading">
+                    <h3 id="quotationMarginCalculatorTitle">Calculadora de margem</h3>
+                    <p>Informe uma margem para testar o valor calculado a partir do Valor de Custo. O Lance Final não altera esta simulação.</p>
+                  </div>
+                  <div class="form-grid quotation-margin-calculator-grid">
+                    <label>
+                      Margem
+                      <input id="quotationItemProfitMargin" inputmode="decimal" placeholder="0,0000%" />
+                    </label>
+                    <label>
+                      Valor com margem
+                      <input id="quotationItemValueWithMargin" readonly title="Calculado com base no Valor de Custo e na Margem informada na calculadora." />
                     </label>
                   </div>
                 </div>

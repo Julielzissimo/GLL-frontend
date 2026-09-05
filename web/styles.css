@@ -2136,6 +2136,41 @@ tr.item-won td {
   font-weight: 500;
 }
 
+.quotation-values-grid label .quotation-final-margin-indicator {
+  color: var(--success);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.quotation-margin-calculator {
+  display: grid;
+  grid-template-columns: minmax(220px, 0.8fr) minmax(0, 1.2fr);
+  gap: 22px;
+  margin-top: 22px;
+  padding: 20px;
+  border: 1px solid #bfd8cc;
+  border-radius: 12px;
+  background: var(--success-bg);
+}
+
+.quotation-margin-calculator-heading h3 {
+  margin: 0 0 7px;
+  color: var(--success);
+  font-size: 15px;
+}
+
+.quotation-margin-calculator-heading p {
+  margin: 0;
+  color: #3d6654;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.quotation-margin-calculator-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+}
+
 .quotation-grand-total {
   display: inline-flex;
   align-items: center;
@@ -2321,6 +2356,10 @@ tr.item-won td {
   .quotation-item-grid,
   .quotation-values-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .quotation-margin-calculator {
+    grid-template-columns: 1fr;
   }
 
   .quotation-description-field {
