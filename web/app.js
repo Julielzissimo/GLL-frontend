@@ -194,6 +194,10 @@ const refs = {
   quotationItemsSection: $("quotationItemsSection"),
   quotationItemsStatus: $("quotationItemsStatus"),
   quotationGrandTotal: $("quotationGrandTotal"),
+  openQuotationItemModalButton: $("openQuotationItemModalButton"),
+  quotationItemModal: $("quotationItemModal"),
+  quotationItemModalTitle: $("quotationItemModalTitle"),
+  closeQuotationItemModalButton: $("closeQuotationItemModalButton"),
   quotationItemForm: $("quotationItemForm"),
   quotationItemNumber: $("quotationItemNumber"),
   quotationItemDescription: $("quotationItemDescription"),
@@ -1018,8 +1022,14 @@ function bindEvents() {
   refs.clearQuotationButton.addEventListener("click", clearQuotationForm);
   refs.deleteQuotationButton.addEventListener("click", deleteCurrentQuotation);
   refs.quotationCep.addEventListener("input", formatQuotationCepInput);
+  refs.openQuotationItemModalButton.addEventListener("click", openQuotationItemModal);
+  refs.closeQuotationItemModalButton.addEventListener("click", closeQuotationItemModal);
+  refs.quotationItemModal.addEventListener("close", () => clearQuotationItemForm());
+  refs.quotationItemModal.addEventListener("click", (event) => {
+    if (event.target === refs.quotationItemModal) closeQuotationItemModal();
+  });
   refs.quotationItemForm.addEventListener("submit", saveQuotationItem);
-  refs.clearQuotationItemButton.addEventListener("click", clearQuotationItemForm);
+  refs.clearQuotationItemButton.addEventListener("click", () => clearQuotationItemForm({ focus: true }));
   refs.deleteQuotationItemButton.addEventListener("click", deleteCurrentQuotationItem);
   refs.quotationItemProfitMargin.addEventListener("input", updateQuotationValueWithMarginFromMargin);
   refs.quotationItemProfitMargin.addEventListener("focus", () => {
@@ -2031,6 +2041,7 @@ function renderQuotations() {
 function loadQuotation(quotationId, options = {}) {
   const quotation = appState.quotations.find((row) => Number(row.id) === Number(quotationId));
   if (!quotation) return;
+  closeQuotationItemModal();
   appState.currentQuotationId = quotation.id;
   appState.currentQuotationItemId = null;
   refs.quotationOpeningDate.value = toDateInputValue(quotation.opening_date);
@@ -2047,6 +2058,7 @@ function loadQuotation(quotationId, options = {}) {
 }
 
 function clearQuotationForm() {
+  closeQuotationItemModal();
   appState.currentQuotationId = null;
   appState.currentQuotationItemId = null;
   refs.quotationForm.reset();
@@ -2164,6 +2176,19 @@ function renderQuotationItems() {
   });
 }
 
+function openQuotationItemModal() {
+  if (!currentQuotation()) return;
+  clearQuotationItemForm();
+  refs.quotationItemModal.showModal();
+  requestAnimationFrame(() => refs.quotationItemNumber.focus());
+}
+
+function closeQuotationItemModal() {
+  if (refs.quotationItemModal.open) {
+    refs.quotationItemModal.close();
+  }
+}
+
 function loadQuotationItem(itemId) {
   const item = currentQuotationItems().find((row) => Number(row.id) === Number(itemId));
   if (!item) return;
@@ -2181,14 +2206,16 @@ function loadQuotationItem(itemId) {
   appState.quotationMarginCalculationSource = "margin";
   refs.quotationItemFormError.textContent = "";
   refs.deleteQuotationItemButton.classList.remove("hidden");
+  refs.quotationItemModalTitle.textContent = "Editar item";
   updateQuotationValueWithMargin();
   updateQuotationItemTotals();
   resizeTextarea(refs.quotationItemTechnicalText);
   renderQuotationItems();
-  refs.quotationItemForm.scrollIntoView({ behavior: "smooth", block: "start" });
+  if (!refs.quotationItemModal.open) refs.quotationItemModal.showModal();
+  requestAnimationFrame(() => refs.quotationItemNumber.focus());
 }
 
-function clearQuotationItemForm() {
+function clearQuotationItemForm(options = {}) {
   appState.currentQuotationItemId = null;
   refs.quotationItemForm.reset();
   refs.quotationItemQuantity.value = "1";
@@ -2198,8 +2225,10 @@ function clearQuotationItemForm() {
   updateQuotationValueWithMargin();
   refs.quotationItemFormError.textContent = "";
   refs.deleteQuotationItemButton.classList.add("hidden");
+  refs.quotationItemModalTitle.textContent = "Cadastrar item";
   resizeTextarea(refs.quotationItemTechnicalText);
   renderQuotationItems();
+  if (options.focus && refs.quotationItemModal.open) refs.quotationItemNumber.focus();
 }
 
 async function saveQuotationItem(event) {
@@ -2210,6 +2239,7 @@ async function saveQuotationItem(event) {
     return;
   }
   try {
+    const isEditing = Boolean(appState.currentQuotationItemId);
     const itemNumber = parseIntRequired(refs.quotationItemNumber.value, "ITEM");
     const duplicate = currentQuotationItems().find(
       (item) => Number(item.item_number) === Number(itemNumber) && Number(item.id) !== Number(appState.currentQuotationItemId)
@@ -2242,8 +2272,8 @@ async function saveQuotationItem(event) {
       appState.currentQuotationItemId
     );
     await reloadData();
-    clearQuotationItemForm();
-    showToast("Item do orçamento salvo.");
+    clearQuotationItemForm({ focus: true });
+    showToast(isEditing ? "Item do orçamento atualizado." : "Item do orçamento cadastrado.");
   } catch (error) {
     refs.quotationItemFormError.textContent = error.message;
   }

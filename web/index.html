@@ -490,86 +490,14 @@
           </div>
         </form>
 
-        <section id="quotationItemsSection" class="section-band hidden">
-          <div class="section-title">
-            <div>
-              <h2>Itens do orçamento</h2>
+        <section id="quotationItemsSection" class="section-band hidden" aria-label="Itens cadastrados">
+          <div class="quotation-items-toolbar">
+            <div class="quotation-items-summary">
               <span id="quotationItemsStatus">Salve o orçamento para cadastrar itens</span>
+              <span id="quotationGrandTotal" class="quotation-grand-total">Total: R$ 0,00</span>
             </div>
-            <span id="quotationGrandTotal" class="quotation-grand-total">Total: R$ 0,00</span>
+            <button id="openQuotationItemModalButton" class="primary-action" type="button">Cadastrar Item</button>
           </div>
-
-          <form id="quotationItemForm">
-            <div class="form-grid quotation-item-grid">
-              <label>
-                ITEM *
-                <input id="quotationItemNumber" type="number" min="0" step="1" required />
-              </label>
-              <label class="quotation-description-field">
-                Descrição
-                <input id="quotationItemDescription" />
-              </label>
-              <label>
-                Modelo
-                <input id="quotationItemModel" />
-              </label>
-              <label>
-                Marca/Fabricante
-                <input id="quotationItemManufacturer" />
-              </label>
-              <label class="quotation-technical-field">
-                Texto Técnico
-                <textarea id="quotationItemTechnicalText" class="auto-grow-textarea" rows="3"></textarea>
-              </label>
-            </div>
-
-            <div class="quotation-values-section">
-              <h3>Valores</h3>
-              <div class="form-grid quotation-values-grid">
-                <label>
-                  Valor Estimado
-                  <input id="quotationItemEstimatedValue" inputmode="decimal" placeholder="R$ 0,00" />
-                </label>
-                <label>
-                  Valor de Custo
-                  <input id="quotationItemSupplierCost" inputmode="decimal" placeholder="R$ 0,00" />
-                </label>
-                <label>
-                  Margem
-                  <input id="quotationItemProfitMargin" inputmode="decimal" placeholder="0,0000%" />
-                </label>
-                <label>
-                  Valor com margem
-                  <input id="quotationItemValueWithMargin" readonly title="Calculado com base no Valor de Custo e na Margem." />
-                </label>
-                <label>
-                  Lance Final
-                  <input id="quotationItemFinalBid" inputmode="decimal" placeholder="R$ 0,00" />
-                </label>
-                <label>
-                  Quantidade
-                  <input id="quotationItemQuantity" type="number" min="0" step="any" value="1" />
-                </label>
-                <label>
-                  Total
-                  <input id="quotationItemTotal" value="R$ 0,00" readonly aria-describedby="quotationTotalHint" />
-                  <small id="quotationTotalHint">Lance Final × Quantidade</small>
-                </label>
-                <label>
-                  Lucro Total
-                  <input id="quotationItemTotalProfit" value="R$ 0,00" readonly aria-describedby="quotationTotalProfitHint" />
-                  <small id="quotationTotalProfitHint">(Lance Final − Valor de Custo) × Quantidade</small>
-                </label>
-              </div>
-            </div>
-
-            <p id="quotationItemFormError" class="form-error" role="alert"></p>
-            <div class="button-row end">
-              <button id="deleteQuotationItemButton" class="danger-action hidden" type="button">Excluir item</button>
-              <button id="clearQuotationItemButton" class="quiet-action" type="button">Limpar</button>
-              <button class="primary-action" type="submit">Salvar item</button>
-            </div>
-          </form>
 
           <div class="table-wrap quotation-items-table-wrap">
             <table class="quotation-items-table">
@@ -592,6 +520,90 @@
               <tbody id="quotationItemsTableBody"></tbody>
             </table>
           </div>
+
+          <dialog id="quotationItemModal" class="quotation-item-modal" aria-labelledby="quotationItemModalTitle">
+            <div class="quotation-item-modal-shell">
+              <div class="quotation-item-modal-header">
+                <div>
+                  <span class="eyebrow">ORÇAMENTO</span>
+                  <h2 id="quotationItemModalTitle">Cadastrar item</h2>
+                </div>
+                <button id="closeQuotationItemModalButton" class="quotation-item-modal-close" type="button" aria-label="Fechar modal">×</button>
+              </div>
+
+              <form id="quotationItemForm" class="quotation-item-modal-form">
+                <div class="form-grid quotation-item-grid">
+                  <label>
+                    ITEM *
+                    <input id="quotationItemNumber" type="number" min="0" step="1" required />
+                  </label>
+                  <label class="quotation-description-field">
+                    Descrição
+                    <input id="quotationItemDescription" />
+                  </label>
+                  <label>
+                    Modelo
+                    <input id="quotationItemModel" />
+                  </label>
+                  <label>
+                    Marca/Fabricante
+                    <input id="quotationItemManufacturer" />
+                  </label>
+                  <label class="quotation-technical-field">
+                    Texto Técnico
+                    <textarea id="quotationItemTechnicalText" class="auto-grow-textarea" rows="3"></textarea>
+                  </label>
+                </div>
+
+                <div class="quotation-values-section">
+                  <h3>Valores</h3>
+                  <div class="form-grid quotation-values-grid">
+                    <label>
+                      Valor Estimado
+                      <input id="quotationItemEstimatedValue" inputmode="decimal" placeholder="R$ 0,00" />
+                    </label>
+                    <label>
+                      Valor de Custo
+                      <input id="quotationItemSupplierCost" inputmode="decimal" placeholder="R$ 0,00" />
+                    </label>
+                    <label>
+                      Margem
+                      <input id="quotationItemProfitMargin" inputmode="decimal" placeholder="0,0000%" />
+                    </label>
+                    <label>
+                      Valor com margem
+                      <input id="quotationItemValueWithMargin" readonly title="Calculado com base no Valor de Custo e na Margem." />
+                    </label>
+                    <label>
+                      Lance Final
+                      <input id="quotationItemFinalBid" inputmode="decimal" placeholder="R$ 0,00" />
+                    </label>
+                    <label>
+                      Quantidade
+                      <input id="quotationItemQuantity" type="number" min="0" step="any" value="1" />
+                    </label>
+                    <label>
+                      Total
+                      <input id="quotationItemTotal" value="R$ 0,00" readonly aria-describedby="quotationTotalHint" />
+                      <small id="quotationTotalHint">Lance Final × Quantidade</small>
+                    </label>
+                    <label>
+                      Lucro Total
+                      <input id="quotationItemTotalProfit" value="R$ 0,00" readonly aria-describedby="quotationTotalProfitHint" />
+                      <small id="quotationTotalProfitHint">(Lance Final − Valor de Custo) × Quantidade</small>
+                    </label>
+                  </div>
+                </div>
+
+                <p id="quotationItemFormError" class="form-error" role="alert"></p>
+                <div class="button-row end">
+                  <button id="deleteQuotationItemButton" class="danger-action hidden" type="button">Excluir item</button>
+                  <button id="clearQuotationItemButton" class="quiet-action" type="button">Limpar</button>
+                  <button class="primary-action" type="submit">Cadastrar</button>
+                </div>
+              </form>
+            </div>
+          </dialog>
         </section>
       </section>
 
