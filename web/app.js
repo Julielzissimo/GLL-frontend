@@ -1028,6 +1028,7 @@ function bindEvents() {
   refs.quotationItemModal.addEventListener("click", (event) => {
     if (event.target === refs.quotationItemModal) closeQuotationItemModal();
   });
+  bindAutoGrowTextareas(refs.quotationItemForm);
   refs.quotationItemForm.addEventListener("submit", saveQuotationItem);
   refs.clearQuotationItemButton.addEventListener("click", () => clearQuotationItemForm({ focus: true }));
   refs.deleteQuotationItemButton.addEventListener("click", deleteCurrentQuotationItem);
