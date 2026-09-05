@@ -2236,6 +2236,37 @@ tr.item-won td {
   padding: 24px;
 }
 
+.quotation-item-discard-modal {
+  width: min(480px, calc(100vw - 32px));
+  max-width: none;
+  margin: auto;
+  padding: 0;
+  border: 0;
+  border-radius: 14px;
+  background: var(--panel, #ffffff);
+  color: var(--text);
+  box-shadow: 0 24px 64px rgba(15, 23, 42, 0.36);
+}
+
+.quotation-item-discard-modal::backdrop {
+  background: rgba(15, 23, 42, 0.24);
+}
+
+.quotation-item-discard-content {
+  padding: 24px;
+}
+
+.quotation-item-discard-content h2 {
+  margin: 0 0 10px;
+  font-size: 21px;
+}
+
+.quotation-item-discard-content p {
+  margin: 0 0 22px;
+  color: var(--muted);
+  line-height: 1.55;
+}
+
 .quotations-page .table-panel > .section-title {
   margin: 0;
   padding: 20px 22px;
