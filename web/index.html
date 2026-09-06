@@ -179,6 +179,13 @@
                 Status
                 <select id="bidStatus"></select>
               </label>
+              <label class="bid-quotation-field">
+                Orçamento
+                <div class="bid-quotation-control">
+                  <input id="bidQuotation" type="text" readonly placeholder="Selecionar orçamento" aria-haspopup="dialog" />
+                  <button id="clearBidQuotationButton" class="quiet-action compact-action hidden" type="button" aria-label="Remover orçamento vinculado">Limpar</button>
+                </div>
+              </label>
               <div class="bid-attachment-field">
                 <label for="editalFile">Arquivo do Edital</label>
                 <input id="editalFile" type="file" />
@@ -197,6 +204,36 @@
               <button class="primary-action" type="submit">Salvar Edital</button>
             </div>
           </form>
+
+          <dialog id="bidQuotationModal" class="quotation-item-modal bid-quotation-modal" aria-labelledby="bidQuotationModalTitle">
+            <div class="quotation-item-modal-shell">
+              <div class="quotation-item-modal-header">
+                <div>
+                  <span class="eyebrow">VINCULAR ORÇAMENTO</span>
+                  <h2 id="bidQuotationModalTitle">Localizar orçamento</h2>
+                </div>
+                <button id="closeBidQuotationModalButton" class="quotation-item-modal-close" type="button" aria-label="Fechar modal">×</button>
+              </div>
+              <div class="bid-quotation-modal-content">
+                <div class="form-grid bid-quotation-filters">
+                  <label>
+                    ID
+                    <input id="bidQuotationFilterId" type="search" inputmode="numeric" placeholder="Pesquisar por ID" />
+                  </label>
+                  <label>
+                    Órgão
+                    <input id="bidQuotationFilterAgency" type="search" placeholder="Pesquisar por órgão" />
+                  </label>
+                </div>
+                <div class="table-wrap bid-quotation-results-wrap">
+                  <table class="bid-quotation-results">
+                    <thead><tr><th>ID</th><th>Órgão</th><th>Edital</th><th><span class="visually-hidden">Ação</span></th></tr></thead>
+                    <tbody id="bidQuotationResultsBody"></tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </dialog>
 
           <section id="bidWorkspaceHeader" class="section-band workspace-header hidden">
             <div>
@@ -284,7 +321,7 @@
                   </label>
                   <label class="item-field tiny">
                     Quantidade
-                    <input id="requiredQuantity" type="number" min="0" />
+                    <input id="requiredQuantity" type="number" min="0" step="any" />
                   </label>
                   <label class="item-field medium">
                     Marca/Modelo
@@ -297,9 +334,10 @@
                   <div class="item-field supplier-links-field">
                     <label for="supplierLinkInput">Link do Fornecedor</label>
                     <div class="supplier-link-entry">
-                      <input id="supplierLinkInput" type="url" inputmode="url" placeholder="https://fornecedor.com/produto" />
+                      <input id="supplierLinkInput" type="text" placeholder="Link ou nome do fornecedor" />
                       <button id="addSupplierLinkButton" class="quiet-action" type="button">Cadastrar</button>
                     </div>
+                    <small class="supplier-links-help">Informe o endereço do site ou apenas o nome do fornecedor.</small>
                     <div id="supplierLinksList" class="supplier-links-list" aria-live="polite"></div>
                   </div>
                   <label class="item-field currency">
@@ -561,6 +599,15 @@
                     Texto Técnico
                     <textarea id="quotationItemTechnicalText" class="auto-grow-textarea" rows="3"></textarea>
                   </label>
+                  <div class="quotation-supplier-links-field supplier-links-field">
+                    <label for="quotationItemSupplierInput">Link do Fornecedor</label>
+                    <div class="supplier-link-entry">
+                      <input id="quotationItemSupplierInput" type="text" placeholder="Link ou nome do fornecedor" />
+                      <button id="addQuotationItemSupplierButton" class="quiet-action" type="button">Cadastrar</button>
+                    </div>
+                    <small class="supplier-links-help">Informe o endereço do site ou apenas o nome do fornecedor.</small>
+                    <div id="quotationItemSuppliersList" class="supplier-links-list" aria-live="polite"></div>
+                  </div>
                 </div>
 
                 <div class="quotation-values-section">

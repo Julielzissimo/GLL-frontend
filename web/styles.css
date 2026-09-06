@@ -773,6 +773,20 @@ input[readonly] {
   gap: 6px;
 }
 
+.bid-quotation-field {
+  grid-column: span 2;
+}
+
+.bid-quotation-control {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+}
+
+#bidQuotation[readonly] {
+  cursor: pointer;
+}
+
 .bid-attachment-field > label,
 .bid-attachment-field > small {
   color: var(--muted);
@@ -865,14 +879,27 @@ input[readonly] {
   background: var(--panel-alt);
 }
 
-.supplier-link-row a {
+.supplier-link-row a,
+.supplier-link-row .supplier-name {
   min-width: 0;
   overflow: hidden;
-  color: #234fa9;
   font-size: 13px;
   font-weight: 700;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.supplier-links-help {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.supplier-link-row a {
+  color: #234fa9;
+}
+
+.supplier-link-row .supplier-name {
+  color: var(--text);
 }
 
 .delete-supplier-link {
@@ -2229,6 +2256,45 @@ tr.item-won td {
 .quotation-item-modal::backdrop {
   background: rgba(15, 23, 42, 0.58);
   backdrop-filter: blur(2px);
+}
+
+.bid-quotation-modal {
+  width: min(760px, calc(100vw - 32px));
+}
+
+.bid-quotation-modal-content {
+  display: grid;
+  gap: 18px;
+  padding: 24px;
+}
+
+.bid-quotation-filters {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.bid-quotation-results-wrap {
+  max-height: min(420px, calc(100dvh - 260px));
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+
+.bid-quotation-results {
+  min-width: 620px;
+}
+
+.bid-quotation-results th:nth-child(1),
+.bid-quotation-results td:nth-child(1) {
+  width: 90px;
+}
+
+.bid-quotation-results th:last-child,
+.bid-quotation-results td:last-child {
+  width: 110px;
+  text-align: right;
+}
+
+.quotation-supplier-links-field {
+  grid-column: 1 / -1;
 }
 
 .quotation-item-modal-shell {
