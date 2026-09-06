@@ -39,6 +39,7 @@ const appState = {
   currentUserEmail: null,
   currentBidId: null,
   originalBidId: null,
+  selectedBidQuotationId: null,
   currentItemId: null,
   currentDocumentId: null,
   currentFailureId: null,
@@ -47,6 +48,7 @@ const appState = {
   quotationItemFormBaseline: "",
   itemMarginCalculationSource: "margin",
   supplierLinksDraft: [],
+  quotationSupplierLinksDraft: [],
   sidebarCollapsed: false,
   appNavigationCollapsed: false,
   bids: [],
@@ -120,6 +122,13 @@ const refs = {
   downloadEditalButton: $("downloadEditalButton"),
   bidType: $("bidType"),
   bidStatus: $("bidStatus"),
+  bidQuotation: $("bidQuotation"),
+  clearBidQuotationButton: $("clearBidQuotationButton"),
+  bidQuotationModal: $("bidQuotationModal"),
+  closeBidQuotationModalButton: $("closeBidQuotationModalButton"),
+  bidQuotationFilterId: $("bidQuotationFilterId"),
+  bidQuotationFilterAgency: $("bidQuotationFilterAgency"),
+  bidQuotationResultsBody: $("bidQuotationResultsBody"),
   selectedBidLabel: $("selectedBidLabel"),
   bidFormError: $("bidFormError"),
   deleteBidButton: $("deleteBidButton"),
@@ -209,6 +218,9 @@ const refs = {
   quotationItemModel: $("quotationItemModel"),
   quotationItemManufacturer: $("quotationItemManufacturer"),
   quotationItemTechnicalText: $("quotationItemTechnicalText"),
+  quotationItemSupplierInput: $("quotationItemSupplierInput"),
+  addQuotationItemSupplierButton: $("addQuotationItemSupplierButton"),
+  quotationItemSuppliersList: $("quotationItemSuppliersList"),
   quotationItemEstimatedValue: $("quotationItemEstimatedValue"),
   quotationItemSupplierCost: $("quotationItemSupplierCost"),
   quotationItemProfitMargin: $("quotationItemProfitMargin"),
@@ -479,6 +491,36 @@ class IndexedDbStore {
         }
       };
     });
+    await this.syncBidWithQuotation(data.id, data.quotation_id);
+  }
+
+  async syncBidWithQuotation(bidId, quotationId) {
+    const existingItems = (await this.getAll("items")).map(normalizeItemRecord).filter((item) => item.bid_id === bidId);
+    const quotationItems = (await this.getAll("quotation_items")).map(normalizeQuotationItemRecord);
+    if (!quotationId) {
+      await this.tx("items", "readwrite", (items) => {
+        for (const item of existingItems.filter((row) => row.quotation_item_id)) items.put({ ...item, quotation_item_id: null });
+      });
+      return;
+    }
+    const targetItems = quotationItems.filter((item) => Number(item.quotation_id) === Number(quotationId));
+    const targetIds = new Set(targetItems.map((item) => Number(item.id)));
+    await this.tx("items", "readwrite", (items) => {
+      for (const item of existingItems) {
+        if (item.quotation_item_id && !targetIds.has(Number(item.quotation_item_id))) items.delete(Number(item.id));
+      }
+      for (const quotationItem of targetItems) {
+        const existing = existingItems.find(
+          (item) =>
+            Number(item.quotation_item_id) === Number(quotationItem.id) ||
+            (Number(item.item_number) === Number(quotationItem.item_number) &&
+              (!item.quotation_item_id || targetIds.has(Number(item.quotation_item_id))))
+        );
+        const record = quotationItemToBidItem(quotationItem, { ...existing, bid_id: bidId });
+        if (!record.id) delete record.id;
+        items.put(record);
+      }
+    });
   }
 
   async saveBidAttachment(bidId, file) {
@@ -512,16 +554,33 @@ class IndexedDbStore {
   }
 
   async saveItem(bidId, itemData, itemId) {
-    const existingItems = await this.getAll("items");
+    const existingItems = (await this.getAll("items")).map(normalizeItemRecord);
     const duplicate = existingItems.find(
       (item) => item.bid_id === bidId && Number(item.item_number) === Number(itemData.item_number) && Number(item.id) !== Number(itemId)
     );
     if (duplicate) throw new Error("Já existe um item com este número neste edital.");
-    const record = normalizeItemRecord({ ...itemData, id: itemId || undefined, bid_id: bidId });
+    const bid = (await this.getAll("bids")).map(normalizeBidRecord).find((row) => row.id === bidId);
+    const existingItem = existingItems.find((item) => Number(item.id) === Number(itemId));
+    let quotationItemId = existingItem?.quotation_item_id || null;
+    if (bid?.quotation_id) {
+      const quotationItems = (await this.getAll("quotation_items")).map(normalizeQuotationItemRecord);
+      const existingQuotationItem = quotationItems.find(
+        (item) =>
+          Number(item.id) === Number(quotationItemId) ||
+          (Number(item.quotation_id) === Number(bid.quotation_id) && Number(item.item_number) === Number(itemData.item_number))
+      );
+      const quotationRecord = bidItemToQuotationItem(
+        normalizeItemRecord({ ...existingItem, ...itemData, bid_id: bidId, quotation_item_id: quotationItemId }),
+        { ...existingQuotationItem, quotation_id: Number(bid.quotation_id) }
+      );
+      quotationItemId = await this.putQuotationItem(quotationRecord);
+    }
+    const record = normalizeItemRecord({ ...itemData, id: itemId || undefined, bid_id: bidId, quotation_item_id: quotationItemId });
     await this.tx("items", "readwrite", (items) => {
       if (!record.id) delete record.id;
       items.put(record);
     });
+    if (quotationItemId) await this.syncQuotationItemToBids(quotationItemId);
   }
 
   async setItemWon(itemId, isWon) {
@@ -532,6 +591,11 @@ class IndexedDbStore {
   }
 
   async deleteItem(itemId) {
+    const item = (await this.getAll("items")).map(normalizeItemRecord).find((row) => Number(row.id) === Number(itemId));
+    if (item?.quotation_item_id) {
+      await this.deleteQuotationItem(item.quotation_item_id);
+      return;
+    }
     await this.tx("items", "readwrite", (items) => items.delete(Number(itemId)));
   }
 
@@ -583,9 +647,26 @@ class IndexedDbStore {
   }
 
   async deleteQuotation(quotationId) {
-    await this.tx(["quotations", "quotation_items"], "readwrite", ([quotations, quotationItems]) => {
+    const linkedItemIds = (await this.getAll("quotation_items"))
+      .filter((item) => Number(item.quotation_id) === Number(quotationId))
+      .map((item) => Number(item.id));
+    await this.tx(["bids", "items", "quotations", "quotation_items"], "readwrite", ([bids, items, quotations, quotationItems]) => {
       quotations.delete(Number(quotationId));
       deleteChildrenByIndex(quotationItems, "quotation_id", Number(quotationId));
+      const bidRequest = bids.openCursor();
+      bidRequest.onsuccess = () => {
+        const cursor = bidRequest.result;
+        if (!cursor) return;
+        if (Number(cursor.value.quotation_id) === Number(quotationId)) cursor.update({ ...cursor.value, quotation_id: null });
+        cursor.continue();
+      };
+      const itemRequest = items.openCursor();
+      itemRequest.onsuccess = () => {
+        const cursor = itemRequest.result;
+        if (!cursor) return;
+        if (linkedItemIds.includes(Number(cursor.value.quotation_item_id))) cursor.delete();
+        cursor.continue();
+      };
     });
   }
 
@@ -599,14 +680,53 @@ class IndexedDbStore {
     );
     if (duplicate) throw new Error("Já existe um item com este número neste orçamento.");
     const record = normalizeQuotationItemRecord({ ...itemData, id: itemId || undefined, quotation_id: quotationId });
-    await this.tx("quotation_items", "readwrite", (quotationItems) => {
-      if (!record.id) delete record.id;
-      quotationItems.put(record);
-    });
+    const savedId = await this.putQuotationItem(record);
+    await this.syncQuotationItemToBids(savedId);
+    return savedId;
   }
 
   async deleteQuotationItem(itemId) {
-    await this.tx("quotation_items", "readwrite", (quotationItems) => quotationItems.delete(Number(itemId)));
+    const linkedItems = (await this.getAll("items")).filter((item) => Number(item.quotation_item_id) === Number(itemId));
+    await this.tx(["items", "quotation_items"], "readwrite", ([items, quotationItems]) => {
+      quotationItems.delete(Number(itemId));
+      for (const item of linkedItems) items.delete(Number(item.id));
+    });
+  }
+
+  async putQuotationItem(itemData) {
+    const record = normalizeQuotationItemRecord(itemData);
+    let savedId;
+    await this.tx("quotation_items", "readwrite", (quotationItems) => {
+      if (!record.id) delete record.id;
+      const request = quotationItems.put(record);
+      request.onsuccess = () => {
+        savedId = Number(request.result);
+      };
+    });
+    return savedId;
+  }
+
+  async syncQuotationItemToBids(quotationItemId) {
+    const quotationItem = (await this.getAll("quotation_items"))
+      .map(normalizeQuotationItemRecord)
+      .find((item) => Number(item.id) === Number(quotationItemId));
+    if (!quotationItem) return;
+    const linkedBids = (await this.getAll("bids"))
+      .map(normalizeBidRecord)
+      .filter((bid) => Number(bid.quotation_id) === Number(quotationItem.quotation_id));
+    const allItems = (await this.getAll("items")).map(normalizeItemRecord);
+    await this.tx("items", "readwrite", (items) => {
+      for (const bid of linkedBids) {
+        const existing = allItems.find(
+          (item) =>
+            item.bid_id === bid.id &&
+            (Number(item.quotation_item_id) === Number(quotationItem.id) || Number(item.item_number) === Number(quotationItem.item_number))
+        );
+        const record = quotationItemToBidItem(quotationItem, { ...existing, bid_id: bid.id });
+        if (!record.id) delete record.id;
+        items.put(record);
+      }
+    });
   }
 }
 
@@ -772,6 +892,7 @@ class SupabaseStore {
         })
         .eq("id", originalId);
       assertSupabase(error);
+      await this.syncBidWithQuotation(data.id, data.quotation_id);
       return;
     }
     const { error } = await client.from("bids").insert({
@@ -780,6 +901,48 @@ class SupabaseStore {
       updated_at: now,
     });
     assertSupabase(error);
+    await this.syncBidWithQuotation(data.id, data.quotation_id);
+  }
+
+  async syncBidWithQuotation(bidId, quotationId) {
+    const client = await this.open();
+    const { data: currentRows, error: currentError } = await client.from("items").select("*").eq("bid_id", bidId);
+    assertSupabase(currentError);
+    const currentItems = (currentRows || []).map(normalizeItemRecord);
+    if (!quotationId) {
+      const linkedIds = currentItems.filter((item) => item.quotation_item_id).map((item) => item.id);
+      if (linkedIds.length) {
+        const { error } = await client.from("items").update({ quotation_item_id: null }).in("id", linkedIds);
+        assertSupabase(error);
+      }
+      return;
+    }
+    const { data: quotationRows, error: quotationError } = await client
+      .from("quotation_items")
+      .select("*")
+      .eq("quotation_id", Number(quotationId));
+    assertSupabase(quotationError);
+    const quotationItems = (quotationRows || []).map(normalizeQuotationItemRecord);
+    const targetIds = new Set(quotationItems.map((item) => Number(item.id)));
+    const staleIds = currentItems
+      .filter((item) => item.quotation_item_id && !targetIds.has(Number(item.quotation_item_id)))
+      .map((item) => item.id);
+    if (staleIds.length) {
+      const { error } = await client.from("items").delete().in("id", staleIds);
+      assertSupabase(error);
+    }
+    for (const quotationItem of quotationItems) {
+      const existing = currentItems.find(
+        (item) =>
+          Number(item.quotation_item_id) === Number(quotationItem.id) ||
+          (Number(item.item_number) === Number(quotationItem.item_number) &&
+            (!item.quotation_item_id || targetIds.has(Number(item.quotation_item_id))))
+      );
+      const record = quotationItemToBidItem(quotationItem, { ...existing, bid_id: bidId });
+      const operation = record.id ? client.from("items").upsert(record) : client.from("items").insert(removeEmptyId(record));
+      const { error } = await operation;
+      assertSupabase(error);
+    }
   }
 
   async saveBidAttachment(bidId, file, previousPath) {
@@ -832,7 +995,39 @@ class SupabaseStore {
 
   async saveItem(bidId, itemData, itemId) {
     const client = await this.open();
-    const record = normalizeItemRecord({ ...itemData, id: itemId || undefined, bid_id: bidId });
+    const { data: bid, error: bidError } = await client.from("bids").select("quotation_id").eq("id", bidId).maybeSingle();
+    assertSupabase(bidError);
+    let existingItem = null;
+    if (itemId) {
+      const { data, error } = await client.from("items").select("*").eq("id", Number(itemId)).maybeSingle();
+      assertSupabase(error);
+      existingItem = data ? normalizeItemRecord(data) : null;
+    }
+    let quotationItemId = existingItem?.quotation_item_id || null;
+    if (bid?.quotation_id) {
+      let existingQuotationItem = null;
+      if (quotationItemId) {
+        const { data, error } = await client.from("quotation_items").select("*").eq("id", Number(quotationItemId)).maybeSingle();
+        assertSupabase(error);
+        existingQuotationItem = data ? normalizeQuotationItemRecord(data) : null;
+      }
+      if (!existingQuotationItem) {
+        const { data, error } = await client
+          .from("quotation_items")
+          .select("*")
+          .eq("quotation_id", Number(bid.quotation_id))
+          .eq("item_number", Number(itemData.item_number))
+          .maybeSingle();
+        assertSupabase(error);
+        existingQuotationItem = data ? normalizeQuotationItemRecord(data) : null;
+      }
+      const quotationRecord = bidItemToQuotationItem(
+        normalizeItemRecord({ ...existingItem, ...itemData, bid_id: bidId, quotation_item_id: quotationItemId }),
+        { ...existingQuotationItem, quotation_id: Number(bid.quotation_id) }
+      );
+      quotationItemId = await this.putQuotationItem(quotationRecord);
+    }
+    const record = normalizeItemRecord({ ...itemData, id: itemId || undefined, bid_id: bidId, quotation_item_id: quotationItemId });
     const operation = record.id ? client.from("items").upsert(record) : client.from("items").insert(removeEmptyId(record));
     const { error } = await operation;
     if (isMissingSupabaseColumnError(error)) {
@@ -843,6 +1038,7 @@ class SupabaseStore {
       return;
     }
     assertSupabase(error);
+    if (quotationItemId) await this.syncQuotationItemToBids(quotationItemId);
   }
 
   async setItemWon(itemId, isWon) {
@@ -853,6 +1049,13 @@ class SupabaseStore {
 
   async deleteItem(itemId) {
     const client = await this.open();
+    const { data: item, error: readError } = await client.from("items").select("quotation_item_id").eq("id", Number(itemId)).maybeSingle();
+    assertSupabase(readError);
+    if (item?.quotation_item_id) {
+      const { error } = await client.from("quotation_items").delete().eq("id", Number(item.quotation_item_id));
+      assertSupabase(error);
+      return;
+    }
     const { error } = await client.from("items").delete().eq("id", Number(itemId));
     assertSupabase(error);
   }
@@ -920,20 +1123,62 @@ class SupabaseStore {
   }
 
   async saveQuotationItem(quotationId, itemData, itemId) {
-    const client = await this.open();
     const record = normalizeQuotationItemRecord({ ...itemData, id: itemId || undefined, quotation_id: quotationId });
-    const { id, total, ...payload } = record;
-    const operation = id
-      ? client.from("quotation_items").update(payload).eq("id", Number(id))
-      : client.from("quotation_items").insert(payload);
-    const { error } = await operation;
-    assertSupabase(error);
+    const savedId = await this.putQuotationItem(record);
+    await this.syncQuotationItemToBids(savedId);
+    return savedId;
   }
 
   async deleteQuotationItem(itemId) {
     const client = await this.open();
     const { error } = await client.from("quotation_items").delete().eq("id", Number(itemId));
     assertSupabase(error);
+  }
+
+  async putQuotationItem(itemData) {
+    const client = await this.open();
+    const record = normalizeQuotationItemRecord(itemData);
+    const { id, total, ...payload } = record;
+    const operation = id
+      ? client.from("quotation_items").update(payload).eq("id", Number(id)).select("id").single()
+      : client.from("quotation_items").insert(payload).select("id").single();
+    const { data, error } = await operation;
+    assertSupabase(error);
+    return Number(data.id);
+  }
+
+  async syncQuotationItemToBids(quotationItemId) {
+    const client = await this.open();
+    const { data: quotationRow, error: quotationError } = await client
+      .from("quotation_items")
+      .select("*")
+      .eq("id", Number(quotationItemId))
+      .maybeSingle();
+    assertSupabase(quotationError);
+    if (!quotationRow) return;
+    const quotationItem = normalizeQuotationItemRecord(quotationRow);
+    const { data: bids, error: bidsError } = await client
+      .from("bids")
+      .select("id")
+      .eq("quotation_id", Number(quotationItem.quotation_id));
+    assertSupabase(bidsError);
+    for (const bid of bids || []) {
+      const { data: itemRows, error: itemsError } = await client
+        .from("items")
+        .select("*")
+        .eq("bid_id", bid.id);
+      assertSupabase(itemsError);
+      const existing = (itemRows || [])
+        .map(normalizeItemRecord)
+        .find(
+          (item) =>
+            Number(item.quotation_item_id) === Number(quotationItem.id) || Number(item.item_number) === Number(quotationItem.item_number)
+        );
+      const record = quotationItemToBidItem(quotationItem, { ...existing, bid_id: bid.id });
+      const operation = record.id ? client.from("items").upsert(record) : client.from("items").insert(removeEmptyId(record));
+      const { error } = await operation;
+      assertSupabase(error);
+    }
   }
 }
 
@@ -1003,6 +1248,21 @@ function bindEvents() {
     button.addEventListener("click", () => applyHomeStatusFilter(button.dataset.homeStatus));
   });
   refs.bidForm.addEventListener("submit", saveBid);
+  refs.bidQuotation.addEventListener("click", openBidQuotationModal);
+  refs.bidQuotation.addEventListener("keydown", (event) => {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      openBidQuotationModal();
+    }
+  });
+  refs.clearBidQuotationButton.addEventListener("click", clearBidQuotationSelection);
+  refs.closeBidQuotationModalButton.addEventListener("click", closeBidQuotationModal);
+  refs.bidQuotationModal.addEventListener("cancel", closeBidQuotationModal);
+  refs.bidQuotationModal.addEventListener("click", (event) => {
+    if (event.target === refs.bidQuotationModal) closeBidQuotationModal();
+  });
+  refs.bidQuotationFilterId.addEventListener("input", renderBidQuotationResults);
+  refs.bidQuotationFilterAgency.addEventListener("input", renderBidQuotationResults);
   refs.downloadEditalButton.addEventListener("click", downloadCurrentBidAttachment);
   refs.clearBidButton.addEventListener("click", () => clearBidForm({ openEditor: true }));
   refs.deleteBidButton.addEventListener("click", deleteCurrentBid);
@@ -1042,6 +1302,13 @@ function bindEvents() {
   refs.discardQuotationItemChangesButton.addEventListener("click", discardQuotationItemChanges);
   bindAutoGrowTextareas(refs.quotationItemForm);
   refs.quotationItemForm.addEventListener("submit", saveQuotationItem);
+  refs.addQuotationItemSupplierButton.addEventListener("click", addQuotationItemSupplier);
+  refs.quotationItemSupplierInput.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      addQuotationItemSupplier();
+    }
+  });
   refs.clearQuotationItemButton.addEventListener("click", () => clearQuotationItemForm({ focus: true }));
   refs.deleteQuotationItemButton.addEventListener("click", deleteCurrentQuotationItem);
   refs.quotationItemProfitMargin.addEventListener("input", updateQuotationValueWithMarginFromMargin);
@@ -1339,11 +1606,78 @@ function clearFilters() {
   renderBids();
 }
 
+function openBidQuotationModal() {
+  refs.bidQuotationFilterId.value = "";
+  refs.bidQuotationFilterAgency.value = "";
+  renderBidQuotationResults();
+  refs.bidQuotationModal.showModal();
+  requestAnimationFrame(() => refs.bidQuotationFilterId.focus());
+}
+
+function closeBidQuotationModal(event) {
+  event?.preventDefault();
+  if (refs.bidQuotationModal.open) refs.bidQuotationModal.close();
+}
+
+function renderBidQuotationResults() {
+  const idFilter = refs.bidQuotationFilterId.value.trim().toLowerCase();
+  const agencyFilter = refs.bidQuotationFilterAgency.value.trim().toLowerCase();
+  const quotations = appState.quotations.filter((quotation) => {
+    const matchesId = !idFilter || String(quotation.id).toLowerCase().includes(idFilter);
+    const matchesAgency = !agencyFilter || String(quotation.agency || "").toLowerCase().includes(agencyFilter);
+    return matchesId && matchesAgency;
+  });
+  if (!quotations.length) {
+    refs.bidQuotationResultsBody.innerHTML = `<tr><td colspan="4"><div class="empty-state compact-empty">Nenhum orçamento encontrado.</div></td></tr>`;
+    return;
+  }
+  refs.bidQuotationResultsBody.innerHTML = quotations
+    .map((quotation) => {
+      const selected = Number(quotation.id) === Number(appState.selectedBidQuotationId) ? " selected" : "";
+      return `<tr class="selectable${selected}" data-select-bid-quotation="${quotation.id}" tabindex="0">
+        <td><strong>${escapeHtml(quotation.id)}</strong></td>
+        <td>${escapeHtml(quotation.agency || "—")}</td>
+        <td>${escapeHtml(quotation.edital || "—")}</td>
+        <td><button class="text-action" type="button">Selecionar</button></td>
+      </tr>`;
+    })
+    .join("");
+  refs.bidQuotationResultsBody.querySelectorAll("[data-select-bid-quotation]").forEach((row) => {
+    const select = () => selectBidQuotation(Number(row.dataset.selectBidQuotation));
+    row.addEventListener("click", select);
+    row.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        select();
+      }
+    });
+  });
+}
+
+function selectBidQuotation(quotationId) {
+  appState.selectedBidQuotationId = Number(quotationId);
+  renderBidQuotationSelection();
+  closeBidQuotationModal();
+}
+
+function clearBidQuotationSelection() {
+  appState.selectedBidQuotationId = null;
+  renderBidQuotationSelection();
+}
+
+function renderBidQuotationSelection() {
+  const quotation = appState.quotations.find((row) => Number(row.id) === Number(appState.selectedBidQuotationId));
+  refs.bidQuotation.value = quotation ? `#${quotation.id} · ${quotation.agency || quotation.edital}` : "";
+  refs.bidQuotation.title = quotation ? `Orçamento #${quotation.id} — ${quotation.agency || quotation.edital}` : "Selecionar orçamento";
+  refs.clearBidQuotationButton.classList.toggle("hidden", !quotation);
+}
+
 function loadBid(bidId) {
   const bid = appState.bids.find((row) => row.id === bidId);
   if (!bid) return;
   appState.currentBidId = bid.id;
   appState.originalBidId = bid.id;
+  appState.selectedBidQuotationId = bid.quotation_id;
   refs.bidId.value = bid.id || "";
   refs.buyerAgency.value = bid.buyer_agency || "";
   refs.sessionDatetime.value = toDateTimeInputValue(bid.session_datetime);
@@ -1352,6 +1686,7 @@ function loadBid(bidId) {
   refs.editalLink.value = bid.edital_link || "";
   refs.bidType.value = bid.bid_type || BID_TYPE_OPTIONS[0];
   refs.bidStatus.value = bid.status || STATUS_OPTIONS[0];
+  renderBidQuotationSelection();
   refs.editalFile.value = "";
   renderBidAttachment(bid);
   refs.selectedBidLabel.textContent = bid.id;
@@ -1423,8 +1758,10 @@ function renderHomeSummary() {
 function clearBidForm(options = {}) {
   appState.currentBidId = null;
   appState.originalBidId = null;
+  appState.selectedBidQuotationId = null;
   appState.currentFailureId = null;
   refs.bidForm.reset();
+  renderBidQuotationSelection();
   renderBidAttachment(null);
   refs.bidType.value = BID_TYPE_OPTIONS[0];
   refs.bidStatus.value = STATUS_OPTIONS[0];
@@ -1514,6 +1851,7 @@ function collectBidData() {
     edital_link: refs.editalLink.value.trim(),
     proposal_deadline: fromDateTimeInputValue(refs.proposalDeadline.value),
     status: refs.bidStatus.value,
+    quotation_id: appState.selectedBidQuotationId || null,
   };
 }
 
@@ -1709,13 +2047,13 @@ function clearItemForm() {
 
 function addSupplierLink() {
   refs.itemFormError.textContent = "";
-  const link = normalizeUrlValue(refs.supplierLinkInput.value);
+  const link = normalizeSupplierEntry(refs.supplierLinkInput.value);
   if (!link) {
-    refs.itemFormError.textContent = "Informe um Link do Fornecedor válido.";
+    refs.itemFormError.textContent = "Informe um link ou nome de fornecedor.";
     return;
   }
   if (appState.supplierLinksDraft.some((currentLink) => currentLink.toLowerCase() === link.toLowerCase())) {
-    refs.itemFormError.textContent = "Este Link do Fornecedor já foi cadastrado.";
+    refs.itemFormError.textContent = "Este fornecedor já foi cadastrado.";
     return;
   }
   appState.supplierLinksDraft.push(link);
@@ -1731,15 +2069,15 @@ function removeSupplierLink(index) {
 
 function renderSupplierLinks() {
   if (!appState.supplierLinksDraft.length) {
-    refs.supplierLinksList.innerHTML = `<span class="supplier-links-empty">Nenhum link de fornecedor cadastrado.</span>`;
+    refs.supplierLinksList.innerHTML = `<span class="supplier-links-empty">Nenhum fornecedor cadastrado.</span>`;
     return;
   }
   refs.supplierLinksList.innerHTML = appState.supplierLinksDraft
     .map(
       (link, index) => `
         <div class="supplier-link-row">
-          <a href="${escapeHtml(link)}" target="_blank" rel="noopener noreferrer" title="${escapeHtml(link)}">${escapeHtml(link)}</a>
-          <button class="delete-supplier-link" type="button" data-delete-supplier-link="${index}" aria-label="Excluir link ${index + 1}" title="Excluir link">×</button>
+          ${renderSupplierEntry(link)}
+          <button class="delete-supplier-link" type="button" data-delete-supplier-link="${index}" aria-label="Excluir fornecedor ${index + 1}" title="Excluir fornecedor">×</button>
         </div>
       `
     )
@@ -1775,7 +2113,9 @@ function collectItemData() {
   const itemNumber = parseIntRequired(refs.itemNumber.value, "Número do Item");
   const name = refs.itemName.value.trim();
   if (!name) throw new Error("Preencha a Descrição.");
-  const quantity = parseIntOptional(refs.requiredQuantity.value, "Quantidade Exigida");
+  const quantity = refs.requiredQuantity.value.trim()
+    ? parseDecimal(refs.requiredQuantity.value, "Quantidade Exigida", false)
+    : 0;
   const technicalText = refs.technicalRegistrationText.value.trim();
   const supplierCost = parseDecimal(refs.supplierCost.value, "Valor de Custo", false);
   const finalValue = parseDecimal(refs.maxValue.value, "Valor Final", false);
@@ -2231,6 +2571,7 @@ function quotationItemFormSnapshot() {
     refs.quotationItemModel.value,
     refs.quotationItemManufacturer.value,
     refs.quotationItemTechnicalText.value,
+    appState.quotationSupplierLinksDraft,
     refs.quotationItemEstimatedValue.value,
     refs.quotationItemSupplierCost.value,
     refs.quotationItemProfitMargin.value,
@@ -2256,6 +2597,8 @@ function loadQuotationItem(itemId) {
   refs.quotationItemModel.value = item.model;
   refs.quotationItemManufacturer.value = item.manufacturer;
   refs.quotationItemTechnicalText.value = item.technical_text;
+  appState.quotationSupplierLinksDraft = [...item.supplier_links];
+  renderQuotationItemSuppliers();
   refs.quotationItemEstimatedValue.value = money(item.estimated_value);
   refs.quotationItemSupplierCost.value = item.supplier_cost ? money(item.supplier_cost) : "";
   refs.quotationItemProfitMargin.value = item.profit_margin === null ? "" : formatProfitMargin(item.profit_margin);
@@ -2277,6 +2620,8 @@ function loadQuotationItem(itemId) {
 function clearQuotationItemForm(options = {}) {
   appState.currentQuotationItemId = null;
   refs.quotationItemForm.reset();
+  appState.quotationSupplierLinksDraft = [];
+  renderQuotationItemSuppliers();
   refs.quotationItemQuantity.value = "1";
   refs.quotationItemTotal.value = money(0);
   refs.quotationItemTotalProfit.value = money(0);
@@ -2305,6 +2650,18 @@ async function saveQuotationItem(event) {
       (item) => Number(item.item_number) === Number(itemNumber) && Number(item.id) !== Number(appState.currentQuotationItemId)
     );
     if (duplicate) throw new Error("Já existe um item com este número neste orçamento.");
+    const linkedBidIds = new Set(
+      appState.bids
+        .filter((bid) => Number(bid.quotation_id) === Number(appState.currentQuotationId))
+        .map((bid) => bid.id)
+    );
+    const linkedBidConflict = appState.items.find(
+      (item) =>
+        linkedBidIds.has(item.bid_id) &&
+        Number(item.item_number) === Number(itemNumber) &&
+        Number(item.quotation_item_id) !== Number(appState.currentQuotationItemId)
+    );
+    if (linkedBidConflict) throw new Error(`O item ${itemNumber} já existe em um edital vinculado a este orçamento.`);
     const quantity = refs.quotationItemQuantity.value.trim()
       ? parseDecimal(refs.quotationItemQuantity.value, "Quantidade", false)
       : 1;
@@ -2321,6 +2678,7 @@ async function saveQuotationItem(event) {
         model: refs.quotationItemModel.value.trim(),
         manufacturer: refs.quotationItemManufacturer.value.trim(),
         technical_text: refs.quotationItemTechnicalText.value.trim(),
+        supplier_links: [...appState.quotationSupplierLinksDraft],
         estimated_value: parseDecimal(refs.quotationItemEstimatedValue.value, "Valor Estimado", false),
         supplier_cost: supplierCost,
         profit_margin: profitMargin,
@@ -2694,6 +3052,7 @@ function normalizeBidRecord(record) {
     edital_file_name: record.edital_file_name || "",
     edital_file_type: record.edital_file_type || "",
     edital_file_size: Number(record.edital_file_size || 0),
+    quotation_id: record.quotation_id === undefined || record.quotation_id === null || record.quotation_id === "" ? null : Number(record.quotation_id),
     ...(record.edital_file_blob ? { edital_file_blob: record.edital_file_blob } : {}),
     created_at: record.created_at || timestampNow(),
     updated_at: record.updated_at || timestampNow(),
@@ -2715,6 +3074,10 @@ function normalizeItemRecord(record) {
   return {
     id: record.id ? Number(record.id) : undefined,
     bid_id: record.bid_id,
+    quotation_item_id:
+      record.quotation_item_id === undefined || record.quotation_item_id === null || record.quotation_item_id === ""
+        ? null
+        : Number(record.quotation_item_id),
     item_number: Number(record.item_number || 0),
     name: record.name || "",
     description: technicalText,
@@ -2775,6 +3138,7 @@ function legacySupabaseItemRecord(record) {
     is_won,
     profit_margin,
     supplier_links,
+    quotation_item_id,
     ...legacyRecord
   } = record;
   return {
@@ -2853,10 +3217,120 @@ function normalizeQuotationItemRecord(record) {
     estimated_value: Number(record.estimated_value || 0),
     supplier_cost: supplierCost,
     profit_margin: profitMargin,
+    supplier_links: normalizeSupplierLinks(record.supplier_links),
     final_bid: finalBid,
     quantity,
     total: record.total === undefined || record.total === null ? finalBid * quantity : Number(record.total),
   };
+}
+
+function normalizeSupplierEntry(value) {
+  const raw = String(value || "").trim();
+  if (!raw) return "";
+  const normalizedUrl = !/\s/.test(raw) ? normalizeUrlValue(raw) : "";
+  if (/^(?:https?:\/\/|www\.)/i.test(raw)) return normalizedUrl;
+  return normalizedUrl || raw;
+}
+
+function supplierEntryUrl(value) {
+  const raw = String(value || "").trim();
+  return !/\s/.test(raw) ? normalizeUrlValue(raw) : "";
+}
+
+function addQuotationItemSupplier() {
+  refs.quotationItemFormError.textContent = "";
+  const supplier = normalizeSupplierEntry(refs.quotationItemSupplierInput.value);
+  if (!supplier) {
+    refs.quotationItemFormError.textContent = "Informe um link ou nome de fornecedor.";
+    return;
+  }
+  if (appState.quotationSupplierLinksDraft.some((current) => current.toLowerCase() === supplier.toLowerCase())) {
+    refs.quotationItemFormError.textContent = "Este fornecedor já foi cadastrado.";
+    return;
+  }
+  appState.quotationSupplierLinksDraft.push(supplier);
+  refs.quotationItemSupplierInput.value = "";
+  renderQuotationItemSuppliers();
+  refs.quotationItemSupplierInput.focus();
+}
+
+function removeQuotationItemSupplier(index) {
+  appState.quotationSupplierLinksDraft.splice(index, 1);
+  renderQuotationItemSuppliers();
+}
+
+function renderQuotationItemSuppliers() {
+  if (!appState.quotationSupplierLinksDraft.length) {
+    refs.quotationItemSuppliersList.innerHTML = `<span class="supplier-links-empty">Nenhum fornecedor cadastrado.</span>`;
+    return;
+  }
+  refs.quotationItemSuppliersList.innerHTML = appState.quotationSupplierLinksDraft
+    .map(
+      (supplier, index) => `<div class="supplier-link-row">
+        ${renderSupplierEntry(supplier)}
+        <button class="delete-supplier-link" type="button" data-delete-quotation-supplier="${index}" aria-label="Excluir fornecedor ${index + 1}" title="Excluir fornecedor">×</button>
+      </div>`
+    )
+    .join("");
+  refs.quotationItemSuppliersList.querySelectorAll("[data-delete-quotation-supplier]").forEach((button) => {
+    button.addEventListener("click", () => removeQuotationItemSupplier(Number(button.dataset.deleteQuotationSupplier)));
+  });
+}
+
+function renderSupplierEntry(value) {
+  const url = supplierEntryUrl(value);
+  return url
+    ? `<a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer" title="${escapeHtml(url)}">${escapeHtml(value)}</a>`
+    : `<span class="supplier-name" title="${escapeHtml(value)}">${escapeHtml(value)}</span>`;
+}
+
+function quotationItemToBidItem(quotationItem, existingItem = {}) {
+  const supplierLinks = normalizeSupplierLinks(quotationItem.supplier_links);
+  return normalizeItemRecord({
+    ...existingItem,
+    quotation_item_id: quotationItem.id,
+    item_number: quotationItem.item_number,
+    name: quotationItem.description,
+    description: quotationItem.technical_text,
+    technical_registration_text: quotationItem.technical_text,
+    estimated_value: quotationItem.estimated_value,
+    max_acceptable_value: quotationItem.final_bid,
+    brand_model: formatQuotationBrandModel(quotationItem),
+    supplier_cost: quotationItem.supplier_cost,
+    profit_margin: quotationItem.profit_margin,
+    supplier_link: supplierLinks[0] || "",
+    supplier_links: supplierLinks,
+    required_quantity: quotationItem.quantity,
+  });
+}
+
+function bidItemToQuotationItem(bidItem, existingQuotationItem = {}) {
+  const { manufacturer, model } = splitBrandModel(bidItem.brand_model);
+  return normalizeQuotationItemRecord({
+    ...existingQuotationItem,
+    id: existingQuotationItem.id || bidItem.quotation_item_id || undefined,
+    item_number: bidItem.item_number,
+    description: bidItem.name,
+    model,
+    manufacturer,
+    technical_text: bidItem.technical_registration_text || bidItem.description,
+    estimated_value: bidItem.estimated_value,
+    supplier_cost: bidItem.supplier_cost,
+    profit_margin: bidItem.profit_margin,
+    supplier_links: bidItem.supplier_links,
+    final_bid: bidItem.max_acceptable_value,
+    quantity: bidItem.required_quantity,
+  });
+}
+
+function formatQuotationBrandModel(item) {
+  return [item.manufacturer, item.model].map((value) => String(value || "").trim()).filter(Boolean).join(" / ");
+}
+
+function splitBrandModel(value) {
+  const parts = String(value || "").split(" / ").map((part) => part.trim()).filter(Boolean);
+  if (parts.length < 2) return { manufacturer: "", model: parts[0] || "" };
+  return { manufacturer: parts.shift(), model: parts.join(" / ") };
 }
 
 function normalizeEmail(email) {
