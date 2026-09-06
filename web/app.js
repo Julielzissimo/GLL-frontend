@@ -2158,14 +2158,16 @@ function renderQuotationItems() {
   refs.quotationItemsTableBody.innerHTML = items
     .map((item) => {
       const selected = Number(item.id) === Number(appState.currentQuotationItemId) ? " selected" : "";
+      const description = item.description || "";
+      const descriptionTooltip = description ? ` title="${escapeHtml(description)}"` : "";
       return `
         <tr class="selectable${selected}" tabindex="0" data-quotation-item-id="${item.id}">
           <td><strong>${escapeHtml(formatNumber(item.item_number))}</strong></td>
-          <td><strong>${escapeHtml(item.description || "—")}</strong>${item.model ? `<small class="table-secondary">Modelo: ${escapeHtml(item.model)}</small>` : ""}</td>
+          <td><strong class="quotation-item-description"${descriptionTooltip}>${escapeHtml(description || "—")}</strong>${item.model ? `<small class="table-secondary">Modelo: ${escapeHtml(item.model)}</small>` : ""}</td>
           <td>${escapeHtml(item.manufacturer || "—")}</td>
           <td class="numeric">${money(item.estimated_value)}</td>
           <td class="numeric">${money(item.supplier_cost)}</td>
-          <td class="numeric">${formatQuotationProfitMargin(item)}</td>
+          <td class="numeric">${formatQuotationFinalBidMargin(item)}</td>
           <td class="numeric">${formatQuotationValueWithMargin(item)}</td>
           <td class="numeric">${money(item.final_bid)}</td>
           <td class="numeric">${escapeHtml(formatNumber(item.quantity))}</td>
@@ -2364,9 +2366,9 @@ function updateQuotationItemTotals() {
   }
 }
 
-function formatQuotationProfitMargin(item) {
-  if (item.profit_margin === null || item.profit_margin === undefined || item.profit_margin === "") return "—";
-  return formatProfitMargin(item.profit_margin);
+function formatQuotationFinalBidMargin(item) {
+  const margin = calculateProfitMargin(item.final_bid, item.supplier_cost);
+  return margin === null ? "—" : percent(margin);
 }
 
 function formatQuotationValueWithMargin(item) {
