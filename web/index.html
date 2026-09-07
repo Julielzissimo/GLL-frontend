@@ -787,6 +787,12 @@
       </div>
     </main>
 
+    <dialog id="blockingLoadingModal" class="blocking-loading-modal" aria-labelledby="blockingLoadingMessage" aria-describedby="blockingLoadingDescription" aria-modal="true" tabindex="-1">
+      <div class="blocking-loading-spinner" aria-hidden="true"></div>
+      <h2 id="blockingLoadingMessage" role="status" aria-live="polite">Processando…</h2>
+      <p id="blockingLoadingDescription">Aguarde a conclusão da operação. Não feche nem atualize esta página.</p>
+    </dialog>
+
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
     <script src="./env.js"></script>
     <script type="module" src="./app.js"></script>
