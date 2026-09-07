@@ -2617,6 +2617,7 @@ function openQuotationItemModal() {
   if (!currentQuotation()) return;
   clearQuotationItemForm();
   refs.quotationItemModal.showModal();
+  resizeTextarea(refs.quotationItemTechnicalText);
   requestAnimationFrame(() => refs.quotationItemNumber.focus());
 }
 
@@ -2687,10 +2688,10 @@ function loadQuotationItem(itemId) {
   updateQuotationValueWithMargin();
   updateQuotationFinalBidMarginIndicator();
   updateQuotationItemTotals();
-  resizeTextarea(refs.quotationItemTechnicalText);
   renderQuotationItems();
   markQuotationItemFormPristine();
   if (!refs.quotationItemModal.open) refs.quotationItemModal.showModal();
+  resizeTextarea(refs.quotationItemTechnicalText);
   requestAnimationFrame(() => refs.quotationItemNumber.focus());
 }
 
