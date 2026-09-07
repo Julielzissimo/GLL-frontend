@@ -2609,12 +2609,12 @@ function renderQuotationItems() {
       return `
         <tr class="selectable${selected}" tabindex="0" data-quotation-item-id="${item.id}">
           <td><strong>${escapeHtml(formatNumber(item.item_number))}</strong></td>
+          <td class="numeric">${money(item.final_bid)}</td>
           <td><strong class="quotation-item-description"${descriptionTooltip}>${escapeHtml(description || "—")}</strong>${item.model ? `<small class="table-secondary">Modelo: ${escapeHtml(item.model)}</small>` : ""}</td>
           <td>${escapeHtml(item.manufacturer || "—")}</td>
           <td class="numeric">${money(item.estimated_value)}</td>
           <td class="numeric">${money(item.supplier_cost)}</td>
           <td class="numeric">${formatQuotationFinalBidMargin(item)}</td>
-          <td class="numeric">${money(item.final_bid)}</td>
           <td class="numeric">${escapeHtml(formatNumber(item.quantity))}</td>
           <td class="numeric"><strong>${money(item.total)}</strong></td>
           <td class="numeric"><strong>${money(calculateItemProfit(item.final_bid, item.supplier_cost, item.quantity))}</strong></td>
