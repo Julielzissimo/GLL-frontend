@@ -751,6 +751,31 @@ th.numeric {
   text-align: right;
 }
 
+.section-title-actions,
+.quotation-items-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.download-items-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+.button-icon {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
 .form-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -2597,7 +2622,8 @@ tr.item-won td {
     flex-direction: column;
   }
 
-  .quotation-items-toolbar > button {
+  .quotation-items-actions,
+  .quotation-items-actions > button {
     width: 100%;
   }
 
@@ -2770,6 +2796,16 @@ tr.item-won td {
   .workspace-header {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .section-title-actions {
+    width: 100%;
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .section-title-actions .download-items-button {
+    width: 100%;
   }
 }
 

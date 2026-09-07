@@ -169,6 +169,7 @@ const refs = {
   clearItemButton: $("clearItemButton"),
   itemsTableBody: $("itemsTableBody"),
   itemWonHeader: $("itemWonHeader"),
+  downloadBidItemsButton: $("downloadBidItemsButton"),
   documentForm: $("documentForm"),
   documentType: $("documentType"),
   hasDocument: $("hasDocument"),
@@ -205,6 +206,7 @@ const refs = {
   quotationItemsSection: $("quotationItemsSection"),
   quotationItemsStatus: $("quotationItemsStatus"),
   quotationGrandTotal: $("quotationGrandTotal"),
+  downloadQuotationItemsButton: $("downloadQuotationItemsButton"),
   openQuotationItemModalButton: $("openQuotationItemModalButton"),
   quotationItemModal: $("quotationItemModal"),
   quotationItemModalTitle: $("quotationItemModalTitle"),
@@ -1276,6 +1278,7 @@ function bindEvents() {
   });
   refs.clearItemButton.addEventListener("click", clearItemForm);
   refs.deleteItemButton.addEventListener("click", deleteCurrentItem);
+  refs.downloadBidItemsButton.addEventListener("click", downloadCurrentBidItemsCsv);
   refs.documentForm.addEventListener("submit", saveDocument);
   refs.clearDocumentButton.addEventListener("click", clearDocumentForm);
   refs.deleteDocumentButton.addEventListener("click", deleteCurrentDocument);
@@ -1288,6 +1291,7 @@ function bindEvents() {
   refs.clearQuotationButton.addEventListener("click", clearQuotationForm);
   refs.deleteQuotationButton.addEventListener("click", deleteCurrentQuotation);
   refs.quotationCep.addEventListener("input", formatQuotationCepInput);
+  refs.downloadQuotationItemsButton.addEventListener("click", downloadCurrentQuotationItemsCsv);
   refs.openQuotationItemModalButton.addEventListener("click", openQuotationItemModal);
   refs.closeQuotationItemModalButton.addEventListener("click", requestCloseQuotationItemModal);
   refs.quotationItemModal.addEventListener("close", () => clearQuotationItemForm());
@@ -1838,6 +1842,76 @@ async function downloadCurrentBidAttachment() {
   }
 }
 
+function downloadCurrentBidItemsCsv() {
+  const bid = currentBid();
+  if (!bid) {
+    showToast("Selecione um edital para baixar os itens.");
+    return;
+  }
+  const rows = sortItemsForCsv(currentItems()).map((item) => {
+    const { manufacturer, model } = splitBrandModel(item.brand_model);
+    return [
+      item.item_number,
+      item.name,
+      model,
+      manufacturer,
+      item.technical_registration_text || item.description,
+      formatSupplierLinksForCsv(item.supplier_links),
+    ];
+  });
+  downloadItemsCsv(rows, `itens-edital-${sanitizeStorageFileName(bid.id)}.csv`);
+}
+
+function downloadCurrentQuotationItemsCsv() {
+  const quotation = currentQuotation();
+  if (!quotation) {
+    showToast("Selecione um orçamento para baixar os itens.");
+    return;
+  }
+  const rows = sortItemsForCsv(currentQuotationItems()).map((item) => [
+    item.item_number,
+    item.description,
+    item.model,
+    item.manufacturer,
+    item.technical_text,
+    formatSupplierLinksForCsv(item.supplier_links),
+  ]);
+  const identifier = sanitizeStorageFileName(quotation.edital || quotation.id);
+  downloadItemsCsv(rows, `itens-orcamento-${identifier}.csv`);
+}
+
+function sortItemsForCsv(items) {
+  return [...items].sort((first, second) => {
+    const numberDifference = Number(first.item_number || 0) - Number(second.item_number || 0);
+    return numberDifference || Number(first.id || 0) - Number(second.id || 0);
+  });
+}
+
+function formatSupplierLinksForCsv(value) {
+  return normalizeSupplierLinks(value).join(" | ");
+}
+
+function downloadItemsCsv(rows, fileName) {
+  const headers = ["ITEM", "DESCRIÇÃO", "MODELO", "MARCA/FABRICANTE", "TEXTO TÉCNICO", "LINK'S DO FORNECEDOR"];
+  const csv = `\uFEFF${[headers, ...rows].map((row) => row.map(escapeCsvCell).join(";")).join("\r\n")}\r\n`;
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+  const objectUrl = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = objectUrl;
+  anchor.download = fileName;
+  document.body.append(anchor);
+  anchor.click();
+  anchor.remove();
+  setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
+  showToast(`Download iniciado: ${rows.length} ${rows.length === 1 ? "item" : "itens"}.`);
+}
+
+function escapeCsvCell(value) {
+  const normalized = String(value ?? "").replace(/\r\n?/g, "\n");
+  const safeValue = /^[=+\-@]/.test(normalized.trimStart()) ? `'${normalized}` : normalized;
+  return `"${safeValue.replaceAll('"', '""')}"`;
+}
+
 function collectBidData() {
   if (!refs.bidId.value.trim()) throw new Error("Preencha a Identificação do Pregão.");
   if (!refs.buyerAgency.value.trim()) throw new Error("Preencha o Órgão Comprador.");
@@ -1876,6 +1950,7 @@ function renderDetails() {
   renderDocuments(documents);
   renderFailures(failures);
   const hasBid = Boolean(appState.currentBidId);
+  refs.downloadBidItemsButton.disabled = !hasBid;
   refs.failuresTabButton.classList.toggle("hidden", !shouldShowFailureHistory());
   refs.deleteBidButton.disabled = !hasBid;
   refs.itemForm.querySelectorAll("input, select, textarea, button").forEach((el) => {
@@ -2483,6 +2558,7 @@ async function deleteCurrentQuotation() {
 function renderQuotationItems() {
   const quotation = currentQuotation();
   refs.quotationItemsSection.classList.toggle("hidden", !quotation);
+  refs.downloadQuotationItemsButton.disabled = !quotation;
   if (!quotation) {
     refs.quotationItemsTableBody.innerHTML = "";
     refs.quotationGrandTotal.textContent = `Total: ${money(0)}`;
