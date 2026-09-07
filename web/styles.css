@@ -2494,9 +2494,9 @@ tr.item-won td {
 }
 
 .quotation-items-table {
-  width: 1540px;
-  min-width: 1540px;
-  max-width: 1540px;
+  width: 1405px;
+  min-width: 1405px;
+  max-width: 1405px;
   table-layout: fixed;
 }
 
@@ -2525,21 +2525,18 @@ tr.item-won td {
 .quotation-items-table td:nth-child(6) { width: 90px; }
 
 .quotation-items-table th:nth-child(7),
-.quotation-items-table td:nth-child(7) { width: 135px; }
+.quotation-items-table td:nth-child(7) { width: 115px; }
 
 .quotation-items-table th:nth-child(8),
-.quotation-items-table td:nth-child(8) { width: 115px; }
+.quotation-items-table td:nth-child(8) { width: 100px; }
 
 .quotation-items-table th:nth-child(9),
-.quotation-items-table td:nth-child(9) { width: 100px; }
-
+.quotation-items-table td:nth-child(9),
 .quotation-items-table th:nth-child(10),
-.quotation-items-table td:nth-child(10),
-.quotation-items-table th:nth-child(11),
-.quotation-items-table td:nth-child(11) { width: 125px; }
+.quotation-items-table td:nth-child(10) { width: 125px; }
 
-.quotation-items-table th:nth-child(12),
-.quotation-items-table td:nth-child(12) { width: 73px; }
+.quotation-items-table th:nth-child(11),
+.quotation-items-table td:nth-child(11) { width: 73px; }
 
 .quotation-items-table tbody td {
   height: 60px;

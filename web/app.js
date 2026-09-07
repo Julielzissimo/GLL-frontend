@@ -2598,7 +2598,7 @@ function renderQuotationItems() {
   refs.quotationItemsStatus.textContent = `${items.length} ${items.length === 1 ? "item cadastrado" : "itens cadastrados"}`;
   refs.quotationGrandTotal.textContent = `Total: ${money(grandTotal)}`;
   if (!items.length) {
-    refs.quotationItemsTableBody.innerHTML = `<tr><td colspan="12"><div class="empty-state compact-empty">Nenhum item cadastrado neste orçamento.</div></td></tr>`;
+    refs.quotationItemsTableBody.innerHTML = `<tr><td colspan="11"><div class="empty-state compact-empty">Nenhum item cadastrado neste orçamento.</div></td></tr>`;
     return;
   }
   refs.quotationItemsTableBody.innerHTML = items
@@ -2614,7 +2614,6 @@ function renderQuotationItems() {
           <td class="numeric">${money(item.estimated_value)}</td>
           <td class="numeric">${money(item.supplier_cost)}</td>
           <td class="numeric">${formatQuotationFinalBidMargin(item)}</td>
-          <td class="numeric">${formatQuotationValueWithMargin(item)}</td>
           <td class="numeric">${money(item.final_bid)}</td>
           <td class="numeric">${escapeHtml(formatNumber(item.quantity))}</td>
           <td class="numeric"><strong>${money(item.total)}</strong></td>
