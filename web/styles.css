@@ -1916,18 +1916,16 @@ th {
 }
 
 .items-table {
-  width: 1370px;
+  width: 100%;
   min-width: 1370px;
-  max-width: 1370px;
+  max-width: none;
   border-collapse: separate;
   border-spacing: 0;
   table-layout: fixed;
 }
 
 .items-table.shows-item-won {
-  width: 1490px;
   min-width: 1490px;
-  max-width: 1490px;
 }
 
 .items-table-wrap {
