@@ -1219,8 +1219,37 @@ function optionList(values) {
   return values.map((value) => `<option value="${escapeHtml(value)}">${escapeHtml(value)}</option>`).join("");
 }
 
+// Wrap complete UI operations, including their data refresh, rather than individual requests.
+let blockingOperationActive = false;
+
+function withBlockingLoading(operation, message) {
+  return async function (event) {
+    event?.preventDefault();
+    if (blockingOperationActive) return;
+    blockingOperationActive = true;
+    const modal = document.getElementById("blockingLoadingModal");
+    const previousFocus = document.activeElement;
+    try {
+      document.getElementById("blockingLoadingMessage").textContent = message;
+      document.documentElement.classList.add("is-loading");
+      modal.showModal();
+      await operation.call(this, event);
+    } catch (error) {
+      showToast(error.message || "Não foi possível concluir a operação. Tente novamente.");
+    } finally {
+      modal.close();
+      document.documentElement.classList.remove("is-loading");
+      blockingOperationActive = false;
+      if (previousFocus?.isConnected && !previousFocus.disabled && previousFocus.getClientRects().length) {
+        previousFocus.focus({ preventScroll: true });
+      }
+    }
+  };
+}
+
 function bindEvents() {
-  refs.loginForm.addEventListener("submit", handleLogin);
+  document.getElementById("blockingLoadingModal").addEventListener("cancel", (event) => event.preventDefault());
+  refs.loginForm.addEventListener("submit", withBlockingLoading(handleLogin, "Entrando no sistema…"));
   refs.homeIconButton.addEventListener("click", () => setPage("home"));
   document.querySelectorAll("[data-navigation-page]").forEach((button) => {
     button.addEventListener("click", () => setPage(button.dataset.navigationPage));
@@ -1239,7 +1268,7 @@ function bindEvents() {
   refs.sidebarPanel.addEventListener("click", collapseSidebarFromEmptyArea);
   refs.logoutButton.addEventListener("click", logout);
   if (!hasSupabaseConfig()) {
-    refs.resetDataButton.addEventListener("click", resetSeedData);
+    refs.resetDataButton.addEventListener("click", withBlockingLoading(resetSeedData, "Restaurando a base…"));
   }
   refs.filterForm.addEventListener("submit", (event) => {
     event.preventDefault();
@@ -1249,7 +1278,7 @@ function bindEvents() {
   document.querySelectorAll("[data-home-status]").forEach((button) => {
     button.addEventListener("click", () => applyHomeStatusFilter(button.dataset.homeStatus));
   });
-  refs.bidForm.addEventListener("submit", saveBid);
+  refs.bidForm.addEventListener("submit", withBlockingLoading(saveBid, "Salvando edital…"));
   refs.bidQuotation.addEventListener("click", openBidQuotationModal);
   refs.bidQuotation.addEventListener("keydown", (event) => {
     if (event.key === "Enter" || event.key === " ") {
@@ -1265,10 +1294,10 @@ function bindEvents() {
   });
   refs.bidQuotationFilterId.addEventListener("input", renderBidQuotationResults);
   refs.bidQuotationFilterAgency.addEventListener("input", renderBidQuotationResults);
-  refs.downloadEditalButton.addEventListener("click", downloadCurrentBidAttachment);
+  refs.downloadEditalButton.addEventListener("click", withBlockingLoading(downloadCurrentBidAttachment, "Preparando o download…"));
   refs.clearBidButton.addEventListener("click", () => clearBidForm({ openEditor: true }));
-  refs.deleteBidButton.addEventListener("click", deleteCurrentBid);
-  refs.itemForm.addEventListener("submit", saveItem);
+  refs.deleteBidButton.addEventListener("click", withBlockingLoading(deleteCurrentBid, "Excluindo edital…"));
+  refs.itemForm.addEventListener("submit", withBlockingLoading(saveItem, "Salvando item…"));
   refs.addSupplierLinkButton.addEventListener("click", addSupplierLink);
   refs.supplierLinkInput.addEventListener("keydown", (event) => {
     if (event.key === "Enter") {
@@ -1277,19 +1306,19 @@ function bindEvents() {
     }
   });
   refs.clearItemButton.addEventListener("click", clearItemForm);
-  refs.deleteItemButton.addEventListener("click", deleteCurrentItem);
+  refs.deleteItemButton.addEventListener("click", withBlockingLoading(deleteCurrentItem, "Excluindo item…"));
   refs.downloadBidItemsButton.addEventListener("click", downloadCurrentBidItemsCsv);
-  refs.documentForm.addEventListener("submit", saveDocument);
+  refs.documentForm.addEventListener("submit", withBlockingLoading(saveDocument, "Salvando documento…"));
   refs.clearDocumentButton.addEventListener("click", clearDocumentForm);
-  refs.deleteDocumentButton.addEventListener("click", deleteCurrentDocument);
-  refs.failureForm.addEventListener("submit", saveFailure);
+  refs.deleteDocumentButton.addEventListener("click", withBlockingLoading(deleteCurrentDocument, "Excluindo documento…"));
+  refs.failureForm.addEventListener("submit", withBlockingLoading(saveFailure, "Salvando registro de falha…"));
   refs.clearFailureButton.addEventListener("click", clearFailureForm);
-  refs.deleteFailureButton.addEventListener("click", deleteCurrentFailure);
+  refs.deleteFailureButton.addEventListener("click", withBlockingLoading(deleteCurrentFailure, "Excluindo registro de falha…"));
   refs.bidStatus.addEventListener("change", handleBidStatusChange);
   refs.newQuotationButton.addEventListener("click", clearQuotationForm);
-  refs.quotationForm.addEventListener("submit", saveQuotation);
+  refs.quotationForm.addEventListener("submit", withBlockingLoading(saveQuotation, "Salvando orçamento…"));
   refs.clearQuotationButton.addEventListener("click", clearQuotationForm);
-  refs.deleteQuotationButton.addEventListener("click", deleteCurrentQuotation);
+  refs.deleteQuotationButton.addEventListener("click", withBlockingLoading(deleteCurrentQuotation, "Excluindo orçamento…"));
   refs.quotationCep.addEventListener("input", formatQuotationCepInput);
   refs.downloadQuotationItemsButton.addEventListener("click", downloadCurrentQuotationItemsCsv);
   refs.openQuotationItemModalButton.addEventListener("click", openQuotationItemModal);
@@ -1305,7 +1334,7 @@ function bindEvents() {
   refs.continueEditingQuotationItemButton.addEventListener("click", () => refs.quotationItemDiscardModal.close());
   refs.discardQuotationItemChangesButton.addEventListener("click", discardQuotationItemChanges);
   bindAutoGrowTextareas(refs.quotationItemForm);
-  refs.quotationItemForm.addEventListener("submit", saveQuotationItem);
+  refs.quotationItemForm.addEventListener("submit", withBlockingLoading(saveQuotationItem, "Salvando item do orçamento…"));
   refs.addQuotationItemSupplierButton.addEventListener("click", addQuotationItemSupplier);
   refs.quotationItemSupplierInput.addEventListener("keydown", (event) => {
     if (event.key === "Enter") {
@@ -1314,7 +1343,7 @@ function bindEvents() {
     }
   });
   refs.clearQuotationItemButton.addEventListener("click", () => clearQuotationItemForm({ focus: true }));
-  refs.deleteQuotationItemButton.addEventListener("click", deleteCurrentQuotationItem);
+  refs.deleteQuotationItemButton.addEventListener("click", withBlockingLoading(deleteCurrentQuotationItem, "Excluindo item do orçamento…"));
   refs.quotationItemProfitMargin.addEventListener("input", updateQuotationValueWithMarginFromMargin);
   refs.quotationItemProfitMargin.addEventListener("focus", () => {
     refs.quotationItemProfitMargin.value = refs.quotationItemProfitMargin.value.replace("%", "");
@@ -1338,7 +1367,7 @@ function bindEvents() {
       updateQuotationItemTotals();
     });
   }
-  refs.userForm.addEventListener("submit", saveUser);
+  refs.userForm.addEventListener("submit", withBlockingLoading(saveUser, "Cadastrando usuário…"));
   refs.clearUserButton.addEventListener("click", clearUserForm);
   refs.itemsTabButton.addEventListener("click", () => setPage("items"));
   refs.documentsTabButton.addEventListener("click", () => setPage("documents"));
@@ -2040,7 +2069,7 @@ function renderItems(items) {
   });
   refs.itemsTableBody.querySelectorAll("[data-item-won]").forEach((checkbox) => {
     checkbox.addEventListener("click", (event) => event.stopPropagation());
-    checkbox.addEventListener("change", () => setItemWon(Number(checkbox.dataset.itemWon), checkbox.checked, checkbox));
+    checkbox.addEventListener("change", withBlockingLoading(() => setItemWon(Number(checkbox.dataset.itemWon), checkbox.checked, checkbox), "Atualizando item…"));
   });
 }
 
@@ -2617,6 +2646,7 @@ function openQuotationItemModal() {
   if (!currentQuotation()) return;
   clearQuotationItemForm();
   refs.quotationItemModal.showModal();
+  resizeTextarea(refs.quotationItemTechnicalText);
   requestAnimationFrame(() => refs.quotationItemNumber.focus());
 }
 
@@ -2687,10 +2717,10 @@ function loadQuotationItem(itemId) {
   updateQuotationValueWithMargin();
   updateQuotationFinalBidMarginIndicator();
   updateQuotationItemTotals();
-  resizeTextarea(refs.quotationItemTechnicalText);
   renderQuotationItems();
   markQuotationItemFormPristine();
   if (!refs.quotationItemModal.open) refs.quotationItemModal.showModal();
+  resizeTextarea(refs.quotationItemTechnicalText);
   requestAnimationFrame(() => refs.quotationItemNumber.focus());
 }
 
@@ -2935,7 +2965,7 @@ function renderUsers() {
     .join("");
 
   refs.usersTableBody.querySelectorAll("[data-delete-user]").forEach((button) => {
-    button.addEventListener("click", () => deleteUser(button.dataset.deleteUser));
+    button.addEventListener("click", withBlockingLoading(() => deleteUser(button.dataset.deleteUser), "Excluindo usuário…"));
   });
 }
 
