@@ -1928,6 +1928,7 @@ function renderMetrics(items) {
 function renderItems(items) {
   const showWonItems = shouldUseWonItems();
   refs.itemWonHeader.classList.toggle("hidden", !showWonItems);
+  refs.itemWonHeader.closest(".items-table")?.classList.toggle("shows-item-won", showWonItems);
   if (!items.length) {
     refs.itemsTableBody.innerHTML = `<tr><td colspan="${showWonItems ? 12 : 11}">Nenhum item cadastrado.</td></tr>`;
     return;
