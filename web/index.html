@@ -280,7 +280,15 @@
               <form id="itemForm" class="section-band compact-band">
                 <div class="section-title">
                   <h2>Itens do Edital</h2>
-                  <span id="selectedItemLabel">Novo item</span>
+                  <div class="section-title-actions">
+                    <span id="selectedItemLabel">Novo item</span>
+                    <button id="downloadBidItemsButton" class="quiet-action download-items-button" type="button">
+                      <svg class="button-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                        <path d="M12 3v12m0 0 5-5m-5 5-5-5M5 20h14" />
+                      </svg>
+                      Baixar Itens
+                    </button>
+                  </div>
                 </div>
                 <div class="item-form-grid">
                   <label class="item-field tiny">
@@ -542,7 +550,15 @@
               <span id="quotationItemsStatus">Salve o orçamento para cadastrar itens</span>
               <span id="quotationGrandTotal" class="quotation-grand-total">Total: R$ 0,00</span>
             </div>
-            <button id="openQuotationItemModalButton" class="primary-action" type="button">Cadastrar Item</button>
+            <div class="quotation-items-actions">
+              <button id="downloadQuotationItemsButton" class="quiet-action download-items-button" type="button">
+                <svg class="button-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                  <path d="M12 3v12m0 0 5-5m-5 5-5-5M5 20h14" />
+                </svg>
+                Baixar Itens
+              </button>
+              <button id="openQuotationItemModalButton" class="primary-action" type="button">Cadastrar Item</button>
+            </div>
           </div>
 
           <div class="table-wrap quotation-items-table-wrap">
