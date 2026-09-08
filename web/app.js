@@ -1296,7 +1296,15 @@ function bindEvents() {
   refs.bidQuotationFilterAgency.addEventListener("input", renderBidQuotationResults);
   refs.downloadEditalButton.addEventListener("click", withBlockingLoading(downloadCurrentBidAttachment, "Preparando o download…"));
   refs.clearBidButton.addEventListener("click", () => clearBidForm({ openEditor: true }));
-  refs.deleteBidButton.addEventListener("click", withBlockingLoading(deleteCurrentBid, "Excluindo edital…"));
+  refs.deleteBidButton.addEventListener("click", requestDeleteCurrentBid);
+  $("cancelDeleteBidButton").addEventListener("click", () => $("deleteBidModal").close());
+  $("confirmDeleteBidButton").addEventListener("click", () => {
+    const modal = $("deleteBidModal");
+    if (!modal.open) return;
+    const bidId = modal.dataset.bidId;
+    modal.close();
+    withBlockingLoading(() => deleteCurrentBid(bidId), "Excluindo edital…")();
+  });
   refs.itemForm.addEventListener("submit", withBlockingLoading(saveItem, "Salvando item…"));
   refs.addSupplierLinkButton.addEventListener("click", addSupplierLink);
   refs.supplierLinkInput.addEventListener("keydown", (event) => {
@@ -1958,13 +1966,20 @@ function collectBidData() {
   };
 }
 
-async function deleteCurrentBid() {
+function requestDeleteCurrentBid() {
   if (!appState.currentBidId) {
     showToast("Selecione um edital.");
     return;
   }
-  if (!confirm(`Excluir o edital ${appState.currentBidId} e todos os seus itens?`)) return;
-  await store.deleteBid(appState.currentBidId);
+  const modal = $("deleteBidModal");
+  modal.dataset.bidId = appState.currentBidId;
+  $("deleteBidModalDescription").textContent = `Deseja excluir o edital ${appState.currentBidId} e todos os seus itens? Esta ação não pode ser desfeita.`;
+  modal.showModal();
+}
+
+async function deleteCurrentBid(bidId) {
+  if (!bidId) return;
+  await store.deleteBid(bidId);
   await reloadData();
   clearBidForm();
   showToast("Edital excluído.");
@@ -3644,4 +3659,3 @@ main().catch((error) => {
   console.error(error);
   alert(error.message);
 });
-
