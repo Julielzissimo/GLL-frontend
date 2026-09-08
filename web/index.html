@@ -497,7 +497,6 @@
                   <th>Cidade / CEP</th>
                   <th class="numeric">Itens</th>
                   <th class="numeric">Total</th>
-                  <th><span class="visually-hidden">Ações</span></th>
                 </tr>
               </thead>
               <tbody id="quotationsTableBody"></tbody>
@@ -566,17 +565,15 @@
               <thead>
                 <tr>
                   <th>ITEM</th>
+                  <th class="numeric">Lance Final</th>
                   <th>Descrição / Modelo</th>
                   <th>Marca/Fabricante</th>
                   <th class="numeric">Valor Estimado</th>
                   <th class="numeric">Valor de Custo</th>
                   <th class="numeric">Margem</th>
-                  <th class="numeric">Valor com margem</th>
-                  <th class="numeric">Lance Final</th>
                   <th class="numeric">Quantidade</th>
                   <th class="numeric">Total</th>
                   <th class="numeric">Lucro Total</th>
-                  <th><span class="visually-hidden">Ações</span></th>
                 </tr>
               </thead>
               <tbody id="quotationItemsTableBody"></tbody>
@@ -786,6 +783,17 @@
       </section>
       </div>
     </main>
+
+    <dialog id="deleteBidModal" class="quotation-item-discard-modal" aria-labelledby="deleteBidModalTitle" aria-describedby="deleteBidModalDescription">
+      <div class="quotation-item-discard-content">
+        <h2 id="deleteBidModalTitle">Excluir edital?</h2>
+        <p id="deleteBidModalDescription">Deseja excluir este edital e todos os seus itens? Esta ação não pode ser desfeita.</p>
+        <div class="button-row end">
+          <button id="cancelDeleteBidButton" class="quiet-action" type="button" autofocus>Cancelar</button>
+          <button id="confirmDeleteBidButton" class="danger-action" type="button">Excluir Edital</button>
+        </div>
+      </div>
+    </dialog>
 
     <dialog id="blockingLoadingModal" class="blocking-loading-modal" aria-labelledby="blockingLoadingMessage" aria-describedby="blockingLoadingDescription" aria-modal="true" tabindex="-1">
       <div class="blocking-loading-spinner" aria-hidden="true"></div>

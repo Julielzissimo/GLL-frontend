@@ -1296,7 +1296,15 @@ function bindEvents() {
   refs.bidQuotationFilterAgency.addEventListener("input", renderBidQuotationResults);
   refs.downloadEditalButton.addEventListener("click", withBlockingLoading(downloadCurrentBidAttachment, "Preparando o download…"));
   refs.clearBidButton.addEventListener("click", () => clearBidForm({ openEditor: true }));
-  refs.deleteBidButton.addEventListener("click", withBlockingLoading(deleteCurrentBid, "Excluindo edital…"));
+  refs.deleteBidButton.addEventListener("click", requestDeleteCurrentBid);
+  $("cancelDeleteBidButton").addEventListener("click", () => $("deleteBidModal").close());
+  $("confirmDeleteBidButton").addEventListener("click", () => {
+    const modal = $("deleteBidModal");
+    if (!modal.open) return;
+    const bidId = modal.dataset.bidId;
+    modal.close();
+    withBlockingLoading(() => deleteCurrentBid(bidId), "Excluindo edital…")();
+  });
   refs.itemForm.addEventListener("submit", withBlockingLoading(saveItem, "Salvando item…"));
   refs.addSupplierLinkButton.addEventListener("click", addSupplierLink);
   refs.supplierLinkInput.addEventListener("keydown", (event) => {
@@ -1958,13 +1966,20 @@ function collectBidData() {
   };
 }
 
-async function deleteCurrentBid() {
+function requestDeleteCurrentBid() {
   if (!appState.currentBidId) {
     showToast("Selecione um edital.");
     return;
   }
-  if (!confirm(`Excluir o edital ${appState.currentBidId} e todos os seus itens?`)) return;
-  await store.deleteBid(appState.currentBidId);
+  const modal = $("deleteBidModal");
+  modal.dataset.bidId = appState.currentBidId;
+  $("deleteBidModalDescription").textContent = `Deseja excluir o edital ${appState.currentBidId} e todos os seus itens? Esta ação não pode ser desfeita.`;
+  modal.showModal();
+}
+
+async function deleteCurrentBid(bidId) {
+  if (!bidId) return;
+  await store.deleteBid(bidId);
   await reloadData();
   clearBidForm();
   showToast("Edital excluído.");
@@ -2457,7 +2472,7 @@ function renderQuotations() {
   const count = appState.quotations.length;
   refs.quotationCountLabel.textContent = `${count} ${count === 1 ? "orçamento" : "orçamentos"}`;
   if (!count) {
-    refs.quotationsTableBody.innerHTML = `<tr><td colspan="6"><div class="empty-state compact-empty">Nenhum orçamento cadastrado.</div></td></tr>`;
+    refs.quotationsTableBody.innerHTML = `<tr><td colspan="5"><div class="empty-state compact-empty">Nenhum orçamento cadastrado.</div></td></tr>`;
   } else {
     refs.quotationsTableBody.innerHTML = appState.quotations
       .map((quotation) => {
@@ -2472,7 +2487,6 @@ function renderQuotations() {
             <td>${escapeHtml(location)}</td>
             <td class="numeric">${items.length}</td>
             <td class="numeric"><strong>${money(total)}</strong></td>
-            <td><button class="text-action" type="button" data-edit-quotation="${quotation.id}">Editar</button></td>
           </tr>`;
       })
       .join("");
@@ -2486,12 +2500,6 @@ function renderQuotations() {
         event.preventDefault();
         open();
       }
-    });
-  });
-  refs.quotationsTableBody.querySelectorAll("[data-edit-quotation]").forEach((button) => {
-    button.addEventListener("click", (event) => {
-      event.stopPropagation();
-      loadQuotation(Number(button.dataset.editQuotation));
     });
   });
   renderQuotationItems();
@@ -2598,7 +2606,7 @@ function renderQuotationItems() {
   refs.quotationItemsStatus.textContent = `${items.length} ${items.length === 1 ? "item cadastrado" : "itens cadastrados"}`;
   refs.quotationGrandTotal.textContent = `Total: ${money(grandTotal)}`;
   if (!items.length) {
-    refs.quotationItemsTableBody.innerHTML = `<tr><td colspan="12"><div class="empty-state compact-empty">Nenhum item cadastrado neste orçamento.</div></td></tr>`;
+    refs.quotationItemsTableBody.innerHTML = `<tr><td colspan="10"><div class="empty-state compact-empty">Nenhum item cadastrado neste orçamento.</div></td></tr>`;
     return;
   }
   refs.quotationItemsTableBody.innerHTML = items
@@ -2609,17 +2617,15 @@ function renderQuotationItems() {
       return `
         <tr class="selectable${selected}" tabindex="0" data-quotation-item-id="${item.id}">
           <td><strong>${escapeHtml(formatNumber(item.item_number))}</strong></td>
+          <td class="numeric">${money(item.final_bid)}</td>
           <td><strong class="quotation-item-description"${descriptionTooltip}>${escapeHtml(description || "—")}</strong>${item.model ? `<small class="table-secondary">Modelo: ${escapeHtml(item.model)}</small>` : ""}</td>
           <td>${escapeHtml(item.manufacturer || "—")}</td>
           <td class="numeric">${money(item.estimated_value)}</td>
           <td class="numeric">${money(item.supplier_cost)}</td>
           <td class="numeric">${formatQuotationFinalBidMargin(item)}</td>
-          <td class="numeric">${formatQuotationValueWithMargin(item)}</td>
-          <td class="numeric">${money(item.final_bid)}</td>
           <td class="numeric">${escapeHtml(formatNumber(item.quantity))}</td>
           <td class="numeric"><strong>${money(item.total)}</strong></td>
           <td class="numeric"><strong>${money(calculateItemProfit(item.final_bid, item.supplier_cost, item.quantity))}</strong></td>
-          <td><button class="text-action" type="button" data-edit-quotation-item="${item.id}">Editar</button></td>
         </tr>`;
     })
     .join("");
@@ -2632,12 +2638,6 @@ function renderQuotationItems() {
         event.preventDefault();
         open();
       }
-    });
-  });
-  refs.quotationItemsTableBody.querySelectorAll("[data-edit-quotation-item]").forEach((button) => {
-    button.addEventListener("click", (event) => {
-      event.stopPropagation();
-      loadQuotationItem(Number(button.dataset.editQuotationItem));
     });
   });
 }
@@ -3645,4 +3645,3 @@ main().catch((error) => {
   console.error(error);
   alert(error.message);
 });
-
