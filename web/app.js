@@ -2472,7 +2472,7 @@ function renderQuotations() {
   const count = appState.quotations.length;
   refs.quotationCountLabel.textContent = `${count} ${count === 1 ? "orçamento" : "orçamentos"}`;
   if (!count) {
-    refs.quotationsTableBody.innerHTML = `<tr><td colspan="6"><div class="empty-state compact-empty">Nenhum orçamento cadastrado.</div></td></tr>`;
+    refs.quotationsTableBody.innerHTML = `<tr><td colspan="5"><div class="empty-state compact-empty">Nenhum orçamento cadastrado.</div></td></tr>`;
   } else {
     refs.quotationsTableBody.innerHTML = appState.quotations
       .map((quotation) => {
@@ -2487,7 +2487,6 @@ function renderQuotations() {
             <td>${escapeHtml(location)}</td>
             <td class="numeric">${items.length}</td>
             <td class="numeric"><strong>${money(total)}</strong></td>
-            <td><button class="text-action" type="button" data-edit-quotation="${quotation.id}">Editar</button></td>
           </tr>`;
       })
       .join("");
@@ -2501,12 +2500,6 @@ function renderQuotations() {
         event.preventDefault();
         open();
       }
-    });
-  });
-  refs.quotationsTableBody.querySelectorAll("[data-edit-quotation]").forEach((button) => {
-    button.addEventListener("click", (event) => {
-      event.stopPropagation();
-      loadQuotation(Number(button.dataset.editQuotation));
     });
   });
   renderQuotationItems();
