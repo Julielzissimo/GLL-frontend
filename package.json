@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "test:session-sync": "node --test scripts/session-sync.test.mjs",
     "build:homolog": "node scripts/build-web.mjs homolog",
     "build:prod": "node scripts/build-web.mjs production",
     "build:all": "npm run build:homolog && npm run build:prod",

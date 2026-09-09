@@ -2822,3 +2822,18 @@ html.is-loading { overflow: hidden; }
 @media (prefers-reduced-motion: reduce) {
   .blocking-loading-spinner { animation: none; }
 }
+.sync-notice {
+  position: fixed;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 100;
+  width: min(680px, calc(100% - 32px));
+  padding: 12px 16px;
+  border: 1px solid #b7791f;
+  border-radius: 8px;
+  background: #fff8df;
+  color: #6b420d;
+  box-shadow: 0 4px 16px #0002;
+  font-size: 14px;
+}
