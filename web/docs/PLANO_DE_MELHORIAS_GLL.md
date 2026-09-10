@@ -31,7 +31,7 @@ Esses commits identificam a base auditada, anterior à publicação desta revis�
 | Identificação do edital | SQL usa cascatas de atualização; IndexedDB trata dependentes em transação. | IMP-004 deixa de ser correção crítica; ID interno imutável é evolução arquitetural. |
 | Migrações/testes | Migrações versionadas, publicação automatizada e testes já existem. | IMP-012/013 passam a tratar baseline, cobertura e CI obrigatório. |
 | Sessão/sincronização | Restauração, saída local, limpeza, avisos e atualização periódica estão em produção. | IMP-016 foca conflitos de gravação, ainda sem bloqueio por versão. |
-| Seed remoto | Login/restauração não aplicam demonstração ao Supabase vazio. | IMP-018 atendido no fluxo remoto, com regressão. |
+| Seed remoto | Login/restauração não aplicam demonstração ao Supabase vazio. | IMP-018 atendido no código; regressão explícita de base vazia ainda pendente. |
 | Orçamentos | Vínculo, importação, sincronização bidirecional, cálculos, modal e CSV já existem. | IMP-023 sobe para P1 por falhas parciais e exclusões compartilhadas. |
 | Fornecedores | Cadastro próprio em homologação; nomes/URLs livres nos itens já em produção. | IMP-028 trata consolidação e integração, sem reconstruir o cadastro. |
 | Anexos/indicadores | Arquivo privado de edital, itens vencidos, resumos e pendências já existem. | Separar essas entregas de gestão documental completa e indicadores históricos. |
