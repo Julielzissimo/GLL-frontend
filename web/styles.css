@@ -2837,3 +2837,12 @@ html.is-loading { overflow: hidden; }
   box-shadow: 0 4px 16px #0002;
   font-size: 14px;
 }
+
+.supplier-tags { display: flex; flex-wrap: wrap; gap: 6px; }
+.supplier-tag { display: inline-block; padding: 4px 9px; border-radius: 12px; background: #e9f2ee; color: #255b44; font-size: 12px; overflow-wrap: anywhere; }
+#suppliersPage td { overflow-wrap: anywhere; }
+#supplierMessage { min-height: 1.5em; }
+#suppliersPage .bids-table { min-width: 620px; table-layout: fixed; }
+#suppliersPage .bids-table th:first-child { width: 25%; }
+#suppliersPage .bids-table th:last-child { width: 100px; }
+#suppliersPage .bids-table td { white-space: normal; }

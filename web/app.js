@@ -58,6 +58,7 @@ const appState = {
   quotations: [],
   quotationItems: [],
   users: [],
+  suppliers: [],
 };
 
 const $ = (id) => document.getElementById(id);
@@ -302,7 +303,7 @@ class IndexedDbStore {
     this.requiresAuthenticationBeforeData = false;
     const storageSuffix = sanitizeStorageSuffix(GLL_CONFIG.storageSuffix || GLL_CONFIG.environment);
     this.dbName = `gll-web-data-v4-${storageSuffix}`;
-    this.version = 3;
+    this.version = 4;
     this.authDbName = `gll-web-auth-v2-${storageSuffix}`;
     this.authVersion = 1;
     this.db = null;
@@ -334,6 +335,7 @@ class IndexedDbStore {
           const store = db.createObjectStore("failure_history", { keyPath: "id", autoIncrement: true });
           store.createIndex("bid_id", "bid_id", { unique: false });
         }
+        if (!db.objectStoreNames.contains("suppliers")) db.createObjectStore("suppliers", { keyPath: "id", autoIncrement: true });
         if (!db.objectStoreNames.contains("quotations")) db.createObjectStore("quotations", { keyPath: "id", autoIncrement: true });
         if (!db.objectStoreNames.contains("quotation_items")) {
           const store = db.createObjectStore("quotation_items", { keyPath: "id", autoIncrement: true });
@@ -623,6 +625,12 @@ class IndexedDbStore {
 
   async deleteFailure(failureId) {
     await this.tx("failure_history", "readwrite", (failures) => failures.delete(Number(failureId)));
+  }
+
+  async saveSupplier(record, id) {
+    const data = { ...record, updated_at: timestampNow() };
+    if (id) data.id = Number(id);
+    await this.tx("suppliers", "readwrite", (suppliers) => { suppliers.put(data); });
   }
 
   async saveQuotation(quotationData, quotationId) {
@@ -1096,6 +1104,14 @@ class SupabaseStore {
     assertSupabase(error);
   }
 
+  async saveSupplier(record, id) {
+    const client = await this.open();
+    const data = { ...record, updated_at: new Date().toISOString() };
+    const query = id ? client.from("suppliers").update(data).eq("id", Number(id)) : client.from("suppliers").insert(data);
+    const { error } = await query.select("id").single();
+    assertSupabase(error);
+  }
+
   async saveQuotation(quotationData, quotationId) {
     const client = await this.open();
     const now = timestampNow();
@@ -1266,6 +1282,24 @@ function withBlockingLoading(operation, message) {
 }
 
 function bindEvents() {
+  $("supplierForm").addEventListener("submit", withBlockingLoading(saveSupplier, "Salvando fornecedor…"));
+  $("newSupplierButton").addEventListener("click", clearSupplierForm);
+  $("cancelSupplierButton").addEventListener("click", clearSupplierForm);
+  $("supplierSearch").addEventListener("input", renderSuppliers);
+  $("suppliersTableBody").addEventListener("click", (event) => {
+    const button = event.target.closest("[data-edit-supplier]");
+    if (!button) return;
+    const record = appState.suppliers.find((row) => Number(row.id) === Number(button.dataset.editSupplier));
+    if (!record) return;
+    $("supplierId").value = record.id;
+    $("supplierName").value = record.name;
+    $("supplierWebsite").value = record.website;
+    $("supplierContact").value = record.contact;
+    $("supplierTags").value = record.tags.join(", ");
+    $("supplierFormTitle").textContent = "Editar fornecedor";
+    $("supplierMessage").textContent = "";
+    $("supplierName").focus();
+  });
   document.getElementById("blockingLoadingModal").addEventListener("cancel", (event) => event.preventDefault());
   refs.loginForm.addEventListener("submit", withBlockingLoading(handleLogin, "Entrando no sistema…"));
   refs.homeIconButton.addEventListener("click", () => setPage("home"));
@@ -1532,7 +1566,7 @@ async function resetSeedData() {
   showToast("Base inicial restaurada.");
 }
 
-const DATA_KEYS = ["bids", "items", "documents", "failureHistory", "quotations", "quotationItems", "users"];
+const DATA_KEYS = ["bids", "items", "documents", "failureHistory", "quotations", "quotationItems", "users", "suppliers"];
 let sessionEpoch = 0;
 let dataRequest = 0;
 let liveChannel = null;
@@ -1623,7 +1657,7 @@ async function reloadData({ background = false } = {}) {
   const rows = await Promise.all([
     store.getAll("bids"), store.getAll("items"), store.getAll("documents"),
     store.getAll("failure_history"), store.getAll("quotations"),
-    store.getAll("quotation_items"), store.getUsers(),
+    store.getAll("quotation_items"), store.getUsers(), store.getAll("suppliers"),
   ]);
   // Discard stale responses after logout, another login, or a newer refresh.
   if (epoch !== sessionEpoch || request !== dataRequest || !appState.authenticated) return;
@@ -1641,6 +1675,7 @@ async function reloadData({ background = false } = {}) {
   next.quotationItems = rows[5]
     .map(normalizeQuotationItemRecord)
     .sort((a, b) => Number(a.item_number || 0) - Number(b.item_number || 0));
+  next.suppliers = rows[7].sort((a, b) => a.name.localeCompare(b.name, "pt-BR"));
   next.users = rows[6].sort((a, b) => String(a.name).localeCompare(String(b.name)));
   if (store.requiresAuthenticationBeforeData && !next.users.some((user) => normalizeEmail(user.email) === normalizeEmail(appState.currentUserEmail))) {
     resetAuthenticatedView();
@@ -1656,6 +1691,7 @@ async function reloadData({ background = false } = {}) {
   renderBids();
   renderDetails();
   renderQuotations();
+  renderSuppliers();
   renderUsers();
   if (!background && changed && liveChannel) {
     void liveChannel.send({ type: "broadcast", event: "data-changed", payload: {} }).catch(() => {});
@@ -1674,12 +1710,14 @@ function setPage(page) {
   appState.activePage = page;
   const showUsers = page === "users";
   const showSettings = page === "settings";
+  const showSuppliers = page === "suppliers";
+  $("suppliersPage").classList.toggle("hidden", !showSuppliers);
   const showQuotations = page === "quotations";
   const showHome = page === "home";
   const showCatalog = page === "bids";
   const showEditor = page === "edit";
   const showDetail = detailPages.includes(page);
-  refs.bidsPage.classList.toggle("hidden", showUsers || showSettings || showQuotations);
+  refs.bidsPage.classList.toggle("hidden", showUsers || showSettings || showQuotations || showSuppliers);
   refs.usersPage.classList.toggle("hidden", !showUsers);
   refs.settingsPage.classList.toggle("hidden", !showSettings);
   refs.quotationsPage.classList.toggle("hidden", !showQuotations);
@@ -1692,13 +1730,13 @@ function setPage(page) {
   refs.itemsPanel.classList.toggle("hidden", page !== "items");
   refs.documentsPanel.classList.toggle("hidden", page !== "documents");
   refs.failuresPanel.classList.toggle("hidden", page !== "failures");
-  refs.appView.classList.toggle("users-active", showUsers || showSettings || showQuotations);
+  refs.appView.classList.toggle("users-active", showUsers || showSettings || showQuotations || showSuppliers);
   refs.itemsTabButton.classList.toggle("active", page === "items");
   refs.documentsTabButton.classList.toggle("active", page === "documents");
   refs.failuresTabButton.classList.toggle("active", page === "failures");
   refs.failuresTabButton.classList.toggle("hidden", !shouldShowFailureHistory());
-  const primaryPage = showUsers ? "users" : showSettings ? "settings" : showQuotations ? "quotations" : showHome ? "home" : "bids";
-  const pageLabels = { home: "Visão geral", bids: "Licitações", quotations: "Orçamento", users: "Usuários", settings: "Configurações" };
+  const primaryPage = showSuppliers ? "suppliers" : showUsers ? "users" : showSettings ? "settings" : showQuotations ? "quotations" : showHome ? "home" : "bids";
+  const pageLabels = { suppliers: "Fornecedores", home: "Visão geral", bids: "Licitações", quotations: "Orçamento", users: "Usuários", settings: "Configurações" };
   refs.breadcrumbLabel.textContent = pageLabels[primaryPage];
   document.querySelectorAll("[data-navigation-page]").forEach((button) => {
     button.classList.toggle("active", button.dataset.navigationPage === primaryPage);
@@ -1709,6 +1747,7 @@ function setPage(page) {
   updateSidebarVisibility();
   if (showUsers) renderUsers();
   if (showQuotations) renderQuotations();
+  if (showSuppliers) renderSuppliers();
 }
 
 function updateBidWorkspaceHeader() {
@@ -2631,6 +2670,63 @@ async function deleteCurrentFailure() {
 
 function currentQuotation() {
   return appState.quotations.find((quotation) => Number(quotation.id) === Number(appState.currentQuotationId)) || null;
+}
+
+
+function supplierSearchText(value) {
+  return String(value || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("pt-BR");
+}
+
+function parseSupplierTags(value) {
+  const seen = new Set();
+  return String(value).split(/[,;\n]/).map((tag) => tag.trim()).filter((tag) => {
+    const key = supplierSearchText(tag);
+    if (!key || seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+function clearSupplierForm() {
+  $("supplierForm").reset();
+  $("supplierId").value = "";
+  $("supplierFormTitle").textContent = "Novo fornecedor";
+  $("supplierMessage").textContent = "";
+  $("supplierName").focus();
+}
+
+async function saveSupplier(event) {
+  event.preventDefault();
+  $("supplierMessage").textContent = "";
+  const record = {
+    name: $("supplierName").value.trim(),
+    website: $("supplierWebsite").value.trim(),
+    contact: $("supplierContact").value.trim(),
+    tags: parseSupplierTags($("supplierTags").value),
+  };
+  try {
+    if (!record.name) throw new Error("Informe o nome do fornecedor.");
+    if (record.website && !/^https?:\/\//i.test(record.website)) throw new Error("Informe um site iniciado por https:// ou http://.");
+    await store.saveSupplier(record, $("supplierId").value);
+    clearSupplierForm();
+    await reloadData();
+    $("supplierMessage").textContent = "Fornecedor salvo com sucesso.";
+  } catch (error) {
+    $("supplierMessage").textContent = error.message || "Não foi possível salvar o fornecedor. Tente novamente.";
+  }
+}
+
+function renderSuppliers() {
+  const terms = supplierSearchText($("supplierSearch").value).trim().split(/\s+/).filter(Boolean);
+  const rows = appState.suppliers.filter((row) => {
+    const text = supplierSearchText([row.name, ...row.tags].join(" "));
+    return terms.every((term) => text.includes(term));
+  });
+  $("supplierCount").textContent = rows.length + " de " + appState.suppliers.length + " fornecedores";
+  $("suppliersTableBody").innerHTML = rows.length ? rows.map((row) => {
+    const site = /^https?:\/\//i.test(row.website) ? '<a href="' + escapeHtml(row.website) + '" target="_blank" rel="noopener noreferrer">Visitar site ↗</a>' : '—';
+    return '<tr><td><strong>' + escapeHtml(row.name) + '</strong></td><td>' + site + '</td><td>' + escapeHtml(row.contact || '—') + '</td><td><div class="supplier-tags">' + row.tags.map((tag) => '<span class="supplier-tag">' + escapeHtml(tag) + '</span>').join('') + '</div></td><td><button class="quiet-action" type="button" data-edit-supplier="' + Number(row.id) + '">Editar<span class="visually-hidden"> ' + escapeHtml(row.name) + '</span></button></td></tr>';
+  }).join('') : '<tr><td colspan="5"><div class="empty-state compact-empty">' + (appState.suppliers.length ? 'Nenhum fornecedor encontrado. Tente outro nome ou tag.' : 'Nenhum fornecedor cadastrado. Cadastre seu primeiro fornecedor abaixo.') + '</div></td></tr>';
 }
 
 function currentQuotationItems() {

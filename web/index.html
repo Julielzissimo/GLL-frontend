@@ -48,6 +48,7 @@
           <button id="navHomeButton" class="nav-link active" type="button" data-navigation-page="home"><span aria-hidden="true">⌂</span>Visão geral</button>
           <button id="navBidsButton" class="nav-link" type="button" data-navigation-page="bids"><span aria-hidden="true">▤</span>Licitações</button>
           <button id="navQuotationsButton" class="nav-link" type="button" data-navigation-page="quotations"><span aria-hidden="true">▧</span>Orçamento</button>
+          <button class="nav-link" type="button" data-navigation-page="suppliers"><span aria-hidden="true">▦</span>Fornecedores</button>
           <button id="navUsersButton" class="nav-link nav-link-disabled" type="button" aria-disabled="true" title="Usuários gerenciados no Supabase" disabled>
             <span class="nav-users-icon" aria-hidden="true">♙</span>Usuários
           </button>
@@ -762,6 +763,27 @@
             </table>
           </div>
         </section>
+      </section>
+
+      <section id="suppliersPage" class="users-page hidden">
+        <div class="page-heading"><div><span class="eyebrow">CADASTRO</span><h1>Fornecedores</h1><p>Encontre fornecedores de varejo pelas tags dos produtos que procura.</p></div><button id="newSupplierButton" class="primary-action" type="button">＋ Novo fornecedor</button></div>
+        <section class="section-band">
+          <label>Pesquisar fornecedores<input id="supplierSearch" type="search" placeholder="Nome ou tags: papelaria, informática, limpeza..." /></label>
+          <p id="supplierCount" role="status"></p>
+          <div class="table-wrap"><table class="bids-table"><thead><tr><th>Fornecedor</th><th>Site</th><th>Contato</th><th>Tags de produtos</th><th>Ações</th></tr></thead><tbody id="suppliersTableBody"></tbody></table></div>
+        </section>
+        <form id="supplierForm" class="section-band">
+          <div class="section-title"><h2 id="supplierFormTitle">Novo fornecedor</h2><span>Varejo</span></div>
+          <input id="supplierId" type="hidden" />
+          <div class="form-grid">
+            <label>Nome do fornecedor *<input id="supplierName" required maxlength="200" /></label>
+            <label>Site<input id="supplierWebsite" type="url" placeholder="https://www.exemplo.com.br" /></label>
+            <label>Contato<input id="supplierContact" maxlength="300" placeholder="Telefone, e-mail ou pessoa de contato" /></label>
+            <label>Tags de produtos<input id="supplierTags" aria-describedby="supplierTagsHint" placeholder="papelaria, informática, limpeza" /><small id="supplierTagsHint">Separe as tags por vírgulas. Ex.: papelaria, papel A4, impressora.</small></label>
+          </div>
+          <p id="supplierMessage" role="status" aria-live="polite"></p>
+          <div class="form-actions"><button class="primary-action" type="submit">Salvar fornecedor</button><button id="cancelSupplierButton" class="quiet-action" type="button">Limpar cadastro</button></div>
+        </form>
       </section>
 
       <section id="settingsPage" class="users-page settings-page hidden">
