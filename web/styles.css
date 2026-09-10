@@ -2838,8 +2838,10 @@ html.is-loading { overflow: hidden; }
   font-size: 14px;
 }
 
-.supplier-tags { display: flex; flex-wrap: wrap; gap: 6px; }
-.supplier-tag { display: inline-block; padding: 4px 9px; border-radius: 12px; background: #e9f2ee; color: #255b44; font-size: 12px; overflow-wrap: anywhere; }
+.supplier-tags { position: relative; display: flex; flex-wrap: wrap; align-content: flex-start; align-items: flex-start; gap: 6px; height: 54px; overflow: hidden; }
+.supplier-tag { display: inline-block; max-width: 100%; padding: 4px 9px; border-radius: 12px; background: #e9f2ee; color: #255b44; font-size: 12px; line-height: 16px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.supplier-tags-more { line-height: 24px; }
+.supplier-tags [hidden] { display: none; }
 #suppliersPage td { overflow-wrap: anywhere; }
 #supplierMessage { min-height: 1.5em; }
 #suppliersPage .bids-table { min-width: 620px; table-layout: fixed; }

@@ -2716,7 +2716,25 @@ async function saveSupplier(event) {
   }
 }
 
+let supplierTagsObserver;
+
+function fitSupplierTags(box) {
+  if (!box.clientWidth) return;
+  const tags = [...box.querySelectorAll(".supplier-tag")];
+  const more = box.querySelector(".supplier-tags-more");
+  tags.forEach((tag) => { tag.hidden = false; });
+  more.hidden = true;
+  const fits = (element) => element.offsetTop + element.offsetHeight <= box.clientHeight;
+  const overflow = tags.findIndex((tag) => !fits(tag));
+  if (overflow < 0) return;
+  tags.slice(overflow).forEach((tag) => { tag.hidden = true; });
+  more.hidden = false;
+  let last = overflow - 1;
+  while (!fits(more) && last >= 0) tags[last--].hidden = true;
+}
+
 function renderSuppliers() {
+  supplierTagsObserver?.disconnect();
   const terms = supplierSearchText($("supplierSearch").value).trim().split(/\s+/).filter(Boolean);
   const rows = appState.suppliers.filter((row) => {
     const text = supplierSearchText([row.name, ...row.tags].join(" "));
@@ -2725,8 +2743,13 @@ function renderSuppliers() {
   $("supplierCount").textContent = rows.length + " de " + appState.suppliers.length + " fornecedores";
   $("suppliersTableBody").innerHTML = rows.length ? rows.map((row) => {
     const site = /^https?:\/\//i.test(row.website) ? '<a href="' + escapeHtml(row.website) + '" target="_blank" rel="noopener noreferrer">Visitar site ↗</a>' : '—';
-    return '<tr><td><strong>' + escapeHtml(row.name) + '</strong></td><td>' + site + '</td><td>' + escapeHtml(row.contact || '—') + '</td><td><div class="supplier-tags">' + row.tags.map((tag) => '<span class="supplier-tag">' + escapeHtml(tag) + '</span>').join('') + '</div></td><td><button class="quiet-action" type="button" data-edit-supplier="' + Number(row.id) + '">Editar<span class="visually-hidden"> ' + escapeHtml(row.name) + '</span></button></td></tr>';
+    return '<tr><td><strong>' + escapeHtml(row.name) + '</strong></td><td>' + site + '</td><td>' + escapeHtml(row.contact || '—') + '</td><td><div class="supplier-tags" title="' + escapeHtml(row.tags.join(", ")) + '" aria-label="' + escapeHtml(row.tags.join(", ")) + '">' + row.tags.map((tag) => '<span class="supplier-tag">' + escapeHtml(tag) + '</span>').join('') + '<span class="supplier-tags-more" aria-hidden="true" hidden>...</span></div></td><td><button class="quiet-action" type="button" data-edit-supplier="' + Number(row.id) + '">Editar<span class="visually-hidden"> ' + escapeHtml(row.name) + '</span></button></td></tr>';
   }).join('') : '<tr><td colspan="5"><div class="empty-state compact-empty">' + (appState.suppliers.length ? 'Nenhum fornecedor encontrado. Tente outro nome ou tag.' : 'Nenhum fornecedor cadastrado. Cadastre seu primeiro fornecedor abaixo.') + '</div></td></tr>';
+  supplierTagsObserver ||= new ResizeObserver((entries) => entries.forEach(({ target }) => fitSupplierTags(target)));
+  $("suppliersTableBody").querySelectorAll(".supplier-tags").forEach((box) => {
+    fitSupplierTags(box);
+    supplierTagsObserver.observe(box);
+  });
 }
 
 function currentQuotationItems() {

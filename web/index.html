@@ -779,7 +779,7 @@
             <label>Nome do fornecedor *<input id="supplierName" required maxlength="200" /></label>
             <label>Site<input id="supplierWebsite" type="url" placeholder="https://www.exemplo.com.br" /></label>
             <label>Contato<input id="supplierContact" maxlength="300" placeholder="Telefone, e-mail ou pessoa de contato" /></label>
-            <label>Tags de produtos<input id="supplierTags" aria-describedby="supplierTagsHint" placeholder="papelaria, informática, limpeza" /><small id="supplierTagsHint">Separe as tags por vírgulas. Ex.: papelaria, papel A4, impressora.</small></label>
+            <label>Tags de produtos<textarea id="supplierTags" rows="3" aria-describedby="supplierTagsHint" placeholder="papelaria, informática, limpeza"></textarea><small id="supplierTagsHint">Adicione quantas tags precisar, separadas por vírgulas ou quebras de linha. Todas serão consideradas na pesquisa.</small></label>
           </div>
           <p id="supplierMessage" role="status" aria-live="polite"></p>
           <div class="form-actions"><button class="primary-action" type="submit">Salvar fornecedor</button><button id="cancelSupplierButton" class="quiet-action" type="button">Limpar cadastro</button></div>
