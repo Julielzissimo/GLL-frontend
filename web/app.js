@@ -1192,6 +1192,24 @@ async function main() {
   bindEvents();
   if (!hasSupabaseConfig()) refs.loginEmail.value = DEFAULT_ADMIN.email;
   await store.initialize();
+  if (store.requiresAuthenticationBeforeData) {
+    store.client.auth.onAuthStateChange((event) => {
+      // Auth callbacks run under the client's lock; do not query Supabase here.
+      if (event === "SIGNED_OUT") resetAuthenticatedView();
+      if (event === "SIGNED_IN") {
+        setTimeout(() => {
+          if (!appState.authenticated && !blockingOperationActive) {
+            restoreSession().catch((error) => { refs.loginError.textContent = error.message; });
+          }
+        }, 0);
+      }
+    });
+    try {
+      await restoreSession();
+    } catch (error) {
+      refs.loginError.textContent = "Não foi possível recuperar sua sessão. Verifique a conexão e tente novamente.";
+    }
+  }
   if (!store.requiresAuthenticationBeforeData) {
     const seedData = await loadSeedData();
     await store.seedIfEmpty(seedData);
@@ -1266,7 +1284,7 @@ function bindEvents() {
   refs.toggleSidebarButton.addEventListener("focus", previewSidebar);
   refs.toggleSidebarButton.addEventListener("blur", clearSidebarPreview);
   refs.sidebarPanel.addEventListener("click", collapseSidebarFromEmptyArea);
-  refs.logoutButton.addEventListener("click", logout);
+  refs.logoutButton.addEventListener("click", withBlockingLoading(logout, "Saindo do sistema…"));
   if (!hasSupabaseConfig()) {
     refs.resetDataButton.addEventListener("click", withBlockingLoading(resetSeedData, "Restaurando a base…"));
   }
@@ -1407,25 +1425,59 @@ async function handleLogin(event) {
       refs.loginError.textContent = "E-mail ou senha inválidos.";
       return;
     }
-    appState.authenticated = true;
-    appState.currentUserEmail = user.email;
-    refs.currentUserName.textContent = user.name || user.email;
-    refs.loginView.classList.add("hidden");
-    refs.appView.classList.remove("hidden");
-    if (store.requiresAuthenticationBeforeData) {
-      const seedData = await loadSeedData();
-      await store.seedIfEmpty(seedData);
-    }
-    setPage("home");
-    await reloadData();
-    clearBidForm();
+    await enterAuthenticatedView(user);
     showToast("Login realizado.");
   } catch (error) {
     refs.loginError.textContent = error.message;
   }
 }
 
-function logout() {
+async function restoreSession() {
+  const epoch = sessionEpoch;
+  const { data, error } = await store.client.auth.getSession();
+  assertSupabase(error);
+  if (!data.session) return;
+  const user = await store.getUser(data.session.user.email);
+  if (epoch !== sessionEpoch) return;
+  if (!user) {
+    await logout();
+    return;
+  }
+  await enterAuthenticatedView(user);
+}
+
+async function enterAuthenticatedView(user) {
+  const epoch = ++sessionEpoch;
+  appState.authenticated = true;
+  appState.currentUserEmail = user.email;
+  try {
+    await reloadData();
+    if (epoch !== sessionEpoch) return;
+    refs.currentUserName.textContent = user.name || user.email;
+    refs.loginView.classList.add("hidden");
+    refs.appView.classList.remove("hidden");
+    refs.loginPassword.value = "";
+    clearBidForm();
+    clearQuotationForm();
+    setPage("home");
+    startLiveUpdates();
+  } catch (error) {
+    if (epoch === sessionEpoch) resetAuthenticatedView();
+    throw error;
+  }
+}
+
+async function logout() {
+  if (store.requiresAuthenticationBeforeData) {
+    const { error } = await store.client.auth.signOut({ scope: "local" });
+    assertSupabase(error);
+  }
+  resetAuthenticatedView();
+}
+
+function resetAuthenticatedView() {
+  sessionEpoch += 1;
+  stopLiveUpdates();
   appState.authenticated = false;
   appState.currentUserEmail = null;
   refs.appView.classList.add("hidden");
@@ -1433,6 +1485,13 @@ function logout() {
   refs.loginPassword.value = "";
   refs.appView.classList.remove("mobile-nav-open");
   updateMainNavigationState();
+  for (const key of DATA_KEYS) appState[key] = [];
+  document.querySelectorAll("dialog[open]").forEach((dialog) => {
+    if (dialog.id !== "blockingLoadingModal") dialog.close();
+  });
+  document.querySelectorAll("#appView form").forEach((form) => form.reset());
+  refs.currentUserName.textContent = "";
+  setSyncNotice("");
 }
 
 function isMobileNavigation() {
@@ -1473,24 +1532,134 @@ async function resetSeedData() {
   showToast("Base inicial restaurada.");
 }
 
-async function reloadData() {
-  appState.bids = (await store.getAll("bids"))
+const DATA_KEYS = ["bids", "items", "documents", "failureHistory", "quotations", "quotationItems", "users"];
+let sessionEpoch = 0;
+let dataRequest = 0;
+let liveChannel = null;
+let liveTimer = null;
+let liveDebounce = null;
+let backgroundRefreshActive = false;
+
+function setSyncNotice(message) {
+  let notice = $("syncNotice");
+  if (!notice) {
+    notice = document.createElement("div");
+    notice.id = "syncNotice";
+    notice.className = "sync-notice hidden";
+    notice.setAttribute("role", "status");
+    refs.appView.prepend(notice);
+  }
+  notice.textContent = message;
+  notice.classList.toggle("hidden", !message);
+  if (message && refs.quotationItemModal.open) refs.quotationItemFormError.textContent = message;
+}
+
+function dataSignature(rows) {
+  return JSON.stringify([...rows].sort((a, b) => String(a.id ?? a.email).localeCompare(String(b.id ?? b.email))));
+}
+
+function selectedDataSignature(data) {
+  return JSON.stringify([
+    data.bids.find((row) => row.id === appState.currentBidId),
+    data.items.find((row) => Number(row.id) === Number(appState.currentItemId)),
+    data.documents.find((row) => Number(row.id) === Number(appState.currentDocumentId)),
+    data.failureHistory.find((row) => Number(row.id) === Number(appState.currentFailureId)),
+    data.quotations.find((row) => Number(row.id) === Number(appState.currentQuotationId)),
+    data.quotationItems.find((row) => Number(row.id) === Number(appState.currentQuotationItemId)),
+  ]);
+}
+
+function scheduleLiveRefresh() {
+  if (!appState.authenticated || liveDebounce) return;
+  liveDebounce = setTimeout(() => {
+    liveDebounce = null;
+    void refreshInBackground();
+  }, 500);
+}
+
+async function refreshInBackground() {
+  if (!appState.authenticated || document.hidden || blockingOperationActive || backgroundRefreshActive) return;
+  const epoch = sessionEpoch;
+  backgroundRefreshActive = true;
+  try {
+    await reloadData({ background: true });
+  } catch (error) {
+    // Temporary connectivity failures must not discard the current session or drafts.
+    console.warn("Não foi possível atualizar os dados. Uma nova tentativa será feita automaticamente.");
+  } finally {
+    if (epoch === sessionEpoch) backgroundRefreshActive = false;
+  }
+}
+
+function startLiveUpdates() {
+  stopLiveUpdates();
+  if (!store.requiresAuthenticationBeforeData) return;
+  // Only invalidations travel over this channel. Actual records remain protected by RLS.
+  liveChannel = store.client.channel("gll-data-updates", { config: { broadcast: { self: false } } })
+    .on("broadcast", { event: "data-changed" }, scheduleLiveRefresh)
+    .subscribe((status) => { if (status === "SUBSCRIBED") scheduleLiveRefresh(); });
+  liveTimer = setInterval(scheduleLiveRefresh, 15000);
+  window.addEventListener("online", scheduleLiveRefresh);
+  window.addEventListener("focus", scheduleLiveRefresh);
+  document.addEventListener("visibilitychange", scheduleLiveRefresh);
+}
+
+function stopLiveUpdates() {
+  clearInterval(liveTimer);
+  clearTimeout(liveDebounce);
+  liveTimer = null;
+  liveDebounce = null;
+  backgroundRefreshActive = false;
+  if (liveChannel) void store.client.removeChannel(liveChannel);
+  liveChannel = null;
+  window.removeEventListener("online", scheduleLiveRefresh);
+  window.removeEventListener("focus", scheduleLiveRefresh);
+  document.removeEventListener("visibilitychange", scheduleLiveRefresh);
+}
+
+async function reloadData({ background = false } = {}) {
+  const epoch = sessionEpoch;
+  const request = ++dataRequest;
+  const rows = await Promise.all([
+    store.getAll("bids"), store.getAll("items"), store.getAll("documents"),
+    store.getAll("failure_history"), store.getAll("quotations"),
+    store.getAll("quotation_items"), store.getUsers(),
+  ]);
+  // Discard stale responses after logout, another login, or a newer refresh.
+  if (epoch !== sessionEpoch || request !== dataRequest || !appState.authenticated) return;
+  if (background && blockingOperationActive) return;
+  const next = {};
+  next.bids = rows[0]
     .map(normalizeBidRecord)
     .sort((a, b) => String(a.session_datetime).localeCompare(String(b.session_datetime)));
-  appState.items = (await store.getAll("items")).map(normalizeItemRecord).sort((a, b) => Number(a.item_number) - Number(b.item_number));
-  appState.documents = (await store.getAll("documents")).sort((a, b) => String(a.document_type).localeCompare(String(b.document_type)));
-  appState.failureHistory = (await store.getAll("failure_history")).map(normalizeFailureRecord).sort((a, b) => Number(a.id || 0) - Number(b.id || 0));
-  appState.quotations = (await store.getAll("quotations"))
+  next.items = rows[1].map(normalizeItemRecord).sort((a, b) => Number(a.item_number) - Number(b.item_number));
+  next.documents = rows[2].sort((a, b) => String(a.document_type).localeCompare(String(b.document_type)));
+  next.failureHistory = rows[3].map(normalizeFailureRecord).sort((a, b) => Number(a.id || 0) - Number(b.id || 0));
+  next.quotations = rows[4]
     .map(normalizeQuotationRecord)
     .sort((a, b) => Number(b.id || 0) - Number(a.id || 0));
-  appState.quotationItems = (await store.getAll("quotation_items"))
+  next.quotationItems = rows[5]
     .map(normalizeQuotationItemRecord)
     .sort((a, b) => Number(a.item_number || 0) - Number(b.item_number || 0));
-  appState.users = (await store.getUsers()).sort((a, b) => String(a.name).localeCompare(String(b.name)));
+  next.users = rows[6].sort((a, b) => String(a.name).localeCompare(String(b.name)));
+  if (store.requiresAuthenticationBeforeData && !next.users.some((user) => normalizeEmail(user.email) === normalizeEmail(appState.currentUserEmail))) {
+    resetAuthenticatedView();
+    refs.loginError.textContent = "Seu acesso não está mais disponível. Entre novamente ou contate o administrador.";
+    return;
+  }
+  const changed = DATA_KEYS.some((key) => dataSignature(appState[key]) !== dataSignature(next[key]));
+  if (background && !changed) return;
+  if (background && selectedDataSignature(appState) !== selectedDataSignature(next)) {
+    setSyncNotice("O registro aberto foi alterado ou excluído em outra sessão. Seu formulário foi preservado. Reabra o registro pela lista para conferir a versão atual antes de salvar.");
+  }
+  Object.assign(appState, next);
   renderBids();
   renderDetails();
   renderQuotations();
   renderUsers();
+  if (!background && changed && liveChannel) {
+    void liveChannel.send({ type: "broadcast", event: "data-changed", payload: {} }).catch(() => {});
+  }
 }
 
 function setPage(page) {
@@ -1716,6 +1885,7 @@ function renderBidQuotationSelection() {
 function loadBid(bidId) {
   const bid = appState.bids.find((row) => row.id === bidId);
   if (!bid) return;
+  setSyncNotice("");
   appState.currentBidId = bid.id;
   appState.originalBidId = bid.id;
   appState.selectedBidQuotationId = bid.quotation_id;
@@ -2508,6 +2678,7 @@ function renderQuotations() {
 function loadQuotation(quotationId, options = {}) {
   const quotation = appState.quotations.find((row) => Number(row.id) === Number(quotationId));
   if (!quotation) return;
+  setSyncNotice("");
   closeQuotationItemModal();
   appState.currentQuotationId = quotation.id;
   appState.currentQuotationItemId = null;
@@ -3641,7 +3812,7 @@ function showToast(message) {
   toastTimer = setTimeout(() => refs.toast.classList.remove("show"), 2400);
 }
 
-main().catch((error) => {
+withBlockingLoading(main, "Verificando sessão…")().catch((error) => {
   console.error(error);
   alert(error.message);
 });
