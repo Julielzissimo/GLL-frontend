@@ -137,6 +137,11 @@ const refs = {
   proposalDeadline: $("proposalDeadline"),
   deliveryPlace: $("deliveryPlace"),
   editalLink: $("editalLink"),
+  publicSessionLink: $("publicSessionLink"),
+  publicSessionLinkInputGroup: $("publicSessionLinkInputGroup"),
+  publicSessionLinkPanel: $("publicSessionLinkPanel"),
+  openPublicSessionButton: $("openPublicSessionButton"),
+  removePublicSessionLinkButton: $("removePublicSessionLinkButton"),
   editalFile: $("editalFile"),
   editalAttachmentPanel: $("editalAttachmentPanel"),
   editalAttachmentName: $("editalAttachmentName"),
@@ -1364,6 +1369,8 @@ function bindEvents() {
     }
   });
   refs.clearBidQuotationButton.addEventListener("click", clearBidQuotationSelection);
+  refs.openPublicSessionButton.addEventListener("click", openPublicSession);
+  refs.removePublicSessionLinkButton.addEventListener("click", removePublicSessionLink);
   refs.closeBidQuotationModalButton.addEventListener("click", closeBidQuotationModal);
   refs.bidQuotationModal.addEventListener("cancel", closeBidQuotationModal);
   refs.bidQuotationModal.addEventListener("click", (event) => {
@@ -2023,11 +2030,13 @@ function loadBid(bidId, options = {}) {
   refs.proposalDeadline.value = toDateTimeInputValue(bid.proposal_deadline);
   refs.deliveryPlace.value = bid.delivery_place || "";
   refs.editalLink.value = bid.edital_link || "";
+  refs.publicSessionLink.value = bid.public_session_link || "";
   refs.bidType.value = bid.bid_type || BID_TYPE_OPTIONS[0];
   refs.bidStatus.value = bid.status || STATUS_OPTIONS[0];
   renderBidQuotationSelection();
   refs.editalFile.value = "";
   renderBidAttachment(bid);
+  renderPublicSessionLink();
   refs.selectedBidLabel.textContent = bid.id;
   refs.bidFormError.textContent = "";
   clearItemForm();
@@ -2106,6 +2115,7 @@ function clearBidForm(options = {}) {
   refs.bidForm.reset();
   renderBidQuotationSelection();
   renderBidAttachment(null);
+  renderPublicSessionLink();
   refs.bidType.value = BID_TYPE_OPTIONS[0];
   refs.bidStatus.value = STATUS_OPTIONS[0];
   refs.selectedBidLabel.textContent = "Novo edital";
@@ -2153,6 +2163,29 @@ function renderBidAttachment(bid) {
     ? `${bid.edital_file_name} (${formatFileSize(bid.edital_file_size)})`
     : "";
   refs.downloadEditalButton.disabled = !hasAttachment;
+}
+
+function renderPublicSessionLink() {
+  const hasLink = Boolean(normalizeUrlValue(refs.publicSessionLink.value));
+  refs.publicSessionLinkInputGroup.classList.toggle("hidden", hasLink);
+  refs.publicSessionLinkPanel.classList.toggle("hidden", !hasLink);
+}
+
+function openPublicSession() {
+  const link = normalizeUrlValue(refs.publicSessionLink.value);
+  if (!link) {
+    refs.bidFormError.textContent = "Cadastre um link válido para a sessão pública.";
+    renderPublicSessionLink();
+    return;
+  }
+  window.open(link, "_blank", "noopener,noreferrer");
+}
+
+function removePublicSessionLink() {
+  refs.publicSessionLink.value = "";
+  renderPublicSessionLink();
+  refs.publicSessionLink.focus();
+  showToast("Link removido. Salve o edital para confirmar.");
 }
 
 async function downloadCurrentBidAttachment() {
@@ -2255,6 +2288,9 @@ function collectBidData() {
   if (!refs.bidId.value.trim()) throw new Error("Preencha a Identificação do Pregão.");
   if (!refs.buyerAgency.value.trim()) throw new Error("Preencha o Órgão Comprador.");
   if (!refs.sessionDatetime.value) throw new Error("Preencha a Data e Hora da Sessão.");
+  const publicSessionLink = refs.publicSessionLink.value.trim();
+  const normalizedPublicSessionLink = normalizeUrlValue(publicSessionLink);
+  if (publicSessionLink && !normalizedPublicSessionLink) throw new Error("Informe um Link da Sessão Pública válido.");
   return {
     id: refs.bidId.value.trim(),
     buyer_agency: refs.buyerAgency.value.trim(),
@@ -2262,6 +2298,7 @@ function collectBidData() {
     delivery_place: refs.deliveryPlace.value.trim(),
     bid_type: refs.bidType.value,
     edital_link: refs.editalLink.value.trim(),
+    public_session_link: normalizedPublicSessionLink,
     proposal_deadline: fromDateTimeInputValue(refs.proposalDeadline.value),
     status: refs.bidStatus.value,
     quotation_id: appState.selectedBidQuotationId || null,
@@ -3574,6 +3611,7 @@ function normalizeBidRecord(record) {
     session_datetime: record.session_datetime || "",
     delivery_place: record.delivery_place || "",
     edital_link: record.edital_link || "",
+    public_session_link: record.public_session_link || "",
     bid_type: record.bid_type || BID_TYPE_OPTIONS[0],
     proposal_deadline: record.proposal_deadline || "",
     status: normalizeBidStatus(record.status),

@@ -176,6 +176,22 @@
                 Link do Edital
                 <input id="editalLink" type="url" />
               </label>
+              <div class="public-session-field">
+                <label id="publicSessionLinkInputGroup" for="publicSessionLink">
+                  Link da Sessão Pública
+                  <input id="publicSessionLink" type="url" inputmode="url" autocomplete="url" placeholder="https://..." />
+                </label>
+                <div id="publicSessionLinkPanel" class="public-session-panel hidden">
+                  <span class="public-session-copy">
+                    <svg class="button-icon" aria-hidden="true" viewBox="0 0 24 24"><path d="M10 14a5 5 0 0 0 7.1.1l2-2a5 5 0 0 0-7.1-7.1l-1.1 1.1"/><path d="M14 10a5 5 0 0 0-7.1-.1l-2 2A5 5 0 0 0 12 19l1.1-1.1"/></svg>
+                    <span><strong>Sessão pública cadastrada</strong><small>Abra a página da disputa em uma nova aba.</small></span>
+                  </span>
+                  <span class="public-session-actions">
+                    <button id="openPublicSessionButton" class="primary-action compact-action" type="button">Acessar sessão</button>
+                    <button id="removePublicSessionLinkButton" class="quiet-action compact-action" type="button">Remover</button>
+                  </span>
+                </div>
+              </div>
               <label>
                 Tipo
                 <select id="bidType"></select>
