@@ -1,5 +1,6 @@
 ﻿const STATUS_OPTIONS = ["Em Analise", "Aprovada", "Desclassificado", "Disputada"];
 const WON_ITEM_STATUSES = ["Aprovada", "Desclassificado", "Disputada"];
+const WON_ITEM_TOTAL_STATUSES = ["Aprovada", "Disputada"];
 const BID_TYPE_OPTIONS = [
   "Pregao Eletronico",
   "Pregao Presencial",
@@ -58,6 +59,7 @@ const appState = {
   quotations: [],
   quotationItems: [],
   users: [],
+  suppliers: [],
 };
 
 const $ = (id) => document.getElementById(id);
@@ -136,7 +138,6 @@ const refs = {
   metricsSection: $("metricsSection"),
   detailsArea: $("detailsArea"),
   metricItemCount: $("metricItemCount"),
-  metricProfit: $("metricProfit"),
   metricMargin: $("metricMargin"),
   metricTotalProfit: $("metricTotalProfit"),
   metricTotalProfitMargin: $("metricTotalProfitMargin"),
@@ -302,7 +303,7 @@ class IndexedDbStore {
     this.requiresAuthenticationBeforeData = false;
     const storageSuffix = sanitizeStorageSuffix(GLL_CONFIG.storageSuffix || GLL_CONFIG.environment);
     this.dbName = `gll-web-data-v4-${storageSuffix}`;
-    this.version = 3;
+    this.version = 4;
     this.authDbName = `gll-web-auth-v2-${storageSuffix}`;
     this.authVersion = 1;
     this.db = null;
@@ -334,6 +335,7 @@ class IndexedDbStore {
           const store = db.createObjectStore("failure_history", { keyPath: "id", autoIncrement: true });
           store.createIndex("bid_id", "bid_id", { unique: false });
         }
+        if (!db.objectStoreNames.contains("suppliers")) db.createObjectStore("suppliers", { keyPath: "id", autoIncrement: true });
         if (!db.objectStoreNames.contains("quotations")) db.createObjectStore("quotations", { keyPath: "id", autoIncrement: true });
         if (!db.objectStoreNames.contains("quotation_items")) {
           const store = db.createObjectStore("quotation_items", { keyPath: "id", autoIncrement: true });
@@ -623,6 +625,12 @@ class IndexedDbStore {
 
   async deleteFailure(failureId) {
     await this.tx("failure_history", "readwrite", (failures) => failures.delete(Number(failureId)));
+  }
+
+  async saveSupplier(record, id) {
+    const data = { ...record, updated_at: timestampNow() };
+    if (id) data.id = Number(id);
+    await this.tx("suppliers", "readwrite", (suppliers) => { suppliers.put(data); });
   }
 
   async saveQuotation(quotationData, quotationId) {
@@ -1096,6 +1104,14 @@ class SupabaseStore {
     assertSupabase(error);
   }
 
+  async saveSupplier(record, id) {
+    const client = await this.open();
+    const data = { ...record, updated_at: new Date().toISOString() };
+    const query = id ? client.from("suppliers").update(data).eq("id", Number(id)) : client.from("suppliers").insert(data);
+    const { error } = await query.select("id").single();
+    assertSupabase(error);
+  }
+
   async saveQuotation(quotationData, quotationId) {
     const client = await this.open();
     const now = timestampNow();
@@ -1266,6 +1282,24 @@ function withBlockingLoading(operation, message) {
 }
 
 function bindEvents() {
+  $("supplierForm").addEventListener("submit", withBlockingLoading(saveSupplier, "Salvando fornecedor…"));
+  $("newSupplierButton").addEventListener("click", clearSupplierForm);
+  $("cancelSupplierButton").addEventListener("click", clearSupplierForm);
+  $("supplierSearch").addEventListener("input", renderSuppliers);
+  $("suppliersTableBody").addEventListener("click", (event) => {
+    const button = event.target.closest("[data-edit-supplier]");
+    if (!button) return;
+    const record = appState.suppliers.find((row) => Number(row.id) === Number(button.dataset.editSupplier));
+    if (!record) return;
+    $("supplierId").value = record.id;
+    $("supplierName").value = record.name;
+    $("supplierWebsite").value = record.website;
+    $("supplierContact").value = record.contact;
+    $("supplierTags").value = record.tags.join(", ");
+    $("supplierFormTitle").textContent = "Editar fornecedor";
+    $("supplierMessage").textContent = "";
+    $("supplierName").focus();
+  });
   document.getElementById("blockingLoadingModal").addEventListener("cancel", (event) => event.preventDefault());
   refs.loginForm.addEventListener("submit", withBlockingLoading(handleLogin, "Entrando no sistema…"));
   refs.homeIconButton.addEventListener("click", () => setPage("home"));
@@ -1532,7 +1566,7 @@ async function resetSeedData() {
   showToast("Base inicial restaurada.");
 }
 
-const DATA_KEYS = ["bids", "items", "documents", "failureHistory", "quotations", "quotationItems", "users"];
+const DATA_KEYS = ["bids", "items", "documents", "failureHistory", "quotations", "quotationItems", "users", "suppliers"];
 let sessionEpoch = 0;
 let dataRequest = 0;
 let liveChannel = null;
@@ -1623,7 +1657,7 @@ async function reloadData({ background = false } = {}) {
   const rows = await Promise.all([
     store.getAll("bids"), store.getAll("items"), store.getAll("documents"),
     store.getAll("failure_history"), store.getAll("quotations"),
-    store.getAll("quotation_items"), store.getUsers(),
+    store.getAll("quotation_items"), store.getUsers(), store.getAll("suppliers"),
   ]);
   // Discard stale responses after logout, another login, or a newer refresh.
   if (epoch !== sessionEpoch || request !== dataRequest || !appState.authenticated) return;
@@ -1641,6 +1675,7 @@ async function reloadData({ background = false } = {}) {
   next.quotationItems = rows[5]
     .map(normalizeQuotationItemRecord)
     .sort((a, b) => Number(a.item_number || 0) - Number(b.item_number || 0));
+  next.suppliers = rows[7].sort((a, b) => a.name.localeCompare(b.name, "pt-BR"));
   next.users = rows[6].sort((a, b) => String(a.name).localeCompare(String(b.name)));
   if (store.requiresAuthenticationBeforeData && !next.users.some((user) => normalizeEmail(user.email) === normalizeEmail(appState.currentUserEmail))) {
     resetAuthenticatedView();
@@ -1656,6 +1691,7 @@ async function reloadData({ background = false } = {}) {
   renderBids();
   renderDetails();
   renderQuotations();
+  renderSuppliers();
   renderUsers();
   if (!background && changed && liveChannel) {
     void liveChannel.send({ type: "broadcast", event: "data-changed", payload: {} }).catch(() => {});
@@ -1674,12 +1710,14 @@ function setPage(page) {
   appState.activePage = page;
   const showUsers = page === "users";
   const showSettings = page === "settings";
+  const showSuppliers = page === "suppliers";
+  $("suppliersPage").classList.toggle("hidden", !showSuppliers);
   const showQuotations = page === "quotations";
   const showHome = page === "home";
   const showCatalog = page === "bids";
   const showEditor = page === "edit";
   const showDetail = detailPages.includes(page);
-  refs.bidsPage.classList.toggle("hidden", showUsers || showSettings || showQuotations);
+  refs.bidsPage.classList.toggle("hidden", showUsers || showSettings || showQuotations || showSuppliers);
   refs.usersPage.classList.toggle("hidden", !showUsers);
   refs.settingsPage.classList.toggle("hidden", !showSettings);
   refs.quotationsPage.classList.toggle("hidden", !showQuotations);
@@ -1692,13 +1730,13 @@ function setPage(page) {
   refs.itemsPanel.classList.toggle("hidden", page !== "items");
   refs.documentsPanel.classList.toggle("hidden", page !== "documents");
   refs.failuresPanel.classList.toggle("hidden", page !== "failures");
-  refs.appView.classList.toggle("users-active", showUsers || showSettings || showQuotations);
+  refs.appView.classList.toggle("users-active", showUsers || showSettings || showQuotations || showSuppliers);
   refs.itemsTabButton.classList.toggle("active", page === "items");
   refs.documentsTabButton.classList.toggle("active", page === "documents");
   refs.failuresTabButton.classList.toggle("active", page === "failures");
   refs.failuresTabButton.classList.toggle("hidden", !shouldShowFailureHistory());
-  const primaryPage = showUsers ? "users" : showSettings ? "settings" : showQuotations ? "quotations" : showHome ? "home" : "bids";
-  const pageLabels = { home: "Visão geral", bids: "Licitações", quotations: "Orçamento", users: "Usuários", settings: "Configurações" };
+  const primaryPage = showSuppliers ? "suppliers" : showUsers ? "users" : showSettings ? "settings" : showQuotations ? "quotations" : showHome ? "home" : "bids";
+  const pageLabels = { suppliers: "Fornecedores", home: "Visão geral", bids: "Licitações", quotations: "Orçamento", users: "Usuários", settings: "Configurações" };
   refs.breadcrumbLabel.textContent = pageLabels[primaryPage];
   document.querySelectorAll("[data-navigation-page]").forEach((button) => {
     button.classList.toggle("active", button.dataset.navigationPage === primaryPage);
@@ -1709,6 +1747,7 @@ function setPage(page) {
   updateSidebarVisibility();
   if (showUsers) renderUsers();
   if (showQuotations) renderQuotations();
+  if (showSuppliers) renderSuppliers();
 }
 
 function updateBidWorkspaceHeader() {
@@ -1730,6 +1769,10 @@ function shouldShowFailureHistory() {
 
 function shouldUseWonItems() {
   return Boolean(appState.currentBidId) && WON_ITEM_STATUSES.includes(refs.bidStatus.value);
+}
+
+function shouldCalculateWonItemsTotal(status) {
+  return WON_ITEM_TOTAL_STATUSES.includes(status);
 }
 
 function applyHomeStatusFilter(status) {
@@ -2179,7 +2222,9 @@ function renderDetails() {
 }
 
 function renderMetrics(items) {
-  const itemsForTotals = shouldUseWonItems() ? items.filter((item) => Boolean(Number(item.is_won))) : items;
+  const itemsForTotals = shouldCalculateWonItemsTotal(refs.bidStatus.value)
+    ? items.filter((item) => Boolean(Number(item.is_won)))
+    : items;
   const missingProfitMarginMessage = "Cadastre o valor de custo e o valor final de todos os itens deste edital para calcular a margem de lucro.";
   const hasCompleteProfitValues = itemsForTotals.length > 0 && itemsForTotals.every(
     (item) => Number(item.max_acceptable_value) && Number(item.supplier_cost)
@@ -2187,7 +2232,6 @@ function renderMetrics(items) {
   const totals = itemsForTotals.reduce(
     (acc, item) => {
       const quantity = Number(item.required_quantity || 0);
-      acc.estimated += Number(item.estimated_value || 0) * quantity;
       acc.final += Number(item.max_acceptable_value || 0) * quantity;
       acc.cost += Number(item.supplier_cost || 0) * quantity;
       if (Number(item.max_acceptable_value) && Number(item.supplier_cost)) {
@@ -2195,10 +2239,9 @@ function renderMetrics(items) {
       }
       return acc;
     },
-    { estimated: 0, final: 0, cost: 0, profit: 0 }
+    { final: 0, cost: 0, profit: 0 }
   );
   refs.metricItemCount.textContent = String(items.length);
-  refs.metricProfit.textContent = money(totals.estimated);
   refs.metricMargin.textContent = money(totals.final);
   refs.metricTotalProfit.textContent = money(totals.profit);
   if (hasCompleteProfitValues && totals.cost) {
@@ -2208,7 +2251,6 @@ function renderMetrics(items) {
     refs.metricTotalProfitMargin.textContent = "-";
     refs.metricTotalProfitMargin.title = missingProfitMarginMessage;
   }
-  refs.metricProfit.className = "";
   refs.metricMargin.className = "";
   refs.metricTotalProfit.className = "";
   refs.metricTotalProfitMargin.className = "";
@@ -2226,6 +2268,9 @@ function renderItems(items) {
     .map((item) => {
       const selected = Number(item.id) === Number(appState.currentItemId) ? " selected" : "";
       const won = Boolean(Number(item.is_won));
+      const description = item.name || "";
+      const descriptionTooltip = description ? ` title="${escapeHtml(description)}"` : "";
+      const { manufacturer, model } = splitBrandModel(item.brand_model);
       const wonClass = showWonItems && won ? " item-won" : "";
       const wonCell = showWonItems
         ? `<td class="item-won-cell"><input class="item-won-checkbox" type="checkbox" data-item-won="${item.id}" aria-label="Marcar item ${item.item_number} como vencido" ${won ? "checked" : ""} /></td>`
@@ -2233,8 +2278,8 @@ function renderItems(items) {
       return `
         <tr class="selectable${selected}${wonClass}" data-item-id="${item.id}">
           <td>${item.item_number}</td>
-          <td>${escapeHtml(item.name || "")}</td>
-          <td>${escapeHtml(item.brand_model || "")}</td>
+          <td><strong class="table-item-description"${descriptionTooltip}>${escapeHtml(description || "—")}</strong>${model ? `<small class="table-secondary">Modelo: ${escapeHtml(model)}</small>` : ""}</td>
+          <td>${escapeHtml(manufacturer || "—")}</td>
           <td>${escapeHtml(item.sales_unit || "")}</td>
           <td class="numeric">${item.required_quantity}</td>
           <td class="numeric">${money(item.estimated_value)}</td>
@@ -2633,6 +2678,86 @@ function currentQuotation() {
   return appState.quotations.find((quotation) => Number(quotation.id) === Number(appState.currentQuotationId)) || null;
 }
 
+
+function supplierSearchText(value) {
+  return String(value || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("pt-BR");
+}
+
+function parseSupplierTags(value) {
+  const seen = new Set();
+  return String(value).split(/[,;\n]/).map((tag) => tag.trim()).filter((tag) => {
+    const key = supplierSearchText(tag);
+    if (!key || seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+function clearSupplierForm() {
+  $("supplierForm").reset();
+  $("supplierId").value = "";
+  $("supplierFormTitle").textContent = "Novo fornecedor";
+  $("supplierMessage").textContent = "";
+  $("supplierName").focus();
+}
+
+async function saveSupplier(event) {
+  event.preventDefault();
+  $("supplierMessage").textContent = "";
+  const record = {
+    name: $("supplierName").value.trim(),
+    website: $("supplierWebsite").value.trim(),
+    contact: $("supplierContact").value.trim(),
+    tags: parseSupplierTags($("supplierTags").value),
+  };
+  try {
+    if (!record.name) throw new Error("Informe o nome do fornecedor.");
+    if (record.website && !/^https?:\/\//i.test(record.website)) throw new Error("Informe um site iniciado por https:// ou http://.");
+    await store.saveSupplier(record, $("supplierId").value);
+    clearSupplierForm();
+    await reloadData();
+    $("supplierMessage").textContent = "Fornecedor salvo com sucesso.";
+  } catch (error) {
+    $("supplierMessage").textContent = error.message || "Não foi possível salvar o fornecedor. Tente novamente.";
+  }
+}
+
+let supplierTagsObserver;
+
+function fitSupplierTags(box) {
+  if (!box.clientWidth) return;
+  const tags = [...box.querySelectorAll(".supplier-tag")];
+  const more = box.querySelector(".supplier-tags-more");
+  tags.forEach((tag) => { tag.hidden = false; });
+  more.hidden = true;
+  const fits = (element) => element.offsetTop + element.offsetHeight <= box.clientHeight;
+  const overflow = tags.findIndex((tag) => !fits(tag));
+  if (overflow < 0) return;
+  tags.slice(overflow).forEach((tag) => { tag.hidden = true; });
+  more.hidden = false;
+  let last = overflow - 1;
+  while (!fits(more) && last >= 0) tags[last--].hidden = true;
+}
+
+function renderSuppliers() {
+  supplierTagsObserver?.disconnect();
+  const terms = supplierSearchText($("supplierSearch").value).trim().split(/\s+/).filter(Boolean);
+  const rows = appState.suppliers.filter((row) => {
+    const text = supplierSearchText([row.name, ...row.tags].join(" "));
+    return terms.every((term) => text.includes(term));
+  });
+  $("supplierCount").textContent = rows.length + " de " + appState.suppliers.length + " fornecedores";
+  $("suppliersTableBody").innerHTML = rows.length ? rows.map((row) => {
+    const site = /^https?:\/\//i.test(row.website) ? '<a href="' + escapeHtml(row.website) + '" target="_blank" rel="noopener noreferrer">Visitar site ↗</a>' : '—';
+    return '<tr><td><strong>' + escapeHtml(row.name) + '</strong></td><td>' + site + '</td><td>' + escapeHtml(row.contact || '—') + '</td><td><div class="supplier-tags" title="' + escapeHtml(row.tags.join(", ")) + '" aria-label="' + escapeHtml(row.tags.join(", ")) + '">' + row.tags.map((tag) => '<span class="supplier-tag">' + escapeHtml(tag) + '</span>').join('') + '<span class="supplier-tags-more" aria-hidden="true" hidden>...</span></div></td><td><button class="quiet-action" type="button" data-edit-supplier="' + Number(row.id) + '">Editar<span class="visually-hidden"> ' + escapeHtml(row.name) + '</span></button></td></tr>';
+  }).join('') : '<tr><td colspan="5"><div class="empty-state compact-empty">' + (appState.suppliers.length ? 'Nenhum fornecedor encontrado. Tente outro nome ou tag.' : 'Nenhum fornecedor cadastrado. Cadastre seu primeiro fornecedor abaixo.') + '</div></td></tr>';
+  supplierTagsObserver ||= new ResizeObserver((entries) => entries.forEach(({ target }) => fitSupplierTags(target)));
+  $("suppliersTableBody").querySelectorAll(".supplier-tags").forEach((box) => {
+    fitSupplierTags(box);
+    supplierTagsObserver.observe(box);
+  });
+}
+
 function currentQuotationItems() {
   if (!appState.currentQuotationId) return [];
   return appState.quotationItems.filter((item) => Number(item.quotation_id) === Number(appState.currentQuotationId));
@@ -2789,7 +2914,7 @@ function renderQuotationItems() {
         <tr class="selectable${selected}" tabindex="0" data-quotation-item-id="${item.id}">
           <td><strong>${escapeHtml(formatNumber(item.item_number))}</strong></td>
           <td class="numeric">${money(item.final_bid)}</td>
-          <td><strong class="quotation-item-description"${descriptionTooltip}>${escapeHtml(description || "—")}</strong>${item.model ? `<small class="table-secondary">Modelo: ${escapeHtml(item.model)}</small>` : ""}</td>
+          <td><strong class="table-item-description"${descriptionTooltip}>${escapeHtml(description || "—")}</strong>${item.model ? `<small class="table-secondary">Modelo: ${escapeHtml(item.model)}</small>` : ""}</td>
           <td>${escapeHtml(item.manufacturer || "—")}</td>
           <td class="numeric">${money(item.estimated_value)}</td>
           <td class="numeric">${money(item.supplier_cost)}</td>
@@ -3175,12 +3300,16 @@ function currentBid() {
 }
 
 function calculateBidSummary(bidId) {
+  const bid = appState.bids.find((row) => row.id === bidId);
+  const onlyWonItems = shouldCalculateWonItemsTotal(bid?.status);
   return appState.items
     .filter((item) => item.bid_id === bidId)
     .reduce(
       (acc, item) => {
         const quantity = Number(item.required_quantity || 0);
-        acc.totalFinal += Number(item.max_acceptable_value || 0) * quantity;
+        if (!onlyWonItems || Boolean(Number(item.is_won))) {
+          acc.totalFinal += Number(item.max_acceptable_value || 0) * quantity;
+        }
         acc.totalEstimated += Number(item.estimated_value || 0) * quantity;
         acc.itemCount += 1;
         return acc;

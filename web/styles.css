@@ -990,7 +990,7 @@ input[readonly] {
 
 .metrics-row {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 10px;
 }
 
@@ -1482,13 +1482,13 @@ textarea:focus {
   color: #aebbd7;
 }
 
-.nav-link-disabled:hover .nav-users-icon,
-.nav-link-disabled:focus-visible .nav-users-icon {
+.nav-link-disabled:hover .nav-disabled-icon,
+.nav-link-disabled:focus-visible .nav-disabled-icon {
   font-size: 0;
 }
 
-.nav-link-disabled:hover .nav-users-icon::after,
-.nav-link-disabled:focus-visible .nav-users-icon::after {
+.nav-link-disabled:hover .nav-disabled-icon::after,
+.nav-link-disabled:focus-visible .nav-disabled-icon::after {
   content: "🔒";
   font-size: 15px;
 }
@@ -2086,7 +2086,7 @@ tr.item-won td {
 #detailsArea { order: 4; }
 .metrics-row {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 0;
   padding: 18px;
   border-radius: var(--radius);
@@ -2524,7 +2524,8 @@ tr.item-won td {
   white-space: nowrap;
 }
 
-.quotation-item-description,
+.table-item-description,
+.items-table .table-secondary,
 .quotation-items-table .table-secondary {
   display: block;
   max-width: 100%;
@@ -2533,7 +2534,7 @@ tr.item-won td {
   white-space: nowrap;
 }
 
-.quotation-item-description[title] {
+.table-item-description[title] {
   cursor: help;
 }
 
@@ -2837,3 +2838,14 @@ html.is-loading { overflow: hidden; }
   box-shadow: 0 4px 16px #0002;
   font-size: 14px;
 }
+
+.supplier-tags { position: relative; display: flex; flex-wrap: wrap; align-content: flex-start; align-items: flex-start; gap: 6px; height: 54px; overflow: hidden; }
+.supplier-tag { display: inline-block; max-width: 100%; padding: 4px 9px; border-radius: 12px; background: #e9f2ee; color: #255b44; font-size: 12px; line-height: 16px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.supplier-tags-more { line-height: 24px; }
+.supplier-tags [hidden] { display: none; }
+#suppliersPage td { overflow-wrap: anywhere; }
+#supplierMessage { min-height: 1.5em; }
+#suppliersPage .bids-table { min-width: 620px; table-layout: fixed; }
+#suppliersPage .bids-table th:first-child { width: 25%; }
+#suppliersPage .bids-table th:last-child { width: 100px; }
+#suppliersPage .bids-table td { white-space: normal; }

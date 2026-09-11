@@ -9,7 +9,7 @@ const user = { email: "test@example.test", name: "Teste" };
 
 function backend() {
   return {
-    tables: { bids: [{ id: "TEST-1", buyer_agency: "Original" }], items: [], documents: [], failure_history: [], quotations: [{ id: 1, edital: "Original" }], quotation_items: [] },
+    tables: { bids: [{ id: "TEST-1", buyer_agency: "Original" }], items: [], documents: [], failure_history: [], quotations: [{ id: 1, edital: "Original" }], quotation_items: [], suppliers: [] },
     users: [user], channels: new Set(),
   };
 }
@@ -48,9 +48,9 @@ function client(db = backend(), auth = { session: { user } }) {
     clearInterval: (id) => timers.delete(id),
   });
   vm.runInContext(application, context);
-  const api = vm.runInContext(`({ store, appState, restoreSession, logout, reloadData, refreshInBackground, startLiveUpdates, stopLiveUpdates, resetAuthenticatedView, scheduleLiveRefresh })`, context);
+  const api = vm.runInContext(`({ store, appState, restoreSession, logout, reloadData, refreshInBackground, startLiveUpdates, stopLiveUpdates, resetAuthenticatedView, scheduleLiveRefresh, calculateBidSummary })`, context);
   vm.runInContext(`
-    renderBids = renderDetails = renderQuotations = renderUsers = () => {};
+    renderSuppliers = renderBids = renderDetails = renderQuotations = renderUsers = () => {};
     clearBidForm = clearQuotationForm = setPage = updateMainNavigationState = () => {};
   `, context);
   api.store.getAll = async (table) => structuredClone(db.tables[table]);
@@ -211,4 +211,45 @@ test("access removal closes the authenticated view", async () => {
   await app.refreshInBackground();
   assert.equal(app.appState.authenticated, false);
   assert.equal(app.appState.bids.length, 0);
+});
+
+test("supplier search normalizes accents and tags without duplicates", () => {
+  const c = client();
+  const tags = vm.runInContext('parseSupplierTags("Informática, informática; papel A4, , LIMPEZA")', c.context);
+  assert.deepEqual(Array.from(tags), ["Informática", "papel A4", "LIMPEZA"]);
+  assert.equal(vm.runInContext('supplierSearchText("INFORMÁTICA")', c.context), "informatica");
+});
+
+test("supplier updates synchronize between sessions and clear on logout", async () => {
+  const db = backend();
+  const a = client(db);
+  const b = client(db);
+  await a.restoreSession();
+  await b.restoreSession();
+  db.tables.suppliers.push({ id: 1, name: "Loja de teste", website: "", contact: "", tags: ["papelaria"] });
+  await a.reloadData();
+  await b.flush();
+  assert.equal(b.appState.suppliers[0].name, "Loja de teste");
+  await b.logout();
+  assert.equal(b.appState.suppliers.length, 0);
+});
+
+test("bid revenue uses only won items for approved and disputed bids", () => {
+  const app = client();
+  app.appState.bids = [
+    { id: "APPROVED", status: "Aprovada" },
+    { id: "DISPUTED", status: "Disputada" },
+    { id: "ANALYSIS", status: "Em Analise" },
+    { id: "DISQUALIFIED", status: "Desclassificado" },
+  ];
+  app.appState.items = app.appState.bids.flatMap((bid) => [
+    { bid_id: bid.id, max_acceptable_value: 100, required_quantity: 2, is_won: 1 },
+    { bid_id: bid.id, max_acceptable_value: 50, required_quantity: 3, is_won: 0 },
+  ]);
+
+  assert.equal(app.calculateBidSummary("APPROVED").totalFinal, 200);
+  assert.equal(app.calculateBidSummary("DISPUTED").totalFinal, 200);
+  assert.equal(app.calculateBidSummary("ANALYSIS").totalFinal, 350);
+  assert.equal(app.calculateBidSummary("DISQUALIFIED").totalFinal, 350);
+  assert.equal(app.calculateBidSummary("APPROVED").itemCount, 2);
 });

@@ -1,0 +1,518 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Plano de melhorias e lacunas do GLL, revisado em 10 de setembro de 2026 com prioridades, evidências e critérios de aceite.">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="source-sha256" content="8565920e7ca881feb51ab2f0d9f2bea10b859ec8e4fae7ecbc3431a225d409c5">
+  <title>Plano de Melhorias e Lacunas — GLL</title>
+  <style>
+    :root{color-scheme:light;--ink:#1c3044;--muted:#526476;--blue:#1558a0;--line:#d8e1ea;--soft:#eef4fa}
+    *{box-sizing:border-box}html{scroll-padding-top:1rem}body{margin:0;background:#f5f7fa;color:var(--ink);font:16px/1.65 system-ui,-apple-system,"Segoe UI",sans-serif}
+    a{color:var(--blue);text-underline-offset:3px}a:hover{text-decoration-thickness:2px}a:focus-visible,.table-scroll:focus-visible{outline:3px solid #c26900;outline-offset:4px}
+    .topbar{display:flex;justify-content:space-between;gap:1rem;flex-wrap:wrap;max-width:1180px;margin:auto;padding:1.2rem 1.5rem;font-weight:600}
+    main{max-width:1180px;margin:0 auto 3rem;padding:clamp(1.2rem,4vw,3.4rem);background:white;border:1px solid var(--line);border-radius:14px}
+    .eyebrow{margin:0 0 1rem;color:var(--muted);font-size:.8rem;font-weight:700;letter-spacing:.13em;text-transform:uppercase}
+    h1{font-size:clamp(1.8rem,4vw,2.6rem);line-height:1.18;letter-spacing:-.025em;margin:.3rem 0 1.4rem}h2{font-size:1.6rem;line-height:1.3;margin:3rem 0 1.25rem;border-top:1px solid var(--line);padding-top:1.6rem}h3{font-size:1.18rem;line-height:1.4;margin:2rem 0 .8rem;color:#144b80}
+    p{margin:.8rem 0 1rem}li{margin:.4rem 0}strong{font-weight:650}code{font-family:ui-monospace,Consolas,monospace;font-size:.88em;background:var(--soft);padding:.1rem .3rem;border-radius:4px;overflow-wrap:anywhere}
+    details{background:var(--soft);border:1px solid var(--line);padding:.85rem 1.1rem;border-radius:8px;margin-bottom:2rem}summary{font-weight:650;cursor:pointer}nav{display:grid;gap:.45rem;padding-top:1rem}nav a{text-decoration:none}
+    .table-scroll{overflow-x:auto;margin:1.2rem 0 1.5rem;border:1px solid var(--line);border-radius:8px}table{border-collapse:collapse;width:100%;min-width:650px;font-size:.9rem;line-height:1.5}th,td{text-align:left;vertical-align:top;padding:.8rem .9rem;border-bottom:1px solid var(--line)}th{background:var(--soft);font-weight:650}tr:last-child td{border-bottom:0}tbody tr:nth-child(even){background:#fafbfd}
+    footer{border-top:1px solid var(--line);margin-top:2.5rem;padding-top:1rem;color:var(--muted);font-size:.85rem}article a{overflow-wrap:anywhere}
+    @media(max-width:650px){body{font-size:15px}.topbar{padding:1rem}main{border-radius:0;border-left:0;border-right:0;margin-bottom:0}h2{font-size:1.35rem}}
+    @media print{body{background:white;font-size:10pt}.topbar,details{display:none}main{border:0;margin:0;padding:0;max-width:none}h2,h3{break-after:avoid}h2{margin-top:1.5rem}.table-scroll{overflow:visible}table{min-width:0;font-size:8pt}tr{break-inside:avoid}a{color:inherit}code{overflow-wrap:anywhere}}
+  </style>
+</head>
+<body>
+  <a class="topbar" href="#conteudo">Ir para o conteúdo</a>
+  <header class="topbar"><a href="../">← Voltar ao GLL</a><a href="./PLANO_DE_MELHORIAS_GLL.md" download>Baixar Markdown</a></header>
+  <main id="conteudo">
+    <p class="eyebrow">GLL · Planejamento · Homologação</p>
+    <details><summary>Navegar pelo plano</summary><nav aria-label="Seções do plano"><a href="#base-da-revisao-e-limites">1. Base da revisão e limites</a>
+<a href="#correcoes-do-diagnostico-anterior">2. Correções do diagnóstico anterior</a>
+<a href="#carteira-priorizada">3. Carteira priorizada</a>
+<a href="#seguranca-e-integridade-imediata">4. Segurança e integridade imediata</a>
+<a href="#confiabilidade-e-operacao">5. Confiabilidade e operação</a>
+<a href="#qualidade-e-evolucao-tecnica">6. Qualidade e evolução técnica</a>
+<a href="#expansoes-de-negocio-p3">7. Expansões de negócio — P3</a>
+<a href="#sequencia-e-responsabilidades-propostas">8. Sequência e responsabilidades propostas</a>
+<a href="#criterios-de-entrega-e-promocao">9. Critérios de entrega e promoção</a>
+<a href="#fontes-e-rastreabilidade">10. Fontes e rastreabilidade</a></nav></details>
+    <article><h1 id="plano-de-melhorias-e-lacunas-gll">Plano de Melhorias e Lacunas — GLL</h1>
+<p><strong>Revisão:</strong> 2.0 · <strong>Data da análise:</strong> 10/09/2026 · <strong>Situação:</strong> plano revisado em homologação.</p>
+<p>Este plano renova o diagnóstico anterior, preserva os identificadores IMP e prioriza o trabalho restante conforme o código atual. Funcionalidade implementada, publicação na web e aceite de negócio são registros distintos. As ações abaixo são propostas; esta revisão documental não implementa as correções.</p>
+<h2 id="base-da-revisao-e-limites">1. Base da revisão e limites</h2>
+<p>As referências remotas dos dois repositórios foram atualizadas antes da análise.</p>
+<div class="table-scroll" tabindex="0" role="region" aria-label="Tabela com rolagem horizontal"><table>
+<thead>
+<tr>
+<th>Repositório</th>
+<th>Produção — main</th>
+<th>Homologação — homolog</th>
+<th>Diferença funcional observada</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>GLL-frontend</td>
+<td><code>8665c3b</code></td>
+<td><code>42d5836</code></td>
+<td>Cadastro/edição de fornecedores, pesquisa por nome/tags e limitação visual das tags sem limitar o cadastro.</td>
+</tr>
+<tr>
+<td>GLL-backend</td>
+<td><code>453cfb6</code></td>
+<td><code>b7f75a5</code></td>
+<td>Tabela de fornecedores, RLS e migração <code>20260910120000_add_suppliers.sql</code>.</td>
+</tr>
+</tbody>
+</table></div>
+<p>Esses commits identificam a base auditada, anterior à publicação desta revisão. <code>main</code> estava contida em <code>homolog</code> nos dois repositórios. A especificação técnica vigente é a versão 2.7, referente à produção; o cadastro próprio de fornecedores ainda não integra essa versão.</p>
+<p><strong>Verificado:</strong> código dos adaptadores/interface, schema, sete migrações em homologação, workflows, histórico Git e assets públicos dos dois ambientes. <code>index.html</code>, <code>env.js</code> e <code>app.js</code> retornaram HTTP 200; o JavaScript publicado correspondeu à branch de cada ambiente. A suíte <code>npm run test:session-sync</code> passou <strong>13/13 testes em homologação</strong>; produção contém 11 testes versionados. São serviços/DOM simulados, sem exercitar o Supabase real. No navegador, a sessão foi restaurada e a aba Fornecedores abriu em homologação; não houve alteração de dados operacionais nesta análise.</p>
+<p><strong>A verificar no ambiente:</strong> configurações administrativas de autenticação, rotação histórica de senhas, MFA, histórico remoto das migrações, backups e restauração. Não houve ensaio completo de revogação/CRUD com múltiplos usuários reais. Ausência de evidência no repositório não comprova ausência de configuração no serviço.</p>
+<p><strong>Estados:</strong> Aberto — ação necessária; Parcial — parte implementada e pendência identificada; Atendido no escopo atual — comportamento existente, mantendo regressão; A verificar no ambiente — depende de evidência operacional. <strong>P0:</strong> segurança/integridade imediata; <strong>P1:</strong> confiabilidade/operação; <strong>P2:</strong> qualidade e evolução técnica; <strong>P3:</strong> expansão de negócio.</p>
+<h2 id="correcoes-do-diagnostico-anterior">2. Correções do diagnóstico anterior</h2>
+<div class="table-scroll" tabindex="0" role="region" aria-label="Tabela com rolagem horizontal"><table>
+<thead>
+<tr>
+<th>Tema</th>
+<th>Estado atual</th>
+<th>Ajuste no plano</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Usuário removido</td>
+<td>Login/restauração e RLS exigem cadastro em <code>app_users</code>.</td>
+<td>Retirar a afirmação de acesso livre por perfil criado em memória. Revogação completa permanece em IMP-001.</td>
+</tr>
+<tr>
+<td>Gestão de usuários</td>
+<td>Navegação Usuários desabilitada; administração orientada ao Supabase. Rotinas legadas e políticas amplas persistem.</td>
+<td>Controle na interface não substitui autorização na API: IMP-011 passa a P0.</td>
+</tr>
+<tr>
+<td>Campos dos itens</td>
+<td>Custo, margem, fornecedores e resultado já são editáveis. Frete legado ainda recebe valores fixos no salvamento.</td>
+<td>Concentrar IMP-003 na perda residual comprovada.</td>
+</tr>
+<tr>
+<td>Identificação do edital</td>
+<td>SQL usa cascatas de atualização; IndexedDB trata dependentes em transação.</td>
+<td>IMP-004 deixa de ser correção crítica; ID interno imutável é evolução arquitetural.</td>
+</tr>
+<tr>
+<td>Migrações/testes</td>
+<td>Migrações versionadas, publicação automatizada e testes já existem.</td>
+<td>IMP-012/013 passam a tratar baseline, cobertura e CI obrigatório.</td>
+</tr>
+<tr>
+<td>Sessão/sincronização</td>
+<td>Restauração, saída local, limpeza, avisos e atualização periódica estão em produção.</td>
+<td>IMP-016 foca conflitos de gravação, ainda sem bloqueio por versão.</td>
+</tr>
+<tr>
+<td>Seed remoto</td>
+<td>Login/restauração não aplicam demonstração ao Supabase vazio.</td>
+<td>IMP-018 atendido no código; regressão explícita de base vazia ainda pendente.</td>
+</tr>
+<tr>
+<td>Orçamentos</td>
+<td>Vínculo, importação, sincronização bidirecional, cálculos, modal e CSV já existem.</td>
+<td>IMP-023 sobe para P1 por falhas parciais e exclusões compartilhadas.</td>
+</tr>
+<tr>
+<td>Fornecedores</td>
+<td>Cadastro próprio em homologação; nomes/URLs livres nos itens já em produção.</td>
+<td>IMP-028 trata consolidação e integração, sem reconstruir o cadastro.</td>
+</tr>
+<tr>
+<td>Anexos/indicadores</td>
+<td>Arquivo privado de edital, itens vencidos, resumos e pendências já existem.</td>
+<td>Separar essas entregas de gestão documental completa e indicadores históricos.</td>
+</tr>
+</tbody>
+</table></div>
+<h2 id="carteira-priorizada">3. Carteira priorizada</h2>
+<div class="table-scroll" tabindex="0" role="region" aria-label="Tabela com rolagem horizontal"><table>
+<thead>
+<tr>
+<th>ID</th>
+<th>Prioridade atual</th>
+<th>Estado</th>
+<th>Próximo resultado esperado</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>IMP-011</td>
+<td>P0</td>
+<td>Parcial</td>
+<td>Administração protegida por autorização real.</td>
+</tr>
+<tr>
+<td>IMP-002</td>
+<td>P0</td>
+<td>Parcial</td>
+<td>Legado privado com acesso restrito e retenção definida.</td>
+</tr>
+<tr>
+<td>IMP-003</td>
+<td>P0</td>
+<td>Parcial</td>
+<td>Edição sem apagar campos legados não editados.</td>
+</tr>
+<tr>
+<td>IMP-001</td>
+<td>P1</td>
+<td>Parcial</td>
+<td>Revogação completa e auditável.</td>
+</tr>
+<tr>
+<td>IMP-005</td>
+<td>P1</td>
+<td>Parcial / a verificar</td>
+<td>Demonstração isolada e rotação histórica comprovada.</td>
+</tr>
+<tr>
+<td>IMP-012</td>
+<td>P1</td>
+<td>Parcial</td>
+<td>Instalação e atualização reproduzíveis.</td>
+</tr>
+<tr>
+<td>IMP-013</td>
+<td>P1</td>
+<td>Parcial</td>
+<td>Testes relevantes obrigatórios no CI.</td>
+</tr>
+<tr>
+<td>IMP-014</td>
+<td>P1</td>
+<td>A verificar no ambiente</td>
+<td>Backup completo com restauração demonstrada.</td>
+</tr>
+<tr>
+<td>IMP-015</td>
+<td>P1</td>
+<td>Parcial</td>
+<td>Datas e arredondamentos consistentes.</td>
+</tr>
+<tr>
+<td>IMP-016</td>
+<td>P1</td>
+<td>Parcial</td>
+<td>Gravações concorrentes sem sobrescrita silenciosa.</td>
+</tr>
+<tr>
+<td>IMP-017</td>
+<td>P1</td>
+<td>Parcial / a verificar</td>
+<td>Política de autenticação/sessão validada.</td>
+</tr>
+<tr>
+<td>IMP-023</td>
+<td>P1</td>
+<td>Parcial</td>
+<td>Orçamento e edital coerentes após falhas.</td>
+</tr>
+<tr>
+<td>IMP-024</td>
+<td>P1</td>
+<td>Parcial</td>
+<td>Regras essenciais garantidas no banco.</td>
+</tr>
+<tr>
+<td>IMP-027</td>
+<td>P1</td>
+<td>Parcial</td>
+<td>Anexos e registros recuperáveis após falhas compostas.</td>
+</tr>
+<tr>
+<td>IMP-029</td>
+<td>P1</td>
+<td>Aberto</td>
+<td>Procedimentos coerentes e promoção rastreável.</td>
+</tr>
+<tr>
+<td>IMP-004</td>
+<td>P2</td>
+<td>Atendido no fluxo atual / evolução aberta</td>
+<td>Regressão das cascatas e decisão sobre ID imutável.</td>
+</tr>
+<tr>
+<td>IMP-010</td>
+<td>P2</td>
+<td>Aberto</td>
+<td>Ciclo de vida definido com o negócio.</td>
+</tr>
+<tr>
+<td>IMP-020</td>
+<td>P2</td>
+<td>Aberto</td>
+<td>Paginação e listagens completas em maior volume.</td>
+</tr>
+<tr>
+<td>IMP-021</td>
+<td>P2</td>
+<td>Aberto</td>
+<td>Falhas detectáveis com contexto e responsável.</td>
+</tr>
+<tr>
+<td>IMP-022</td>
+<td>P2</td>
+<td>Parcial</td>
+<td>Uso acessível e responsivo validado.</td>
+</tr>
+<tr>
+<td>IMP-025</td>
+<td>P2</td>
+<td>Parcial</td>
+<td>Documentos com arquivo, validade e versão.</td>
+</tr>
+<tr>
+<td>IMP-026</td>
+<td>P2</td>
+<td>Parcial</td>
+<td>Finalidade e limites do modo local claros.</td>
+</tr>
+<tr>
+<td>IMP-028</td>
+<td>P2</td>
+<td>Parcial — somente homolog</td>
+<td>Cadastro de fornecedores consolidado.</td>
+</tr>
+<tr>
+<td>IMP-018</td>
+<td>Manutenção</td>
+<td>Atendido no fluxo remoto</td>
+<td>Login nunca altera dados por seed.</td>
+</tr>
+</tbody>
+</table></div>
+<p>IMP-010 foi colocado após riscos de dados/operação; auditoria de ações sensíveis continua prioritária em IMP-001/011/023. IMP-024 subiu de P2 para P1 porque validação apenas na tela não protege gravações pela API.</p>
+<h2 id="seguranca-e-integridade-imediata">4. Segurança e integridade imediata</h2>
+<h3 id="imp-011-aplicar-autorizacao-por-funcao">IMP-011 — Aplicar autorização por função</h3>
+<p><strong>Situação:</strong> <code>is_app_user()</code> bloqueia anônimos e contas Auth não cadastradas. Entretanto, as políticas permitem todas as operações aos cadastrados, inclusive em <code>app_users</code> e estruturas privadas legadas, sem avaliar <code>role</code>. A aba Usuários desabilitada não restringe a API. Evidências: <a href="https://github.com/Julielzissimo/GLL-backend/blob/b7f75a5/supabase/schema.sql">schema/RLS</a>, <code>setPage()</code> e <a href="https://github.com/Julielzissimo/GLL-frontend/blob/42d583647aee837d698fd191cbe3970c088f12d5/web/index.html">interface</a>.</p>
+<p><strong>Próxima ação:</strong> restringir administração no servidor, definir administrador/operador e impedir autoelevação e remoção indevida do último administrador. Papéis adicionais e separação por organização dependem de necessidade validada.</p>
+<p><strong>Aceite:</strong> testar diretamente a API com anônimo, Auth sem cadastro, usuário comum e administrador; usuário comum não administra perfis nem acessa dados restritos; proteção funciona independentemente da tela.</p>
+<h3 id="imp-002-concluir-a-protecao-do-legado-privado">IMP-002 — Concluir a proteção do legado privado</h3>
+<p><strong>Situação:</strong> modelo antigo e seed operacional saíram do frontend público. <code>app_settings</code>, <code>budget_models</code>, <code>budget_rows</code> e arquivos privados permanecem no backend. As políticas permitem acesso aos cadastrados; ausência de consumo pela tela não significa inacessibilidade pela API. Evidências: <a href="https://github.com/Julielzissimo/GLL-backend/blob/b7f75a5/supabase/schema.sql">schema</a> e <a href="https://github.com/Julielzissimo/GLL-backend/blob/b7f75a5/docs/supabase.md">runbook</a>.</p>
+<p><strong>Próxima ação:</strong> junto de IMP-011, restringir o legado e definir finalidade, responsável e prazo de retenção. Remoção depende de decisão explícita sobre preservação histórica e recuperação.</p>
+<p><strong>Aceite:</strong> bundle sem dados operacionais/pessoais reais; usuário sem atribuição administrativa não acessa o legado; retenção e eventual retirada registradas. Esta revisão não reproduz dados desses registros.</p>
+<h3 id="imp-003-preservar-campos-nao-editados-do-item">IMP-003 — Preservar campos não editados do item</h3>
+<p><strong>Situação:</strong> custo e fornecedores já são editáveis. <code>collectItemData()</code> ainda envia sempre <code>freight_included: 1</code> e <code>unit_freight: 0</code>, embora esses campos não apareçam no formulário. Evidência: <a href="https://github.com/Julielzissimo/GLL-frontend/blob/42d583647aee837d698fd191cbe3970c088f12d5/web/app.js#L2441">coleta de campos</a>.</p>
+<p><strong>Próxima ação:</strong> preservar valores existentes não editáveis; definir modelo canônico, espelhamento legado e migração antes de remover campos; conferir conversores orçamento–edital.</p>
+<p><strong>Aceite:</strong> item sintético com frete não padrão mantém esse valor após editar só a descrição nos dois adaptadores; ida e volta preserva custo, fornecedores, resultado e campos não alterados.</p>
+<h2 id="confiabilidade-e-operacao">5. Confiabilidade e operação</h2>
+<h3 id="imp-001-completar-a-revogacao-de-acesso">IMP-001 — Completar a revogação de acesso</h3>
+<p><strong>Situação:</strong> login/restauração exigem perfil e as atualizações detectam sua retirada. A rotina legada <code>deleteUser()</code> remove apenas <code>app_users</code>; não exclui/bane Auth nem audita a ação. A administração usual é feita no Supabase. Evidências: <a href="https://github.com/Julielzissimo/GLL-frontend/blob/42d583647aee837d698fd191cbe3970c088f12d5/web/app.js">adaptadores/autenticação</a> e <a href="https://github.com/Julielzissimo/GLL-backend/blob/b7f75a5/supabase/schema.sql">RLS</a>.</p>
+<p><strong>Próxima ação:</strong> definir procedimento de bloqueio/reativação e revogação de sessões, com autor, motivo e data; automatizar no servidor se a gestão pela aplicação voltar ao escopo. Distinguir bloqueio de dados pela RLS, invalidação de tokens e exclusão de conta.</p>
+<p><strong>Aceite:</strong> revogado não acessa tabelas/Storage nem recupera acesso ao recarregar; novos logins e renovação seguem a política; comportamento e prazo de invalidação de tokens vigentes documentados/testados; evento auditado.</p>
+<h3 id="imp-005-isolar-credenciais-de-demonstracao">IMP-005 — Isolar credenciais de demonstração</h3>
+<p><strong>Situação:</strong> modo local recria administrador demonstrativo conhecido. Builds publicados usam Supabase e não o criam remotamente. Rotação histórica nos dois projetos é exigida no runbook, mas não foi comprovada. Evidências: <code>ensureDefaultUser()</code> em <a href="https://github.com/Julielzissimo/GLL-frontend/blob/42d583647aee837d698fd191cbe3970c088f12d5/web/app.js">F1</a>, <a href="https://github.com/Julielzissimo/GLL-frontend/blob/42d583647aee837d698fd191cbe3970c088f12d5/scripts/build-web.mjs">build</a> e <a href="https://github.com/Julielzissimo/GLL-backend/blob/b7f75a5/docs/supabase.md">runbook</a>.</p>
+<p><strong>Próxima ação:</strong> restringir demonstração a uso local; impedir fallback silencioso para IndexedDB em implantação com configuração remota ausente/inválida; registrar confirmação de rotação sem senhas. Se houver uso local operacional, adotar primeiro acesso controlado.</p>
+<p><strong>Aceite:</strong> builds remotos não caem em demonstração; conta remota não aceita credencial demonstrativa; confirmação de rotação registrada por ambiente, sem segredo.</p>
+<h3 id="imp-012-fechar-migracoes-e-baseline">IMP-012 — Fechar migrações e baseline</h3>
+<p><strong>Situação:</strong> sete migrações em homolog, seis em main; schema consolidado; workflow manual de produção com confirmação, dry-run e conferência de histórico. IndexedDB já usa versão e <code>onupgradeneeded</code> (4 em homolog, 3 em produção). A primeira migração SQL pressupõe tabelas existentes. O schema já cria fornecedores, enquanto sua migração usa <code>CREATE TABLE</code> sem cláusula de existência; executar ambos sem alinhar histórico pode conflitar. Evidências: <a href="https://github.com/Julielzissimo/GLL-backend/tree/b7f75a5/supabase/migrations">migrações</a>, <a href="https://github.com/Julielzissimo/GLL-backend/blob/b7f75a5/.github/workflows/supabase-production.yml">workflow</a> e adaptador local <a href="https://github.com/Julielzissimo/GLL-frontend/blob/42d583647aee837d698fd191cbe3970c088f12d5/web/app.js">F1</a>.</p>
+<p><strong>Próxima ação:</strong> definir baseline, registro de histórico por ambiente, instalação de banco vazio, comparação schema/implantação, upgrades IndexedDB e recuperação por migração. Versionar a validação de homologação.</p>
+<p><strong>Aceite:</strong> banco limpo e versão anterior chegam ao mesmo schema; reaplicação reconhece o que já foi executado; histórico remoto coincide com arquivos; recuperação ensaiada. Migração de fornecedores precede seu frontend na promoção.</p>
+<h3 id="imp-013-tornar-testes-e-ci-uma-barreira-de-publicacao">IMP-013 — Tornar testes e CI uma barreira de publicação</h3>
+<p><strong>Situação:</strong> 13 testes passam em homolog, sendo 11 de sessão/sincronização já promovidos e dois relativos a fornecedores. São mocks. Pages só gera/publica builds, sem executar testes nem validar PR; alteração isolada no arquivo de testes não está no filtro. Evidências: <a href="https://github.com/Julielzissimo/GLL-frontend/blob/42d583647aee837d698fd191cbe3970c088f12d5/scripts/session-sync.test.mjs">suíte</a> e <a href="https://github.com/Julielzissimo/GLL-frontend/blob/42d583647aee837d698fd191cbe3970c088f12d5/.github/workflows/pages.yml">Pages</a>.</p>
+<p><strong>Próxima ação:</strong> validar PR e pré-deploy com suíte existente e builds. Priorizar testes que reproduzam frete legado, RLS/Auth, migrações, concorrência, sincronização/cascatas, cálculos, fornecedores e CSV; acrescentar regressão explícita de login/restauração com base Supabase vazia e sem seed. Distinguir integração real de mocks.</p>
+<p><strong>Aceite:</strong> teste falho bloqueia entrega; riscos críticos possuem cenários com dados sintéticos; evidência de homologação identifica commit e resultado. Backend também valida schema/RLS no CI.</p>
+<h3 id="imp-014-comprovar-backup-e-restauracao">IMP-014 — Comprovar backup e restauração</h3>
+<p><strong>Situação:</strong> CSV de itens existe, com escape e proteção de fórmulas, mas não exporta todos os campos, relações e anexos, nem restaura a base. Não foi encontrado ensaio versionado de recuperação; backup gerenciado permanece a verificar. Evidência: <code>downloadItemsCsv()</code> em <a href="https://github.com/Julielzissimo/GLL-frontend/blob/42d583647aee837d698fd191cbe3970c088f12d5/web/app.js">F1</a>.</p>
+<p><strong>Próxima ação:</strong> inventariar proteção atual e definir frequência, retenção, responsável, perda máxima aceitável de dados (RPO) e tempo de recuperação (RTO). Incluir banco, relações, Storage e IndexedDB se operacional.</p>
+<p><strong>Aceite:</strong> restaurar cópia isolada, verificar vínculos/arquivos/acesso e medir RPO/RTO; procedimento registrado. CSV continua exportação operacional, sem ser apresentado como backup.</p>
+<h3 id="imp-015-uniformizar-datas-e-precisao-monetaria">IMP-015 — Uniformizar datas e precisão monetária</h3>
+<p><strong>Situação:</strong> banco usa <code>numeric</code> e total gerado em orçamento. Parte das datas é texto, <code>opening_date</code> é <code>date</code> e fornecedores em homolog usa <code>timestamptz</code>. Cliente calcula com <code>Number</code> e arredondamentos distribuídos; timestamps não são uniformes. Evidências: <a href="https://github.com/Julielzissimo/GLL-backend/blob/b7f75a5/supabase/schema.sql">schema</a> e cálculos/normalizadores <a href="https://github.com/Julielzissimo/GLL-frontend/blob/42d583647aee837d698fd191cbe3970c088f12d5/web/app.js">F1</a>.</p>
+<p><strong>Próxima ação:</strong> definir fuso dos eventos, UTC para timestamps e tratamento de datas civis; migrar legados e padronizar arredondamento de custo/lance/margem/quantidade/totais, com representação decimal controlada no cliente.</p>
+<p><strong>Aceite:</strong> cliente/banco/exportação concordam em centavos, custo zero, margem negativa e quantidade fracionária; sessões mantêm o horário correto entre dispositivos; regra documentada e testada.</p>
+<h3 id="imp-016-impedir-sobrescrita-por-concorrencia">IMP-016 — Impedir sobrescrita por concorrência</h3>
+<p><strong>Situação:</strong> broadcast, foco/conectividade e consulta periódica de 15 segundos atualizam dados e preservam formulários com aviso. Não há versão esperada no salvamento; fornecedor aberto não integra <code>selectedDataSignature()</code>. Evidência: <a href="https://github.com/Julielzissimo/GLL-frontend/blob/42d583647aee837d698fd191cbe3970c088f12d5/web/app.js#L1595">atualização entre clientes</a> e gravações <a href="https://github.com/Julielzissimo/GLL-frontend/blob/42d583647aee837d698fd191cbe3970c088f12d5/web/app.js">F1</a>.</p>
+<p><strong>Próxima ação:</strong> versão/timestamp controlado no servidor e condição de atualização/exclusão; permitir comparar/recarregar diante de conflito. Cobrir fornecedores e exclusão durante edição.</p>
+<p><strong>Aceite:</strong> segundo cliente salva versão antiga e recebe conflito explícito, com rascunho preservado, sem sobrescrever o primeiro nem recriar registro removido. Aviso visual não substitui condição no banco.</p>
+<h3 id="imp-017-consolidar-autenticacao-e-sessao">IMP-017 — Consolidar autenticação e sessão</h3>
+<p><strong>Situação:</strong> restauração, saída local, limpeza e descarte de respostas tardias já existem. Modo local usa SHA-256 simples; Supabase é carregado por versão principal, sem fixação exata. Política real de senha, recuperação, MFA e proteção contra tentativas não foi auditada. Evidências: <a href="https://github.com/Julielzissimo/GLL-frontend/blob/42d583647aee837d698fd191cbe3970c088f12d5/web/app.js">frontend</a> e <a href="https://github.com/Julielzissimo/GLL-frontend/blob/42d583647aee837d698fd191cbe3970c088f12d5/scripts/session-sync.test.mjs">testes</a>.</p>
+<p><strong>Próxima ação:</strong> validar/documentar configurações; definir política de sessão, fixar dependência e avaliar CSP. Se local for operacional, substituir derivação demonstrativa de senha por mecanismo apropriado.</p>
+<p><strong>Aceite:</strong> expiração, saída, falha de rede e troca de usuário não exibem dados da sessão anterior; recuperação/controles adotados testados em homolog; versões e configuração identificáveis. Revogação administrativa está em IMP-001.</p>
+<h3 id="imp-023-tornar-o-vinculo-orcamentoedital-consistente">IMP-023 — Tornar o vínculo orçamento–edital consistente</h3>
+<p><strong>Situação:</strong> vínculo, importação, cálculos e sincronização bidirecional existem, porém com múltiplas chamadas sequenciais no cliente. Excluir item vinculado pelo edital exclui o item do orçamento e seus correspondentes em outros editais por cascata. Excluir orçamento desvincula cabeçalhos, mas elimina itens compartilhados; retirar só o vínculo preserva itens independentes. Evidências: <code>syncBidWithQuotation()</code>, <code>saveItem()</code>, <code>deleteItem()</code> e <code>syncQuotationItemToBids()</code> em <a href="https://github.com/Julielzissimo/GLL-frontend/blob/42d583647aee837d698fd191cbe3970c088f12d5/web/app.js">F1</a>, mais <a href="https://github.com/Julielzissimo/GLL-backend/blob/b7f75a5/supabase/schema.sql">FKs</a>.</p>
+<p><strong>Próxima ação:</strong> validar efeito das alterações/exclusões compartilhadas com o negócio, mostrar alcance e executar mudanças relacionadas em transação no servidor, com repetição segura. Garantir que item e edital se refiram ao mesmo orçamento. Registrar autoria; proposta/PDF continua evolução opcional.</p>
+<p><strong>Aceite:</strong> dois editais no mesmo orçamento, troca/retirada de vínculo, números duplicados e falha intermediária cobertos; operação confirma tudo ou preserva estado anterior; exclusão informa registros afetados; cálculos seguem IMP-015.</p>
+<h3 id="imp-024-garantir-regras-essenciais-no-banco">IMP-024 — Garantir regras essenciais no banco</h3>
+<p><strong>Situação:</strong> existem FKs/unicidade; orçamento tem não negatividade e total gerado; fornecedores tem validação básica de nome/site. Núcleo ainda aceita status/modalidade livres, flags numéricas e valores sem todas as restrições da tela. Evidência: <a href="https://github.com/Julielzissimo/GLL-backend/blob/b7f75a5/supabase/schema.sql">schema</a>.</p>
+<p><strong>Próxima ação:</strong> restrições de domínio, valores, flags, listas JSON e pertencimento de vínculos; auditar/migrar legados antes de ativá-las. Não exigir quantidade inteira onde a aplicação aceita fração.</p>
+<p><strong>Aceite:</strong> API rejeita payload inválido e aceita dados válidos; correção de legados rastreável; banco e adaptadores concordam nas regras.</p>
+<h3 id="imp-027-recuperar-falhas-entre-banco-e-anexos">IMP-027 — Recuperar falhas entre banco e anexos</h3>
+<p><strong>Situação:</strong> upload tenta limpar arquivo novo se metadados falharem. Mas exclusão remove o objeto antes da linha; falha posterior deixa referência sem arquivo. Remoção do anexo substituído pode falhar e apenas gerar aviso no console. Salvar edital antes do upload também admite sucesso parcial. Evidência: <code>saveBidAttachment()</code>, <code>deleteBid()</code> e <code>saveBid()</code> em <a href="https://github.com/Julielzissimo/GLL-frontend/blob/42d583647aee837d698fd191cbe3970c088f12d5/web/app.js">F1</a>.</p>
+<p><strong>Próxima ação:</strong> fluxo recuperável com estado de processamento, repetição segura e reconciliação de objetos órfãos; integrar IMP-014/021. Sincronização de itens permanece em IMP-023, sem duplicar escopo.</p>
+<p><strong>Aceite:</strong> falhas em cada etapa não aparecem como sucesso completo; repetição converge para estado consistente; não há perda de anexo sem recuperação prevista.</p>
+<h3 id="imp-029-alinhar-procedimentos-e-documentacao-de-promocao">IMP-029 — Alinhar procedimentos e documentação de promoção</h3>
+<p><strong>Situação:</strong> README orienta não aplicar <code>private-settings.sql</code> em novas instalações, mas runbook e seção de implantação da especificação ainda mandam executá-lo. A especificação 2.7 contém trechos antigos sobre permissões, gestão de usuários ativa e quantidade inteira. Já descrever 11 testes e não incluir cadastro próprio de fornecedores é coerente com produção. Evidências: <a href="https://github.com/Julielzissimo/GLL-backend/blob/b7f75a5/README.md">README</a>, <a href="https://github.com/Julielzissimo/GLL-backend/blob/b7f75a5/docs/supabase.md">runbook</a> e <a href="https://github.com/Julielzissimo/GLL-backend/blob/453cfb6/docs/especificacao-tecnica/ESPECIFICACAO_TECNICA_GLL.md">especificação</a>.</p>
+<p><strong>Próxima ação:</strong> corrigir runbook na próxima entrega operacional; na próxima promoção aprovada, revisar integralmente a especificação contra o código promovido, incluindo fornecedores somente se fizer parte dela. Registrar versões e validações por ambiente.</p>
+<p><strong>Aceite:</strong> procedimento único e coerente; documentação no fluxo de promoção; <code>main</code> integrada de volta a <code>homolog</code> nos dois repositórios por merge. Esta revisão altera o plano e não antecipa atualização da especificação em homolog.</p>
+<h2 id="qualidade-e-evolucao-tecnica">6. Qualidade e evolução técnica</h2>
+<h3 id="imp-004-decidir-sobre-identificacao-tecnica-imutavel">IMP-004 — Decidir sobre identificação técnica imutável</h3>
+<p><strong>Situação:</strong> SQL usa <code>ON UPDATE CASCADE</code>; IndexedDB atualiza dependentes em transação; caminho do anexo independe da identificação. Não foi comprovada falha atual de cascata. Evidências: <a href="https://github.com/Julielzissimo/GLL-backend/blob/b7f75a5/supabase/schema.sql">schema</a> e <code>saveBid()</code>/<code>updateChildrenBidId()</code> em <a href="https://github.com/Julielzissimo/GLL-frontend/blob/42d583647aee837d698fd191cbe3970c088f12d5/web/app.js">F1</a>.</p>
+<p><strong>Próxima ação:</strong> regressão da renomeação com dependentes ativos, orçamento e anexo; avaliar ID interno antes de criar integrações/vínculos externos.</p>
+<p><strong>Aceite:</strong> renomear preserva relações e download nos dois adaptadores; decisão arquitetural registrada. Migrar ID somente com benefício/compatibilidade demonstrados.</p>
+<h3 id="imp-010-definir-ciclo-de-vida-e-historico-de-status">IMP-010 — Definir ciclo de vida e histórico de status</h3>
+<p><strong>Situação:</strong> quatro status e normalização de <code>Reprovada</code> para <code>Desclassificado</code>; sem máquina/histórico de transições. <code>is_won</code> é resultado de item, não ciclo completo do edital. Evidências: <a href="https://github.com/Julielzissimo/GLL-frontend/blob/42d583647aee837d698fd191cbe3970c088f12d5/web/app.js">frontend</a> e <a href="https://github.com/Julielzissimo/GLL-backend/blob/b7f75a5/supabase/schema.sql">schema</a>.</p>
+<p><strong>Próxima ação:</strong> acordar significado, transições, pré-condições, reabertura e motivo; persistir origem/destino, autor/data no servidor. Cancelada, suspensa, vencida e perdida são propostas a validar, não requisitos aprovados.</p>
+<p><strong>Aceite:</strong> API rejeita transição inválida; mudanças têm trilha consultável; efeito em itens vencidos e indicadores definido/testado.</p>
+<h3 id="imp-020-paginar-e-reduzir-recargas-completas">IMP-020 — Paginar e reduzir recargas completas</h3>
+<p><strong>Situação:</strong> <code>getAll()</code> usa <code>select('*')</code>; <code>reloadData()</code> busca oito conjuntos completos em homolog, inclusive periodicamente. Filtros/resumos são locais. Já existem índices de vínculos de orçamento. Evidências: <a href="https://github.com/Julielzissimo/GLL-frontend/blob/42d583647aee837d698fd191cbe3970c088f12d5/web/app.js#L1595">carregamento</a> e <a href="https://github.com/Julielzissimo/GLL-backend/blob/b7f75a5/supabase/schema.sql">schema</a>.</p>
+<p><strong>Próxima ação:</strong> filtros/paginação/agregações no servidor, campos necessários e atualização incremental; medir índices com consultas reais.</p>
+<p><strong>Aceite:</strong> massa maior que o limite de retorno da API aparece completa por páginas, com contagens/exportação corretas; atualização não recarrega tudo; orçamento de desempenho e medição registrados.</p>
+<h3 id="imp-021-dar-visibilidade-as-falhas-operacionais">IMP-021 — Dar visibilidade às falhas operacionais</h3>
+<p><strong>Situação:</strong> mensagens na tela/console, sem mecanismo central de erros, métricas e alertas identificado no repositório. Evidência: tratamento de erros em <a href="https://github.com/Julielzissimo/GLL-frontend/blob/42d583647aee837d698fd191cbe3970c088f12d5/web/app.js">F1</a>.</p>
+<p><strong>Próxima ação:</strong> registrar ambiente, versão, operação, duração e correlação, priorizando login, carga, sincronização e anexos; definir responsável por alerta.</p>
+<p><strong>Aceite:</strong> falha sintética detectada/localizável sem senhas, tokens ou conteúdo comercial/pessoal nos logs; retenção e resposta definidas.</p>
+<h3 id="imp-022-completar-acessibilidade-e-usabilidade">IMP-022 — Completar acessibilidade e usabilidade</h3>
+<p><strong>Situação:</strong> navegação responsiva, tabelas com rolagem, diálogos, carregamento e rascunhos já evoluíram. Ainda há linhas de itens/documentos/falhas acionadas só por clique, semântica de abas incompleta e confirmações nativas; não houve auditoria completa. Evidências: <a href="https://github.com/Julielzissimo/GLL-frontend/blob/42d583647aee837d698fd191cbe3970c088f12d5/web/index.html">HTML</a>, <code>renderItems()</code>, <code>renderDocuments()</code> e <code>renderFailures()</code> em <a href="https://github.com/Julielzissimo/GLL-frontend/blob/42d583647aee837d698fd191cbe3970c088f12d5/web/app.js">F1</a>.</p>
+<p><strong>Próxima ação:</strong> validar teclado, foco, leitor de tela, contraste, erros, zoom/celular e conteúdo longo; acesso às tags completas sem depender de hover. Usar WCAG 2.2 AA como referência de aceite.</p>
+<p><strong>Aceite:</strong> fluxos essenciais completados por teclado/leitor; diálogos com foco adequado; conteúdo e ações acessíveis com zoom/tela pequena; achados demonstrados corrigidos.</p>
+<h3 id="imp-025-expandir-gestao-documental">IMP-025 — Expandir gestão documental</h3>
+<p><strong>Situação:</strong> checklist e um arquivo privado por edital, até 20 MB, com download autenticado. Checklist não tem arquivo próprio, emissão/validade, responsável ou versão. Evidências: <a href="https://github.com/Julielzissimo/GLL-backend/blob/b7f75a5/supabase/schema.sql">bucket/documentos</a> e <a href="https://github.com/Julielzissimo/GLL-frontend/blob/42d583647aee837d698fd191cbe3970c088f12d5/web/index.html">interface</a>.</p>
+<p><strong>Próxima ação:</strong> documentos reutilizáveis com arquivo privado, validade, responsável, versões, alertas e retenção; acesso autenticado ou URLs assinadas curtas conforme o fluxo.</p>
+<p><strong>Aceite:</strong> usuário autorizado consulta versão/vencimento; acesso indevido bloqueado; substituição preserva histórico exigido e recuperação.</p>
+<h3 id="imp-026-esclarecer-persistencia-local">IMP-026 — Esclarecer persistência local</h3>
+<p><strong>Situação:</strong> builds usam Supabase; IndexedDB separado com armazenamento por ambiente; não há sincronização offline entre adaptadores. Evidências: <code>createStore()</code> em <a href="https://github.com/Julielzissimo/GLL-frontend/blob/42d583647aee837d698fd191cbe3970c088f12d5/web/app.js">F1</a> e <a href="https://github.com/Julielzissimo/GLL-frontend/blob/42d583647aee837d698fd191cbe3970c088f12d5/scripts/build-web.mjs">build</a>.</p>
+<p><strong>Próxima ação:</strong> manter finalidade explícita de demonstração/desenvolvimento e explicar limpeza do navegador. Uso offline operacional requer escopo próprio de transferência/sincronização e conflitos.</p>
+<p><strong>Aceite:</strong> usuário sabe onde os dados estão; falha de rede não promete gravação sincronizada; anunciar transferência/sincronização só depois de implementada e validada.</p>
+<h3 id="imp-028-consolidar-fornecedores-e-preparar-promocao">IMP-028 — Consolidar fornecedores e preparar promoção</h3>
+<p><strong>Situação:</strong> somente homolog tem cadastro/edição de nome, site opcional, contato e tags; busca por nome/tags ignora acentos/maiúsculas. Tags deduplicadas e limitadas apenas na apresentação. Cadastro não se relaciona aos textos livres dos itens; sem arquivamento/exclusão ou regra de duplicidade de cadastro. Evidências: <a href="https://github.com/Julielzissimo/GLL-frontend/blob/42d583647aee837d698fd191cbe3970c088f12d5/web/app.js#L2676">fornecedores</a>, <a href="https://github.com/Julielzissimo/GLL-backend/blob/b7f75a5/supabase/schema.sql">schema</a> e <a href="https://github.com/Julielzissimo/GLL-frontend/blob/42d583647aee837d698fd191cbe3970c088f12d5/scripts/session-sync.test.mjs">testes</a>.</p>
+<p><strong>Próxima ação:</strong> validar cadastro, consulta, edição, pesquisa e tags na web; definir identidade, duplicidade e arquivamento; integrar seleção aos itens preservando texto histórico. Cobrir conflito em edição e falha de carregamento; confirmar migração antes da promoção.</p>
+<p><strong>Aceite:</strong> cadastro validado em homolog, persistência/RLS testadas e tags preservadas. Integração aos itens e comparação de preços são entregas separadas; não bloqueiam automaticamente a promoção do cadastro básico aprovado.</p>
+<h3 id="imp-018-manter-a-remocao-do-seed-remoto-automatico">IMP-018 — Manter a remoção do seed remoto automático</h3>
+<p><strong>Situação:</strong> atendido no fluxo remoto atual por inspeção do código; login/restauração não inserem demonstração. Rotinas de seed persistem, mas inicialização/reset demonstrativo está isolado do uso remoto autenticado. Evidências: <code>main()</code>, <code>enterAuthenticatedView()</code> e <code>resetSeedData()</code> em <a href="https://github.com/Julielzissimo/GLL-frontend/blob/42d583647aee837d698fd191cbe3970c088f12d5/web/app.js">F1</a>. A suíte ainda não possui regressão explícita de base remota vazia; incluí-la em IMP-013.</p>
+<p><strong>Aceite de manutenção:</strong> Supabase vazio permanece vazio após login, restauração/atualização; esses caminhos não chamam <code>applySeed()</code>. Reavaliar em novos fluxos de inicialização.</p>
+<h2 id="expansoes-de-negocio-p3">7. Expansões de negócio — P3</h2>
+<p>Dependem de prioridade e processo validado, após contenção dos riscos de autorização e perda de dados.</p>
+<div class="table-scroll" tabindex="0" role="region" aria-label="Tabela com rolagem horizontal"><table>
+<thead>
+<tr>
+<th>Evolução</th>
+<th>Base existente</th>
+<th>Incremento proposto</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Alertas de prazos/sessões</td>
+<td>Próximas sessões e pendências no painel.</td>
+<td>Alertas configuráveis, responsáveis e entrega acompanhada.</td>
+</tr>
+<tr>
+<td>Captura de editais</td>
+<td>Cadastro manual, link e anexo.</td>
+<td>Extração de portais/PDFs, revisão humana e origem rastreável.</td>
+</tr>
+<tr>
+<td>Comparação de fornecedores</td>
+<td>Nomes/URLs nos itens; cadastro próprio em homolog.</td>
+<td>Cotações estruturadas por item, validade e condições comerciais.</td>
+</tr>
+<tr>
+<td>Resultados</td>
+<td>Item vencido, status e falhas.</td>
+<td>Colocação, concorrentes, motivos de perda e resultado consolidado.</td>
+</tr>
+<tr>
+<td>Pós-licitação</td>
+<td>Sem módulo identificado.</td>
+<td>Contrato, empenho, entrega, faturamento e recebimento.</td>
+</tr>
+<tr>
+<td>Indicadores históricos</td>
+<td>Contadores, totais/margens atuais.</td>
+<td>Conversão/vitória, tendências e causas de falha por período.</td>
+</tr>
+<tr>
+<td>Biblioteca/propostas</td>
+<td>Checklist, anexo e orçamentos.</td>
+<td>Documentos reutilizáveis e proposta/PDF determinístico.</td>
+</tr>
+<tr>
+<td>E-mail/calendário</td>
+<td>Sem integração identificada.</td>
+<td>Eventos/notificações com autorização, preferências e rastreamento.</td>
+</tr>
+<tr>
+<td>API de negócio/webhooks</td>
+<td>Cliente já usa API Supabase.</td>
+<td>Contratos estáveis de integração, escopo, idempotência e auditoria.</td>
+</tr>
+</tbody>
+</table></div>
+<h2 id="sequencia-e-responsabilidades-propostas">8. Sequência e responsabilidades propostas</h2>
+<p>As etapas indicam ordem, não prazo contratado. Estimativas/datas e a pessoa responsável devem ser definidas ao fechar o escopo de cada entrega.</p>
+<div class="table-scroll" tabindex="0" role="region" aria-label="Tabela com rolagem horizontal"><table>
+<thead>
+<tr>
+<th>Etapa</th>
+<th>Escopo e dependências</th>
+<th>Responsabilidade proposta</th>
+<th>Evidência para avançar</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1 — Conter riscos</td>
+<td>IMP-011/002/003; testes específicos de 013 e verificação de backup/rotação (014/005).</td>
+<td>Desenvolvimento + administração Supabase.</td>
+<td>Permissões testadas, legado restrito e frete preservado em homolog.</td>
+</tr>
+<tr>
+<td>2 — Gravações confiáveis</td>
+<td>IMP-012/013/014/015/016/023/024/027; completar 001/017. Fundação pode ocorrer em paralelo à etapa 1.</td>
+<td>Desenvolvimento/operação; negócio decide exclusões compartilhadas.</td>
+<td>Banco reproduzível, restauração comprovada e conflitos/falhas sem perda silenciosa.</td>
+</tr>
+<tr>
+<td>3 — Consolidar uso</td>
+<td>IMP-010/020/021/022/025/026/028 e avaliação de 004.</td>
+<td>Produto + desenvolvimento + usuários de homolog.</td>
+<td>Fluxos aceitos, desempenho medido e lacunas tratadas no escopo aprovado.</td>
+</tr>
+<tr>
+<td>4 — Expandir</td>
+<td>Incrementos P3 selecionados conforme necessidade e dependências.</td>
+<td>Responsável de negócio + desenvolvimento.</td>
+<td>Benefício, regras e aceite definidos por incremento.</td>
+</tr>
+</tbody>
+</table></div>
+<p>IMP-029 acompanha toda promoção; IMP-018 permanece em regressão. O cadastro básico de fornecedores já disponível pode seguir promoção própria após aceite, migração verificada e documentação, sem esperar todas as evoluções de IMP-028.</p>
+<h2 id="criterios-de-entrega-e-promocao">9. Critérios de entrega e promoção</h2>
+<p><strong>Implementado em homologação:</strong></p>
+<ol>
+<li>Identificar ID, escopo, responsável, risco, dependências e aceite.</li>
+<li>Versionar alterações/migrações e recuperação proporcional ao risco.</li>
+<li>Executar testes relevantes, distinguindo mocks de integração real.</li>
+<li>Publicar em <code>homolog</code> e validar na web, registrando URL, commit e resultado.</li>
+<li>Atualizar o plano com evidências/pendências e obter aceite de negócio quando necessário.</li>
+</ol>
+<p><strong>Concluído em produção, após aprovação da promoção:</strong></p>
+<ol>
+<li>Revisar/atualizar <code>docs/especificacao-tecnica/ESPECIFICACAO_TECNICA_GLL.md</code> e documentos afetados no mesmo fluxo.</li>
+<li>Aplicar migrações antes do frontend dependente; publicar versão identificada e validar na web.</li>
+<li>Confirmar que documentação corresponde ao código/schema implantados.</li>
+<li>Atualizar refs remotas e fazer merge de <code>main</code> em <code>homolog</code> nos dois repositórios, preservando histórico/ajustes, sem rebase ou force push.</li>
+<li>Publicar <code>homolog</code>, comprovar que contém o commit promovido e repetir validação se a sincronização afetar código implantável.</li>
+</ol>
+<p>Não atualizar a especificação por alteração limitada a homolog. Manter distinguíveis os estados implementado, publicado em homologação, validado pelo negócio e promovido.</p>
+<h2 id="fontes-e-rastreabilidade">10. Fontes e rastreabilidade</h2>
+<ul>
+<li><strong>Frontend auditado:</strong> <a href="https://github.com/Julielzissimo/GLL-frontend/blob/42d583647aee837d698fd191cbe3970c088f12d5/web/app.js">adaptadores/código</a>, <a href="https://github.com/Julielzissimo/GLL-frontend/blob/42d583647aee837d698fd191cbe3970c088f12d5/web/app.js#L2441">itens</a>, <a href="https://github.com/Julielzissimo/GLL-frontend/blob/42d583647aee837d698fd191cbe3970c088f12d5/web/app.js#L1595">sincronização</a>, <a href="https://github.com/Julielzissimo/GLL-frontend/blob/42d583647aee837d698fd191cbe3970c088f12d5/scripts/build-web.mjs">build</a>, <a href="https://github.com/Julielzissimo/GLL-frontend/blob/42d583647aee837d698fd191cbe3970c088f12d5/scripts/session-sync.test.mjs">testes</a>, <a href="https://github.com/Julielzissimo/GLL-frontend/blob/42d583647aee837d698fd191cbe3970c088f12d5/.github/workflows/pages.yml">Pages</a>, <a href="https://github.com/Julielzissimo/GLL-frontend/blob/42d583647aee837d698fd191cbe3970c088f12d5/web/index.html">HTML</a> e <a href="https://github.com/Julielzissimo/GLL-frontend/blob/42d583647aee837d698fd191cbe3970c088f12d5/web/app.js#L2676">fornecedores</a>.</li>
+<li><strong>Backend auditado:</strong> <a href="https://github.com/Julielzissimo/GLL-backend/blob/b7f75a5/supabase/schema.sql">schema/RLS</a>, <a href="https://github.com/Julielzissimo/GLL-backend/tree/b7f75a5/supabase/migrations">migrações</a>, <a href="https://github.com/Julielzissimo/GLL-backend/blob/b7f75a5/docs/supabase.md">runbook</a>, <a href="https://github.com/Julielzissimo/GLL-backend/blob/b7f75a5/.github/workflows/supabase-production.yml">workflow</a>, <a href="https://github.com/Julielzissimo/GLL-backend/blob/b7f75a5/README.md">README</a> e <a href="https://github.com/Julielzissimo/GLL-backend/blob/453cfb6/docs/especificacao-tecnica/ESPECIFICACAO_TECNICA_GLL.md">especificação 2.7</a>. Links do backend exigem acesso ao repositório privado.</li>
+<li><strong>Publicações anteriores à revisão:</strong> <a href="https://github.com/Julielzissimo/GLL-frontend/actions/runs/34475032066">homolog em 42d5836</a> e <a href="https://github.com/Julielzissimo/GLL-frontend/actions/runs/34473503527">promoção de sessão em 8665c3b</a>, concluídas com sucesso. Pages não comprova sozinho configuração do banco.</li>
+<li><strong>Ambientes:</strong> <a href="https://julielzissimo.github.io/GLL-frontend/homolog/">homologação</a> e <a href="https://julielzissimo.github.io/GLL-frontend/">produção</a>. <strong>Leitura desta revisão:</strong> <a href="https://julielzissimo.github.io/GLL-frontend/homolog/docs/plano-de-melhorias.html">plano em homologação</a>.</li>
+</ul>
+</article>
+    <footer>Cópia de leitura gerada a partir de PLANO_DE_MELHORIAS_GLL.md. As referências identificam a base de código analisada em cada ambiente.</footer>
+  </main>
+</body>
+</html>
