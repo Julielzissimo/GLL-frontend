@@ -104,6 +104,7 @@
               <div class="home-status-grid" aria-label="Atalhos por status">
                 <button class="home-status-card" type="button" data-home-status="Todos"><span>Total de licitações</span><strong id="homeTotalBids">0</strong><small>Carteira cadastrada</small></button>
                 <button class="home-status-card warning" type="button" data-home-status="Em Analise"><span>Em análise</span><strong id="homeAnalysisBids">0</strong><small>Aguardando decisão</small></button>
+                <button class="home-status-card discarded" type="button" data-home-status="Descartada"><span>Descartadas</span><strong id="homeDiscardedBids">0</strong><small>Nenhum item ganho</small></button>
                 <button class="home-status-card success" type="button" data-home-status="Aprovada"><span>Aprovadas</span><strong id="homeApprovedBids">0</strong><small>Preparar documentação</small></button>
                 <button class="home-status-card info" type="button" data-home-status="Disputada"><span>Disputadas</span><strong id="homeDisputedBids">0</strong><small>Participação realizada</small></button>
                 <button class="home-status-card danger" type="button" data-home-status="Desclassificado"><span>Desclassificadas</span><strong id="homeDisqualifiedBids">0</strong><small>Plano de ação</small></button>
@@ -482,12 +483,23 @@
           <button id="newQuotationButton" class="primary-action" type="button">＋ Novo orçamento</button>
         </div>
 
-        <section class="section-band table-panel">
-          <div class="section-title">
-            <h2>Orçamentos cadastrados</h2>
-            <span id="quotationCountLabel">0 orçamentos</span>
-          </div>
-          <div class="table-wrap">
+        <section id="quotationsListPanel" class="section-band table-panel quotations-list-panel">
+          <button
+            id="quotationsListToggle"
+            class="quotations-list-toggle"
+            type="button"
+            aria-expanded="true"
+            aria-controls="quotationsListContent"
+          >
+            <span class="quotations-list-heading" role="heading" aria-level="2">Orçamentos cadastrados</span>
+            <span class="quotations-list-meta">
+              <span id="selectedQuotationSummary" class="selected-quotation-summary hidden"></span>
+              <span id="quotationCountLabel">0 orçamentos</span>
+              <span id="quotationsListToggleLabel" class="quotations-list-toggle-label">Recolher lista</span>
+              <span class="quotations-list-chevron" aria-hidden="true"></span>
+            </span>
+          </button>
+          <div id="quotationsListContent" class="table-wrap">
             <table class="quotations-table">
               <thead>
                 <tr>

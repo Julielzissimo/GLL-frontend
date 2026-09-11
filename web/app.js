@@ -1,6 +1,7 @@
 ﻿const STATUS_OPTIONS = ["Em Analise", "Aprovada", "Desclassificado", "Disputada"];
 const WON_ITEM_STATUSES = ["Aprovada", "Desclassificado", "Disputada"];
-const WON_ITEM_TOTAL_STATUSES = ["Aprovada", "Disputada"];
+STATUS_OPTIONS.splice(1, 0, "Descartada");
+const WON_ITEM_TOTAL_STATUSES = ["Descartada", "Aprovada", "Disputada"];
 const BID_TYPE_OPTIONS = [
   "Pregao Eletronico",
   "Pregao Presencial",
@@ -58,6 +59,7 @@ const appState = {
   currentDocumentId: null,
   currentFailureId: null,
   currentQuotationId: null,
+  quotationListCollapsed: false,
   currentQuotationItemId: null,
   quotationItemFormBaseline: "",
   itemMarginCalculationSource: "margin",
@@ -108,6 +110,7 @@ const refs = {
   viewAllBidsButton: $("viewAllBidsButton"),
   homeTotalBids: $("homeTotalBids"),
   homeAnalysisBids: $("homeAnalysisBids"),
+  homeDiscardedBids: $("homeDiscardedBids"),
   homeApprovedBids: $("homeApprovedBids"),
   homeDisqualifiedBids: $("homeDisqualifiedBids"),
   homeDisputedBids: $("homeDisputedBids"),
@@ -204,6 +207,11 @@ const refs = {
   failuresTableBody: $("failuresTableBody"),
   quotationsPage: $("quotationsPage"),
   newQuotationButton: $("newQuotationButton"),
+  quotationsListPanel: $("quotationsListPanel"),
+  quotationsListToggle: $("quotationsListToggle"),
+  quotationsListContent: $("quotationsListContent"),
+  quotationsListToggleLabel: $("quotationsListToggleLabel"),
+  selectedQuotationSummary: $("selectedQuotationSummary"),
   quotationCountLabel: $("quotationCountLabel"),
   quotationsTableBody: $("quotationsTableBody"),
   quotationForm: $("quotationForm"),
@@ -1392,6 +1400,7 @@ function bindEvents() {
   refs.deleteFailureButton.addEventListener("click", withBlockingLoading(deleteCurrentFailure, "Excluindo registro de falha…"));
   refs.bidStatus.addEventListener("change", handleBidStatusChange);
   refs.newQuotationButton.addEventListener("click", clearQuotationForm);
+  refs.quotationsListToggle.addEventListener("click", () => setQuotationListCollapsed(!appState.quotationListCollapsed));
   refs.quotationForm.addEventListener("submit", withBlockingLoading(saveQuotation, "Salvando orçamento…"));
   refs.clearQuotationButton.addEventListener("click", clearQuotationForm);
   refs.deleteQuotationButton.addEventListener("click", withBlockingLoading(deleteCurrentQuotation, "Excluindo orçamento…"));
@@ -2021,15 +2030,17 @@ function renderHomeSummary() {
     (acc, bid) => {
       acc.total += 1;
       if (bid.status === "Em Analise") acc.analysis += 1;
+      if (bid.status === "Descartada") acc.discarded += 1;
       if (bid.status === "Aprovada") acc.approved += 1;
       if (bid.status === "Desclassificado") acc.disqualified += 1;
       if (bid.status === "Disputada") acc.disputed += 1;
       return acc;
     },
-    { total: 0, analysis: 0, approved: 0, disqualified: 0, disputed: 0 }
+    { total: 0, analysis: 0, discarded: 0, approved: 0, disqualified: 0, disputed: 0 }
   );
   refs.homeTotalBids.textContent = String(counts.total);
   refs.homeAnalysisBids.textContent = String(counts.analysis);
+  refs.homeDiscardedBids.textContent = String(counts.discarded);
   refs.homeApprovedBids.textContent = String(counts.approved);
   refs.homeDisqualifiedBids.textContent = String(counts.disqualified);
   refs.homeDisputedBids.textContent = String(counts.disputed);
@@ -2826,9 +2837,21 @@ function currentQuotationItems() {
   return appState.quotationItems.filter((item) => Number(item.quotation_id) === Number(appState.currentQuotationId));
 }
 
+function setQuotationListCollapsed(collapsed) {
+  appState.quotationListCollapsed = Boolean(collapsed);
+  refs.quotationsListPanel.classList.toggle("is-collapsed", appState.quotationListCollapsed);
+  refs.quotationsListContent.hidden = appState.quotationListCollapsed;
+  refs.selectedQuotationSummary.classList.toggle("hidden", !currentQuotation() || !appState.quotationListCollapsed);
+  refs.quotationsListToggle.setAttribute("aria-expanded", String(!appState.quotationListCollapsed));
+  refs.quotationsListToggleLabel.textContent = appState.quotationListCollapsed ? "Mostrar lista" : "Recolher lista";
+}
+
 function renderQuotations() {
   const count = appState.quotations.length;
+  const quotation = currentQuotation();
   refs.quotationCountLabel.textContent = `${count} ${count === 1 ? "orçamento" : "orçamentos"}`;
+  refs.selectedQuotationSummary.textContent = quotation ? `Edital ${quotation.edital} selecionado` : "";
+  setQuotationListCollapsed(appState.quotationListCollapsed);
   if (!count) {
     refs.quotationsTableBody.innerHTML = `<tr><td colspan="5"><div class="empty-state compact-empty">Nenhum orçamento cadastrado.</div></td></tr>`;
   } else {
@@ -2869,6 +2892,7 @@ function loadQuotation(quotationId, options = {}) {
   setSyncNotice("");
   closeQuotationItemModal();
   appState.currentQuotationId = quotation.id;
+  appState.quotationListCollapsed = true;
   appState.currentQuotationItemId = null;
   refs.quotationId.value = String(quotation.id);
   refs.quotationOpeningDate.value = toDateInputValue(quotation.opening_date);
@@ -2888,6 +2912,7 @@ function loadQuotation(quotationId, options = {}) {
 function clearQuotationForm() {
   closeQuotationItemModal();
   appState.currentQuotationId = null;
+  appState.quotationListCollapsed = false;
   appState.currentQuotationItemId = null;
   refs.quotationForm.reset();
   refs.quotationId.value = "";
@@ -3487,6 +3512,7 @@ function statusDisplay(status) {
   const normalizedStatus = normalizeBidStatus(status);
   const map = {
     "Em Analise": "ANÁLISE",
+    Descartada: "DESCARTADA",
     Aprovada: "APROVADA",
     Desclassificado: "DESCLASSIFICADO",
     Disputada: "DISPUTADA",
@@ -3498,6 +3524,7 @@ function statusBadgeClass(status) {
   const normalizedStatus = normalizeBidStatus(status);
   return {
     "Em Analise": "analysis",
+    Descartada: "discarded",
     Aprovada: "approved",
     Desclassificado: "rejected",
     Disputada: "disputed",
