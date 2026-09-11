@@ -268,7 +268,7 @@ test("supplier updates synchronize between sessions and clear on logout", async 
   assert.equal(b.appState.suppliers.length, 0);
 });
 
-test("bid revenue uses only won items for approved, disputed, and discarded bids", () => {
+test("bid revenue uses only won items for approved, billed, disputed, and discarded bids", () => {
   const app = client();
   app.appState.bids = [
     { id: "APPROVED", status: "Aprovada" },
@@ -276,6 +276,7 @@ test("bid revenue uses only won items for approved, disputed, and discarded bids
     { id: "ANALYSIS", status: "Em Analise" },
     { id: "DISCARDED", status: "Descartada" },
     { id: "DISQUALIFIED", status: "Desclassificado" },
+    { id: "BILLED", status: "Faturado" },
   ];
   app.appState.items = app.appState.bids.flatMap((bid) => [
     { bid_id: bid.id, max_acceptable_value: 100, required_quantity: 2, is_won: 1 },
@@ -287,5 +288,6 @@ test("bid revenue uses only won items for approved, disputed, and discarded bids
   assert.equal(app.calculateBidSummary("ANALYSIS").totalFinal, 350);
   assert.equal(app.calculateBidSummary("DISCARDED").totalFinal, 200);
   assert.equal(app.calculateBidSummary("DISQUALIFIED").totalFinal, 350);
+  assert.equal(app.calculateBidSummary("BILLED").totalFinal, 200);
   assert.equal(app.calculateBidSummary("APPROVED").itemCount, 2);
 });

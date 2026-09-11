@@ -1,7 +1,9 @@
 ﻿const STATUS_OPTIONS = ["Em Analise", "Aprovada", "Desclassificado", "Disputada"];
-const WON_ITEM_STATUSES = ["Aprovada", "Desclassificado", "Disputada"];
+const WON_ITEM_STATUSES = ["Aprovada", "Faturado", "Desclassificado", "Disputada"];
 STATUS_OPTIONS.splice(1, 0, "Descartada");
-const WON_ITEM_TOTAL_STATUSES = ["Descartada", "Aprovada", "Disputada"];
+STATUS_OPTIONS.splice(3, 0, "Faturado");
+const WON_ITEM_TOTAL_STATUSES = ["Descartada", "Aprovada", "Faturado", "Disputada"];
+const FINAL_BID_STATUS = "Faturado";
 const BID_TYPE_OPTIONS = [
   "Pregao Eletronico",
   "Pregao Presencial",
@@ -112,6 +114,7 @@ const refs = {
   homeAnalysisBids: $("homeAnalysisBids"),
   homeDiscardedBids: $("homeDiscardedBids"),
   homeApprovedBids: $("homeApprovedBids"),
+  homeBilledBids: $("homeBilledBids"),
   homeDisqualifiedBids: $("homeDisqualifiedBids"),
   homeDisputedBids: $("homeDisputedBids"),
   bidWorkspaceHeader: $("bidWorkspaceHeader"),
@@ -1843,6 +1846,18 @@ function shouldUseWonItems() {
   return Boolean(appState.currentBidId) && WON_ITEM_STATUSES.includes(refs.bidStatus.value);
 }
 
+function isCurrentBidReadOnly() {
+  return currentBid()?.status === FINAL_BID_STATUS;
+}
+
+function guardCurrentBidReadOnly(errorElement = refs.bidFormError) {
+  if (!isCurrentBidReadOnly()) return false;
+  const message = "Este edital está faturado e disponível apenas para visualização.";
+  if (errorElement) errorElement.textContent = message;
+  showToast(message);
+  return true;
+}
+
 function shouldCalculateWonItemsTotal(status) {
   return WON_ITEM_TOTAL_STATUSES.includes(status);
 }
@@ -2032,16 +2047,18 @@ function renderHomeSummary() {
       if (bid.status === "Em Analise") acc.analysis += 1;
       if (bid.status === "Descartada") acc.discarded += 1;
       if (bid.status === "Aprovada") acc.approved += 1;
+      if (bid.status === "Faturado") acc.billed += 1;
       if (bid.status === "Desclassificado") acc.disqualified += 1;
       if (bid.status === "Disputada") acc.disputed += 1;
       return acc;
     },
-    { total: 0, analysis: 0, discarded: 0, approved: 0, disqualified: 0, disputed: 0 }
+    { total: 0, analysis: 0, discarded: 0, approved: 0, billed: 0, disqualified: 0, disputed: 0 }
   );
   refs.homeTotalBids.textContent = String(counts.total);
   refs.homeAnalysisBids.textContent = String(counts.analysis);
   refs.homeDiscardedBids.textContent = String(counts.discarded);
   refs.homeApprovedBids.textContent = String(counts.approved);
+  refs.homeBilledBids.textContent = String(counts.billed);
   refs.homeDisqualifiedBids.textContent = String(counts.disqualified);
   refs.homeDisputedBids.textContent = String(counts.disputed);
   document.querySelectorAll("[data-home-status]").forEach((button) => {
@@ -2106,6 +2123,7 @@ function clearBidForm(options = {}) {
 async function saveBid(event) {
   event.preventDefault();
   refs.bidFormError.textContent = "";
+  if (guardCurrentBidReadOnly()) return;
   try {
     const data = collectBidData();
     const file = refs.editalFile.files[0];
@@ -2258,6 +2276,7 @@ function requestDeleteCurrentBid() {
     showToast("Selecione um edital.");
     return;
   }
+  if (guardCurrentBidReadOnly()) return;
   const modal = $("deleteBidModal");
   modal.dataset.bidId = appState.currentBidId;
   $("deleteBidModalDescription").textContent = `Deseja excluir o edital ${appState.currentBidId} e todos os seus itens? Esta ação não pode ser desfeita.`;
@@ -2281,17 +2300,21 @@ function renderDetails() {
   renderDocuments(documents);
   renderFailures(failures);
   const hasBid = Boolean(appState.currentBidId);
+  const readOnly = isCurrentBidReadOnly();
+  refs.bidForm.querySelectorAll("input, select, textarea, button").forEach((el) => {
+    if (!["clearBidButton", "downloadEditalButton"].includes(el.id)) el.disabled = readOnly;
+  });
   refs.downloadBidItemsButton.disabled = !hasBid;
   refs.failuresTabButton.classList.toggle("hidden", !shouldShowFailureHistory());
-  refs.deleteBidButton.disabled = !hasBid;
+  refs.deleteBidButton.disabled = !hasBid || readOnly;
   refs.itemForm.querySelectorAll("input, select, textarea, button").forEach((el) => {
-    if (el.id !== "clearItemButton") el.disabled = !hasBid;
+    if (!["clearItemButton", "downloadBidItemsButton"].includes(el.id)) el.disabled = !hasBid || readOnly;
   });
   refs.documentForm.querySelectorAll("input, textarea, button").forEach((el) => {
-    if (el.id !== "clearDocumentButton") el.disabled = !hasBid;
+    if (el.id !== "clearDocumentButton") el.disabled = !hasBid || readOnly;
   });
   refs.failureForm.querySelectorAll("input, textarea, button").forEach((el) => {
-    if (el.id !== "clearFailureButton") el.disabled = !hasBid;
+    if (el.id !== "clearFailureButton") el.disabled = !hasBid || readOnly;
   });
 }
 
@@ -2347,7 +2370,7 @@ function renderItems(items) {
       const { manufacturer, model } = splitBrandModel(item.brand_model);
       const wonClass = showWonItems && won ? " item-won" : "";
       const wonCell = showWonItems
-        ? `<td class="item-won-cell"><input class="item-won-checkbox" type="checkbox" data-item-won="${item.id}" aria-label="Marcar item ${item.item_number} como vencido" ${won ? "checked" : ""} /></td>`
+        ? `<td class="item-won-cell"><input class="item-won-checkbox" type="checkbox" data-item-won="${item.id}" aria-label="Marcar item ${item.item_number} como vencido" ${won ? "checked" : ""} ${isCurrentBidReadOnly() ? "disabled" : ""} /></td>`
         : "";
       return `
         <tr class="selectable${selected}${wonClass}" data-item-id="${item.id}">
@@ -2378,6 +2401,7 @@ function renderItems(items) {
 }
 
 async function setItemWon(itemId, isWon, checkbox) {
+  if (guardCurrentBidReadOnly(refs.itemFormError)) return;
   checkbox.disabled = true;
   refs.itemFormError.textContent = "";
   try {
@@ -2455,6 +2479,7 @@ function clearItemForm() {
 }
 
 function addSupplierLink() {
+  if (guardCurrentBidReadOnly(refs.itemFormError)) return;
   refs.itemFormError.textContent = "";
   const link = normalizeSupplierEntry(refs.supplierLinkInput.value);
   if (!link) {
@@ -2472,6 +2497,7 @@ function addSupplierLink() {
 }
 
 function removeSupplierLink(index) {
+  if (guardCurrentBidReadOnly(refs.itemFormError)) return;
   appState.supplierLinksDraft.splice(index, 1);
   renderSupplierLinks();
 }
@@ -2486,7 +2512,7 @@ function renderSupplierLinks() {
       (link, index) => `
         <div class="supplier-link-row">
           ${renderSupplierEntry(link)}
-          <button class="delete-supplier-link" type="button" data-delete-supplier-link="${index}" aria-label="Excluir fornecedor ${index + 1}" title="Excluir fornecedor">×</button>
+          <button class="delete-supplier-link" type="button" data-delete-supplier-link="${index}" aria-label="Excluir fornecedor ${index + 1}" title="Excluir fornecedor" ${isCurrentBidReadOnly() ? "disabled" : ""}>×</button>
         </div>
       `
     )
@@ -2499,6 +2525,7 @@ function renderSupplierLinks() {
 async function saveItem(event) {
   event.preventDefault();
   refs.itemFormError.textContent = "";
+  if (guardCurrentBidReadOnly(refs.itemFormError)) return;
   if (!appState.currentBidId) {
     refs.itemFormError.textContent = "Salve ou selecione um edital antes de cadastrar itens.";
     return;
@@ -2556,6 +2583,7 @@ function collectItemData() {
 }
 
 async function deleteCurrentItem() {
+  if (guardCurrentBidReadOnly(refs.itemFormError)) return;
   if (!appState.currentItemId) {
     showToast("Selecione um item.");
     return;
@@ -2616,6 +2644,7 @@ function clearDocumentForm() {
 async function saveDocument(event) {
   event.preventDefault();
   refs.documentFormError.textContent = "";
+  if (guardCurrentBidReadOnly(refs.documentFormError)) return;
   if (!appState.currentBidId) {
     refs.documentFormError.textContent = "Salve ou selecione um edital antes de cadastrar documentos.";
     return;
@@ -2643,6 +2672,7 @@ function collectDocumentData() {
 }
 
 async function deleteCurrentDocument() {
+  if (guardCurrentBidReadOnly(refs.documentFormError)) return;
   if (!appState.currentDocumentId) {
     showToast("Selecione um documento.");
     return;
@@ -2701,6 +2731,7 @@ function clearFailureForm() {
 async function saveFailure(event) {
   event.preventDefault();
   refs.failureFormError.textContent = "";
+  if (guardCurrentBidReadOnly(refs.failureFormError)) return;
   if (!appState.currentBidId) {
     refs.failureFormError.textContent = "Salve ou selecione um edital antes de cadastrar falhas.";
     return;
@@ -2735,6 +2766,7 @@ function collectFailureData() {
 }
 
 async function deleteCurrentFailure() {
+  if (guardCurrentBidReadOnly(refs.failureFormError)) return;
   if (!appState.currentFailureId) {
     showToast("Selecione uma falha.");
     return;
@@ -3514,6 +3546,7 @@ function statusDisplay(status) {
     "Em Analise": "ANÁLISE",
     Descartada: "DESCARTADA",
     Aprovada: "APROVADA",
+    Faturado: "FATURADO",
     Desclassificado: "DESCLASSIFICADO",
     Disputada: "DISPUTADA",
   };
@@ -3526,6 +3559,7 @@ function statusBadgeClass(status) {
     "Em Analise": "analysis",
     Descartada: "discarded",
     Aprovada: "approved",
+    Faturado: "billed",
     Desclassificado: "rejected",
     Disputada: "disputed",
   }[normalizedStatus] || "neutral";
