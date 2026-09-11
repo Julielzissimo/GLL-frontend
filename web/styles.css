@@ -1482,13 +1482,13 @@ textarea:focus {
   color: #aebbd7;
 }
 
-.nav-link-disabled:hover .nav-users-icon,
-.nav-link-disabled:focus-visible .nav-users-icon {
+.nav-link-disabled:hover .nav-disabled-icon,
+.nav-link-disabled:focus-visible .nav-disabled-icon {
   font-size: 0;
 }
 
-.nav-link-disabled:hover .nav-users-icon::after,
-.nav-link-disabled:focus-visible .nav-users-icon::after {
+.nav-link-disabled:hover .nav-disabled-icon::after,
+.nav-link-disabled:focus-visible .nav-disabled-icon::after {
   content: "🔒";
   font-size: 15px;
 }

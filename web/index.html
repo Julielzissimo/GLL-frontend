@@ -48,9 +48,11 @@
           <button id="navHomeButton" class="nav-link active" type="button" data-navigation-page="home"><span aria-hidden="true">⌂</span>Visão geral</button>
           <button id="navBidsButton" class="nav-link" type="button" data-navigation-page="bids"><span aria-hidden="true">▤</span>Licitações</button>
           <button id="navQuotationsButton" class="nav-link" type="button" data-navigation-page="quotations"><span aria-hidden="true">▧</span>Orçamento</button>
-          <button class="nav-link" type="button" data-navigation-page="suppliers"><span aria-hidden="true">▦</span>Fornecedores</button>
+          <button id="navSuppliersButton" class="nav-link nav-link-disabled" type="button" aria-disabled="true" title="Fornecedores temporariamente indisponível" disabled>
+            <span class="nav-disabled-icon" aria-hidden="true">▦</span>Fornecedores
+          </button>
           <button id="navUsersButton" class="nav-link nav-link-disabled" type="button" aria-disabled="true" title="Usuários gerenciados no Supabase" disabled>
-            <span class="nav-users-icon" aria-hidden="true">♙</span>Usuários
+            <span class="nav-disabled-icon" aria-hidden="true">♙</span>Usuários
           </button>
           <button id="navSettingsButton" class="nav-link" type="button" data-navigation-page="settings"><span aria-hidden="true">⚙</span>Configurações</button>
         </nav>
