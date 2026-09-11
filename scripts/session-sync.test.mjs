@@ -19,6 +19,18 @@ function client(db = backend(), auth = { session: { user } }) {
   const listeners = new Map();
   const timers = new Map();
   let nextTimer = 0;
+  const location = { pathname: "/homolog/", search: "", hash: "" };
+  const updateLocation = (url) => {
+    const parsed = new URL(url, "https://example.test");
+    location.pathname = parsed.pathname;
+    location.search = parsed.search;
+    location.hash = parsed.hash;
+  };
+  const history = {
+    entries: [],
+    pushState: (_state, _title, url) => { history.entries.push(url); updateLocation(url); },
+    replaceState: (_state, _title, url) => { history.entries.splice(-1, 1, url); updateLocation(url); },
+  };
   const element = (id) => {
     if (!elements.has(id)) {
       const classes = new Set();
@@ -39,8 +51,8 @@ function client(db = backend(), auth = { session: { user } }) {
     removeEventListener: (name) => listeners.delete(name),
   };
   const context = vm.createContext({
-    console, URL, Intl, Date,
-    window: { GLL_CONFIG: { supabaseUrl: "https://test.invalid", supabaseAnonKey: "test" }, ...events },
+    console, URL, URLSearchParams, Intl, Date,
+    window: { GLL_CONFIG: { supabaseUrl: "https://test.invalid", supabaseAnonKey: "test" }, location, history, ...events },
     document: { hidden: false, getElementById: element, querySelectorAll: () => [], createElement: () => element("syncNotice"), ...events },
     setTimeout: (fn) => { timers.set(++nextTimer, fn); return nextTimer; },
     clearTimeout: (id) => timers.delete(id),
@@ -48,7 +60,7 @@ function client(db = backend(), auth = { session: { user } }) {
     clearInterval: (id) => timers.delete(id),
   });
   vm.runInContext(application, context);
-  const api = vm.runInContext(`({ store, appState, restoreSession, logout, reloadData, refreshInBackground, startLiveUpdates, stopLiveUpdates, resetAuthenticatedView, scheduleLiveRefresh, calculateBidSummary })`, context);
+  const api = vm.runInContext(`({ store, appState, restoreSession, logout, reloadData, refreshInBackground, startLiveUpdates, stopLiveUpdates, resetAuthenticatedView, scheduleLiveRefresh, calculateBidSummary, readNavigationRoute, writeNavigationRoute })`, context);
   vm.runInContext(`
     renderSuppliers = renderBids = renderDetails = renderQuotations = renderUsers = () => {};
     clearBidForm = clearQuotationForm = setPage = updateMainNavigationState = () => {};
@@ -74,7 +86,7 @@ function client(db = backend(), auth = { session: { user } }) {
     },
     removeChannel: async (channel) => db.channels.delete(channel),
   };
-  return { ...api, db, auth, context, elements, element, timers, listeners,
+  return { ...api, db, auth, context, elements, element, timers, listeners, location, history,
     flush: async () => {
       const pending = [...timers.values()]; timers.clear();
       for (const fn of pending) await fn();
@@ -82,6 +94,28 @@ function client(db = backend(), auth = { session: { user } }) {
     },
   };
 }
+
+test("navigation writes readable URLs without discarding unrelated parameters", () => {
+  const app = client();
+  app.appState.authenticated = true;
+  app.location.search = "?origem=email";
+  app.appState.currentBidId = "PE 12/2026";
+  app.writeNavigationRoute("documents");
+  assert.equal(app.location.search, "?origem=email&page=documentos&licitacao=PE+12%2F2026");
+  const route = app.readNavigationRoute();
+  assert.equal(route.page, "documents");
+  assert.equal(route.bidId, "PE 12/2026");
+  assert.equal(route.quotationId, null);
+});
+
+test("navigation replaces the current URL when requested", () => {
+  const app = client();
+  app.appState.authenticated = true;
+  app.writeNavigationRoute("bids");
+  app.writeNavigationRoute("quotations", "replace");
+  assert.equal(app.history.entries.length, 1);
+  assert.equal(app.location.search, "?page=orcamentos");
+});
 
 test("reload restores a persisted session without entering a password", async () => {
   const auth = { session: { user } };

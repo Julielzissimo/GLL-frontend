@@ -34,6 +34,19 @@ const GLL_CONFIG = {
   ...(window.GLL_CONFIG || {}),
 };
 
+const PAGE_ROUTE_NAMES = {
+  home: "visao-geral",
+  bids: "licitacoes",
+  edit: "nova-licitacao",
+  items: "itens",
+  documents: "documentos",
+  failures: "falhas",
+  quotations: "orcamentos",
+  suppliers: "fornecedores",
+  settings: "configuracoes",
+};
+const ROUTE_PAGE_NAMES = Object.fromEntries(Object.entries(PAGE_ROUTE_NAMES).map(([page, route]) => [route, page]));
+
 const appState = {
   authenticated: false,
   activePage: "home",
@@ -1302,6 +1315,9 @@ function bindEvents() {
   });
   document.getElementById("blockingLoadingModal").addEventListener("cancel", (event) => event.preventDefault());
   refs.loginForm.addEventListener("submit", withBlockingLoading(handleLogin, "Entrando no sistema…"));
+  window.addEventListener("popstate", () => {
+    if (appState.authenticated) applyNavigationRoute();
+  });
   refs.homeIconButton.addEventListener("click", () => setPage("home"));
   document.querySelectorAll("[data-navigation-page]").forEach((button) => {
     button.addEventListener("click", () => setPage(button.dataset.navigationPage));
@@ -1491,9 +1507,9 @@ async function enterAuthenticatedView(user) {
     refs.loginView.classList.add("hidden");
     refs.appView.classList.remove("hidden");
     refs.loginPassword.value = "";
-    clearBidForm();
+    clearBidForm({ history: "none" });
     clearQuotationForm();
-    setPage("home");
+    applyNavigationRoute({ replaceInvalid: true });
     startLiveUpdates();
   } catch (error) {
     if (epoch === sessionEpoch) resetAuthenticatedView();
@@ -1698,7 +1714,53 @@ async function reloadData({ background = false } = {}) {
   }
 }
 
-function setPage(page) {
+function readNavigationRoute() {
+  const params = new URLSearchParams(window.location.search);
+  const page = ROUTE_PAGE_NAMES[params.get("page")] || "home";
+  return {
+    page,
+    bidId: params.get("licitacao"),
+    quotationId: params.get("orcamento"),
+  };
+}
+
+function writeNavigationRoute(page, mode = "push") {
+  if (mode === "none" || !appState.authenticated) return;
+  const params = new URLSearchParams(window.location.search);
+  params.set("page", PAGE_ROUTE_NAMES[page] || PAGE_ROUTE_NAMES.home);
+  if (["items", "documents", "failures"].includes(page) && appState.currentBidId) {
+    params.set("licitacao", appState.currentBidId);
+  } else {
+    params.delete("licitacao");
+  }
+  if (page === "quotations" && appState.currentQuotationId) {
+    params.set("orcamento", String(appState.currentQuotationId));
+  } else {
+    params.delete("orcamento");
+  }
+  const nextUrl = `${window.location.pathname}?${params.toString()}${window.location.hash}`;
+  const currentUrl = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+  if (nextUrl === currentUrl) return;
+  window.history[mode === "replace" ? "replaceState" : "pushState"]({}, "", nextUrl);
+}
+
+function applyNavigationRoute(options = {}) {
+  const route = readNavigationRoute();
+  let routeIsValid = true;
+  if (["items", "documents", "failures"].includes(route.page)) {
+    const bid = appState.bids.find((row) => row.id === route.bidId);
+    if (bid) loadBid(bid.id, { history: "none" });
+    else routeIsValid = false;
+  } else if (route.page === "quotations" && route.quotationId) {
+    const quotation = appState.quotations.find((row) => Number(row.id) === Number(route.quotationId));
+    if (quotation) loadQuotation(quotation.id, { history: "none", scroll: false });
+    else routeIsValid = false;
+  }
+  setPage(routeIsValid ? route.page : "home", { history: "none" });
+  if (options.replaceInvalid || !routeIsValid) writeNavigationRoute(appState.activePage, "replace");
+}
+
+function setPage(page, options = {}) {
   const detailPages = ["items", "documents", "failures"];
   if (page === "users") page = "settings";
   if (detailPages.includes(page) && !appState.currentBidId) {
@@ -1748,6 +1810,7 @@ function setPage(page) {
   if (showUsers) renderUsers();
   if (showQuotations) renderQuotations();
   if (showSuppliers) renderSuppliers();
+  writeNavigationRoute(page, options.history || "push");
 }
 
 function updateBidWorkspaceHeader() {
@@ -1925,7 +1988,7 @@ function renderBidQuotationSelection() {
   refs.clearBidQuotationButton.classList.toggle("hidden", !quotation);
 }
 
-function loadBid(bidId) {
+function loadBid(bidId, options = {}) {
   const bid = appState.bids.find((row) => row.id === bidId);
   if (!bid) return;
   setSyncNotice("");
@@ -1950,7 +2013,7 @@ function loadBid(bidId) {
   clearFailureForm();
   renderBids();
   renderDetails();
-  if (["home", "bids", "edit"].includes(appState.activePage)) setPage("items");
+  if (["home", "bids", "edit"].includes(appState.activePage)) setPage("items", { history: options.history });
 }
 
 function renderHomeSummary() {
@@ -2026,7 +2089,7 @@ function clearBidForm(options = {}) {
   clearFailureForm();
   renderBids();
   renderDetails();
-  setPage(options.openEditor ? "edit" : "home");
+  setPage(options.openEditor ? "edit" : "home", { history: options.history });
 }
 
 async function saveBid(event) {
@@ -2818,7 +2881,7 @@ function loadQuotation(quotationId, options = {}) {
   refs.deleteQuotationButton.classList.remove("hidden");
   clearQuotationItemForm();
   renderQuotations();
-  setPage("quotations");
+  setPage("quotations", { history: options.history });
   if (options.scroll !== false) refs.quotationForm.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
