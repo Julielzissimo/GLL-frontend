@@ -2268,6 +2268,9 @@ function renderItems(items) {
     .map((item) => {
       const selected = Number(item.id) === Number(appState.currentItemId) ? " selected" : "";
       const won = Boolean(Number(item.is_won));
+      const description = item.name || "";
+      const descriptionTooltip = description ? ` title="${escapeHtml(description)}"` : "";
+      const { manufacturer, model } = splitBrandModel(item.brand_model);
       const wonClass = showWonItems && won ? " item-won" : "";
       const wonCell = showWonItems
         ? `<td class="item-won-cell"><input class="item-won-checkbox" type="checkbox" data-item-won="${item.id}" aria-label="Marcar item ${item.item_number} como vencido" ${won ? "checked" : ""} /></td>`
@@ -2275,8 +2278,8 @@ function renderItems(items) {
       return `
         <tr class="selectable${selected}${wonClass}" data-item-id="${item.id}">
           <td>${item.item_number}</td>
-          <td>${escapeHtml(item.name || "")}</td>
-          <td>${escapeHtml(item.brand_model || "")}</td>
+          <td><strong class="table-item-description"${descriptionTooltip}>${escapeHtml(description || "—")}</strong>${model ? `<small class="table-secondary">Modelo: ${escapeHtml(model)}</small>` : ""}</td>
+          <td>${escapeHtml(manufacturer || "—")}</td>
           <td>${escapeHtml(item.sales_unit || "")}</td>
           <td class="numeric">${item.required_quantity}</td>
           <td class="numeric">${money(item.estimated_value)}</td>
@@ -2911,7 +2914,7 @@ function renderQuotationItems() {
         <tr class="selectable${selected}" tabindex="0" data-quotation-item-id="${item.id}">
           <td><strong>${escapeHtml(formatNumber(item.item_number))}</strong></td>
           <td class="numeric">${money(item.final_bid)}</td>
-          <td><strong class="quotation-item-description"${descriptionTooltip}>${escapeHtml(description || "—")}</strong>${item.model ? `<small class="table-secondary">Modelo: ${escapeHtml(item.model)}</small>` : ""}</td>
+          <td><strong class="table-item-description"${descriptionTooltip}>${escapeHtml(description || "—")}</strong>${item.model ? `<small class="table-secondary">Modelo: ${escapeHtml(item.model)}</small>` : ""}</td>
           <td>${escapeHtml(item.manufacturer || "—")}</td>
           <td class="numeric">${money(item.estimated_value)}</td>
           <td class="numeric">${money(item.supplier_cost)}</td>

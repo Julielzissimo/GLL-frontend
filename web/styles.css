@@ -2524,7 +2524,8 @@ tr.item-won td {
   white-space: nowrap;
 }
 
-.quotation-item-description,
+.table-item-description,
+.items-table .table-secondary,
 .quotation-items-table .table-secondary {
   display: block;
   max-width: 100%;
@@ -2533,7 +2534,7 @@ tr.item-won td {
   white-space: nowrap;
 }
 
-.quotation-item-description[title] {
+.table-item-description[title] {
   cursor: help;
 }
 
