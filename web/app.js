@@ -501,16 +501,15 @@ class IndexedDbStore {
 
   async saveBid(data, originalId) {
     const now = timestampNow();
+    let wasBilled = false;
     await this.tx(["bids", "items", "documents", "failure_history"], "readwrite", ([bids, items, documents, failures]) => {
       const request = bids.get(originalId || data.id);
       request.onsuccess = () => {
         const existing = request.result;
-        bids.put({
-          ...existing,
-          ...data,
-          created_at: existing?.created_at || now,
-          updated_at: now,
-        });
+        wasBilled = existing?.status === FINAL_BID_STATUS;
+        bids.put(wasBilled
+          ? { ...existing, status: data.status, updated_at: now }
+          : { ...existing, ...data, created_at: existing?.created_at || now, updated_at: now });
         if (originalId && originalId !== data.id) {
           bids.delete(originalId);
           updateChildrenBidId(items, originalId, data.id);
@@ -519,7 +518,7 @@ class IndexedDbStore {
         }
       };
     });
-    await this.syncBidWithQuotation(data.id, data.quotation_id);
+    if (!wasBilled) await this.syncBidWithQuotation(data.id, data.quotation_id);
   }
 
   async syncBidWithQuotation(bidId, quotationId) {
@@ -915,18 +914,17 @@ class SupabaseStore {
     const client = await this.open();
     const now = timestampNow();
     if (originalId) {
-      const { data: existing, error: readError } = await client.from("bids").select("created_at").eq("id", originalId).maybeSingle();
+      const { data: existing, error: readError } = await client.from("bids").select("created_at, status").eq("id", originalId).maybeSingle();
       assertSupabase(readError);
+      const changes = existing?.status === FINAL_BID_STATUS
+        ? { status: data.status, updated_at: now }
+        : { ...data, created_at: existing?.created_at || now, updated_at: now };
       const { error } = await client
         .from("bids")
-        .update({
-          ...data,
-          created_at: existing?.created_at || now,
-          updated_at: now,
-        })
+        .update(changes)
         .eq("id", originalId);
       assertSupabase(error);
-      await this.syncBidWithQuotation(data.id, data.quotation_id);
+      if (existing?.status !== FINAL_BID_STATUS) await this.syncBidWithQuotation(data.id, data.quotation_id);
       return;
     }
     const { error } = await client.from("bids").insert({
@@ -2123,7 +2121,6 @@ function clearBidForm(options = {}) {
 async function saveBid(event) {
   event.preventDefault();
   refs.bidFormError.textContent = "";
-  if (guardCurrentBidReadOnly()) return;
   try {
     const data = collectBidData();
     const file = refs.editalFile.files[0];
@@ -2302,7 +2299,8 @@ function renderDetails() {
   const hasBid = Boolean(appState.currentBidId);
   const readOnly = isCurrentBidReadOnly();
   refs.bidForm.querySelectorAll("input, select, textarea, button").forEach((el) => {
-    if (!["clearBidButton", "downloadEditalButton"].includes(el.id)) el.disabled = readOnly;
+    const remainsAvailable = ["clearBidButton", "downloadEditalButton", "bidStatus"].includes(el.id) || el.type === "submit";
+    if (!remainsAvailable) el.disabled = readOnly;
   });
   refs.downloadBidItemsButton.disabled = !hasBid;
   refs.failuresTabButton.classList.toggle("hidden", !shouldShowFailureHistory());
