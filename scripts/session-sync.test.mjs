@@ -48,7 +48,7 @@ function client(db = backend(), auth = { session: { user } }) {
     clearInterval: (id) => timers.delete(id),
   });
   vm.runInContext(application, context);
-  const api = vm.runInContext(`({ store, appState, restoreSession, logout, reloadData, refreshInBackground, startLiveUpdates, stopLiveUpdates, resetAuthenticatedView, scheduleLiveRefresh })`, context);
+  const api = vm.runInContext(`({ store, appState, restoreSession, logout, reloadData, refreshInBackground, startLiveUpdates, stopLiveUpdates, resetAuthenticatedView, scheduleLiveRefresh, calculateBidSummary })`, context);
   vm.runInContext(`
     renderSuppliers = renderBids = renderDetails = renderQuotations = renderUsers = () => {};
     clearBidForm = clearQuotationForm = setPage = updateMainNavigationState = () => {};
@@ -232,4 +232,24 @@ test("supplier updates synchronize between sessions and clear on logout", async 
   assert.equal(b.appState.suppliers[0].name, "Loja de teste");
   await b.logout();
   assert.equal(b.appState.suppliers.length, 0);
+});
+
+test("bid revenue uses only won items for approved and disputed bids", () => {
+  const app = client();
+  app.appState.bids = [
+    { id: "APPROVED", status: "Aprovada" },
+    { id: "DISPUTED", status: "Disputada" },
+    { id: "ANALYSIS", status: "Em Analise" },
+    { id: "DISQUALIFIED", status: "Desclassificado" },
+  ];
+  app.appState.items = app.appState.bids.flatMap((bid) => [
+    { bid_id: bid.id, max_acceptable_value: 100, required_quantity: 2, is_won: 1 },
+    { bid_id: bid.id, max_acceptable_value: 50, required_quantity: 3, is_won: 0 },
+  ]);
+
+  assert.equal(app.calculateBidSummary("APPROVED").totalFinal, 200);
+  assert.equal(app.calculateBidSummary("DISPUTED").totalFinal, 200);
+  assert.equal(app.calculateBidSummary("ANALYSIS").totalFinal, 350);
+  assert.equal(app.calculateBidSummary("DISQUALIFIED").totalFinal, 350);
+  assert.equal(app.calculateBidSummary("APPROVED").itemCount, 2);
 });

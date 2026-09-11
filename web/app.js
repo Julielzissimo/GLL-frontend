@@ -1,5 +1,6 @@
 ﻿const STATUS_OPTIONS = ["Em Analise", "Aprovada", "Desclassificado", "Disputada"];
 const WON_ITEM_STATUSES = ["Aprovada", "Desclassificado", "Disputada"];
+const WON_ITEM_TOTAL_STATUSES = ["Aprovada", "Disputada"];
 const BID_TYPE_OPTIONS = [
   "Pregao Eletronico",
   "Pregao Presencial",
@@ -1770,6 +1771,10 @@ function shouldUseWonItems() {
   return Boolean(appState.currentBidId) && WON_ITEM_STATUSES.includes(refs.bidStatus.value);
 }
 
+function shouldCalculateWonItemsTotal(status) {
+  return WON_ITEM_TOTAL_STATUSES.includes(status);
+}
+
 function applyHomeStatusFilter(status) {
   refs.filterStatus.value = status || "Todos";
   setPage("bids");
@@ -2217,7 +2222,9 @@ function renderDetails() {
 }
 
 function renderMetrics(items) {
-  const itemsForTotals = shouldUseWonItems() ? items.filter((item) => Boolean(Number(item.is_won))) : items;
+  const itemsForTotals = shouldCalculateWonItemsTotal(refs.bidStatus.value)
+    ? items.filter((item) => Boolean(Number(item.is_won)))
+    : items;
   const missingProfitMarginMessage = "Cadastre o valor de custo e o valor final de todos os itens deste edital para calcular a margem de lucro.";
   const hasCompleteProfitValues = itemsForTotals.length > 0 && itemsForTotals.every(
     (item) => Number(item.max_acceptable_value) && Number(item.supplier_cost)
@@ -3290,12 +3297,16 @@ function currentBid() {
 }
 
 function calculateBidSummary(bidId) {
+  const bid = appState.bids.find((row) => row.id === bidId);
+  const onlyWonItems = shouldCalculateWonItemsTotal(bid?.status);
   return appState.items
     .filter((item) => item.bid_id === bidId)
     .reduce(
       (acc, item) => {
         const quantity = Number(item.required_quantity || 0);
-        acc.totalFinal += Number(item.max_acceptable_value || 0) * quantity;
+        if (!onlyWonItems || Boolean(Number(item.is_won))) {
+          acc.totalFinal += Number(item.max_acceptable_value || 0) * quantity;
+        }
         acc.totalEstimated += Number(item.estimated_value || 0) * quantity;
         acc.itemCount += 1;
         return acc;
