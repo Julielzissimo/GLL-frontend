@@ -137,7 +137,6 @@ const refs = {
   metricsSection: $("metricsSection"),
   detailsArea: $("detailsArea"),
   metricItemCount: $("metricItemCount"),
-  metricProfit: $("metricProfit"),
   metricMargin: $("metricMargin"),
   metricTotalProfit: $("metricTotalProfit"),
   metricTotalProfitMargin: $("metricTotalProfitMargin"),
@@ -2226,7 +2225,6 @@ function renderMetrics(items) {
   const totals = itemsForTotals.reduce(
     (acc, item) => {
       const quantity = Number(item.required_quantity || 0);
-      acc.estimated += Number(item.estimated_value || 0) * quantity;
       acc.final += Number(item.max_acceptable_value || 0) * quantity;
       acc.cost += Number(item.supplier_cost || 0) * quantity;
       if (Number(item.max_acceptable_value) && Number(item.supplier_cost)) {
@@ -2234,10 +2232,9 @@ function renderMetrics(items) {
       }
       return acc;
     },
-    { estimated: 0, final: 0, cost: 0, profit: 0 }
+    { final: 0, cost: 0, profit: 0 }
   );
   refs.metricItemCount.textContent = String(items.length);
-  refs.metricProfit.textContent = money(totals.estimated);
   refs.metricMargin.textContent = money(totals.final);
   refs.metricTotalProfit.textContent = money(totals.profit);
   if (hasCompleteProfitValues && totals.cost) {
@@ -2247,7 +2244,6 @@ function renderMetrics(items) {
     refs.metricTotalProfitMargin.textContent = "-";
     refs.metricTotalProfitMargin.title = missingProfitMarginMessage;
   }
-  refs.metricProfit.className = "";
   refs.metricMargin.className = "";
   refs.metricTotalProfit.className = "";
   refs.metricTotalProfitMargin.className = "";
