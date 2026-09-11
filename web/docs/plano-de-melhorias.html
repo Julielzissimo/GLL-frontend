@@ -3,9 +3,9 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="Plano de melhorias e lacunas do GLL, revisado em 10 de setembro de 2026 com prioridades, evidências e critérios de aceite.">
+  <meta name="description" content="Plano de melhorias e lacunas do GLL, atualizado em 11 de setembro de 2026 com prioridades, evidências e critérios de aceite.">
   <meta name="robots" content="noindex, nofollow">
-  <meta name="source-sha256" content="8565920e7ca881feb51ab2f0d9f2bea10b859ec8e4fae7ecbc3431a225d409c5">
+  <meta name="source-sha256" content="cb04af758cbe3d861dda9c72abd99549e034254e22cc2d6b033d645d153c5510">
   <title>Plano de Melhorias e Lacunas — GLL</title>
   <style>
     :root{color-scheme:light;--ink:#1c3044;--muted:#526476;--blue:#1558a0;--line:#d8e1ea;--soft:#eef4fa}
@@ -27,7 +27,7 @@
   <a class="topbar" href="#conteudo">Ir para o conteúdo</a>
   <header class="topbar"><a href="../">← Voltar ao GLL</a><a href="./PLANO_DE_MELHORIAS_GLL.md" download>Baixar Markdown</a></header>
   <main id="conteudo">
-    <p class="eyebrow">GLL · Planejamento · Homologação</p>
+    <p class="eyebrow">GLL · Planejamento</p>
     <details><summary>Navegar pelo plano</summary><nav aria-label="Seções do plano"><a href="#base-da-revisao-e-limites">1. Base da revisão e limites</a>
 <a href="#correcoes-do-diagnostico-anterior">2. Correções do diagnóstico anterior</a>
 <a href="#carteira-priorizada">3. Carteira priorizada</a>
@@ -39,8 +39,9 @@
 <a href="#criterios-de-entrega-e-promocao">9. Critérios de entrega e promoção</a>
 <a href="#fontes-e-rastreabilidade">10. Fontes e rastreabilidade</a></nav></details>
     <article><h1 id="plano-de-melhorias-e-lacunas-gll">Plano de Melhorias e Lacunas — GLL</h1>
-<p><strong>Revisão:</strong> 2.0 · <strong>Data da análise:</strong> 10/09/2026 · <strong>Situação:</strong> plano revisado em homologação.</p>
+<p><strong>Revisão:</strong> 2.1 · <strong>Data da análise:</strong> 10/09/2026 · <strong>Atualização de promoção:</strong> 11/09/2026.</p>
 <p>Este plano renova o diagnóstico anterior, preserva os identificadores IMP e prioriza o trabalho restante conforme o código atual. Funcionalidade implementada, publicação na web e aceite de negócio são registros distintos. As ações abaixo são propostas; esta revisão documental não implementa as correções.</p>
+<p><strong>Atualização de 11/09/2026:</strong> a base descrita abaixo foi promovida para produção com a aba <code>Fornecedores</code> bloqueada na navegação. A tabela, a RLS e os adaptadores de persistência foram promovidos como preparação técnica, mas o cadastro mestre continua indisponível ao operador e sem integração aos fornecedores livres dos itens. A especificação técnica 2.8 registra o estado promovido.</p>
 <h2 id="base-da-revisao-e-limites">1. Base da revisão e limites</h2>
 <p>As referências remotas dos dois repositórios foram atualizadas antes da análise.</p>
 <div class="table-scroll" tabindex="0" role="region" aria-label="Tabela com rolagem horizontal"><table>
@@ -68,7 +69,7 @@
 </tbody>
 </table></div>
 <p>Esses commits identificam a base auditada, anterior à publicação desta revisão. <code>main</code> estava contida em <code>homolog</code> nos dois repositórios. A especificação técnica vigente é a versão 2.7, referente à produção; o cadastro próprio de fornecedores ainda não integra essa versão.</p>
-<p><strong>Verificado:</strong> código dos adaptadores/interface, schema, sete migrações em homologação, workflows, histórico Git e assets públicos dos dois ambientes. <code>index.html</code>, <code>env.js</code> e <code>app.js</code> retornaram HTTP 200; o JavaScript publicado correspondeu à branch de cada ambiente. A suíte <code>npm run test:session-sync</code> passou <strong>13/13 testes em homologação</strong>; produção contém 11 testes versionados. São serviços/DOM simulados, sem exercitar o Supabase real. No navegador, a sessão foi restaurada e a aba Fornecedores abriu em homologação; não houve alteração de dados operacionais nesta análise.</p>
+<p><strong>Verificado na análise de 10/09:</strong> código dos adaptadores/interface, schema, sete migrações em homologação, workflows, histórico Git e assets públicos dos dois ambientes. <code>index.html</code>, <code>env.js</code> e <code>app.js</code> retornaram HTTP 200; o JavaScript publicado correspondeu à branch de cada ambiente. A suíte então passou <strong>13/13 testes em homologação</strong>; produção continha 11 testes versionados. Na promoção de 11/09, a suíte passou <strong>14/14 testes</strong> e os dois builds foram gerados localmente. São serviços/DOM simulados, sem exercitar o Supabase real. Não houve alteração de dados operacionais nesta análise.</p>
 <p><strong>A verificar no ambiente:</strong> configurações administrativas de autenticação, rotação histórica de senhas, MFA, histórico remoto das migrações, backups e restauração. Não houve ensaio completo de revogação/CRUD com múltiplos usuários reais. Ausência de evidência no repositório não comprova ausência de configuração no serviço.</p>
 <p><strong>Estados:</strong> Aberto — ação necessária; Parcial — parte implementada e pendência identificada; Atendido no escopo atual — comportamento existente, mantendo regressão; A verificar no ambiente — depende de evidência operacional. <strong>P0:</strong> segurança/integridade imediata; <strong>P1:</strong> confiabilidade/operação; <strong>P2:</strong> qualidade e evolução técnica; <strong>P3:</strong> expansão de negócio.</p>
 <h2 id="correcoes-do-diagnostico-anterior">2. Correções do diagnóstico anterior</h2>
@@ -123,8 +124,8 @@
 </tr>
 <tr>
 <td>Fornecedores</td>
-<td>Cadastro próprio em homologação; nomes/URLs livres nos itens já em produção.</td>
-<td>IMP-028 trata consolidação e integração, sem reconstruir o cadastro.</td>
+<td>Persistência própria promovida, mas navegação bloqueada; nomes/URLs livres nos itens seguem disponíveis.</td>
+<td>IMP-028 trata habilitação, consolidação e integração, sem reconstruir a base técnica.</td>
 </tr>
 <tr>
 <td>Anexos/indicadores</td>
@@ -382,9 +383,9 @@
 <p><strong>Situação:</strong> builds usam Supabase; IndexedDB separado com armazenamento por ambiente; não há sincronização offline entre adaptadores. Evidências: <code>createStore()</code> em <a href="https://github.com/Julielzissimo/GLL-frontend/blob/42d583647aee837d698fd191cbe3970c088f12d5/web/app.js">F1</a> e <a href="https://github.com/Julielzissimo/GLL-frontend/blob/42d583647aee837d698fd191cbe3970c088f12d5/scripts/build-web.mjs">build</a>.</p>
 <p><strong>Próxima ação:</strong> manter finalidade explícita de demonstração/desenvolvimento e explicar limpeza do navegador. Uso offline operacional requer escopo próprio de transferência/sincronização e conflitos.</p>
 <p><strong>Aceite:</strong> usuário sabe onde os dados estão; falha de rede não promete gravação sincronizada; anunciar transferência/sincronização só depois de implementada e validada.</p>
-<h3 id="imp-028-consolidar-fornecedores-e-preparar-promocao">IMP-028 — Consolidar fornecedores e preparar promoção</h3>
-<p><strong>Situação:</strong> somente homolog tem cadastro/edição de nome, site opcional, contato e tags; busca por nome/tags ignora acentos/maiúsculas. Tags deduplicadas e limitadas apenas na apresentação. Cadastro não se relaciona aos textos livres dos itens; sem arquivamento/exclusão ou regra de duplicidade de cadastro. Evidências: <a href="https://github.com/Julielzissimo/GLL-frontend/blob/42d583647aee837d698fd191cbe3970c088f12d5/web/app.js#L2676">fornecedores</a>, <a href="https://github.com/Julielzissimo/GLL-backend/blob/b7f75a5/supabase/schema.sql">schema</a> e <a href="https://github.com/Julielzissimo/GLL-frontend/blob/42d583647aee837d698fd191cbe3970c088f12d5/scripts/session-sync.test.mjs">testes</a>.</p>
-<p><strong>Próxima ação:</strong> validar cadastro, consulta, edição, pesquisa e tags na web; definir identidade, duplicidade e arquivamento; integrar seleção aos itens preservando texto histórico. Cobrir conflito em edição e falha de carregamento; confirmar migração antes da promoção.</p>
+<h3 id="imp-028-habilitar-e-consolidar-fornecedores">IMP-028 — Habilitar e consolidar fornecedores</h3>
+<p><strong>Situação:</strong> produção contém tabela, RLS, adaptadores e interface de cadastro/edição de nome, site opcional, contato e tags, mas a navegação mantém a página bloqueada. A busca preparada ignora acentos/maiúsculas; tags são deduplicadas e limitadas apenas na apresentação. O cadastro não se relaciona aos textos livres dos itens e não possui arquivamento/exclusão ou regra de duplicidade. Evidências: <a href="https://github.com/Julielzissimo/GLL-frontend/blob/42d583647aee837d698fd191cbe3970c088f12d5/web/app.js#L2676">fornecedores</a>, <a href="https://github.com/Julielzissimo/GLL-backend/blob/b7f75a5/supabase/schema.sql">schema</a> e <a href="https://github.com/Julielzissimo/GLL-frontend/blob/42d583647aee837d698fd191cbe3970c088f12d5/scripts/session-sync.test.mjs">testes</a>.</p>
+<p><strong>Próxima ação:</strong> validar persistência/RLS com usuários reais, definir identidade, duplicidade e arquivamento e então habilitar cadastro, consulta, edição, pesquisa e tags na web. Integrar seleção aos itens preservando texto histórico. Cobrir conflito em edição e falha de carregamento.</p>
 <p><strong>Aceite:</strong> cadastro validado em homolog, persistência/RLS testadas e tags preservadas. Integração aos itens e comparação de preços são entregas separadas; não bloqueiam automaticamente a promoção do cadastro básico aprovado.</p>
 <h3 id="imp-018-manter-a-remocao-do-seed-remoto-automatico">IMP-018 — Manter a remoção do seed remoto automático</h3>
 <p><strong>Situação:</strong> atendido no fluxo remoto atual por inspeção do código; login/restauração não inserem demonstração. Rotinas de seed persistem, mas inicialização/reset demonstrativo está isolado do uso remoto autenticado. Evidências: <code>main()</code>, <code>enterAuthenticatedView()</code> e <code>resetSeedData()</code> em <a href="https://github.com/Julielzissimo/GLL-frontend/blob/42d583647aee837d698fd191cbe3970c088f12d5/web/app.js">F1</a>. A suíte ainda não possui regressão explícita de base remota vazia; incluí-la em IMP-013.</p>

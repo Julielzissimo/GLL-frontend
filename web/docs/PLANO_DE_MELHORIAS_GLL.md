@@ -1,8 +1,10 @@
 # Plano de Melhorias e Lacunas — GLL
 
-**Revisão:** 2.0 · **Data da análise:** 10/09/2026 · **Situação:** plano revisado em homologação.
+**Revisão:** 2.1 · **Data da análise:** 10/09/2026 · **Atualização de promoção:** 11/09/2026.
 
 Este plano renova o diagnóstico anterior, preserva os identificadores IMP e prioriza o trabalho restante conforme o código atual. Funcionalidade implementada, publicação na web e aceite de negócio são registros distintos. As ações abaixo são propostas; esta revisão documental não implementa as correções.
+
+**Atualização de 11/09/2026:** a base descrita abaixo foi promovida para produção com a aba `Fornecedores` bloqueada na navegação. A tabela, a RLS e os adaptadores de persistência foram promovidos como preparação técnica, mas o cadastro mestre continua indisponível ao operador e sem integração aos fornecedores livres dos itens. A especificação técnica 2.8 registra o estado promovido.
 
 ## 1. Base da revisão e limites
 
@@ -15,7 +17,7 @@ As referências remotas dos dois repositórios foram atualizadas antes da análi
 
 Esses commits identificam a base auditada, anterior à publicação desta revisão. `main` estava contida em `homolog` nos dois repositórios. A especificação técnica vigente é a versão 2.7, referente à produção; o cadastro próprio de fornecedores ainda não integra essa versão.
 
-**Verificado:** código dos adaptadores/interface, schema, sete migrações em homologação, workflows, histórico Git e assets públicos dos dois ambientes. `index.html`, `env.js` e `app.js` retornaram HTTP 200; o JavaScript publicado correspondeu à branch de cada ambiente. A suíte `npm run test:session-sync` passou **13/13 testes em homologação**; produção contém 11 testes versionados. São serviços/DOM simulados, sem exercitar o Supabase real. No navegador, a sessão foi restaurada e a aba Fornecedores abriu em homologação; não houve alteração de dados operacionais nesta análise.
+**Verificado na análise de 10/09:** código dos adaptadores/interface, schema, sete migrações em homologação, workflows, histórico Git e assets públicos dos dois ambientes. `index.html`, `env.js` e `app.js` retornaram HTTP 200; o JavaScript publicado correspondeu à branch de cada ambiente. A suíte então passou **13/13 testes em homologação**; produção continha 11 testes versionados. Na promoção de 11/09, a suíte passou **14/14 testes** e os dois builds foram gerados localmente. São serviços/DOM simulados, sem exercitar o Supabase real. Não houve alteração de dados operacionais nesta análise.
 
 **A verificar no ambiente:** configurações administrativas de autenticação, rotação histórica de senhas, MFA, histórico remoto das migrações, backups e restauração. Não houve ensaio completo de revogação/CRUD com múltiplos usuários reais. Ausência de evidência no repositório não comprova ausência de configuração no serviço.
 
@@ -33,7 +35,7 @@ Esses commits identificam a base auditada, anterior à publicação desta revis�
 | Sessão/sincronização | Restauração, saída local, limpeza, avisos e atualização periódica estão em produção. | IMP-016 foca conflitos de gravação, ainda sem bloqueio por versão. |
 | Seed remoto | Login/restauração não aplicam demonstração ao Supabase vazio. | IMP-018 atendido no código; regressão explícita de base vazia ainda pendente. |
 | Orçamentos | Vínculo, importação, sincronização bidirecional, cálculos, modal e CSV já existem. | IMP-023 sobe para P1 por falhas parciais e exclusões compartilhadas. |
-| Fornecedores | Cadastro próprio em homologação; nomes/URLs livres nos itens já em produção. | IMP-028 trata consolidação e integração, sem reconstruir o cadastro. |
+| Fornecedores | Persistência própria promovida, mas navegação bloqueada; nomes/URLs livres nos itens seguem disponíveis. | IMP-028 trata habilitação, consolidação e integração, sem reconstruir a base técnica. |
 | Anexos/indicadores | Arquivo privado de edital, itens vencidos, resumos e pendências já existem. | Separar essas entregas de gestão documental completa e indicadores históricos. |
 
 ## 3. Carteira priorizada
@@ -249,11 +251,11 @@ IMP-010 foi colocado após riscos de dados/operação; auditoria de ações sens
 
 **Aceite:** usuário sabe onde os dados estão; falha de rede não promete gravação sincronizada; anunciar transferência/sincronização só depois de implementada e validada.
 
-### IMP-028 — Consolidar fornecedores e preparar promoção
+### IMP-028 — Habilitar e consolidar fornecedores
 
-**Situação:** somente homolog tem cadastro/edição de nome, site opcional, contato e tags; busca por nome/tags ignora acentos/maiúsculas. Tags deduplicadas e limitadas apenas na apresentação. Cadastro não se relaciona aos textos livres dos itens; sem arquivamento/exclusão ou regra de duplicidade de cadastro. Evidências: [fornecedores][F8], [schema][B1] e [testes][F5].
+**Situação:** produção contém tabela, RLS, adaptadores e interface de cadastro/edição de nome, site opcional, contato e tags, mas a navegação mantém a página bloqueada. A busca preparada ignora acentos/maiúsculas; tags são deduplicadas e limitadas apenas na apresentação. O cadastro não se relaciona aos textos livres dos itens e não possui arquivamento/exclusão ou regra de duplicidade. Evidências: [fornecedores][F8], [schema][B1] e [testes][F5].
 
-**Próxima ação:** validar cadastro, consulta, edição, pesquisa e tags na web; definir identidade, duplicidade e arquivamento; integrar seleção aos itens preservando texto histórico. Cobrir conflito em edição e falha de carregamento; confirmar migração antes da promoção.
+**Próxima ação:** validar persistência/RLS com usuários reais, definir identidade, duplicidade e arquivamento e então habilitar cadastro, consulta, edição, pesquisa e tags na web. Integrar seleção aos itens preservando texto histórico. Cobrir conflito em edição e falha de carregamento.
 
 **Aceite:** cadastro validado em homolog, persistência/RLS testadas e tags preservadas. Integração aos itens e comparação de preços são entregas separadas; não bloqueiam automaticamente a promoção do cadastro básico aprovado.
 
