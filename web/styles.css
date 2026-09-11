@@ -72,6 +72,16 @@ textarea:focus {
   box-shadow: 0 0 0 3px rgba(31, 111, 139, 0.14);
 }
 
+input:disabled,
+select:disabled,
+textarea:disabled {
+  border-color: #c6cbd2;
+  background: #e5e7eb;
+  color: #667085;
+  opacity: 1;
+  cursor: not-allowed;
+}
+
 textarea {
   resize: vertical;
 }
@@ -1714,6 +1724,7 @@ textarea:focus {
 .home-status-card.warning { border-top-color: var(--warning); }
 .home-status-card.discarded { border-top-color: #7a8699; }
 .home-status-card.success { border-top-color: var(--success); }
+.home-status-card.billed { border-top-color: #6f42c1; }
 .home-status-card.info { border-top-color: var(--info); }
 .home-status-card.danger { border-top-color: var(--danger); }
 
@@ -2041,6 +2052,7 @@ td {
 }
 
 .status-pill.approved { background: var(--success-bg); color: #147447; }
+.status-pill.billed { background: #f0e9ff; color: #5b2ca0; }
 .status-pill.analysis { background: var(--warning-bg); color: #996000; }
 .status-pill.discarded { background: #eef1f5; color: #4f5d70; }
 .status-pill.disputed { background: var(--info-bg); color: #245caf; }
@@ -2062,7 +2074,9 @@ td {
 }
 
 .item-won-checkbox:disabled {
-  cursor: wait;
+  cursor: not-allowed;
+  filter: grayscale(1);
+  opacity: 0.65;
 }
 
 tr.item-won,
