@@ -60,7 +60,7 @@ function client(db = backend(), auth = { session: { user } }) {
     clearInterval: (id) => timers.delete(id),
   });
   vm.runInContext(application, context);
-  const api = vm.runInContext(`({ store, appState, restoreSession, logout, reloadData, refreshInBackground, startLiveUpdates, stopLiveUpdates, resetAuthenticatedView, scheduleLiveRefresh, calculateBidSummary, readNavigationRoute, writeNavigationRoute })`, context);
+  const api = vm.runInContext(`({ store, appState, restoreSession, logout, reloadData, refreshInBackground, startLiveUpdates, stopLiveUpdates, resetAuthenticatedView, scheduleLiveRefresh, calculateBidSummary, readNavigationRoute, writeNavigationRoute, normalizeTechnicalSpecifications })`, context);
   vm.runInContext(`
     renderSuppliers = renderBids = renderDetails = renderQuotations = renderUsers = () => {};
     clearBidForm = clearQuotationForm = setPage = updateMainNavigationState = () => {};
@@ -166,6 +166,22 @@ test("two independent sessions receive bid, quotation, item and deletion changes
   db.tables.bids = [];
   await a.reloadData(); await b.flush();
   assert.equal(b.appState.bids.length, 0);
+});
+
+test("technical specifications are normalized and incomplete values are preserved", () => {
+  const app = client();
+  assert.deepEqual(
+    structuredClone(app.normalizeTechnicalSpecifications([
+      { name: "  Memória RAM  ", required: " Mínimo 12 GB ", offered: " 16 GB " },
+      { name: "Armazenamento", required: "", offered: "512 GB" },
+      { name: "", required: "", offered: "" },
+      null,
+    ])),
+    [
+      { name: "Memória RAM", required: "Mínimo 12 GB", offered: "16 GB" },
+      { name: "Armazenamento", required: "", offered: "512 GB" },
+    ]
+  );
 });
 
 test("remote edits and deletes preserve drafts and show a persistent warning", async () => {
