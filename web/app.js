@@ -70,6 +70,7 @@ const appState = {
   itemMarginCalculationSource: "margin",
   supplierLinksDraft: [],
   quotationSupplierLinksDraft: [],
+  quotationTechnicalSpecificationsDraft: [],
   sidebarCollapsed: false,
   appNavigationCollapsed: false,
   bids: [],
@@ -259,6 +260,9 @@ const refs = {
   quotationItemSupplierInput: $("quotationItemSupplierInput"),
   addQuotationItemSupplierButton: $("addQuotationItemSupplierButton"),
   quotationItemSuppliersList: $("quotationItemSuppliersList"),
+  quotationTechnicalSpecificationsSection: $("quotationTechnicalSpecificationsSection"),
+  quotationTechnicalSpecificationsList: $("quotationTechnicalSpecificationsList"),
+  addQuotationTechnicalSpecificationButton: $("addQuotationTechnicalSpecificationButton"),
   quotationItemEstimatedValue: $("quotationItemEstimatedValue"),
   quotationItemSupplierCost: $("quotationItemSupplierCost"),
   quotationItemProfitMargin: $("quotationItemProfitMargin"),
@@ -1532,6 +1536,9 @@ function bindEvents() {
   bindAutoGrowTextareas(refs.quotationItemForm);
   refs.quotationItemForm.addEventListener("submit", withBlockingLoading(saveQuotationItem, "Salvando item do orçamento…"));
   refs.addQuotationItemSupplierButton.addEventListener("click", addQuotationItemSupplier);
+  refs.addQuotationTechnicalSpecificationButton.addEventListener("click", addQuotationTechnicalSpecification);
+  refs.quotationTechnicalSpecificationsList.addEventListener("input", updateQuotationTechnicalSpecificationDraft);
+  refs.quotationTechnicalSpecificationsList.addEventListener("click", handleQuotationTechnicalSpecificationAction);
   refs.quotationItemSupplierInput.addEventListener("keydown", (event) => {
     if (event.key === "Enter") {
       event.preventDefault();
@@ -3249,6 +3256,7 @@ function quotationItemFormSnapshot() {
     refs.quotationItemManufacturer.value,
     refs.quotationItemTechnicalText.value,
     appState.quotationSupplierLinksDraft,
+    appState.quotationTechnicalSpecificationsDraft,
     refs.quotationItemEstimatedValue.value,
     refs.quotationItemSupplierCost.value,
     refs.quotationItemProfitMargin.value,
@@ -3275,7 +3283,9 @@ function loadQuotationItem(itemId) {
   refs.quotationItemManufacturer.value = item.manufacturer;
   refs.quotationItemTechnicalText.value = item.technical_text;
   appState.quotationSupplierLinksDraft = [...item.supplier_links];
+  appState.quotationTechnicalSpecificationsDraft = item.technical_specifications.map((specification) => ({ ...specification }));
   renderQuotationItemSuppliers();
+  renderQuotationTechnicalSpecifications();
   refs.quotationItemEstimatedValue.value = money(item.estimated_value);
   refs.quotationItemSupplierCost.value = item.supplier_cost ? money(item.supplier_cost) : "";
   refs.quotationItemProfitMargin.value = item.profit_margin === null ? "" : formatProfitMargin(item.profit_margin);
@@ -3298,7 +3308,10 @@ function clearQuotationItemForm(options = {}) {
   appState.currentQuotationItemId = null;
   refs.quotationItemForm.reset();
   appState.quotationSupplierLinksDraft = [];
+  appState.quotationTechnicalSpecificationsDraft = [];
   renderQuotationItemSuppliers();
+  renderQuotationTechnicalSpecifications();
+  refs.quotationTechnicalSpecificationsSection.open = true;
   refs.quotationItemQuantity.value = "1";
   refs.quotationItemTotal.value = money(0);
   refs.quotationItemTotalProfit.value = money(0);
@@ -3356,6 +3369,7 @@ async function saveQuotationItem(event) {
         manufacturer: refs.quotationItemManufacturer.value.trim(),
         technical_text: refs.quotationItemTechnicalText.value.trim(),
         supplier_links: [...appState.quotationSupplierLinksDraft],
+        technical_specifications: normalizeTechnicalSpecifications(appState.quotationTechnicalSpecificationsDraft),
         estimated_value: parseDecimal(refs.quotationItemEstimatedValue.value, "Valor Estimado", false),
         supplier_cost: supplierCost,
         profit_margin: profitMargin,
@@ -3905,6 +3919,7 @@ function normalizeQuotationItemRecord(record) {
     supplier_cost: supplierCost,
     profit_margin: profitMargin,
     supplier_links: normalizeSupplierLinks(record.supplier_links),
+    technical_specifications: normalizeTechnicalSpecifications(record.technical_specifications),
     final_bid: finalBid,
     quantity,
     total: record.total === undefined || record.total === null ? finalBid * quantity : Number(record.total),
@@ -3962,6 +3977,69 @@ function renderQuotationItemSuppliers() {
   refs.quotationItemSuppliersList.querySelectorAll("[data-delete-quotation-supplier]").forEach((button) => {
     button.addEventListener("click", () => removeQuotationItemSupplier(Number(button.dataset.deleteQuotationSupplier)));
   });
+}
+
+function normalizeTechnicalSpecifications(value) {
+  if (!Array.isArray(value)) return [];
+  return value
+    .filter((specification) => specification && typeof specification === "object" && !Array.isArray(specification))
+    .map((specification) => ({
+      name: String(specification.name || "").trim(),
+      required: String(specification.required || "").trim(),
+      offered: String(specification.offered || "").trim(),
+    }))
+    .filter((specification) => specification.name || specification.required || specification.offered);
+}
+
+function addQuotationTechnicalSpecification() {
+  appState.quotationTechnicalSpecificationsDraft.push({ name: "", required: "", offered: "" });
+  refs.quotationTechnicalSpecificationsSection.open = true;
+  renderQuotationTechnicalSpecifications();
+  const input = refs.quotationTechnicalSpecificationsList.querySelector(`[data-specification-index="${appState.quotationTechnicalSpecificationsDraft.length - 1}"][data-specification-field="name"]`);
+  input?.focus();
+}
+
+function updateQuotationTechnicalSpecificationDraft(event) {
+  const input = event.target.closest("[data-specification-index][data-specification-field]");
+  if (!input) return;
+  const specification = appState.quotationTechnicalSpecificationsDraft[Number(input.dataset.specificationIndex)];
+  if (!specification) return;
+  specification[input.dataset.specificationField] = input.value;
+}
+
+function handleQuotationTechnicalSpecificationAction(event) {
+  const button = event.target.closest("[data-delete-specification]");
+  if (!button) return;
+  appState.quotationTechnicalSpecificationsDraft.splice(Number(button.dataset.deleteSpecification), 1);
+  renderQuotationTechnicalSpecifications();
+}
+
+function renderQuotationTechnicalSpecifications() {
+  if (!appState.quotationTechnicalSpecificationsDraft.length) {
+    refs.quotationTechnicalSpecificationsList.innerHTML = `<p class="quotation-specifications-empty">Nenhuma especificação cadastrada.</p>`;
+    return;
+  }
+  refs.quotationTechnicalSpecificationsList.innerHTML = appState.quotationTechnicalSpecificationsDraft
+    .map((specification, index) => `<div class="quotation-specification-card">
+      <div class="quotation-specification-name-row">
+        <label>
+          Nome da especificação
+          <input value="${escapeHtml(specification.name)}" data-specification-index="${index}" data-specification-field="name" placeholder="Ex.: Memória RAM" />
+        </label>
+        <button class="quotation-delete-specification" type="button" data-delete-specification="${index}" aria-label="Excluir especificação ${index + 1}" title="Excluir especificação">🗑</button>
+      </div>
+      <div class="quotation-specification-values">
+        <label>
+          Exigido no edital
+          <input value="${escapeHtml(specification.required)}" data-specification-index="${index}" data-specification-field="required" placeholder="Ex.: Mínimo 12 GB" />
+        </label>
+        <label>
+          Item ofertado
+          <input value="${escapeHtml(specification.offered)}" data-specification-index="${index}" data-specification-field="offered" placeholder="Ex.: 16 GB" />
+        </label>
+      </div>
+    </div>`)
+    .join("");
 }
 
 function renderSupplierEntry(value) {
