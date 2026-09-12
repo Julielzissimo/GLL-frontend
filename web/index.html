@@ -3,6 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net; connect-src 'self' https://*.supabase.co wss://*.supabase.co; img-src 'self' data: blob:; style-src 'self'; font-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'; upgrade-insecure-requests" />
     <title>GLL Web</title>
     <link rel="icon" type="image/svg+xml" href="./assets/favicon.svg" />
     <link rel="stylesheet" href="./styles.css" />
@@ -825,6 +826,8 @@
           <section class="section-band">
             <h2>Ambiente</h2>
             <div class="setting-row"><div><strong>Modo de persistência</strong><small>Os dados utilizam a configuração ativa deste ambiente.</small></div><span class="status-pill">IndexedDB / Supabase</span></div>
+            <div class="setting-row"><div><strong>Política de sessão</strong><small>A sessão termina ao atingir qualquer um dos limites.</small></div><strong id="sessionPolicyStatus">30 min inativa / 8 h total</strong></div>
+            <div class="setting-row"><div><strong>Cliente de autenticação</strong><small>Versão fixada para atualizações reproduzíveis.</small></div><strong id="authClientVersion">Supabase JS</strong></div>
             <div class="setting-row"><div><strong>Interface</strong><small>Identidade visual do protótipo aprovado.</small></div><strong>GLL 2.0</strong></div>
           </section>
           <section class="section-band danger-zone">

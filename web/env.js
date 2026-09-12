@@ -7,4 +7,6 @@ window.GLL_CONFIG = {
   appName: "GLL Web",
   supabaseUrl: "",
   supabaseAnonKey: "",
+  sessionIdleTimeoutMinutes: 30,
+  sessionMaxLifetimeHours: 8,
 };

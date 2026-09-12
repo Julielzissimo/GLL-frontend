@@ -16,6 +16,7 @@ const BID_TYPE_OPTIONS = [
 const SALES_UNIT_OPTIONS = ["Unidade", "Pacote", "Caixa", "Kilo", "Metro", "Litro", "Par", "Servico", "Outro"];
 const BID_EDITAL_BUCKET = "bid-edital-files";
 const MAX_EDITAL_FILE_SIZE = 20 * 1024 * 1024;
+const SUPABASE_CLIENT_VERSION = "2.57.4";
 const DEFAULT_ADMIN = {
   email: "demo@gll.local",
   name: "Usuário local",
@@ -31,6 +32,8 @@ const DEFAULT_GLL_CONFIG = {
   appName: "GLL Web",
   supabaseUrl: "",
   supabaseAnonKey: "",
+  sessionIdleTimeoutMinutes: 30,
+  sessionMaxLifetimeHours: 8,
 };
 const GLL_CONFIG = {
   ...DEFAULT_GLL_CONFIG,
@@ -92,6 +95,8 @@ const refs = {
   environmentLabel: $("environmentLabel"),
   environmentBadge: $("environmentBadge"),
   storageStatus: $("storageStatus"),
+  sessionPolicyStatus: $("sessionPolicyStatus"),
+  authClientVersion: $("authClientVersion"),
   appSidebar: $("appSidebar"),
   homeIconButton: $("homeIconButton"),
   navHomeButton: $("navHomeButton"),
@@ -290,7 +295,7 @@ function hasSupabaseConfig() {
 }
 
 async function loadSupabaseClientFactory() {
-  const module = await import("https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm");
+  const module = await import(`https://cdn.jsdelivr.net/npm/@supabase/supabase-js@${SUPABASE_CLIENT_VERSION}/+esm`);
   return module;
 }
 
@@ -1230,6 +1235,99 @@ class SupabaseStore {
 
 const store = createStore();
 
+const SESSION_ACTIVITY_EVENTS = ["pointerdown", "keydown", "input"];
+const SESSION_POLICY_CHECK_INTERVAL_MS = 60 * 1000;
+const SESSION_ACTIVITY_WRITE_INTERVAL_MS = 30 * 1000;
+const sessionPolicyStorageKey = `gll-session-policy-v1-${sanitizeStorageSuffix(GLL_CONFIG.storageSuffix || GLL_CONFIG.environment)}`;
+let sessionPolicyTimer = null;
+let lastSessionActivityWrite = 0;
+
+function sessionPolicyLimits() {
+  return {
+    idleMs: Math.max(1, Number(GLL_CONFIG.sessionIdleTimeoutMinutes) || 30) * 60 * 1000,
+    lifetimeMs: Math.max(1, Number(GLL_CONFIG.sessionMaxLifetimeHours) || 8) * 60 * 60 * 1000,
+  };
+}
+
+function readSessionPolicy() {
+  try {
+    const value = JSON.parse(window.localStorage.getItem(sessionPolicyStorageKey));
+    if (!value || !Number.isFinite(value.startedAt) || !Number.isFinite(value.lastActivityAt)) return null;
+    return value;
+  } catch {
+    return null;
+  }
+}
+
+function writeSessionPolicy(value) {
+  window.localStorage.setItem(sessionPolicyStorageKey, JSON.stringify(value));
+}
+
+function beginSessionPolicy(email, { forceNew = false } = {}) {
+  if (!store.requiresAuthenticationBeforeData) return;
+  const now = Date.now();
+  const current = readSessionPolicy();
+  if (forceNew || !current || normalizeEmail(current.email) !== normalizeEmail(email)) {
+    writeSessionPolicy({ email: normalizeEmail(email), startedAt: now, lastActivityAt: now });
+    lastSessionActivityWrite = now;
+  }
+}
+
+function sessionPolicyExpiration(now = Date.now()) {
+  const policy = readSessionPolicy();
+  if (!policy) return null;
+  const { idleMs, lifetimeMs } = sessionPolicyLimits();
+  if (now - policy.startedAt >= lifetimeMs) return "Sua sessão atingiu o limite de duração. Entre novamente.";
+  if (now - policy.lastActivityAt >= idleMs) return "Sua sessão expirou por inatividade. Entre novamente.";
+  return null;
+}
+
+function recordSessionActivity() {
+  if (!appState.authenticated) return;
+  const now = Date.now();
+  if (now - lastSessionActivityWrite < SESSION_ACTIVITY_WRITE_INTERVAL_MS) return;
+  const policy = readSessionPolicy();
+  if (!policy) return;
+  policy.lastActivityAt = now;
+  writeSessionPolicy(policy);
+  lastSessionActivityWrite = now;
+}
+
+async function enforceSessionPolicy() {
+  if (!appState.authenticated) return false;
+  const message = sessionPolicyExpiration();
+  if (!message) return true;
+  await expireSession(message);
+  return false;
+}
+
+function handleSessionVisibility() {
+  if (!document.hidden) enforceSessionPolicy().catch(() => resetAuthenticatedView());
+}
+
+function startSessionPolicyMonitoring() {
+  stopSessionPolicyMonitoring();
+  for (const eventName of SESSION_ACTIVITY_EVENTS) window.addEventListener(eventName, recordSessionActivity);
+  document.addEventListener("visibilitychange", handleSessionVisibility);
+  sessionPolicyTimer = setInterval(() => enforceSessionPolicy().catch(() => resetAuthenticatedView()), SESSION_POLICY_CHECK_INTERVAL_MS);
+}
+
+function stopSessionPolicyMonitoring() {
+  if (sessionPolicyTimer) clearInterval(sessionPolicyTimer);
+  sessionPolicyTimer = null;
+  for (const eventName of SESSION_ACTIVITY_EVENTS) window.removeEventListener(eventName, recordSessionActivity);
+  document.removeEventListener("visibilitychange", handleSessionVisibility);
+}
+
+async function expireSession(message) {
+  try {
+    if (store.requiresAuthenticationBeforeData) await store.client.auth.signOut({ scope: "local" });
+  } finally {
+    resetAuthenticatedView();
+    refs.loginError.textContent = message;
+  }
+}
+
 async function main() {
   applyEnvironmentConfig();
   populateOptions();
@@ -1266,6 +1364,10 @@ function applyEnvironmentConfig() {
   refs.environmentBadge.textContent = GLL_CONFIG.label;
   refs.environmentBadge.dataset.environment = GLL_CONFIG.environment;
   refs.storageStatus.textContent = GLL_CONFIG.storageLabel;
+  refs.sessionPolicyStatus.textContent = hasSupabaseConfig()
+    ? `${GLL_CONFIG.sessionIdleTimeoutMinutes} min inativa / ${GLL_CONFIG.sessionMaxLifetimeHours} h total`
+    : "Não aplicável ao modo demonstrativo";
+  refs.authClientVersion.textContent = hasSupabaseConfig() ? `Supabase JS ${SUPABASE_CLIENT_VERSION}` : "Autenticação local demonstrativa";
   refs.resetDataButton.classList.toggle("hidden", hasSupabaseConfig());
   refs.loginHint.classList.toggle("hidden", hasSupabaseConfig());
 }
@@ -1493,6 +1595,7 @@ async function handleLogin(event) {
       refs.loginError.textContent = "E-mail ou senha inválidos.";
       return;
     }
+    beginSessionPolicy(user.email, { forceNew: true });
     await enterAuthenticatedView(user);
     showToast("Login realizado.");
   } catch (error) {
@@ -1505,6 +1608,12 @@ async function restoreSession() {
   const { data, error } = await store.client.auth.getSession();
   assertSupabase(error);
   if (!data.session) return;
+  beginSessionPolicy(data.session.user.email);
+  const expirationMessage = sessionPolicyExpiration();
+  if (expirationMessage) {
+    await expireSession(expirationMessage);
+    return;
+  }
   const user = await store.getUser(data.session.user.email);
   if (epoch !== sessionEpoch) return;
   if (!user) {
@@ -1529,6 +1638,7 @@ async function enterAuthenticatedView(user) {
     clearQuotationForm();
     applyNavigationRoute({ replaceInvalid: true });
     startLiveUpdates();
+    startSessionPolicyMonitoring();
   } catch (error) {
     if (epoch === sessionEpoch) resetAuthenticatedView();
     throw error;
@@ -1536,15 +1646,21 @@ async function enterAuthenticatedView(user) {
 }
 
 async function logout() {
-  if (store.requiresAuthenticationBeforeData) {
-    const { error } = await store.client.auth.signOut({ scope: "local" });
-    assertSupabase(error);
+  refs.loginError.textContent = "";
+  try {
+    if (store.requiresAuthenticationBeforeData) {
+      const { error } = await store.client.auth.signOut({ scope: "local" });
+      assertSupabase(error);
+    }
+  } finally {
+    resetAuthenticatedView();
   }
-  resetAuthenticatedView();
 }
 
 function resetAuthenticatedView() {
   sessionEpoch += 1;
+  stopSessionPolicyMonitoring();
+  window.localStorage.removeItem(sessionPolicyStorageKey);
   stopLiveUpdates();
   appState.authenticated = false;
   appState.currentUserEmail = null;
