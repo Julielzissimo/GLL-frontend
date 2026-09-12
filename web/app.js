@@ -230,6 +230,7 @@ const refs = {
   quotationAgency: $("quotationAgency"),
   quotationCity: $("quotationCity"),
   quotationCep: $("quotationCep"),
+  quotationDeliveryDeadline: $("quotationDeliveryDeadline"),
   quotationFormError: $("quotationFormError"),
   deleteQuotationButton: $("deleteQuotationButton"),
   clearQuotationButton: $("clearQuotationButton"),
@@ -2967,6 +2968,7 @@ function loadQuotation(quotationId, options = {}) {
   refs.quotationAgency.value = quotation.agency;
   refs.quotationCity.value = quotation.city;
   refs.quotationCep.value = formatCep(quotation.cep);
+  refs.quotationDeliveryDeadline.value = quotation.delivery_deadline;
   refs.selectedQuotationLabel.textContent = `Edital ${quotation.edital}`;
   refs.quotationFormError.textContent = "";
   refs.deleteQuotationButton.classList.remove("hidden");
@@ -3014,6 +3016,7 @@ async function saveQuotation(event) {
         agency: refs.quotationAgency.value.trim(),
         city: refs.quotationCity.value.trim(),
         cep: formatCep(cepDigits),
+        delivery_deadline: refs.quotationDeliveryDeadline.value.trim(),
       },
       appState.currentQuotationId
     );
@@ -3762,6 +3765,7 @@ function normalizeQuotationRecord(record) {
     agency: record.agency || "",
     city: record.city || "",
     cep: formatCep(record.cep),
+    delivery_deadline: record.delivery_deadline || "",
     created_at: record.created_at || timestampNow(),
     updated_at: record.updated_at || timestampNow(),
   };

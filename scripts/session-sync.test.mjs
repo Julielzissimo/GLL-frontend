@@ -60,7 +60,7 @@ function client(db = backend(), auth = { session: { user } }) {
     clearInterval: (id) => timers.delete(id),
   });
   vm.runInContext(application, context);
-  const api = vm.runInContext(`({ store, appState, restoreSession, logout, reloadData, refreshInBackground, startLiveUpdates, stopLiveUpdates, resetAuthenticatedView, scheduleLiveRefresh, calculateBidSummary, readNavigationRoute, writeNavigationRoute })`, context);
+  const api = vm.runInContext(`({ store, appState, restoreSession, logout, reloadData, refreshInBackground, startLiveUpdates, stopLiveUpdates, resetAuthenticatedView, scheduleLiveRefresh, calculateBidSummary, readNavigationRoute, writeNavigationRoute, normalizeQuotationRecord })`, context);
   vm.runInContext(`
     renderSuppliers = renderBids = renderDetails = renderQuotations = renderUsers = () => {};
     clearBidForm = clearQuotationForm = setPage = updateMainNavigationState = () => {};
@@ -106,6 +106,12 @@ test("navigation writes readable URLs without discarding unrelated parameters", 
   assert.equal(route.page, "documents");
   assert.equal(route.bidId, "PE 12/2026");
   assert.equal(route.quotationId, null);
+});
+
+test("quotation normalization preserves the delivery deadline", () => {
+  const app = client();
+  const quotation = app.normalizeQuotationRecord({ edital: "PE 12/2026", delivery_deadline: "30 dias" });
+  assert.equal(quotation.delivery_deadline, "30 dias");
 });
 
 test("navigation replaces the current URL when requested", () => {
