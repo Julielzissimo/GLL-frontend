@@ -808,6 +808,61 @@ input[readonly] {
   gap: 6px;
 }
 
+.public-session-field {
+  min-width: 0;
+}
+
+.public-session-field > label {
+  display: grid;
+  gap: 6px;
+}
+
+.public-session-panel {
+  min-height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--panel-alt);
+  padding: 9px 10px;
+}
+
+.public-session-copy,
+.public-session-actions {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.public-session-copy {
+  min-width: 0;
+  color: var(--primary);
+}
+
+.public-session-copy span {
+  display: grid;
+  min-width: 0;
+}
+
+.public-session-copy strong,
+.public-session-copy small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.public-session-copy strong {
+  color: var(--text);
+  font-size: 13px;
+}
+
+.public-session-copy small {
+  color: var(--muted);
+  font-size: 12px;
+}
+
 .bid-quotation-field {
   grid-column: span 2;
 }
@@ -2253,6 +2308,122 @@ tr.item-won td {
   grid-column: 1 / -1;
 }
 
+.quotation-technical-specifications {
+  margin-top: 22px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--panel-alt, #f8fafc);
+}
+
+.quotation-technical-specifications summary {
+  display: flex;
+  min-height: 52px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 18px;
+  color: var(--text);
+  cursor: pointer;
+  font-size: 15px;
+  font-weight: 800;
+  list-style: none;
+}
+
+.quotation-technical-specifications summary::-webkit-details-marker {
+  display: none;
+}
+
+.quotation-technical-specifications summary:focus-visible {
+  outline: 3px solid rgba(31, 111, 139, 0.22);
+  outline-offset: -3px;
+  border-radius: 12px;
+}
+
+.quotation-specifications-chevron {
+  width: 9px;
+  height: 9px;
+  flex: 0 0 9px;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  transform: rotate(45deg) translate(-2px, -2px);
+  transition: transform 160ms ease;
+}
+
+.quotation-technical-specifications[open] .quotation-specifications-chevron {
+  transform: rotate(225deg) translate(-1px, -1px);
+}
+
+.quotation-specifications-content {
+  display: grid;
+  gap: 14px;
+  padding: 0 18px 18px;
+  border-top: 1px solid var(--border);
+}
+
+.quotation-specifications-list {
+  display: grid;
+  gap: 12px;
+  padding-top: 16px;
+}
+
+.quotation-specifications-empty {
+  margin: 0;
+  padding: 8px 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.quotation-specification-card {
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--panel, #ffffff);
+}
+
+.quotation-specification-name-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 42px;
+  gap: 12px;
+  align-items: end;
+}
+
+.quotation-specification-values {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  margin-top: 14px;
+}
+
+.quotation-delete-specification {
+  display: inline-grid;
+  width: 42px;
+  height: 42px;
+  place-items: center;
+  padding: 0;
+  border: 1px solid #efc4c4;
+  border-radius: 9px;
+  background: #fff5f5;
+  color: var(--danger);
+  font-size: 17px;
+}
+
+.quotation-delete-specification:hover {
+  border-color: var(--danger);
+  background: #feecec;
+}
+
+.quotation-add-specification {
+  justify-self: center;
+  border: 0;
+  background: transparent;
+  color: var(--primary-dark);
+  font-weight: 800;
+}
+
+.quotation-add-specification:hover {
+  background: rgba(31, 111, 139, 0.08);
+}
+
 .quotation-values-section {
   margin-top: 22px;
   padding-top: 20px;
@@ -2702,6 +2873,10 @@ tr.item-won td {
     padding: 18px;
   }
 
+  .quotation-specification-values {
+    grid-template-columns: 1fr;
+  }
+
   .app-sidebar {
     padding: 20px 10px;
   }
@@ -2735,6 +2910,12 @@ tr.item-won td {
 }
 
 @media (max-width: 620px) {
+  .public-session-panel,
+  .public-session-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
   .quotations-list-toggle {
     align-items: flex-start;
     flex-direction: column;

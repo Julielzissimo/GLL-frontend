@@ -16,6 +16,7 @@ const BID_TYPE_OPTIONS = [
 const SALES_UNIT_OPTIONS = ["Unidade", "Pacote", "Caixa", "Kilo", "Metro", "Litro", "Par", "Servico", "Outro"];
 const BID_EDITAL_BUCKET = "bid-edital-files";
 const MAX_EDITAL_FILE_SIZE = 20 * 1024 * 1024;
+const SUPABASE_CLIENT_VERSION = "2.57.4";
 const DEFAULT_ADMIN = {
   email: "demo@gll.local",
   name: "Usuário local",
@@ -31,6 +32,8 @@ const DEFAULT_GLL_CONFIG = {
   appName: "GLL Web",
   supabaseUrl: "",
   supabaseAnonKey: "",
+  sessionIdleTimeoutMinutes: 30,
+  sessionMaxLifetimeHours: 8,
 };
 const GLL_CONFIG = {
   ...DEFAULT_GLL_CONFIG,
@@ -67,6 +70,7 @@ const appState = {
   itemMarginCalculationSource: "margin",
   supplierLinksDraft: [],
   quotationSupplierLinksDraft: [],
+  quotationTechnicalSpecificationsDraft: [],
   sidebarCollapsed: false,
   appNavigationCollapsed: false,
   bids: [],
@@ -92,6 +96,8 @@ const refs = {
   environmentLabel: $("environmentLabel"),
   environmentBadge: $("environmentBadge"),
   storageStatus: $("storageStatus"),
+  sessionPolicyStatus: $("sessionPolicyStatus"),
+  authClientVersion: $("authClientVersion"),
   appSidebar: $("appSidebar"),
   homeIconButton: $("homeIconButton"),
   navHomeButton: $("navHomeButton"),
@@ -137,6 +143,11 @@ const refs = {
   proposalDeadline: $("proposalDeadline"),
   deliveryPlace: $("deliveryPlace"),
   editalLink: $("editalLink"),
+  publicSessionLink: $("publicSessionLink"),
+  publicSessionLinkInputGroup: $("publicSessionLinkInputGroup"),
+  publicSessionLinkPanel: $("publicSessionLinkPanel"),
+  openPublicSessionButton: $("openPublicSessionButton"),
+  removePublicSessionLinkButton: $("removePublicSessionLinkButton"),
   editalFile: $("editalFile"),
   editalAttachmentPanel: $("editalAttachmentPanel"),
   editalAttachmentName: $("editalAttachmentName"),
@@ -225,6 +236,7 @@ const refs = {
   quotationAgency: $("quotationAgency"),
   quotationCity: $("quotationCity"),
   quotationCep: $("quotationCep"),
+  quotationDeliveryDeadline: $("quotationDeliveryDeadline"),
   quotationFormError: $("quotationFormError"),
   deleteQuotationButton: $("deleteQuotationButton"),
   clearQuotationButton: $("clearQuotationButton"),
@@ -248,11 +260,15 @@ const refs = {
   quotationItemSupplierInput: $("quotationItemSupplierInput"),
   addQuotationItemSupplierButton: $("addQuotationItemSupplierButton"),
   quotationItemSuppliersList: $("quotationItemSuppliersList"),
+  quotationTechnicalSpecificationsSection: $("quotationTechnicalSpecificationsSection"),
+  quotationTechnicalSpecificationsList: $("quotationTechnicalSpecificationsList"),
+  addQuotationTechnicalSpecificationButton: $("addQuotationTechnicalSpecificationButton"),
   quotationItemEstimatedValue: $("quotationItemEstimatedValue"),
   quotationItemSupplierCost: $("quotationItemSupplierCost"),
   quotationItemProfitMargin: $("quotationItemProfitMargin"),
   quotationItemValueWithMargin: $("quotationItemValueWithMargin"),
   quotationItemFinalBid: $("quotationItemFinalBid"),
+  quotationItemMinimumBid: $("quotationItemMinimumBid"),
   quotationFinalBidMarginIndicator: $("quotationFinalBidMarginIndicator"),
   quotationItemQuantity: $("quotationItemQuantity"),
   quotationItemTotal: $("quotationItemTotal"),
@@ -284,7 +300,7 @@ function hasSupabaseConfig() {
 }
 
 async function loadSupabaseClientFactory() {
-  const module = await import("https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm");
+  const module = await import(`https://cdn.jsdelivr.net/npm/@supabase/supabase-js@${SUPABASE_CLIENT_VERSION}/+esm`);
   return module;
 }
 
@@ -1224,6 +1240,99 @@ class SupabaseStore {
 
 const store = createStore();
 
+const SESSION_ACTIVITY_EVENTS = ["pointerdown", "keydown", "input"];
+const SESSION_POLICY_CHECK_INTERVAL_MS = 60 * 1000;
+const SESSION_ACTIVITY_WRITE_INTERVAL_MS = 30 * 1000;
+const sessionPolicyStorageKey = `gll-session-policy-v1-${sanitizeStorageSuffix(GLL_CONFIG.storageSuffix || GLL_CONFIG.environment)}`;
+let sessionPolicyTimer = null;
+let lastSessionActivityWrite = 0;
+
+function sessionPolicyLimits() {
+  return {
+    idleMs: Math.max(1, Number(GLL_CONFIG.sessionIdleTimeoutMinutes) || 30) * 60 * 1000,
+    lifetimeMs: Math.max(1, Number(GLL_CONFIG.sessionMaxLifetimeHours) || 8) * 60 * 60 * 1000,
+  };
+}
+
+function readSessionPolicy() {
+  try {
+    const value = JSON.parse(window.localStorage.getItem(sessionPolicyStorageKey));
+    if (!value || !Number.isFinite(value.startedAt) || !Number.isFinite(value.lastActivityAt)) return null;
+    return value;
+  } catch {
+    return null;
+  }
+}
+
+function writeSessionPolicy(value) {
+  window.localStorage.setItem(sessionPolicyStorageKey, JSON.stringify(value));
+}
+
+function beginSessionPolicy(email, { forceNew = false } = {}) {
+  if (!store.requiresAuthenticationBeforeData) return;
+  const now = Date.now();
+  const current = readSessionPolicy();
+  if (forceNew || !current || normalizeEmail(current.email) !== normalizeEmail(email)) {
+    writeSessionPolicy({ email: normalizeEmail(email), startedAt: now, lastActivityAt: now });
+    lastSessionActivityWrite = now;
+  }
+}
+
+function sessionPolicyExpiration(now = Date.now()) {
+  const policy = readSessionPolicy();
+  if (!policy) return null;
+  const { idleMs, lifetimeMs } = sessionPolicyLimits();
+  if (now - policy.startedAt >= lifetimeMs) return "Sua sessão atingiu o limite de duração. Entre novamente.";
+  if (now - policy.lastActivityAt >= idleMs) return "Sua sessão expirou por inatividade. Entre novamente.";
+  return null;
+}
+
+function recordSessionActivity() {
+  if (!appState.authenticated) return;
+  const now = Date.now();
+  if (now - lastSessionActivityWrite < SESSION_ACTIVITY_WRITE_INTERVAL_MS) return;
+  const policy = readSessionPolicy();
+  if (!policy) return;
+  policy.lastActivityAt = now;
+  writeSessionPolicy(policy);
+  lastSessionActivityWrite = now;
+}
+
+async function enforceSessionPolicy() {
+  if (!appState.authenticated) return false;
+  const message = sessionPolicyExpiration();
+  if (!message) return true;
+  await expireSession(message);
+  return false;
+}
+
+function handleSessionVisibility() {
+  if (!document.hidden) enforceSessionPolicy().catch(() => resetAuthenticatedView());
+}
+
+function startSessionPolicyMonitoring() {
+  stopSessionPolicyMonitoring();
+  for (const eventName of SESSION_ACTIVITY_EVENTS) window.addEventListener(eventName, recordSessionActivity);
+  document.addEventListener("visibilitychange", handleSessionVisibility);
+  sessionPolicyTimer = setInterval(() => enforceSessionPolicy().catch(() => resetAuthenticatedView()), SESSION_POLICY_CHECK_INTERVAL_MS);
+}
+
+function stopSessionPolicyMonitoring() {
+  if (sessionPolicyTimer) clearInterval(sessionPolicyTimer);
+  sessionPolicyTimer = null;
+  for (const eventName of SESSION_ACTIVITY_EVENTS) window.removeEventListener(eventName, recordSessionActivity);
+  document.removeEventListener("visibilitychange", handleSessionVisibility);
+}
+
+async function expireSession(message) {
+  try {
+    if (store.requiresAuthenticationBeforeData) await store.client.auth.signOut({ scope: "local" });
+  } finally {
+    resetAuthenticatedView();
+    refs.loginError.textContent = message;
+  }
+}
+
 async function main() {
   applyEnvironmentConfig();
   populateOptions();
@@ -1260,6 +1369,10 @@ function applyEnvironmentConfig() {
   refs.environmentBadge.textContent = GLL_CONFIG.label;
   refs.environmentBadge.dataset.environment = GLL_CONFIG.environment;
   refs.storageStatus.textContent = GLL_CONFIG.storageLabel;
+  refs.sessionPolicyStatus.textContent = hasSupabaseConfig()
+    ? `${GLL_CONFIG.sessionIdleTimeoutMinutes} min inativa / ${GLL_CONFIG.sessionMaxLifetimeHours} h total`
+    : "Não aplicável ao modo demonstrativo";
+  refs.authClientVersion.textContent = hasSupabaseConfig() ? `Supabase JS ${SUPABASE_CLIENT_VERSION}` : "Autenticação local demonstrativa";
   refs.resetDataButton.classList.toggle("hidden", hasSupabaseConfig());
   refs.loginHint.classList.toggle("hidden", hasSupabaseConfig());
 }
@@ -1364,6 +1477,8 @@ function bindEvents() {
     }
   });
   refs.clearBidQuotationButton.addEventListener("click", clearBidQuotationSelection);
+  refs.openPublicSessionButton.addEventListener("click", openPublicSession);
+  refs.removePublicSessionLinkButton.addEventListener("click", removePublicSessionLink);
   refs.closeBidQuotationModalButton.addEventListener("click", closeBidQuotationModal);
   refs.bidQuotationModal.addEventListener("cancel", closeBidQuotationModal);
   refs.bidQuotationModal.addEventListener("click", (event) => {
@@ -1422,6 +1537,9 @@ function bindEvents() {
   bindAutoGrowTextareas(refs.quotationItemForm);
   refs.quotationItemForm.addEventListener("submit", withBlockingLoading(saveQuotationItem, "Salvando item do orçamento…"));
   refs.addQuotationItemSupplierButton.addEventListener("click", addQuotationItemSupplier);
+  refs.addQuotationTechnicalSpecificationButton.addEventListener("click", addQuotationTechnicalSpecification);
+  refs.quotationTechnicalSpecificationsList.addEventListener("input", updateQuotationTechnicalSpecificationDraft);
+  refs.quotationTechnicalSpecificationsList.addEventListener("click", handleQuotationTechnicalSpecificationAction);
   refs.quotationItemSupplierInput.addEventListener("keydown", (event) => {
     if (event.key === "Enter") {
       event.preventDefault();
@@ -1445,7 +1563,7 @@ function bindEvents() {
     updateQuotationItemTotals();
   });
   refs.quotationItemQuantity.addEventListener("input", updateQuotationItemTotals);
-  for (const input of [refs.quotationItemEstimatedValue, refs.quotationItemSupplierCost, refs.quotationItemFinalBid]) {
+  for (const input of [refs.quotationItemEstimatedValue, refs.quotationItemSupplierCost, refs.quotationItemFinalBid, refs.quotationItemMinimumBid]) {
     input.addEventListener("blur", () => {
       if (input.value.trim()) input.value = money(parseDecimal(input.value, "valor", false));
       if (input === refs.quotationItemSupplierCost) updateQuotationValueWithMargin();
@@ -1485,6 +1603,7 @@ async function handleLogin(event) {
       refs.loginError.textContent = "E-mail ou senha inválidos.";
       return;
     }
+    beginSessionPolicy(user.email, { forceNew: true });
     await enterAuthenticatedView(user);
     showToast("Login realizado.");
   } catch (error) {
@@ -1497,6 +1616,12 @@ async function restoreSession() {
   const { data, error } = await store.client.auth.getSession();
   assertSupabase(error);
   if (!data.session) return;
+  beginSessionPolicy(data.session.user.email);
+  const expirationMessage = sessionPolicyExpiration();
+  if (expirationMessage) {
+    await expireSession(expirationMessage);
+    return;
+  }
   const user = await store.getUser(data.session.user.email);
   if (epoch !== sessionEpoch) return;
   if (!user) {
@@ -1521,6 +1646,7 @@ async function enterAuthenticatedView(user) {
     clearQuotationForm();
     applyNavigationRoute({ replaceInvalid: true });
     startLiveUpdates();
+    startSessionPolicyMonitoring();
   } catch (error) {
     if (epoch === sessionEpoch) resetAuthenticatedView();
     throw error;
@@ -1528,15 +1654,21 @@ async function enterAuthenticatedView(user) {
 }
 
 async function logout() {
-  if (store.requiresAuthenticationBeforeData) {
-    const { error } = await store.client.auth.signOut({ scope: "local" });
-    assertSupabase(error);
+  refs.loginError.textContent = "";
+  try {
+    if (store.requiresAuthenticationBeforeData) {
+      const { error } = await store.client.auth.signOut({ scope: "local" });
+      assertSupabase(error);
+    }
+  } finally {
+    resetAuthenticatedView();
   }
-  resetAuthenticatedView();
 }
 
 function resetAuthenticatedView() {
   sessionEpoch += 1;
+  stopSessionPolicyMonitoring();
+  window.localStorage.removeItem(sessionPolicyStorageKey);
   stopLiveUpdates();
   appState.authenticated = false;
   appState.currentUserEmail = null;
@@ -2023,11 +2155,13 @@ function loadBid(bidId, options = {}) {
   refs.proposalDeadline.value = toDateTimeInputValue(bid.proposal_deadline);
   refs.deliveryPlace.value = bid.delivery_place || "";
   refs.editalLink.value = bid.edital_link || "";
+  refs.publicSessionLink.value = bid.public_session_link || "";
   refs.bidType.value = bid.bid_type || BID_TYPE_OPTIONS[0];
   refs.bidStatus.value = bid.status || STATUS_OPTIONS[0];
   renderBidQuotationSelection();
   refs.editalFile.value = "";
   renderBidAttachment(bid);
+  renderPublicSessionLink();
   refs.selectedBidLabel.textContent = bid.id;
   refs.bidFormError.textContent = "";
   clearItemForm();
@@ -2106,6 +2240,7 @@ function clearBidForm(options = {}) {
   refs.bidForm.reset();
   renderBidQuotationSelection();
   renderBidAttachment(null);
+  renderPublicSessionLink();
   refs.bidType.value = BID_TYPE_OPTIONS[0];
   refs.bidStatus.value = STATUS_OPTIONS[0];
   refs.selectedBidLabel.textContent = "Novo edital";
@@ -2153,6 +2288,29 @@ function renderBidAttachment(bid) {
     ? `${bid.edital_file_name} (${formatFileSize(bid.edital_file_size)})`
     : "";
   refs.downloadEditalButton.disabled = !hasAttachment;
+}
+
+function renderPublicSessionLink() {
+  const hasLink = Boolean(normalizeUrlValue(refs.publicSessionLink.value));
+  refs.publicSessionLinkInputGroup.classList.toggle("hidden", hasLink);
+  refs.publicSessionLinkPanel.classList.toggle("hidden", !hasLink);
+}
+
+function openPublicSession() {
+  const link = normalizeUrlValue(refs.publicSessionLink.value);
+  if (!link) {
+    refs.bidFormError.textContent = "Cadastre um link válido para a sessão pública.";
+    renderPublicSessionLink();
+    return;
+  }
+  window.open(link, "_blank", "noopener,noreferrer");
+}
+
+function removePublicSessionLink() {
+  refs.publicSessionLink.value = "";
+  renderPublicSessionLink();
+  refs.publicSessionLink.focus();
+  showToast("Link removido. Salve o edital para confirmar.");
 }
 
 async function downloadCurrentBidAttachment() {
@@ -2255,6 +2413,9 @@ function collectBidData() {
   if (!refs.bidId.value.trim()) throw new Error("Preencha a Identificação do Pregão.");
   if (!refs.buyerAgency.value.trim()) throw new Error("Preencha o Órgão Comprador.");
   if (!refs.sessionDatetime.value) throw new Error("Preencha a Data e Hora da Sessão.");
+  const publicSessionLink = refs.publicSessionLink.value.trim();
+  const normalizedPublicSessionLink = normalizeUrlValue(publicSessionLink);
+  if (publicSessionLink && !normalizedPublicSessionLink) throw new Error("Informe um Link da Sessão Pública válido.");
   return {
     id: refs.bidId.value.trim(),
     buyer_agency: refs.buyerAgency.value.trim(),
@@ -2262,6 +2423,7 @@ function collectBidData() {
     delivery_place: refs.deliveryPlace.value.trim(),
     bid_type: refs.bidType.value,
     edital_link: refs.editalLink.value.trim(),
+    public_session_link: normalizedPublicSessionLink,
     proposal_deadline: fromDateTimeInputValue(refs.proposalDeadline.value),
     status: refs.bidStatus.value,
     quotation_id: appState.selectedBidQuotationId || null,
@@ -2930,6 +3092,7 @@ function loadQuotation(quotationId, options = {}) {
   refs.quotationAgency.value = quotation.agency;
   refs.quotationCity.value = quotation.city;
   refs.quotationCep.value = formatCep(quotation.cep);
+  refs.quotationDeliveryDeadline.value = quotation.delivery_deadline;
   refs.selectedQuotationLabel.textContent = `Edital ${quotation.edital}`;
   refs.quotationFormError.textContent = "";
   refs.deleteQuotationButton.classList.remove("hidden");
@@ -2977,6 +3140,7 @@ async function saveQuotation(event) {
         agency: refs.quotationAgency.value.trim(),
         city: refs.quotationCity.value.trim(),
         cep: formatCep(cepDigits),
+        delivery_deadline: refs.quotationDeliveryDeadline.value.trim(),
       },
       appState.currentQuotationId
     );
@@ -3093,10 +3257,12 @@ function quotationItemFormSnapshot() {
     refs.quotationItemManufacturer.value,
     refs.quotationItemTechnicalText.value,
     appState.quotationSupplierLinksDraft,
+    appState.quotationTechnicalSpecificationsDraft,
     refs.quotationItemEstimatedValue.value,
     refs.quotationItemSupplierCost.value,
     refs.quotationItemProfitMargin.value,
     refs.quotationItemFinalBid.value,
+    refs.quotationItemMinimumBid.value,
     refs.quotationItemQuantity.value,
   ]);
 }
@@ -3119,11 +3285,14 @@ function loadQuotationItem(itemId) {
   refs.quotationItemManufacturer.value = item.manufacturer;
   refs.quotationItemTechnicalText.value = item.technical_text;
   appState.quotationSupplierLinksDraft = [...item.supplier_links];
+  appState.quotationTechnicalSpecificationsDraft = item.technical_specifications.map((specification) => ({ ...specification }));
   renderQuotationItemSuppliers();
+  renderQuotationTechnicalSpecifications();
   refs.quotationItemEstimatedValue.value = money(item.estimated_value);
   refs.quotationItemSupplierCost.value = item.supplier_cost ? money(item.supplier_cost) : "";
   refs.quotationItemProfitMargin.value = item.profit_margin === null ? "" : formatProfitMargin(item.profit_margin);
   refs.quotationItemFinalBid.value = money(item.final_bid);
+  refs.quotationItemMinimumBid.value = item.minimum_bid ? money(item.minimum_bid) : "";
   refs.quotationItemQuantity.value = formatNumber(item.quantity);
   refs.quotationItemFormError.textContent = "";
   refs.deleteQuotationItemButton.classList.remove("hidden");
@@ -3142,7 +3311,10 @@ function clearQuotationItemForm(options = {}) {
   appState.currentQuotationItemId = null;
   refs.quotationItemForm.reset();
   appState.quotationSupplierLinksDraft = [];
+  appState.quotationTechnicalSpecificationsDraft = [];
   renderQuotationItemSuppliers();
+  renderQuotationTechnicalSpecifications();
+  refs.quotationTechnicalSpecificationsSection.open = true;
   refs.quotationItemQuantity.value = "1";
   refs.quotationItemTotal.value = money(0);
   refs.quotationItemTotalProfit.value = money(0);
@@ -3188,6 +3360,7 @@ async function saveQuotationItem(event) {
       : 1;
     const supplierCost = parseDecimal(refs.quotationItemSupplierCost.value, "Valor de Custo", false);
     const finalBid = parseDecimal(refs.quotationItemFinalBid.value, "Lance Final", false);
+    const minimumBid = parseDecimal(refs.quotationItemMinimumBid.value, "Lance Mínimo", false);
     const profitMargin = refs.quotationItemProfitMargin.value.trim()
       ? parseProfitMargin(refs.quotationItemProfitMargin.value)
       : null;
@@ -3200,10 +3373,12 @@ async function saveQuotationItem(event) {
         manufacturer: refs.quotationItemManufacturer.value.trim(),
         technical_text: refs.quotationItemTechnicalText.value.trim(),
         supplier_links: [...appState.quotationSupplierLinksDraft],
+        technical_specifications: normalizeTechnicalSpecifications(appState.quotationTechnicalSpecificationsDraft),
         estimated_value: parseDecimal(refs.quotationItemEstimatedValue.value, "Valor Estimado", false),
         supplier_cost: supplierCost,
         profit_margin: profitMargin,
         final_bid: finalBid,
+        minimum_bid: minimumBid,
         quantity,
       },
       appState.currentQuotationItemId
@@ -3574,6 +3749,7 @@ function normalizeBidRecord(record) {
     session_datetime: record.session_datetime || "",
     delivery_place: record.delivery_place || "",
     edital_link: record.edital_link || "",
+    public_session_link: record.public_session_link || "",
     bid_type: record.bid_type || BID_TYPE_OPTIONS[0],
     proposal_deadline: record.proposal_deadline || "",
     status: normalizeBidStatus(record.status),
@@ -3724,6 +3900,7 @@ function normalizeQuotationRecord(record) {
     agency: record.agency || "",
     city: record.city || "",
     cep: formatCep(record.cep),
+    delivery_deadline: record.delivery_deadline || "",
     created_at: record.created_at || timestampNow(),
     updated_at: record.updated_at || timestampNow(),
   };
@@ -3747,7 +3924,9 @@ function normalizeQuotationItemRecord(record) {
     supplier_cost: supplierCost,
     profit_margin: profitMargin,
     supplier_links: normalizeSupplierLinks(record.supplier_links),
+    technical_specifications: normalizeTechnicalSpecifications(record.technical_specifications),
     final_bid: finalBid,
+    minimum_bid: Number(record.minimum_bid || 0),
     quantity,
     total: record.total === undefined || record.total === null ? finalBid * quantity : Number(record.total),
   };
@@ -3806,6 +3985,69 @@ function renderQuotationItemSuppliers() {
   });
 }
 
+function normalizeTechnicalSpecifications(value) {
+  if (!Array.isArray(value)) return [];
+  return value
+    .filter((specification) => specification && typeof specification === "object" && !Array.isArray(specification))
+    .map((specification) => ({
+      name: String(specification.name || "").trim(),
+      required: String(specification.required || "").trim(),
+      offered: String(specification.offered || "").trim(),
+    }))
+    .filter((specification) => specification.name || specification.required || specification.offered);
+}
+
+function addQuotationTechnicalSpecification() {
+  appState.quotationTechnicalSpecificationsDraft.push({ name: "", required: "", offered: "" });
+  refs.quotationTechnicalSpecificationsSection.open = true;
+  renderQuotationTechnicalSpecifications();
+  const input = refs.quotationTechnicalSpecificationsList.querySelector(`[data-specification-index="${appState.quotationTechnicalSpecificationsDraft.length - 1}"][data-specification-field="name"]`);
+  input?.focus();
+}
+
+function updateQuotationTechnicalSpecificationDraft(event) {
+  const input = event.target.closest("[data-specification-index][data-specification-field]");
+  if (!input) return;
+  const specification = appState.quotationTechnicalSpecificationsDraft[Number(input.dataset.specificationIndex)];
+  if (!specification) return;
+  specification[input.dataset.specificationField] = input.value;
+}
+
+function handleQuotationTechnicalSpecificationAction(event) {
+  const button = event.target.closest("[data-delete-specification]");
+  if (!button) return;
+  appState.quotationTechnicalSpecificationsDraft.splice(Number(button.dataset.deleteSpecification), 1);
+  renderQuotationTechnicalSpecifications();
+}
+
+function renderQuotationTechnicalSpecifications() {
+  if (!appState.quotationTechnicalSpecificationsDraft.length) {
+    refs.quotationTechnicalSpecificationsList.innerHTML = `<p class="quotation-specifications-empty">Nenhuma especificação cadastrada.</p>`;
+    return;
+  }
+  refs.quotationTechnicalSpecificationsList.innerHTML = appState.quotationTechnicalSpecificationsDraft
+    .map((specification, index) => `<div class="quotation-specification-card">
+      <div class="quotation-specification-name-row">
+        <label>
+          Nome da especificação
+          <input value="${escapeHtml(specification.name)}" data-specification-index="${index}" data-specification-field="name" placeholder="Ex.: Memória RAM" />
+        </label>
+        <button class="quotation-delete-specification" type="button" data-delete-specification="${index}" aria-label="Excluir especificação ${index + 1}" title="Excluir especificação">🗑</button>
+      </div>
+      <div class="quotation-specification-values">
+        <label>
+          Exigido no edital
+          <input value="${escapeHtml(specification.required)}" data-specification-index="${index}" data-specification-field="required" placeholder="Ex.: Mínimo 12 GB" />
+        </label>
+        <label>
+          Item ofertado
+          <input value="${escapeHtml(specification.offered)}" data-specification-index="${index}" data-specification-field="offered" placeholder="Ex.: 16 GB" />
+        </label>
+      </div>
+    </div>`)
+    .join("");
+}
+
 function renderSupplierEntry(value) {
   const url = supplierEntryUrl(value);
   return url
@@ -3824,6 +4066,7 @@ function quotationItemToBidItem(quotationItem, existingItem = {}) {
     technical_registration_text: quotationItem.technical_text,
     estimated_value: quotationItem.estimated_value,
     max_acceptable_value: quotationItem.final_bid,
+    minimum_bid: quotationItem.minimum_bid,
     brand_model: formatQuotationBrandModel(quotationItem),
     supplier_cost: quotationItem.supplier_cost,
     profit_margin: quotationItem.profit_margin,
@@ -3848,6 +4091,7 @@ function bidItemToQuotationItem(bidItem, existingQuotationItem = {}) {
     profit_margin: bidItem.profit_margin,
     supplier_links: bidItem.supplier_links,
     final_bid: bidItem.max_acceptable_value,
+    minimum_bid: bidItem.minimum_bid,
     quantity: bidItem.required_quantity,
   });
 }

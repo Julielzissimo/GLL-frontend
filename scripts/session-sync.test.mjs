@@ -31,6 +31,12 @@ function client(db = backend(), auth = { session: { user } }) {
     pushState: (_state, _title, url) => { history.entries.push(url); updateLocation(url); },
     replaceState: (_state, _title, url) => { history.entries.splice(-1, 1, url); updateLocation(url); },
   };
+  const storage = auth.storage ||= new Map();
+  const localStorage = {
+    getItem: (key) => storage.has(key) ? storage.get(key) : null,
+    setItem: (key, value) => storage.set(key, String(value)),
+    removeItem: (key) => storage.delete(key),
+  };
   const element = (id) => {
     if (!elements.has(id)) {
       const classes = new Set();
@@ -52,7 +58,7 @@ function client(db = backend(), auth = { session: { user } }) {
   };
   const context = vm.createContext({
     console, URL, URLSearchParams, Intl, Date,
-    window: { GLL_CONFIG: { supabaseUrl: "https://test.invalid", supabaseAnonKey: "test" }, location, history, ...events },
+    window: { GLL_CONFIG: { supabaseUrl: "https://test.invalid", supabaseAnonKey: "test", sessionIdleTimeoutMinutes: 30, sessionMaxLifetimeHours: 8 }, location, history, localStorage, ...events },
     document: { hidden: false, getElementById: element, querySelectorAll: () => [], createElement: () => element("syncNotice"), ...events },
     setTimeout: (fn) => { timers.set(++nextTimer, fn); return nextTimer; },
     clearTimeout: (id) => timers.delete(id),
@@ -60,7 +66,7 @@ function client(db = backend(), auth = { session: { user } }) {
     clearInterval: (id) => timers.delete(id),
   });
   vm.runInContext(application, context);
-  const api = vm.runInContext(`({ store, appState, restoreSession, logout, reloadData, refreshInBackground, startLiveUpdates, stopLiveUpdates, resetAuthenticatedView, scheduleLiveRefresh, calculateBidSummary, readNavigationRoute, writeNavigationRoute })`, context);
+  const api = vm.runInContext(`({ store, appState, restoreSession, logout, reloadData, refreshInBackground, startLiveUpdates, stopLiveUpdates, resetAuthenticatedView, scheduleLiveRefresh, calculateBidSummary, readNavigationRoute, writeNavigationRoute, normalizeQuotationRecord, normalizeQuotationItemRecord, quotationItemToBidItem, bidItemToQuotationItem, normalizeTechnicalSpecifications, sessionPolicyStorageKey, enforceSessionPolicy })`, context);
   vm.runInContext(`
     renderSuppliers = renderBids = renderDetails = renderQuotations = renderUsers = () => {};
     clearBidForm = clearQuotationForm = setPage = updateMainNavigationState = () => {};
@@ -108,6 +114,21 @@ test("navigation writes readable URLs without discarding unrelated parameters", 
   assert.equal(route.quotationId, null);
 });
 
+test("quotation normalization preserves the delivery deadline", () => {
+  const app = client();
+  const quotation = app.normalizeQuotationRecord({ edital: "PE 12/2026", delivery_deadline: "30 dias" });
+  assert.equal(quotation.delivery_deadline, "30 dias");
+});
+
+test("quotation item normalization and bid synchronization preserve the minimum bid", () => {
+  const app = client();
+  const quotationItem = app.normalizeQuotationItemRecord({ quotation_id: 1, item_number: 2, minimum_bid: "125.50" });
+  assert.equal(quotationItem.minimum_bid, 125.5);
+  const bidItem = app.quotationItemToBidItem(quotationItem);
+  assert.equal(bidItem.minimum_bid, 125.5);
+  assert.equal(app.bidItemToQuotationItem(bidItem).minimum_bid, 125.5);
+});
+
 test("navigation replaces the current URL when requested", () => {
   const app = client();
   app.appState.authenticated = true;
@@ -135,6 +156,35 @@ test("missing session stays at login without reading protected tables", async ()
   app.store.getAll = () => { throw new Error("must not read"); };
   await app.restoreSession();
   assert.equal(app.appState.authenticated, false);
+});
+
+test("persisted session expires after the inactivity limit before protected data is read", async () => {
+  const auth = { session: { user } };
+  const app = client(backend(), auth);
+  auth.storage.set(app.sessionPolicyStorageKey, JSON.stringify({
+    email: user.email,
+    startedAt: Date.now() - 60 * 60 * 1000,
+    lastActivityAt: Date.now() - 31 * 60 * 1000,
+  }));
+  app.store.getAll = () => { throw new Error("must not read"); };
+  await app.restoreSession();
+  assert.equal(app.appState.authenticated, false);
+  assert.equal(auth.session, null);
+  assert.match(app.element("loginError").textContent, /inatividade/);
+});
+
+test("persisted session expires after the absolute lifetime even with recent activity", async () => {
+  const auth = { session: { user } };
+  const app = client(backend(), auth);
+  auth.storage.set(app.sessionPolicyStorageKey, JSON.stringify({
+    email: user.email,
+    startedAt: Date.now() - 9 * 60 * 60 * 1000,
+    lastActivityAt: Date.now(),
+  }));
+  await app.restoreSession();
+  assert.equal(app.appState.authenticated, false);
+  assert.equal(auth.session, null);
+  assert.match(app.element("loginError").textContent, /limite de duração/);
 });
 
 test("logout ends session, clears cached data/listeners and prevents restoration", async () => {
@@ -166,6 +216,22 @@ test("two independent sessions receive bid, quotation, item and deletion changes
   db.tables.bids = [];
   await a.reloadData(); await b.flush();
   assert.equal(b.appState.bids.length, 0);
+});
+
+test("technical specifications are normalized and incomplete values are preserved", () => {
+  const app = client();
+  assert.deepEqual(
+    structuredClone(app.normalizeTechnicalSpecifications([
+      { name: "  Memória RAM  ", required: " Mínimo 12 GB ", offered: " 16 GB " },
+      { name: "Armazenamento", required: "", offered: "512 GB" },
+      { name: "", required: "", offered: "" },
+      null,
+    ])),
+    [
+      { name: "Memória RAM", required: "Mínimo 12 GB", offered: "16 GB" },
+      { name: "Armazenamento", required: "", offered: "512 GB" },
+    ]
+  );
 });
 
 test("remote edits and deletes preserve drafts and show a persistent warning", async () => {

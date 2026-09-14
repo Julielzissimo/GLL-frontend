@@ -13,6 +13,8 @@ const TARGETS = {
     storageSuffix: "homolog",
     supabaseUrl: "https://dwotbzrjcetizyygzoty.supabase.co",
     supabaseAnonKey: "sb_publishable_Xud-GtYCKZdIsXkAaa43rA_pXPqGTPn",
+    sessionIdleTimeoutMinutes: 30,
+    sessionMaxLifetimeHours: 8,
   },
   production: {
     outputDir: "prod",
@@ -23,6 +25,8 @@ const TARGETS = {
     storageSuffix: "production",
     supabaseUrl: "https://siqsjxohpcrujobkbshn.supabase.co",
     supabaseAnonKey: "sb_publishable_MiojjcG8vXoQxn3NBcRgUQ_ymOMWAkW",
+    sessionIdleTimeoutMinutes: 30,
+    sessionMaxLifetimeHours: 8,
   },
   prod: null,
 };
@@ -55,6 +59,8 @@ const runtimeConfig = {
   appName: "GLL Web",
   supabaseUrl: process.env.GLL_SUPABASE_URL || target.supabaseUrl || "",
   supabaseAnonKey: process.env.GLL_SUPABASE_ANON_KEY || process.env.GLL_SUPABASE_PUBLISHABLE_KEY || target.supabaseAnonKey || "",
+  sessionIdleTimeoutMinutes: Number(process.env.GLL_SESSION_IDLE_TIMEOUT_MINUTES || target.sessionIdleTimeoutMinutes),
+  sessionMaxLifetimeHours: Number(process.env.GLL_SESSION_MAX_LIFETIME_HOURS || target.sessionMaxLifetimeHours),
 };
 
 await writeFile(

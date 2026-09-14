@@ -3,6 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net; connect-src 'self' https://*.supabase.co wss://*.supabase.co; img-src 'self' data: blob:; style-src 'self'; font-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'; upgrade-insecure-requests" />
     <title>GLL Web</title>
     <link rel="icon" type="image/svg+xml" href="./assets/favicon.svg" />
     <link rel="stylesheet" href="./styles.css" />
@@ -176,6 +177,22 @@
                 Link do Edital
                 <input id="editalLink" type="url" />
               </label>
+              <div class="public-session-field">
+                <label id="publicSessionLinkInputGroup" for="publicSessionLink">
+                  Link da Sessão Pública
+                  <input id="publicSessionLink" type="url" inputmode="url" autocomplete="url" placeholder="https://..." />
+                </label>
+                <div id="publicSessionLinkPanel" class="public-session-panel hidden">
+                  <span class="public-session-copy">
+                    <svg class="button-icon" aria-hidden="true" viewBox="0 0 24 24"><path d="M10 14a5 5 0 0 0 7.1.1l2-2a5 5 0 0 0-7.1-7.1l-1.1 1.1"/><path d="M14 10a5 5 0 0 0-7.1-.1l-2 2A5 5 0 0 0 12 19l1.1-1.1"/></svg>
+                    <span><strong>Sessão pública cadastrada</strong><small>Abra a página da disputa em uma nova aba.</small></span>
+                  </span>
+                  <span class="public-session-actions">
+                    <button id="openPublicSessionButton" class="primary-action compact-action" type="button">Acessar sessão</button>
+                    <button id="removePublicSessionLinkButton" class="quiet-action compact-action" type="button">Remover</button>
+                  </span>
+                </div>
+              </div>
               <label>
                 Tipo
                 <select id="bidType"></select>
@@ -546,6 +563,10 @@
               CEP
               <input id="quotationCep" inputmode="numeric" maxlength="9" placeholder="00000-000" />
             </label>
+            <label>
+              Prazo de Entrega
+              <input id="quotationDeliveryDeadline" type="text" placeholder="Ex.: 30 dias" />
+            </label>
           </div>
           <p id="quotationFormError" class="form-error" role="alert"></p>
           <div class="button-row end">
@@ -635,6 +656,17 @@
                   </div>
                 </div>
 
+                <details id="quotationTechnicalSpecificationsSection" class="quotation-technical-specifications" open>
+                  <summary>
+                    <span>Especificações técnicas</span>
+                    <span class="quotation-specifications-chevron" aria-hidden="true"></span>
+                  </summary>
+                  <div class="quotation-specifications-content">
+                    <div id="quotationTechnicalSpecificationsList" class="quotation-specifications-list" aria-live="polite"></div>
+                    <button id="addQuotationTechnicalSpecificationButton" class="quotation-add-specification" type="button">＋ Adicionar especificação</button>
+                  </div>
+                </details>
+
                 <div class="quotation-values-section">
                   <h3>Valores do item</h3>
                   <div class="form-grid quotation-values-grid">
@@ -650,6 +682,10 @@
                       Lance Final
                       <input id="quotationItemFinalBid" inputmode="decimal" placeholder="R$ 0,00" aria-label="Lance Final" />
                       <small id="quotationFinalBidMarginIndicator" class="quotation-final-margin-indicator hidden" aria-live="polite">Margem: -%</small>
+                    </label>
+                    <label>
+                      Lance Mínimo
+                      <input id="quotationItemMinimumBid" inputmode="decimal" placeholder="R$ 0,00" aria-label="Lance Mínimo" />
                     </label>
                     <label>
                       Quantidade
@@ -805,6 +841,8 @@
           <section class="section-band">
             <h2>Ambiente</h2>
             <div class="setting-row"><div><strong>Modo de persistência</strong><small>Os dados utilizam a configuração ativa deste ambiente.</small></div><span class="status-pill">IndexedDB / Supabase</span></div>
+            <div class="setting-row"><div><strong>Política de sessão</strong><small>A sessão termina ao atingir qualquer um dos limites.</small></div><strong id="sessionPolicyStatus">30 min inativa / 8 h total</strong></div>
+            <div class="setting-row"><div><strong>Cliente de autenticação</strong><small>Versão fixada para atualizações reproduzíveis.</small></div><strong id="authClientVersion">Supabase JS</strong></div>
             <div class="setting-row"><div><strong>Interface</strong><small>Identidade visual do protótipo aprovado.</small></div><strong>GLL 2.0</strong></div>
           </section>
           <section class="section-band danger-zone">
