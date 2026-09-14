@@ -526,12 +526,6 @@ class IndexedDbStore {
         bids.put(wasBilled
           ? { ...existing, status: data.status, updated_at: now }
           : { ...existing, ...data, created_at: existing?.created_at || now, updated_at: now });
-        if (originalId && originalId !== data.id) {
-          bids.delete(originalId);
-          updateChildrenBidId(items, originalId, data.id);
-          updateChildrenBidId(documents, originalId, data.id);
-          updateChildrenBidId(failures, originalId, data.id);
-        }
       };
     });
     if (!wasBilled) await this.syncBidWithQuotation(data.id, data.quotation_id);
@@ -1957,7 +1951,7 @@ function setPage(page, options = {}) {
 
 function updateBidWorkspaceHeader() {
   const bid = currentBid();
-  refs.currentBidTitle.textContent = bid?.id || "Novo edital";
+  refs.currentBidTitle.textContent = bidDisplayNumber(bid) || "Novo edital";
   refs.currentBidAgency.textContent = bid?.buyer_agency || "Preencha os dados para cadastrar um novo edital.";
 }
 
@@ -2048,14 +2042,14 @@ function renderBids() {
       const active = bid.id === appState.currentBidId ? " active" : "";
       return `
         <tr class="selectable bid-row${active}" data-bid-id="${escapeHtml(bid.id)}" tabindex="0">
-          <td><strong class="table-link">${escapeHtml(bid.id)}</strong></td>
+          <td><strong class="table-link">${escapeHtml(bidDisplayNumber(bid))}</strong></td>
           <td>${escapeHtml(bid.buyer_agency || "")}</td>
           <td>${formatDateTime(bid.session_datetime)}</td>
           <td>${escapeHtml(bid.bid_type || "")}</td>
           <td><span class="status-pill ${statusBadgeClass(bid.status)}">${escapeHtml(statusDisplay(bid.status))}</span></td>
           <td class="numeric">${summary.itemCount}</td>
           <td class="numeric"><strong>${money(summary.totalFinal)}</strong></td>
-          <td><button class="icon-button row-action" type="button" aria-label="Abrir ${escapeHtml(bid.id)}">→</button></td>
+          <td><button class="icon-button row-action" type="button" aria-label="Abrir ${escapeHtml(bidDisplayNumber(bid))}">→</button></td>
         </tr>
       `;
     })
@@ -2149,7 +2143,7 @@ function loadBid(bidId, options = {}) {
   appState.currentBidId = bid.id;
   appState.originalBidId = bid.id;
   appState.selectedBidQuotationId = bid.quotation_id;
-  refs.bidId.value = bid.id || "";
+  refs.bidId.value = bidDisplayNumber(bid);
   refs.buyerAgency.value = bid.buyer_agency || "";
   refs.sessionDatetime.value = toDateTimeInputValue(bid.session_datetime);
   refs.proposalDeadline.value = toDateTimeInputValue(bid.proposal_deadline);
@@ -2162,7 +2156,7 @@ function loadBid(bidId, options = {}) {
   refs.editalFile.value = "";
   renderBidAttachment(bid);
   renderPublicSessionLink();
-  refs.selectedBidLabel.textContent = bid.id;
+  refs.selectedBidLabel.textContent = bidDisplayNumber(bid);
   refs.bidFormError.textContent = "";
   clearItemForm();
   clearDocumentForm();
@@ -2206,7 +2200,7 @@ function renderHomeSummary() {
         const date = new Date(bid.session_datetime);
         return `<button class="timeline-item" type="button" data-upcoming-bid="${escapeHtml(bid.id)}">
           <span class="date-box"><strong>${String(date.getDate()).padStart(2, "0")}</strong><small>${date.toLocaleDateString("pt-BR", { month: "short" }).replace(".", "").toUpperCase()}</small></span>
-          <span class="timeline-copy"><strong>${escapeHtml(bid.id)}</strong><span>${escapeHtml(bid.buyer_agency || "")}</span><small>${date.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })} • ${escapeHtml(bid.bid_type || "")}</small></span>
+          <span class="timeline-copy"><strong>${escapeHtml(bidDisplayNumber(bid))}</strong><span>${escapeHtml(bid.buyer_agency || "")}</span><small>${date.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })} • ${escapeHtml(bid.bid_type || "")}</small></span>
           <span class="status-pill ${statusBadgeClass(bid.status)}">${escapeHtml(statusDisplay(bid.status))}</span>
         </button>`;
       }).join("")
@@ -2221,7 +2215,7 @@ function renderHomeSummary() {
   refs.pendingDocumentsList.innerHTML = pending.length
     ? pending.map((document) => {
         const bid = appState.bids.find((row) => row.id === document.bid_id);
-        return `<button class="pending-item" type="button" data-pending-bid="${escapeHtml(document.bid_id)}"><span class="pending-icon">!</span><span><strong>${escapeHtml(document.document_type || "Documento")}</strong><small>${escapeHtml(bid?.id || document.bid_id || "")}</small></span></button>`;
+        return `<button class="pending-item" type="button" data-pending-bid="${escapeHtml(document.bid_id)}"><span class="pending-icon">!</span><span><strong>${escapeHtml(document.document_type || "Documento")}</strong><small>${escapeHtml(bidDisplayNumber(bid) || document.bid_id || "")}</small></span></button>`;
       }).join("")
     : `<div class="empty-state compact-empty">Nenhuma pendência documental.</div>`;
   refs.pendingDocumentsList.querySelectorAll("[data-pending-bid]").forEach((button) => {
@@ -2260,8 +2254,6 @@ async function saveBid(event) {
     const data = collectBidData();
     const file = refs.editalFile.files[0];
     validateEditalFile(file);
-    const duplicate = appState.bids.find((bid) => bid.id === data.id && bid.id !== appState.originalBidId);
-    if (duplicate) throw new Error("Já existe um edital com esta identificação.");
     const previousBid = appState.bids.find((bid) => bid.id === appState.originalBidId);
     await store.saveBid(data, appState.originalBidId);
     if (file) await store.saveBidAttachment(data.id, file, previousBid?.edital_file_path);
@@ -2356,7 +2348,7 @@ function downloadCurrentBidItemsCsv() {
       formatSupplierLinksForCsv(item.supplier_links),
     ];
   });
-  downloadItemsCsv(rows, `itens-edital-${sanitizeStorageFileName(bid.id)}.csv`);
+  downloadItemsCsv(rows, `itens-edital-${sanitizeStorageFileName(bidDisplayNumber(bid))}.csv`);
 }
 
 function downloadCurrentQuotationItemsCsv() {
@@ -2410,14 +2402,15 @@ function escapeCsvCell(value) {
 }
 
 function collectBidData() {
-  if (!refs.bidId.value.trim()) throw new Error("Preencha a Identificação do Pregão.");
+  if (!refs.bidId.value.trim()) throw new Error("Preencha o N° do Edital.");
   if (!refs.buyerAgency.value.trim()) throw new Error("Preencha o Órgão Comprador.");
   if (!refs.sessionDatetime.value) throw new Error("Preencha a Data e Hora da Sessão.");
   const publicSessionLink = refs.publicSessionLink.value.trim();
   const normalizedPublicSessionLink = normalizeUrlValue(publicSessionLink);
   if (publicSessionLink && !normalizedPublicSessionLink) throw new Error("Informe um Link da Sessão Pública válido.");
   return {
-    id: refs.bidId.value.trim(),
+    id: appState.originalBidId || crypto.randomUUID(),
+    edital_number: refs.bidId.value.trim(),
     buyer_agency: refs.buyerAgency.value.trim(),
     session_datetime: fromDateTimeInputValue(refs.sessionDatetime.value),
     delivery_place: refs.deliveryPlace.value.trim(),
@@ -2438,7 +2431,7 @@ function requestDeleteCurrentBid() {
   if (guardCurrentBidReadOnly()) return;
   const modal = $("deleteBidModal");
   modal.dataset.bidId = appState.currentBidId;
-  $("deleteBidModalDescription").textContent = `Deseja excluir o edital ${appState.currentBidId} e todos os seus itens? Esta ação não pode ser desfeita.`;
+  $("deleteBidModalDescription").textContent = `Deseja excluir o edital ${bidDisplayNumber(currentBid())} e todos os seus itens? Esta ação não pode ser desfeita.`;
   modal.showModal();
 }
 
@@ -3745,6 +3738,7 @@ function normalizeBidStatus(status) {
 function normalizeBidRecord(record) {
   return {
     id: String(record.id || "").trim(),
+    edital_number: String(record.edital_number || record.id || "").trim(),
     buyer_agency: record.buyer_agency || "",
     session_datetime: record.session_datetime || "",
     delivery_place: record.delivery_place || "",
@@ -3762,6 +3756,10 @@ function normalizeBidRecord(record) {
     created_at: record.created_at || timestampNow(),
     updated_at: record.updated_at || timestampNow(),
   };
+}
+
+function bidDisplayNumber(bid) {
+  return String(bid?.edital_number || bid?.id || "").trim();
 }
 
 function normalizeItemRecord(record) {
