@@ -268,6 +268,7 @@ const refs = {
   quotationItemProfitMargin: $("quotationItemProfitMargin"),
   quotationItemValueWithMargin: $("quotationItemValueWithMargin"),
   quotationItemFinalBid: $("quotationItemFinalBid"),
+  quotationItemMinimumBid: $("quotationItemMinimumBid"),
   quotationFinalBidMarginIndicator: $("quotationFinalBidMarginIndicator"),
   quotationItemQuantity: $("quotationItemQuantity"),
   quotationItemTotal: $("quotationItemTotal"),
@@ -1562,7 +1563,7 @@ function bindEvents() {
     updateQuotationItemTotals();
   });
   refs.quotationItemQuantity.addEventListener("input", updateQuotationItemTotals);
-  for (const input of [refs.quotationItemEstimatedValue, refs.quotationItemSupplierCost, refs.quotationItemFinalBid]) {
+  for (const input of [refs.quotationItemEstimatedValue, refs.quotationItemSupplierCost, refs.quotationItemFinalBid, refs.quotationItemMinimumBid]) {
     input.addEventListener("blur", () => {
       if (input.value.trim()) input.value = money(parseDecimal(input.value, "valor", false));
       if (input === refs.quotationItemSupplierCost) updateQuotationValueWithMargin();
@@ -3261,6 +3262,7 @@ function quotationItemFormSnapshot() {
     refs.quotationItemSupplierCost.value,
     refs.quotationItemProfitMargin.value,
     refs.quotationItemFinalBid.value,
+    refs.quotationItemMinimumBid.value,
     refs.quotationItemQuantity.value,
   ]);
 }
@@ -3290,6 +3292,7 @@ function loadQuotationItem(itemId) {
   refs.quotationItemSupplierCost.value = item.supplier_cost ? money(item.supplier_cost) : "";
   refs.quotationItemProfitMargin.value = item.profit_margin === null ? "" : formatProfitMargin(item.profit_margin);
   refs.quotationItemFinalBid.value = money(item.final_bid);
+  refs.quotationItemMinimumBid.value = item.minimum_bid ? money(item.minimum_bid) : "";
   refs.quotationItemQuantity.value = formatNumber(item.quantity);
   refs.quotationItemFormError.textContent = "";
   refs.deleteQuotationItemButton.classList.remove("hidden");
@@ -3357,6 +3360,7 @@ async function saveQuotationItem(event) {
       : 1;
     const supplierCost = parseDecimal(refs.quotationItemSupplierCost.value, "Valor de Custo", false);
     const finalBid = parseDecimal(refs.quotationItemFinalBid.value, "Lance Final", false);
+    const minimumBid = parseDecimal(refs.quotationItemMinimumBid.value, "Lance Mínimo", false);
     const profitMargin = refs.quotationItemProfitMargin.value.trim()
       ? parseProfitMargin(refs.quotationItemProfitMargin.value)
       : null;
@@ -3374,6 +3378,7 @@ async function saveQuotationItem(event) {
         supplier_cost: supplierCost,
         profit_margin: profitMargin,
         final_bid: finalBid,
+        minimum_bid: minimumBid,
         quantity,
       },
       appState.currentQuotationItemId
@@ -3921,6 +3926,7 @@ function normalizeQuotationItemRecord(record) {
     supplier_links: normalizeSupplierLinks(record.supplier_links),
     technical_specifications: normalizeTechnicalSpecifications(record.technical_specifications),
     final_bid: finalBid,
+    minimum_bid: Number(record.minimum_bid || 0),
     quantity,
     total: record.total === undefined || record.total === null ? finalBid * quantity : Number(record.total),
   };
@@ -4060,6 +4066,7 @@ function quotationItemToBidItem(quotationItem, existingItem = {}) {
     technical_registration_text: quotationItem.technical_text,
     estimated_value: quotationItem.estimated_value,
     max_acceptable_value: quotationItem.final_bid,
+    minimum_bid: quotationItem.minimum_bid,
     brand_model: formatQuotationBrandModel(quotationItem),
     supplier_cost: quotationItem.supplier_cost,
     profit_margin: quotationItem.profit_margin,
@@ -4084,6 +4091,7 @@ function bidItemToQuotationItem(bidItem, existingQuotationItem = {}) {
     profit_margin: bidItem.profit_margin,
     supplier_links: bidItem.supplier_links,
     final_bid: bidItem.max_acceptable_value,
+    minimum_bid: bidItem.minimum_bid,
     quantity: bidItem.required_quantity,
   });
 }

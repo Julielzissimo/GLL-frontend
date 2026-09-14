@@ -66,7 +66,7 @@ function client(db = backend(), auth = { session: { user } }) {
     clearInterval: (id) => timers.delete(id),
   });
   vm.runInContext(application, context);
-  const api = vm.runInContext(`({ store, appState, restoreSession, logout, reloadData, refreshInBackground, startLiveUpdates, stopLiveUpdates, resetAuthenticatedView, scheduleLiveRefresh, calculateBidSummary, readNavigationRoute, writeNavigationRoute, normalizeQuotationRecord, normalizeTechnicalSpecifications, sessionPolicyStorageKey, enforceSessionPolicy })`, context);
+  const api = vm.runInContext(`({ store, appState, restoreSession, logout, reloadData, refreshInBackground, startLiveUpdates, stopLiveUpdates, resetAuthenticatedView, scheduleLiveRefresh, calculateBidSummary, readNavigationRoute, writeNavigationRoute, normalizeQuotationRecord, normalizeQuotationItemRecord, quotationItemToBidItem, bidItemToQuotationItem, normalizeTechnicalSpecifications, sessionPolicyStorageKey, enforceSessionPolicy })`, context);
   vm.runInContext(`
     renderSuppliers = renderBids = renderDetails = renderQuotations = renderUsers = () => {};
     clearBidForm = clearQuotationForm = setPage = updateMainNavigationState = () => {};
@@ -118,6 +118,15 @@ test("quotation normalization preserves the delivery deadline", () => {
   const app = client();
   const quotation = app.normalizeQuotationRecord({ edital: "PE 12/2026", delivery_deadline: "30 dias" });
   assert.equal(quotation.delivery_deadline, "30 dias");
+});
+
+test("quotation item normalization and bid synchronization preserve the minimum bid", () => {
+  const app = client();
+  const quotationItem = app.normalizeQuotationItemRecord({ quotation_id: 1, item_number: 2, minimum_bid: "125.50" });
+  assert.equal(quotationItem.minimum_bid, 125.5);
+  const bidItem = app.quotationItemToBidItem(quotationItem);
+  assert.equal(bidItem.minimum_bid, 125.5);
+  assert.equal(app.bidItemToQuotationItem(bidItem).minimum_bid, 125.5);
 });
 
 test("navigation replaces the current URL when requested", () => {
