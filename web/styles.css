@@ -895,12 +895,31 @@ input[readonly] {
   padding: 8px 10px;
 }
 
-.attachment-panel span {
+.attachment-list {
+  display: grid;
+  gap: 8px;
+}
+
+.attachment-panel > span:first-child {
+  display: grid;
   min-width: 0;
   overflow-wrap: anywhere;
   color: var(--text);
   font-size: 13px;
   font-weight: 600;
+}
+
+.attachment-panel small {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.attachment-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 0 0 auto;
 }
 
 .item-form-grid {

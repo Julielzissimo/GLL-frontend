@@ -16,6 +16,47 @@ test("número do edital é separado do identificador interno e aceita repetiçã
   assert.equal(app.bidDisplayNumber(second), "10/2026");
 });
 
+test("arquivo legado é preservado como primeiro anexo do edital", () => {
+  const app = client();
+  const bid = app.normalizeBidRecord({
+    id: "internal-1",
+    edital_file_path: "legacy/edital.pdf",
+    edital_file_name: "edital.pdf",
+    edital_file_type: "application/pdf",
+    edital_file_size: 2048,
+  });
+  assert.deepEqual(
+    JSON.parse(JSON.stringify(bid.edital_files)),
+    [{ path: "legacy/edital.pdf", name: "edital.pdf", type: "application/pdf", size: 2048 }],
+  );
+});
+
+test("lista moderna vazia não restaura um anexo legado removido", () => {
+  const app = client();
+  assert.deepEqual(
+    JSON.parse(JSON.stringify(app.normalizeBidAttachments({ edital_files: [], edital_file_path: "legacy/removido.pdf" }))),
+    [],
+  );
+});
+
+test("edital aceita quatro arquivos e rejeita o quinto", () => {
+  const app = client();
+  const files = Array.from({ length: 4 }, (_, index) => ({ name: `arquivo-${index + 1}.pdf`, size: 1024 }));
+  assert.doesNotThrow(() => app.validateEditalFiles(files, 0));
+  assert.throws(
+    () => app.validateEditalFiles([{ name: "quinto.pdf", size: 1024 }], 4),
+    /no máximo 4 arquivos/,
+  );
+});
+
+test("cada arquivo do edital mantém o limite individual de 20 MB", () => {
+  const app = client();
+  assert.throws(
+    () => app.validateEditalFiles([{ name: "grande.pdf", size: 20 * 1024 * 1024 + 1 }], 0),
+    /grande\.pdf.*20 MB/,
+  );
+});
+
 function backend() {
   return {
     tables: { bids: [{ id: "TEST-1", buyer_agency: "Original" }], items: [], documents: [], failure_history: [], quotations: [{ id: 1, edital: "Original" }], quotation_items: [], suppliers: [] },
@@ -75,7 +116,7 @@ function client(db = backend(), auth = { session: { user } }) {
     clearInterval: (id) => timers.delete(id),
   });
   vm.runInContext(application, context);
-  const api = vm.runInContext(`({ store, appState, restoreSession, logout, reloadData, refreshInBackground, startLiveUpdates, stopLiveUpdates, resetAuthenticatedView, scheduleLiveRefresh, calculateBidSummary, readNavigationRoute, writeNavigationRoute, normalizeBidRecord, bidDisplayNumber, normalizeQuotationRecord, normalizeQuotationItemRecord, quotationItemToBidItem, bidItemToQuotationItem, normalizeTechnicalSpecifications, sessionPolicyStorageKey, enforceSessionPolicy })`, context);
+  const api = vm.runInContext(`({ store, appState, restoreSession, logout, reloadData, refreshInBackground, startLiveUpdates, stopLiveUpdates, resetAuthenticatedView, scheduleLiveRefresh, calculateBidSummary, readNavigationRoute, writeNavigationRoute, normalizeBidRecord, normalizeBidAttachments, validateEditalFiles, bidDisplayNumber, normalizeQuotationRecord, normalizeQuotationItemRecord, quotationItemToBidItem, bidItemToQuotationItem, normalizeTechnicalSpecifications, sessionPolicyStorageKey, enforceSessionPolicy })`, context);
   vm.runInContext(`
     renderSuppliers = renderBids = renderDetails = renderQuotations = renderUsers = () => {};
     clearBidForm = clearQuotationForm = setPage = updateMainNavigationState = () => {};
