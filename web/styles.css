@@ -2381,8 +2381,8 @@ tr.item-won td {
 
 .quotation-specifications-list {
   display: grid;
-  gap: 12px;
-  padding-top: 16px;
+  gap: 8px;
+  padding-top: 12px;
 }
 
 .quotation-specifications-empty {
@@ -2393,30 +2393,51 @@ tr.item-won td {
 }
 
 .quotation-specification-card {
-  padding: 16px;
+  display: grid;
+  grid-template-columns: minmax(140px, 0.8fr) repeat(2, minmax(180px, 1fr)) 34px;
+  grid-template-areas: "name required offered delete";
+  gap: 8px;
+  align-items: end;
+  padding: 8px;
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: 8px;
   background: var(--panel, #ffffff);
 }
 
-.quotation-specification-name-row {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 42px;
-  gap: 12px;
-  align-items: end;
+.quotation-specification-name-row,
+.quotation-specification-values {
+  display: contents;
 }
 
-.quotation-specification-values {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 14px;
-  margin-top: 14px;
+.quotation-specification-name-row label {
+  grid-area: name;
+}
+
+.quotation-specification-values label:first-child {
+  grid-area: required;
+}
+
+.quotation-specification-values label:last-child {
+  grid-area: offered;
+}
+
+.quotation-specification-card label {
+  gap: 3px;
+  font-size: 11px;
+}
+
+.quotation-specification-card input {
+  min-height: 34px;
+  padding: 6px 8px;
+  font-size: 13px;
 }
 
 .quotation-delete-specification {
+  grid-area: delete;
   display: inline-grid;
-  width: 42px;
-  height: 42px;
+  width: 34px;
+  height: 34px;
+  min-height: 34px;
   place-items: center;
   padding: 0;
   border: 1px solid #efc4c4;
@@ -2892,8 +2913,12 @@ tr.item-won td {
     padding: 18px;
   }
 
-  .quotation-specification-values {
-    grid-template-columns: 1fr;
+  .quotation-specification-card {
+    grid-template-columns: minmax(0, 1fr) 34px;
+    grid-template-areas:
+      "name delete"
+      "required required"
+      "offered offered";
   }
 
   .app-sidebar {
