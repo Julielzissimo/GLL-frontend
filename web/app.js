@@ -2349,8 +2349,11 @@ function validateEditalFiles(files, existingCount = 0) {
 function renderBidAttachment(bid) {
   const attachments = normalizeBidAttachments(bid);
   const remaining = Math.max(0, MAX_EDITAL_FILES - attachments.length);
+  const remainingMessage = remaining === 1
+    ? "Você ainda pode anexar mais 1 arquivo."
+    : `Você ainda pode anexar mais ${remaining} arquivos.`;
   refs.editalAttachmentHelp.textContent = attachments.length
-    ? `${attachments.length} de ${MAX_EDITAL_FILES} arquivos anexados. ${remaining ? `Você ainda pode enviar ${remaining}.` : "Limite atingido."}`
+    ? `${attachments.length} de ${MAX_EDITAL_FILES} arquivos anexados. ${remaining ? remainingMessage : "Limite atingido."}`
     : `Envie até ${MAX_EDITAL_FILES} arquivos, com no máximo 20 MB cada.`;
   refs.editalFile.disabled = attachments.length >= MAX_EDITAL_FILES;
   refs.editalAttachmentList.innerHTML = attachments.length
