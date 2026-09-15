@@ -143,7 +143,6 @@ const refs = {
   sessionDatetime: $("sessionDatetime"),
   proposalDeadline: $("proposalDeadline"),
   deliveryPlace: $("deliveryPlace"),
-  editalLink: $("editalLink"),
   publicSessionLink: $("publicSessionLink"),
   publicSessionLinkInputGroup: $("publicSessionLinkInputGroup"),
   publicSessionLinkPanel: $("publicSessionLinkPanel"),
@@ -2217,7 +2216,6 @@ function loadBid(bidId, options = {}) {
   refs.sessionDatetime.value = toDateTimeInputValue(bid.session_datetime);
   refs.proposalDeadline.value = toDateTimeInputValue(bid.proposal_deadline);
   refs.deliveryPlace.value = bid.delivery_place || "";
-  refs.editalLink.value = bid.edital_link || "";
   refs.publicSessionLink.value = bid.public_session_link || "";
   refs.bidType.value = bid.bid_type || BID_TYPE_OPTIONS[0];
   refs.bidStatus.value = bid.status || STATUS_OPTIONS[0];
@@ -2514,7 +2512,6 @@ function collectBidData() {
     session_datetime: fromDateTimeInputValue(refs.sessionDatetime.value),
     delivery_place: refs.deliveryPlace.value.trim(),
     bid_type: refs.bidType.value,
-    edital_link: refs.editalLink.value.trim(),
     public_session_link: normalizedPublicSessionLink,
     proposal_deadline: fromDateTimeInputValue(refs.proposalDeadline.value),
     status: refs.bidStatus.value,
