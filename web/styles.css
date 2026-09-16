@@ -2800,7 +2800,17 @@ tr.item-won td {
 .quotation-items-table {
   width: 100%;
   min-width: 1332px;
+  border-collapse: separate;
+  border-spacing: 0;
   table-layout: fixed;
+}
+
+.quotation-items-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: #f7f8fa;
+  box-shadow: 0 1px 0 var(--border);
 }
 
 .quotation-items-table th:nth-child(1) { width: 5%; }
