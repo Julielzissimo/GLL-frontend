@@ -3288,7 +3288,7 @@ function renderQuotationItems() {
       return `
         <tr class="selectable${selected}" tabindex="0" data-quotation-item-id="${item.id}">
           <td><strong>${escapeHtml(formatNumber(item.item_number))}</strong></td>
-          <td class="numeric">${money(item.final_bid)}</td>
+          <td class="numeric">${money(item.minimum_bid)}</td>
           <td><strong class="table-item-description"${descriptionTooltip}>${escapeHtml(description || "—")}</strong>${item.model ? `<small class="table-secondary">Modelo: ${escapeHtml(item.model)}</small>` : ""}</td>
           <td>${escapeHtml(item.manufacturer || "—")}</td>
           <td class="numeric">${money(item.estimated_value)}</td>
