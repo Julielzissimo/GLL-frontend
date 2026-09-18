@@ -2442,6 +2442,7 @@ function downloadCurrentBidItemsCsv() {
       model,
       manufacturer,
       item.technical_registration_text || item.description,
+      money(item.max_acceptable_value),
       formatSupplierLinksForCsv(item.supplier_links),
     ];
   });
@@ -2460,6 +2461,7 @@ function downloadCurrentQuotationItemsCsv() {
     item.model,
     item.manufacturer,
     item.technical_text,
+    money(item.final_bid),
     formatSupplierLinksForCsv(item.supplier_links),
   ]);
   const identifier = sanitizeStorageFileName(quotation.edital || quotation.id);
@@ -2478,7 +2480,7 @@ function formatSupplierLinksForCsv(value) {
 }
 
 function downloadItemsCsv(rows, fileName) {
-  const headers = ["ITEM", "DESCRIÇÃO", "MODELO", "MARCA/FABRICANTE", "TEXTO TÉCNICO", "LINK'S DO FORNECEDOR"];
+  const headers = ["ITEM", "DESCRIÇÃO", "MODELO", "MARCA/FABRICANTE", "TEXTO TÉCNICO", "VALOR FINAL", "LINK'S DO FORNECEDOR"];
   const csv = `\uFEFF${[headers, ...rows].map((row) => row.map(escapeCsvCell).join(";")).join("\r\n")}\r\n`;
   const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
   const objectUrl = URL.createObjectURL(blob);
