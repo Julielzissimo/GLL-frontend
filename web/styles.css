@@ -2738,7 +2738,7 @@ tr.item-won td {
 
 /* Gestão de usuários */
 .users-page {
-  background: linear-gradient(135deg, rgba(232, 242, 255, 0.72), rgba(248, 251, 255, 0.9));
+  background: #f4f6f9;
 }
 
 .users-page .section-band {
@@ -2884,7 +2884,7 @@ tr.item-won td {
 .users-search-control:focus-within,
 .users-filter-control:focus-within {
   border-color: #1472e6;
-  box-shadow: 0 0 0 3px rgba(20, 114, 230, 0.12);
+  box-shadow: none;
 }
 
 .users-search-control {
@@ -2896,6 +2896,14 @@ tr.item-won td {
   min-height: 40px;
   border: 0;
   padding: 0;
+  outline: 0;
+  box-shadow: none;
+}
+
+.users-search-control input:focus,
+.users-filter-control select:focus {
+  border: 0;
+  outline: 0;
   box-shadow: none;
 }
 
