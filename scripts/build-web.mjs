@@ -25,7 +25,7 @@ const TARGETS = {
     storageSuffix: "production",
     supabaseUrl: "https://siqsjxohpcrujobkbshn.supabase.co",
     supabaseAnonKey: "sb_publishable_MiojjcG8vXoQxn3NBcRgUQ_ymOMWAkW",
-    sessionIdleTimeoutMinutes: 30,
+    sessionIdleTimeoutMinutes: 120,
     sessionMaxLifetimeHours: 8,
   },
   prod: null,
