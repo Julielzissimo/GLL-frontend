@@ -1900,7 +1900,7 @@ function isCurrentUserAdmin() {
 
 function creatorName(record) {
   const creator = appState.users.find((user) => user.auth_user_id === record?.created_by);
-  return creator?.name || "Usuário não identificado";
+  return creator?.name || "Usuário Removido";
 }
 
 function creatorInitials(record) {

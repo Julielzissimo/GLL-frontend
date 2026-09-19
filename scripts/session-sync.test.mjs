@@ -216,6 +216,9 @@ test("bid creator tag uses the app_users name", () => {
   assert.equal(app.creatorName({ created_by: "creator-id" }), "Maria Silva");
   assert.equal(app.creatorInitials({ created_by: "creator-id" }), "MS");
   assert.match(app.creatorTagMarkup({ created_by: "creator-id" }), /creator-avatar[^>]*>MS<.*Criado por.*Maria Silva/s);
+  assert.equal(app.creatorName({ created_by: "removed-user-id" }), "Usuário Removido");
+  assert.equal(app.creatorInitials({ created_by: "removed-user-id" }), "UR");
+  assert.match(app.creatorTagMarkup({ created_by: "removed-user-id" }), /creator-avatar[^>]*>UR<.*Criado por.*Usuário Removido/s);
 });
 
 test("quotation item normalization and bid synchronization preserve the minimum bid", () => {
