@@ -172,7 +172,6 @@ const refs = {
   bidQuotationFilterAgency: $("bidQuotationFilterAgency"),
   bidQuotationResultsBody: $("bidQuotationResultsBody"),
   selectedBidLabel: $("selectedBidLabel"),
-  bidCreatorTag: $("bidCreatorTag"),
   bidFormError: $("bidFormError"),
   deleteBidButton: $("deleteBidButton"),
   clearBidButton: $("clearBidButton"),
@@ -2377,8 +2376,6 @@ function loadBid(bidId, options = {}) {
   renderBidAttachment(bid);
   renderPublicSessionLink();
   refs.selectedBidLabel.textContent = bidDisplayNumber(bid);
-  refs.bidCreatorTag.innerHTML = creatorTagMarkup(bid);
-  refs.bidCreatorTag.classList.remove("hidden");
   refs.bidFormError.textContent = "";
   clearItemForm();
   clearDocumentForm();
@@ -2460,8 +2457,6 @@ function clearBidForm(options = {}) {
   refs.bidType.value = BID_TYPE_OPTIONS[0];
   refs.bidStatus.value = STATUS_OPTIONS[0];
   refs.selectedBidLabel.textContent = "Novo edital";
-  refs.bidCreatorTag.textContent = "";
-  refs.bidCreatorTag.classList.add("hidden");
   refs.bidFormError.textContent = "";
   clearItemForm();
   clearDocumentForm();
