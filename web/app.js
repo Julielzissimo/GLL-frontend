@@ -659,11 +659,11 @@ class IndexedDbStore {
   }
 
   async deleteBid(bidId) {
-    await this.tx(["bids", "items", "documents", "failure_history"], "readwrite", ([bids, items, documents, failures]) => {
-      bids.delete(bidId);
-      deleteChildrenByBid(items, bidId);
-      deleteChildrenByBid(documents, bidId);
-      deleteChildrenByBid(failures, bidId);
+    const db = await this.open();
+    const existing = await this.request(db.transaction("bids").objectStore("bids").get(bidId));
+    if (!existing) throw new Error("Edital não encontrado.");
+    await this.tx("bids", "readwrite", (bids) => {
+      bids.put({ ...existing, deleted_at: timestampNow(), updated_at: timestampNow() });
     });
   }
 
@@ -836,6 +836,7 @@ class IndexedDbStore {
     if (!quotationItem) return;
     const linkedBids = (await this.getAll("bids"))
       .map(normalizeBidRecord)
+      .filter((bid) => !bid.deleted_at)
       .filter((bid) => Number(bid.quotation_id) === Number(quotationItem.quotation_id));
     const allItems = (await this.getAll("items")).map(normalizeItemRecord);
     await this.tx("items", "readwrite", (items) => {
@@ -899,7 +900,8 @@ class SupabaseStore {
 
   async getAll(tableName) {
     const client = await this.open();
-    const { data, error } = await client.from(tableName).select("*");
+    const query = client.from(tableName).select("*");
+    const { data, error } = tableName === "bids" ? await query.is("deleted_at", null) : await query;
     if (tableName === "failure_history" && isMissingFailureHistoryTableError(error)) return [];
     assertSupabase(error);
     return data || [];
@@ -1187,18 +1189,11 @@ class SupabaseStore {
 
   async deleteBid(bidId) {
     const client = await this.open();
-    const { data: bid, error: readError } = await client
+    const now = timestampNow();
+    const { error } = await client
       .from("bids")
-      .select("edital_files, edital_file_path, edital_file_name, edital_file_type, edital_file_size")
-      .eq("id", bidId)
-      .maybeSingle();
-    assertSupabase(readError);
-    const attachmentPaths = normalizeBidAttachments(bid).map((attachment) => attachment.path);
-    if (attachmentPaths.length) {
-      const { error: removeError } = await client.storage.from(BID_EDITAL_BUCKET).remove(attachmentPaths);
-      assertSupabase(removeError);
-    }
-    const { error } = await client.from("bids").delete().eq("id", bidId);
+      .update({ deleted_at: now, updated_at: now })
+      .eq("id", bidId);
     assertSupabase(error);
   }
 
@@ -1377,7 +1372,8 @@ class SupabaseStore {
     const { data: bids, error: bidsError } = await client
       .from("bids")
       .select("id")
-      .eq("quotation_id", Number(quotationItem.quotation_id));
+      .eq("quotation_id", Number(quotationItem.quotation_id))
+      .is("deleted_at", null);
     assertSupabase(bidsError);
     for (const bid of bids || []) {
       const { data: itemRows, error: itemsError } = await client
@@ -2035,10 +2031,20 @@ async function reloadData({ background = false } = {}) {
   const next = {};
   next.bids = rows[0]
     .map(normalizeBidRecord)
+    .filter((bid) => !bid.deleted_at)
     .sort((a, b) => String(a.session_datetime).localeCompare(String(b.session_datetime)));
-  next.items = rows[1].map(normalizeItemRecord).sort((a, b) => Number(a.item_number) - Number(b.item_number));
-  next.documents = rows[2].sort((a, b) => String(a.document_type).localeCompare(String(b.document_type)));
-  next.failureHistory = rows[3].map(normalizeFailureRecord).sort((a, b) => Number(a.id || 0) - Number(b.id || 0));
+  const visibleBidIds = new Set(next.bids.map((bid) => bid.id));
+  next.items = rows[1]
+    .map(normalizeItemRecord)
+    .filter((item) => visibleBidIds.has(item.bid_id))
+    .sort((a, b) => Number(a.item_number) - Number(b.item_number));
+  next.documents = rows[2]
+    .filter((documentRow) => visibleBidIds.has(documentRow.bid_id))
+    .sort((a, b) => String(a.document_type).localeCompare(String(b.document_type)));
+  next.failureHistory = rows[3]
+    .map(normalizeFailureRecord)
+    .filter((failure) => visibleBidIds.has(failure.bid_id))
+    .sort((a, b) => Number(a.id || 0) - Number(b.id || 0));
   next.quotations = rows[4]
     .map(normalizeQuotationRecord)
     .sort((a, b) => Number(b.id || 0) - Number(a.id || 0));
@@ -2681,7 +2687,7 @@ function requestDeleteCurrentBid() {
   if (guardCurrentBidReadOnly()) return;
   const modal = $("deleteBidModal");
   modal.dataset.bidId = appState.currentBidId;
-  $("deleteBidModalDescription").textContent = `Deseja excluir o edital ${bidDisplayNumber(currentBid())} e todos os seus itens? Esta ação não pode ser desfeita.`;
+  $("deleteBidModalDescription").textContent = `Deseja excluir o edital ${bidDisplayNumber(currentBid())}? Ele deixará de aparecer no sistema, mas seus dados permanecerão preservados.`;
   modal.showModal();
 }
 
@@ -2690,7 +2696,7 @@ async function deleteCurrentBid(bidId) {
   await store.deleteBid(bidId);
   await reloadData();
   clearBidForm();
-  showToast("Edital excluído.");
+  showToast("Edital excluído da visualização. Os dados foram preservados.");
 }
 
 function renderDetails() {
@@ -4069,6 +4075,7 @@ function normalizeBidRecord(record) {
     organization_id: record.organization_id || null,
     created_by: record.created_by || null,
     assigned_to: record.assigned_to || null,
+    deleted_at: record.deleted_at || null,
     ...(record.edital_file_blob ? { edital_file_blob: record.edital_file_blob } : {}),
     created_at: record.created_at || timestampNow(),
     updated_at: record.updated_at || timestampNow(),
