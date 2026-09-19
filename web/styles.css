@@ -2404,6 +2404,89 @@ tr.item-won td {
   background: var(--panel, #ffffff);
 }
 
+.muted-text {
+  color: var(--muted);
+}
+
+.user-assignments-modal {
+  width: min(720px, calc(100vw - 32px));
+  max-width: none;
+  max-height: calc(100dvh - 32px);
+  margin: auto;
+  padding: 0;
+  overflow: hidden;
+  border: 0;
+  border-radius: 14px;
+  background: var(--panel, #ffffff);
+  color: var(--text);
+  box-shadow: 0 24px 64px rgba(15, 23, 42, 0.3);
+}
+
+.user-assignments-modal::backdrop {
+  background: rgba(15, 23, 42, 0.58);
+  backdrop-filter: blur(2px);
+}
+
+.user-assignments-modal form {
+  display: grid;
+  gap: 18px;
+  padding: 24px;
+}
+
+.user-assignments-modal .modal-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.user-assignments-modal .modal-header h2 {
+  margin: 4px 0 6px;
+}
+
+.user-assignments-modal .modal-header p {
+  margin: 0;
+  color: var(--muted);
+}
+
+.user-assignments-list {
+  display: grid;
+  gap: 8px;
+  max-height: min(480px, calc(100dvh - 260px));
+  overflow-y: auto;
+}
+
+.user-assignment-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: #f8fafc;
+  cursor: pointer;
+}
+
+.user-assignment-option:has(input:checked) {
+  border-color: var(--primary);
+  background: #eef7fa;
+}
+
+.user-assignment-option input {
+  width: 18px;
+  height: 18px;
+  margin-top: 2px;
+}
+
+.user-assignment-option span {
+  display: grid;
+  gap: 3px;
+}
+
+.user-assignment-option small {
+  color: var(--muted);
+}
+
 .quotation-specification-name-row,
 .quotation-specification-values {
   display: contents;

@@ -52,9 +52,7 @@
           <button id="navSuppliersButton" class="nav-link nav-link-disabled" type="button" aria-disabled="true" title="Fornecedores temporariamente indisponível" disabled>
             <span class="nav-disabled-icon" aria-hidden="true">▦</span>Fornecedores
           </button>
-          <button id="navUsersButton" class="nav-link nav-link-disabled" type="button" aria-disabled="true" title="Usuários gerenciados no Supabase" disabled>
-            <span class="nav-disabled-icon" aria-hidden="true">♙</span>Usuários
-          </button>
+          <button id="navUsersButton" class="nav-link" type="button" data-navigation-page="users"><span aria-hidden="true">♙</span>Usuários</button>
           <button id="navSettingsButton" class="nav-link" type="button" data-navigation-page="settings"><span aria-hidden="true">⚙</span>Configurações</button>
         </nav>
         <div class="sidebar-footer">
@@ -82,7 +80,7 @@
           </div>
           <div class="topbar-actions">
             <div class="avatar" aria-hidden="true">AD</div>
-            <div class="user-info"><strong id="currentUserName">Administrador</strong><small>Acesso total</small></div>
+            <div class="user-info"><strong id="currentUserName">Administrador</strong><small id="currentUserRole">Administrador</small></div>
             <button id="logoutButton" class="icon-button logout-action" type="button" aria-label="Sair" title="Sair">↪</button>
           </div>
         </header>
@@ -742,45 +740,15 @@
           <div>
             <span class="workspace-kicker">Equipe</span>
             <h2>Usuários e acessos</h2>
-            <p>Gerencie quem pode acessar o ambiente.</p>
+            <p id="usersOrganizationLabel">Usuários vinculados à organização.</p>
           </div>
         </section>
 
         <section class="section-band">
           <div class="section-title">
-            <h2>Usuários com Acesso</h2>
-            <span>Todos os usuários cadastrados entram com acesso total neste protótipo</span>
+            <h2>Usuários com acesso</h2>
+            <span>Os logins são cadastrados no Supabase. Aqui você consulta os perfis e atribui editais aos analistas.</span>
           </div>
-
-          <form id="userForm" class="user-form">
-            <div class="form-grid three">
-              <label>
-                Nome
-                <input id="userName" autocomplete="name" />
-              </label>
-              <label>
-                E-mail *
-                <input id="userEmail" type="email" autocomplete="username" required />
-              </label>
-              <label>
-                Perfil
-                <input id="userRole" value="Acesso total" disabled />
-              </label>
-              <label>
-                Senha *
-                <input id="userPassword" type="password" autocomplete="new-password" minlength="6" required />
-              </label>
-              <label>
-                Confirmar senha *
-                <input id="userPasswordConfirm" type="password" autocomplete="new-password" minlength="6" required />
-              </label>
-            </div>
-            <p id="userFormError" class="form-error" role="alert"></p>
-            <div class="button-row end">
-              <button id="clearUserButton" class="quiet-action" type="button">Limpar</button>
-              <button class="primary-action" type="submit">Cadastrar Usuário</button>
-            </div>
-          </form>
         </section>
 
         <section class="section-band">
@@ -793,9 +761,8 @@
               <thead>
                 <tr>
                   <th>Nome</th>
-                  <th>E-mail</th>
-                  <th>Perfil</th>
-                  <th>Cadastrado em</th>
+                  <th>Login</th>
+                  <th>Nível de acesso</th>
                   <th>Ações</th>
                 </tr>
               </thead>
@@ -803,6 +770,25 @@
             </table>
           </div>
         </section>
+
+        <dialog id="userAssignmentsModal" class="modal-card user-assignments-modal">
+          <form id="userAssignmentsForm" method="dialog">
+            <div class="modal-header">
+              <div>
+                <span class="eyebrow">CONFIGURAÇÃO DO ANALISTA</span>
+                <h2 id="userAssignmentsTitle">Atribuir editais</h2>
+                <p id="userAssignmentsDescription"></p>
+              </div>
+              <button id="closeUserAssignmentsButton" class="icon-button" type="button" aria-label="Fechar">×</button>
+            </div>
+            <div id="userAssignmentsList" class="user-assignments-list"></div>
+            <p id="userAssignmentsError" class="form-error" role="alert"></p>
+            <div class="button-row end">
+              <button id="cancelUserAssignmentsButton" class="quiet-action" type="button">Cancelar</button>
+              <button class="primary-action" type="submit">Salvar atribuições</button>
+            </div>
+          </form>
+        </dialog>
       </section>
 
       <section id="suppliersPage" class="users-page hidden">
