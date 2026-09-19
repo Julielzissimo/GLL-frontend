@@ -1903,6 +1903,18 @@ function creatorName(record) {
   return creator?.name || "Usuário não identificado";
 }
 
+function creatorInitials(record) {
+  const parts = creatorName(record).trim().split(/\s+/).filter(Boolean);
+  if (!parts.length) return "?";
+  const initials = parts.length === 1 ? parts[0][0] : `${parts[0][0]}${parts.at(-1)[0]}`;
+  return initials.toLocaleUpperCase("pt-BR");
+}
+
+function creatorTagMarkup(record) {
+  const name = creatorName(record);
+  return `<span class="creator-avatar" aria-hidden="true">${escapeHtml(creatorInitials(record))}</span><span class="creator-tag-copy"><span>Criado por</span><strong>${escapeHtml(name)}</strong></span>`;
+}
+
 function updateAccessInterface() {
   const showUserManagement = isCurrentUserAdmin();
   refs.navUsersButton.classList.toggle("hidden", !showUserManagement);
@@ -2154,7 +2166,7 @@ function setPage(page, options = {}) {
 function updateBidWorkspaceHeader() {
   const bid = currentBid();
   refs.currentBidTitle.textContent = bidDisplayNumber(bid) || "Novo edital";
-  refs.currentBidCreatorTag.textContent = bid ? `Criado por ${creatorName(bid)}` : "";
+  refs.currentBidCreatorTag.innerHTML = bid ? creatorTagMarkup(bid) : "";
   refs.currentBidCreatorTag.classList.toggle("hidden", !bid);
   refs.currentBidAgency.textContent = bid?.buyer_agency || "Preencha os dados para cadastrar um novo edital.";
 }
@@ -2246,7 +2258,7 @@ function renderBids() {
       const active = bid.id === appState.currentBidId ? " active" : "";
       return `
         <tr class="selectable bid-row${active}" data-bid-id="${escapeHtml(bid.id)}" tabindex="0">
-          <td><div class="bid-number-cell"><strong class="table-link">${escapeHtml(bidDisplayNumber(bid))}</strong><span class="creator-tag">Criado por ${escapeHtml(creatorName(bid))}</span></div></td>
+          <td><div class="bid-number-cell"><strong class="table-link">${escapeHtml(bidDisplayNumber(bid))}</strong><span class="creator-tag compact">${creatorTagMarkup(bid)}</span></div></td>
           <td>${escapeHtml(bid.buyer_agency || "")}</td>
           <td>${formatDateTime(bid.session_datetime)}</td>
           <td>${escapeHtml(bid.bid_type || "")}</td>
@@ -2360,7 +2372,7 @@ function loadBid(bidId, options = {}) {
   renderBidAttachment(bid);
   renderPublicSessionLink();
   refs.selectedBidLabel.textContent = bidDisplayNumber(bid);
-  refs.bidCreatorTag.textContent = `Criado por ${creatorName(bid)}`;
+  refs.bidCreatorTag.innerHTML = creatorTagMarkup(bid);
   refs.bidCreatorTag.classList.remove("hidden");
   refs.bidFormError.textContent = "";
   clearItemForm();
@@ -2405,7 +2417,7 @@ function renderHomeSummary() {
         const date = new Date(bid.session_datetime);
         return `<button class="timeline-item" type="button" data-upcoming-bid="${escapeHtml(bid.id)}">
           <span class="date-box"><strong>${String(date.getDate()).padStart(2, "0")}</strong><small>${date.toLocaleDateString("pt-BR", { month: "short" }).replace(".", "").toUpperCase()}</small></span>
-          <span class="timeline-copy"><span class="bid-title-line"><strong>${escapeHtml(bidDisplayNumber(bid))}</strong><span class="creator-tag">Criado por ${escapeHtml(creatorName(bid))}</span></span><span>${escapeHtml(bid.buyer_agency || "")}</span><small>${date.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })} • ${escapeHtml(bid.bid_type || "")}</small></span>
+          <span class="timeline-copy"><span class="bid-title-line"><strong>${escapeHtml(bidDisplayNumber(bid))}</strong><span class="creator-tag compact">${creatorTagMarkup(bid)}</span></span><span>${escapeHtml(bid.buyer_agency || "")}</span><small>${date.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })} • ${escapeHtml(bid.bid_type || "")}</small></span>
           <span class="status-pill ${statusBadgeClass(bid.status)}">${escapeHtml(statusDisplay(bid.status))}</span>
         </button>`;
       }).join("")

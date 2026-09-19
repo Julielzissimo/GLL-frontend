@@ -146,7 +146,12 @@
 
           <form id="bidForm" class="section-band">
             <div class="section-title">
-              <h2>Dados do Edital</h2>
+              <div class="form-title-heading">
+                <span class="section-title-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24"><path d="M7 3h10a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z"/><path d="M9 8h6M9 12h6M9 16h4"/></svg>
+                </span>
+                <h2>Dados do Edital</h2>
+              </div>
               <div class="selected-bid-identification">
                 <span id="selectedBidLabel">Novo edital</span>
                 <span id="bidCreatorTag" class="creator-tag hidden"></span>
@@ -264,23 +269,23 @@
 
           <section id="metricsSection" class="metrics-row" aria-label="Indicadores">
             <article class="metric">
-              <span>Itens</span>
-              <strong id="metricItemCount">0</strong>
+              <span class="metric-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m12 3 8 4.5v9L12 21l-8-4.5v-9L12 3Z"/><path d="m4.5 7.8 7.5 4.3 7.5-4.3M12 12.1V21"/></svg></span>
+              <span class="metric-copy"><span>Itens</span><strong id="metricItemCount">0</strong></span>
             </article>
             <article class="metric">
-              <span>Faturamento total</span>
-              <strong id="metricMargin">R$ 0,00</strong>
+              <span class="metric-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 20V12M10 20V8M15 20V4M20 20V10"/></svg></span>
+              <span class="metric-copy"><span>Faturamento total</span><strong id="metricMargin">R$ 0,00</strong></span>
             </article>
             <article class="metric">
-              <span>Lucro total</span>
-              <strong id="metricTotalProfit">R$ 0,00</strong>
+              <span class="metric-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><ellipse cx="12" cy="6" rx="7" ry="3"/><path d="M5 6v4c0 1.7 3.1 3 7 3s7-1.3 7-3V6M5 10v4c0 1.7 3.1 3 7 3s7-1.3 7-3v-4M5 14v4c0 1.7 3.1 3 7 3s7-1.3 7-3v-4"/></svg></span>
+              <span class="metric-copy"><span>Lucro total</span><strong id="metricTotalProfit">R$ 0,00</strong></span>
             </article>
             <article class="metric">
-              <span>Margem de lucro</span>
-              <strong
-                id="metricTotalProfitMargin"
-                title="Cadastre o valor de custo e o valor final de todos os itens deste edital para calcular a margem de lucro."
-              >-</strong>
+              <span class="metric-icon metric-percent-icon" aria-hidden="true">%</span>
+              <span class="metric-copy"><span>Margem de lucro</span><strong
+                  id="metricTotalProfitMargin"
+                  title="Cadastre o valor de custo e o valor final de todos os itens deste edital para calcular a margem de lucro."
+                >-</strong></span>
             </article>
           </section>
 

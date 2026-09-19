@@ -116,7 +116,7 @@ function client(db = backend(), auth = { session: { user } }) {
     clearInterval: (id) => timers.delete(id),
   });
   vm.runInContext(application, context);
-  const api = vm.runInContext(`({ store, appState, restoreSession, logout, reloadData, refreshInBackground, startLiveUpdates, stopLiveUpdates, resetAuthenticatedView, scheduleLiveRefresh, calculateBidSummary, readNavigationRoute, writeNavigationRoute, normalizeBidRecord, normalizeBidAttachments, validateEditalFiles, bidDisplayNumber, creatorName, normalizeQuotationRecord, normalizeQuotationItemRecord, quotationItemToBidItem, bidItemToQuotationItem, normalizeTechnicalSpecifications, sessionPolicyStorageKey, enforceSessionPolicy })`, context);
+  const api = vm.runInContext(`({ store, appState, restoreSession, logout, reloadData, refreshInBackground, startLiveUpdates, stopLiveUpdates, resetAuthenticatedView, scheduleLiveRefresh, calculateBidSummary, readNavigationRoute, writeNavigationRoute, normalizeBidRecord, normalizeBidAttachments, validateEditalFiles, bidDisplayNumber, creatorName, creatorInitials, creatorTagMarkup, normalizeQuotationRecord, normalizeQuotationItemRecord, quotationItemToBidItem, bidItemToQuotationItem, normalizeTechnicalSpecifications, sessionPolicyStorageKey, enforceSessionPolicy })`, context);
   vm.runInContext(`
     renderSuppliers = renderBids = renderDetails = renderQuotations = renderUsers = () => {};
     clearBidForm = clearQuotationForm = setPage = updateMainNavigationState = () => {};
@@ -181,6 +181,8 @@ test("bid creator tag uses the app_users name", () => {
   const app = client();
   app.appState.users = [{ auth_user_id: "creator-id", name: "Maria Silva" }];
   assert.equal(app.creatorName({ created_by: "creator-id" }), "Maria Silva");
+  assert.equal(app.creatorInitials({ created_by: "creator-id" }), "MS");
+  assert.match(app.creatorTagMarkup({ created_by: "creator-id" }), /creator-avatar[^>]*>MS<.*Criado por.*Maria Silva/s);
 });
 
 test("quotation item normalization and bid synchronization preserve the minimum bid", () => {
