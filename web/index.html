@@ -147,7 +147,10 @@
           <form id="bidForm" class="section-band">
             <div class="section-title">
               <h2>Dados do Edital</h2>
-              <span id="selectedBidLabel">Novo edital</span>
+              <div class="selected-bid-identification">
+                <span id="selectedBidLabel">Novo edital</span>
+                <span id="bidCreatorTag" class="creator-tag hidden"></span>
+              </div>
             </div>
 
             <div class="form-grid">
@@ -251,7 +254,10 @@
           <section id="bidWorkspaceHeader" class="section-band workspace-header hidden">
             <div>
               <span class="workspace-kicker">Edital aberto</span>
-              <h2 id="currentBidTitle">Selecione um edital</h2>
+              <div class="workspace-title-line">
+                <h2 id="currentBidTitle">Selecione um edital</h2>
+                <span id="currentBidCreatorTag" class="creator-tag hidden"></span>
+              </div>
               <p id="currentBidAgency"></p>
             </div>
           </section>
@@ -776,7 +782,7 @@
             <div class="modal-header">
               <div>
                 <span class="eyebrow">CONFIGURAÇÃO DO ANALISTA</span>
-                <h2 id="userAssignmentsTitle">Atribuir editais</h2>
+                <h2 id="userAssignmentsTitle">Configurar acessos</h2>
                 <p id="userAssignmentsDescription"></p>
               </div>
               <button id="closeUserAssignmentsButton" class="icon-button" type="button" aria-label="Fechar">×</button>

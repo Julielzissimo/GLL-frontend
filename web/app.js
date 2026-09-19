@@ -136,6 +136,7 @@ const refs = {
   homeDisputedBids: $("homeDisputedBids"),
   bidWorkspaceHeader: $("bidWorkspaceHeader"),
   currentBidTitle: $("currentBidTitle"),
+  currentBidCreatorTag: $("currentBidCreatorTag"),
   currentBidAgency: $("currentBidAgency"),
   usersPage: $("usersPage"),
   settingsPage: $("settingsPage"),
@@ -171,6 +172,7 @@ const refs = {
   bidQuotationFilterAgency: $("bidQuotationFilterAgency"),
   bidQuotationResultsBody: $("bidQuotationResultsBody"),
   selectedBidLabel: $("selectedBidLabel"),
+  bidCreatorTag: $("bidCreatorTag"),
   bidFormError: $("bidFormError"),
   deleteBidButton: $("deleteBidButton"),
   clearBidButton: $("clearBidButton"),
@@ -525,7 +527,7 @@ class IndexedDbStore {
     await this.authTx("users", "readwrite", (users) => users.delete(normalizeEmail(email)));
   }
 
-  async assignBidsToAnalyst(analystId, selectedBidIds) {
+  async assignAccessToAnalyst(analystId, selectedBidIds, selectedQuotationIds) {
     const selected = new Set(selectedBidIds);
     await this.tx("bids", "readwrite", (bids) => {
       const request = bids.openCursor();
@@ -538,6 +540,22 @@ class IndexedDbStore {
             ? analystId
             : bid.assigned_to === analystId ? null : bid.assigned_to;
           if (assignedTo !== bid.assigned_to) cursor.update({ ...bid, assigned_to: assignedTo, updated_at: timestampNow() });
+        }
+        cursor.continue();
+      };
+    });
+    const selectedQuotations = new Set(selectedQuotationIds.map(Number));
+    await this.tx("quotations", "readwrite", (quotations) => {
+      const request = quotations.openCursor();
+      request.onsuccess = () => {
+        const cursor = request.result;
+        if (!cursor) return;
+        const quotation = cursor.value;
+        if (quotation.created_by !== analystId) {
+          const assignedTo = selectedQuotations.has(Number(quotation.id))
+            ? analystId
+            : quotation.assigned_to === analystId ? null : quotation.assigned_to;
+          if (assignedTo !== quotation.assigned_to) cursor.update({ ...quotation, assigned_to: assignedTo, updated_at: timestampNow() });
         }
         cursor.continue();
       };
@@ -732,6 +750,9 @@ class IndexedDbStore {
       ...existing,
       ...quotationData,
       id: quotationId || undefined,
+      organization_id: existing?.organization_id || appState.currentOrganizationId,
+      created_by: existing?.created_by || appState.currentUserAuthId,
+      assigned_to: existing?.assigned_to || null,
       created_at: existing?.created_at || now,
       updated_at: now,
     });
@@ -977,7 +998,7 @@ class SupabaseStore {
     assertSupabase(error);
   }
 
-  async assignBidsToAnalyst(analystId, selectedBidIds) {
+  async assignAccessToAnalyst(analystId, selectedBidIds, selectedQuotationIds) {
     const client = await this.open();
     const selected = new Set(selectedBidIds);
     const changes = appState.bids
@@ -995,6 +1016,24 @@ class SupabaseStore {
         .from("bids")
         .update({ assigned_to: assignedTo, updated_at: timestampNow() })
         .eq("id", bid.id);
+      assertSupabase(error);
+    }
+    const selectedQuotations = new Set(selectedQuotationIds.map(Number));
+    const quotationChanges = appState.quotations
+      .filter((quotation) => quotation.created_by !== analystId)
+      .map((quotation) => ({
+        quotation,
+        assignedTo: selectedQuotations.has(Number(quotation.id))
+          ? analystId
+          : quotation.assigned_to === analystId ? null : quotation.assigned_to,
+      }))
+      .filter(({ quotation, assignedTo }) => assignedTo !== quotation.assigned_to);
+
+    for (const { quotation, assignedTo } of quotationChanges) {
+      const { error } = await client
+        .from("quotations")
+        .update({ assigned_to: assignedTo, updated_at: timestampNow() })
+        .eq("id", Number(quotation.id));
       assertSupabase(error);
     }
   }
@@ -1859,6 +1898,11 @@ function isCurrentUserAdmin() {
   return appState.currentUserRole === USER_ROLES.ADMIN;
 }
 
+function creatorName(record) {
+  const creator = appState.users.find((user) => user.auth_user_id === record?.created_by);
+  return creator?.name || "Usuário não identificado";
+}
+
 function updateAccessInterface() {
   const showUserManagement = isCurrentUserAdmin();
   refs.navUsersButton.classList.toggle("hidden", !showUserManagement);
@@ -2110,6 +2154,8 @@ function setPage(page, options = {}) {
 function updateBidWorkspaceHeader() {
   const bid = currentBid();
   refs.currentBidTitle.textContent = bidDisplayNumber(bid) || "Novo edital";
+  refs.currentBidCreatorTag.textContent = bid ? `Criado por ${creatorName(bid)}` : "";
+  refs.currentBidCreatorTag.classList.toggle("hidden", !bid);
   refs.currentBidAgency.textContent = bid?.buyer_agency || "Preencha os dados para cadastrar um novo edital.";
 }
 
@@ -2200,7 +2246,7 @@ function renderBids() {
       const active = bid.id === appState.currentBidId ? " active" : "";
       return `
         <tr class="selectable bid-row${active}" data-bid-id="${escapeHtml(bid.id)}" tabindex="0">
-          <td><strong class="table-link">${escapeHtml(bidDisplayNumber(bid))}</strong></td>
+          <td><div class="bid-number-cell"><strong class="table-link">${escapeHtml(bidDisplayNumber(bid))}</strong><span class="creator-tag">Criado por ${escapeHtml(creatorName(bid))}</span></div></td>
           <td>${escapeHtml(bid.buyer_agency || "")}</td>
           <td>${formatDateTime(bid.session_datetime)}</td>
           <td>${escapeHtml(bid.bid_type || "")}</td>
@@ -2314,6 +2360,8 @@ function loadBid(bidId, options = {}) {
   renderBidAttachment(bid);
   renderPublicSessionLink();
   refs.selectedBidLabel.textContent = bidDisplayNumber(bid);
+  refs.bidCreatorTag.textContent = `Criado por ${creatorName(bid)}`;
+  refs.bidCreatorTag.classList.remove("hidden");
   refs.bidFormError.textContent = "";
   clearItemForm();
   clearDocumentForm();
@@ -2357,7 +2405,7 @@ function renderHomeSummary() {
         const date = new Date(bid.session_datetime);
         return `<button class="timeline-item" type="button" data-upcoming-bid="${escapeHtml(bid.id)}">
           <span class="date-box"><strong>${String(date.getDate()).padStart(2, "0")}</strong><small>${date.toLocaleDateString("pt-BR", { month: "short" }).replace(".", "").toUpperCase()}</small></span>
-          <span class="timeline-copy"><strong>${escapeHtml(bidDisplayNumber(bid))}</strong><span>${escapeHtml(bid.buyer_agency || "")}</span><small>${date.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })} • ${escapeHtml(bid.bid_type || "")}</small></span>
+          <span class="timeline-copy"><span class="bid-title-line"><strong>${escapeHtml(bidDisplayNumber(bid))}</strong><span class="creator-tag">Criado por ${escapeHtml(creatorName(bid))}</span></span><span>${escapeHtml(bid.buyer_agency || "")}</span><small>${date.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })} • ${escapeHtml(bid.bid_type || "")}</small></span>
           <span class="status-pill ${statusBadgeClass(bid.status)}">${escapeHtml(statusDisplay(bid.status))}</span>
         </button>`;
       }).join("")
@@ -2395,6 +2443,8 @@ function clearBidForm(options = {}) {
   refs.bidType.value = BID_TYPE_OPTIONS[0];
   refs.bidStatus.value = STATUS_OPTIONS[0];
   refs.selectedBidLabel.textContent = "Novo edital";
+  refs.bidCreatorTag.textContent = "";
+  refs.bidCreatorTag.classList.add("hidden");
   refs.bidFormError.textContent = "";
   clearItemForm();
   clearDocumentForm();
@@ -3691,7 +3741,7 @@ function renderUsers() {
       const role = normalizeUserRole(user.role);
       const canConfigure = role === USER_ROLES.ANALYST && Boolean(user.auth_user_id);
       const action = canConfigure
-        ? `<button class="quiet-action compact-action" type="button" data-configure-user="${escapeHtml(user.auth_user_id)}">Configurar editais</button>`
+        ? `<button class="quiet-action compact-action" type="button" data-configure-user="${escapeHtml(user.auth_user_id)}">Configurar acessos</button>`
         : isCurrent
           ? `<span class="current-user-pill">Usuário atual</span>`
           : `<span class="muted-text">—</span>`;
@@ -3719,10 +3769,10 @@ function openUserAssignments(analystId) {
     return;
   }
   refs.userAssignmentsModal.dataset.analystId = analystId;
-  refs.userAssignmentsTitle.textContent = `Editais de ${analyst.name || analyst.email}`;
-  refs.userAssignmentsDescription.textContent = "Marque os editais que este analista também poderá visualizar e editar.";
+  refs.userAssignmentsTitle.textContent = `Acessos de ${analyst.name || analyst.email}`;
+  refs.userAssignmentsDescription.textContent = "Marque os editais e orçamentos que este analista também poderá visualizar e editar. Registros criados por ele já ficam disponíveis.";
   refs.userAssignmentsError.textContent = "";
-  refs.userAssignmentsList.innerHTML = appState.bids.length
+  const bidOptions = appState.bids.length
     ? appState.bids.map((bid) => {
         const createdByAnalyst = bid.created_by === analystId;
         const assignedToAnalyst = bid.assigned_to === analystId;
@@ -3738,6 +3788,25 @@ function openUserAssignments(analystId) {
         </label>`;
       }).join("")
     : `<div class="empty-state compact-empty">Nenhum edital cadastrado na organização.</div>`;
+  const quotationOptions = appState.quotations.length
+    ? appState.quotations.map((quotation) => {
+        const createdByAnalyst = quotation.created_by === analystId;
+        const assignedToAnalyst = quotation.assigned_to === analystId;
+        const assignedUser = appState.users.find((user) => user.auth_user_id === quotation.assigned_to);
+        const note = createdByAnalyst
+          ? "Criado pelo analista"
+          : assignedUser && !assignedToAnalyst
+            ? `Atualmente atribuído a ${assignedUser.name || assignedUser.email}`
+            : assignedToAnalyst ? "Atribuído ao analista" : "Sem atribuição";
+        return `<label class="user-assignment-option">
+          <input type="checkbox" data-access-type="quotation" value="${quotation.id}" ${createdByAnalyst || assignedToAnalyst ? "checked" : ""} ${createdByAnalyst ? "disabled" : ""} />
+          <span><strong>Orçamento #${quotation.id} · ${escapeHtml(quotation.edital)}</strong><small>${escapeHtml(quotation.agency || "Órgão não informado")} · ${escapeHtml(note)}</small></span>
+        </label>`;
+      }).join("")
+    : `<div class="empty-state compact-empty">Nenhum orçamento cadastrado na organização.</div>`;
+  refs.userAssignmentsList.innerHTML = `
+    <section class="user-assignment-group"><h3>Editais</h3>${bidOptions}</section>
+    <section class="user-assignment-group"><h3>Orçamentos</h3>${quotationOptions}</section>`;
   refs.userAssignmentsModal.showModal();
 }
 
@@ -3751,8 +3820,9 @@ async function saveUserAssignments(event) {
   event.preventDefault();
   const analystId = refs.userAssignmentsModal.dataset.analystId;
   if (!analystId || !isCurrentUserAdmin()) return;
-  const selectedBidIds = Array.from(refs.userAssignmentsList.querySelectorAll("input[type='checkbox']:checked"), (input) => input.value);
-  await store.assignBidsToAnalyst(analystId, selectedBidIds);
+  const selectedBidIds = Array.from(refs.userAssignmentsList.querySelectorAll("input[type='checkbox']:checked:not([data-access-type])"), (input) => input.value);
+  const selectedQuotationIds = Array.from(refs.userAssignmentsList.querySelectorAll("input[data-access-type='quotation']:checked"), (input) => Number(input.value));
+  await store.assignAccessToAnalyst(analystId, selectedBidIds, selectedQuotationIds);
   await reloadData();
   closeUserAssignments();
   showToast("Atribuições do analista atualizadas.");
@@ -4141,6 +4211,9 @@ function normalizeQuotationRecord(record) {
     city: record.city || "",
     cep: formatCep(record.cep),
     delivery_deadline: record.delivery_deadline || "",
+    organization_id: record.organization_id || null,
+    created_by: record.created_by || null,
+    assigned_to: record.assigned_to || null,
     created_at: record.created_at || timestampNow(),
     updated_at: record.updated_at || timestampNow(),
   };

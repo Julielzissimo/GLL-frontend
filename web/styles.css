@@ -761,6 +761,57 @@ th.numeric {
   text-align: right;
 }
 
+.workspace-title-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.selected-bid-identification {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.creator-tag {
+  display: inline-flex;
+  width: fit-content;
+  max-width: 100%;
+  align-items: center;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: #e8f3f6;
+  color: #216071;
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.section-title .creator-tag {
+  color: #216071;
+  font-size: 11px;
+  text-align: left;
+}
+
+.bid-number-cell,
+.bid-title-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.timeline-copy > .bid-title-line {
+  display: flex;
+  margin-top: 0;
+  overflow: visible;
+  white-space: normal;
+}
+
 .section-title-actions,
 .quotation-items-actions {
   display: flex;
@@ -2454,6 +2505,21 @@ tr.item-won td {
   gap: 8px;
   max-height: min(480px, calc(100dvh - 260px));
   overflow-y: auto;
+}
+
+.user-assignment-group {
+  display: grid;
+  gap: 8px;
+}
+
+.user-assignment-group + .user-assignment-group {
+  margin-top: 10px;
+}
+
+.user-assignment-group h3 {
+  margin: 0;
+  color: var(--text);
+  font-size: 14px;
 }
 
 .user-assignment-option {
