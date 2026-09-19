@@ -18,11 +18,15 @@ const BID_EDITAL_BUCKET = "bid-edital-files";
 const MAX_EDITAL_FILE_SIZE = 20 * 1024 * 1024;
 const MAX_EDITAL_FILES = 4;
 const SUPABASE_CLIENT_VERSION = "2.57.4";
+const USER_ROLES = { ADMIN: "Administrador", ANALYST: "Analista" };
 const DEFAULT_ADMIN = {
   email: "demo@gll.local",
   name: "Usuário local",
   password: "gll-demo-local",
-  role: "Acesso total",
+  role: USER_ROLES.ADMIN,
+  auth_user_id: "local-admin",
+  organization_id: "local-lsms",
+  organization: { name: "LSMS Suprimentos", cnpj: "66.693.364/0001-02" },
 };
 const DEFAULT_GLL_CONFIG = {
   environment: "local",
@@ -50,6 +54,7 @@ const PAGE_ROUTE_NAMES = {
   failures: "falhas",
   quotations: "orcamentos",
   suppliers: "fornecedores",
+  users: "usuarios",
   settings: "configuracoes",
 };
 const ROUTE_PAGE_NAMES = Object.fromEntries(Object.entries(PAGE_ROUTE_NAMES).map(([page, route]) => [route, page]));
@@ -58,6 +63,10 @@ const appState = {
   authenticated: false,
   activePage: "home",
   currentUserEmail: null,
+  currentUserAuthId: null,
+  currentUserRole: null,
+  currentOrganizationId: null,
+  currentOrganizationName: null,
   currentBidId: null,
   originalBidId: null,
   selectedBidQuotationId: null,
@@ -109,6 +118,7 @@ const refs = {
   menuToggleButton: $("menuToggleButton"),
   breadcrumbLabel: $("breadcrumbLabel"),
   currentUserName: $("currentUserName"),
+  currentUserRole: $("currentUserRole"),
   toggleSidebarButton: $("toggleSidebarButton"),
   sidebarPanel: $("sidebarPanel"),
   bidsPage: $("bidsPage"),
@@ -126,6 +136,7 @@ const refs = {
   homeDisputedBids: $("homeDisputedBids"),
   bidWorkspaceHeader: $("bidWorkspaceHeader"),
   currentBidTitle: $("currentBidTitle"),
+  currentBidCreatorTag: $("currentBidCreatorTag"),
   currentBidAgency: $("currentBidAgency"),
   usersPage: $("usersPage"),
   settingsPage: $("settingsPage"),
@@ -276,16 +287,20 @@ const refs = {
   deleteQuotationItemButton: $("deleteQuotationItemButton"),
   clearQuotationItemButton: $("clearQuotationItemButton"),
   quotationItemsTableBody: $("quotationItemsTableBody"),
-  userForm: $("userForm"),
-  userName: $("userName"),
-  userEmail: $("userEmail"),
-  userRole: $("userRole"),
-  userPassword: $("userPassword"),
-  userPasswordConfirm: $("userPasswordConfirm"),
-  userFormError: $("userFormError"),
-  clearUserButton: $("clearUserButton"),
   userCountLabel: $("userCountLabel"),
+  usersTotalLabel: $("usersTotalLabel"),
+  userSearchInput: $("userSearchInput"),
+  userRoleFilter: $("userRoleFilter"),
   usersTableBody: $("usersTableBody"),
+  usersOrganizationLabel: $("usersOrganizationLabel"),
+  userAssignmentsModal: $("userAssignmentsModal"),
+  userAssignmentsForm: $("userAssignmentsForm"),
+  userAssignmentsTitle: $("userAssignmentsTitle"),
+  userAssignmentsDescription: $("userAssignmentsDescription"),
+  userAssignmentsList: $("userAssignmentsList"),
+  userAssignmentsError: $("userAssignmentsError"),
+  closeUserAssignmentsButton: $("closeUserAssignmentsButton"),
+  cancelUserAssignmentsButton: $("cancelUserAssignmentsButton"),
   toast: $("toast"),
 };
 
@@ -514,6 +529,41 @@ class IndexedDbStore {
     await this.authTx("users", "readwrite", (users) => users.delete(normalizeEmail(email)));
   }
 
+  async assignAccessToAnalyst(analystId, selectedBidIds, selectedQuotationIds) {
+    const selected = new Set(selectedBidIds);
+    await this.tx("bids", "readwrite", (bids) => {
+      const request = bids.openCursor();
+      request.onsuccess = () => {
+        const cursor = request.result;
+        if (!cursor) return;
+        const bid = cursor.value;
+        if (bid.created_by !== analystId) {
+          const assignedTo = selected.has(bid.id)
+            ? analystId
+            : bid.assigned_to === analystId ? null : bid.assigned_to;
+          if (assignedTo !== bid.assigned_to) cursor.update({ ...bid, assigned_to: assignedTo, updated_at: timestampNow() });
+        }
+        cursor.continue();
+      };
+    });
+    const selectedQuotations = new Set(selectedQuotationIds.map(Number));
+    await this.tx("quotations", "readwrite", (quotations) => {
+      const request = quotations.openCursor();
+      request.onsuccess = () => {
+        const cursor = request.result;
+        if (!cursor) return;
+        const quotation = cursor.value;
+        if (quotation.created_by !== analystId) {
+          const assignedTo = selectedQuotations.has(Number(quotation.id))
+            ? analystId
+            : quotation.assigned_to === analystId ? null : quotation.assigned_to;
+          if (assignedTo !== quotation.assigned_to) cursor.update({ ...quotation, assigned_to: assignedTo, updated_at: timestampNow() });
+        }
+        cursor.continue();
+      };
+    });
+  }
+
   async saveBid(data, originalId) {
     const now = timestampNow();
     let wasBilled = false;
@@ -524,7 +574,15 @@ class IndexedDbStore {
         wasBilled = existing?.status === FINAL_BID_STATUS;
         bids.put(wasBilled
           ? { ...existing, status: data.status, updated_at: now }
-          : { ...existing, ...data, created_at: existing?.created_at || now, updated_at: now });
+          : {
+              ...existing,
+              ...data,
+              organization_id: existing?.organization_id || appState.currentOrganizationId,
+              created_by: existing?.created_by || appState.currentUserAuthId,
+              assigned_to: existing?.assigned_to || null,
+              created_at: existing?.created_at || now,
+              updated_at: now,
+            });
       };
     });
     if (!wasBilled) await this.syncBidWithQuotation(data.id, data.quotation_id);
@@ -694,6 +752,9 @@ class IndexedDbStore {
       ...existing,
       ...quotationData,
       id: quotationId || undefined,
+      organization_id: existing?.organization_id || appState.currentOrganizationId,
+      created_by: existing?.created_by || appState.currentUserAuthId,
+      assigned_to: existing?.assigned_to || null,
       created_at: existing?.created_at || now,
       updated_at: now,
     });
@@ -846,14 +907,14 @@ class SupabaseStore {
 
   async getUsers() {
     const client = await this.open();
-    const { data, error } = await client.from("app_users").select("*");
+    const { data, error } = await client.from("app_users").select("*, organization:organizations(name, cnpj)");
     assertSupabase(error);
     return data || [];
   }
 
   async getUser(email) {
     const client = await this.open();
-    const { data, error } = await client.from("app_users").select("*").eq("email", normalizeEmail(email)).maybeSingle();
+    const { data, error } = await client.from("app_users").select("*, organization:organizations(name, cnpj)").eq("email", normalizeEmail(email)).maybeSingle();
     assertSupabase(error);
     return data;
   }
@@ -918,7 +979,7 @@ class SupabaseStore {
       options: {
         data: {
           name: userData.name?.trim() || email,
-          role: userData.role || "Acesso total",
+          role: userData.role || USER_ROLES.ANALYST,
         },
       },
     });
@@ -927,7 +988,7 @@ class SupabaseStore {
     const { error } = await client.from("app_users").insert({
       email,
       name: userData.name?.trim() || email,
-      role: userData.role || "Acesso total",
+      role: userData.role || USER_ROLES.ANALYST,
       created_at: timestampNow(),
     });
     assertSupabase(error);
@@ -937,6 +998,46 @@ class SupabaseStore {
     const client = await this.open();
     const { error } = await client.from("app_users").delete().eq("email", normalizeEmail(email));
     assertSupabase(error);
+  }
+
+  async assignAccessToAnalyst(analystId, selectedBidIds, selectedQuotationIds) {
+    const client = await this.open();
+    const selected = new Set(selectedBidIds);
+    const changes = appState.bids
+      .filter((bid) => bid.created_by !== analystId)
+      .map((bid) => ({
+        bid,
+        assignedTo: selected.has(bid.id)
+          ? analystId
+          : bid.assigned_to === analystId ? null : bid.assigned_to,
+      }))
+      .filter(({ bid, assignedTo }) => assignedTo !== bid.assigned_to);
+
+    for (const { bid, assignedTo } of changes) {
+      const { error } = await client
+        .from("bids")
+        .update({ assigned_to: assignedTo, updated_at: timestampNow() })
+        .eq("id", bid.id);
+      assertSupabase(error);
+    }
+    const selectedQuotations = new Set(selectedQuotationIds.map(Number));
+    const quotationChanges = appState.quotations
+      .filter((quotation) => quotation.created_by !== analystId)
+      .map((quotation) => ({
+        quotation,
+        assignedTo: selectedQuotations.has(Number(quotation.id))
+          ? analystId
+          : quotation.assigned_to === analystId ? null : quotation.assigned_to,
+      }))
+      .filter(({ quotation, assignedTo }) => assignedTo !== quotation.assigned_to);
+
+    for (const { quotation, assignedTo } of quotationChanges) {
+      const { error } = await client
+        .from("quotations")
+        .update({ assigned_to: assignedTo, updated_at: timestampNow() })
+        .eq("id", Number(quotation.id));
+      assertSupabase(error);
+    }
   }
 
   async saveBid(data, originalId) {
@@ -1024,7 +1125,8 @@ class SupabaseStore {
     try {
       for (const file of files) {
         const fileName = sanitizeStorageFileName(file.name);
-        const filePath = `${crypto.randomUUID()}/${fileName}`;
+        if (!appState.currentOrganizationId) throw new Error("Não foi possível identificar a organização do usuário.");
+        const filePath = `${appState.currentOrganizationId}/${bidId}/${crypto.randomUUID()}/${fileName}`;
         const { error: uploadError } = await client.storage.from(BID_EDITAL_BUCKET).upload(filePath, file, {
           contentType: file.type || "application/octet-stream",
           upsert: false,
@@ -1633,8 +1735,12 @@ function bindEvents() {
       updateQuotationItemTotals();
     });
   }
-  refs.userForm.addEventListener("submit", withBlockingLoading(saveUser, "Cadastrando usuário…"));
-  refs.clearUserButton.addEventListener("click", clearUserForm);
+  refs.userAssignmentsForm.addEventListener("submit", withBlockingLoading(saveUserAssignments, "Salvando atribuições…"));
+  refs.closeUserAssignmentsButton.addEventListener("click", closeUserAssignments);
+  refs.cancelUserAssignmentsButton.addEventListener("click", closeUserAssignments);
+  refs.userAssignmentsModal.addEventListener("cancel", closeUserAssignments);
+  refs.userSearchInput.addEventListener("input", renderUsers);
+  refs.userRoleFilter.addEventListener("change", renderUsers);
   refs.itemsTabButton.addEventListener("click", () => setPage("items"));
   refs.documentsTabButton.addEventListener("click", () => setPage("documents"));
   refs.failuresTabButton.addEventListener("click", () => setPage("failures"));
@@ -1697,10 +1803,16 @@ async function enterAuthenticatedView(user) {
   const epoch = ++sessionEpoch;
   appState.authenticated = true;
   appState.currentUserEmail = user.email;
+  appState.currentUserAuthId = user.auth_user_id || user.email;
+  appState.currentUserRole = normalizeUserRole(user.role);
+  appState.currentOrganizationId = user.organization_id || user.organization?.id || null;
+  appState.currentOrganizationName = user.organization?.name || "LSMS Suprimentos";
   try {
+    updateAccessInterface();
     await reloadData();
     if (epoch !== sessionEpoch) return;
     refs.currentUserName.textContent = user.name || user.email;
+    refs.currentUserRole.textContent = appState.currentUserRole;
     refs.loginView.classList.add("hidden");
     refs.appView.classList.remove("hidden");
     refs.loginPassword.value = "";
@@ -1734,6 +1846,10 @@ function resetAuthenticatedView() {
   stopLiveUpdates();
   appState.authenticated = false;
   appState.currentUserEmail = null;
+  appState.currentUserAuthId = null;
+  appState.currentUserRole = null;
+  appState.currentOrganizationId = null;
+  appState.currentOrganizationName = null;
   refs.appView.classList.add("hidden");
   refs.loginView.classList.remove("hidden");
   refs.loginPassword.value = "";
@@ -1745,6 +1861,7 @@ function resetAuthenticatedView() {
   });
   document.querySelectorAll("#appView form").forEach((form) => form.reset());
   refs.currentUserName.textContent = "";
+  refs.currentUserRole.textContent = "";
   setSyncNotice("");
 }
 
@@ -1775,6 +1892,39 @@ function updateMainNavigationState() {
   refs.menuToggleButton.title = actionLabel;
   refs.appSidebar.setAttribute("aria-hidden", String(!isExpanded));
   refs.appSidebar.inert = !isExpanded;
+}
+
+function normalizeUserRole(role) {
+  return role === USER_ROLES.ANALYST ? USER_ROLES.ANALYST : USER_ROLES.ADMIN;
+}
+
+function isCurrentUserAdmin() {
+  return appState.currentUserRole === USER_ROLES.ADMIN;
+}
+
+function creatorName(record) {
+  const creator = appState.users.find((user) => user.auth_user_id === record?.created_by);
+  return creator?.name || "Usuário não identificado";
+}
+
+function creatorInitials(record) {
+  const parts = creatorName(record).trim().split(/\s+/).filter(Boolean);
+  if (!parts.length) return "?";
+  const initials = parts.length === 1 ? parts[0][0] : `${parts[0][0]}${parts.at(-1)[0]}`;
+  return initials.toLocaleUpperCase("pt-BR");
+}
+
+function creatorTagMarkup(record) {
+  const name = creatorName(record);
+  return `<span class="creator-avatar" aria-hidden="true">${escapeHtml(creatorInitials(record))}</span><span class="creator-tag-copy"><span>Criado por</span><strong>${escapeHtml(name)}</strong></span>`;
+}
+
+function updateAccessInterface() {
+  const showUserManagement = isCurrentUserAdmin();
+  refs.navUsersButton.classList.toggle("hidden", !showUserManagement);
+  refs.navUsersButton.disabled = !showUserManagement;
+  refs.navUsersButton.setAttribute("aria-hidden", String(!showUserManagement));
+  refs.usersOrganizationLabel.textContent = `${appState.currentOrganizationName || "Organização"} · usuários vinculados no Supabase.`;
 }
 
 async function resetSeedData() {
@@ -1966,7 +2116,7 @@ function applyNavigationRoute(options = {}) {
 
 function setPage(page, options = {}) {
   const detailPages = ["items", "documents", "failures"];
-  if (page === "users") page = "settings";
+  if (page === "users" && !isCurrentUserAdmin()) page = "home";
   if (detailPages.includes(page) && !appState.currentBidId) {
     page = "home";
   }
@@ -2020,6 +2170,8 @@ function setPage(page, options = {}) {
 function updateBidWorkspaceHeader() {
   const bid = currentBid();
   refs.currentBidTitle.textContent = bidDisplayNumber(bid) || "Novo edital";
+  refs.currentBidCreatorTag.innerHTML = bid ? creatorTagMarkup(bid) : "";
+  refs.currentBidCreatorTag.classList.toggle("hidden", !bid);
   refs.currentBidAgency.textContent = bid?.buyer_agency || "Preencha os dados para cadastrar um novo edital.";
 }
 
@@ -2110,7 +2262,7 @@ function renderBids() {
       const active = bid.id === appState.currentBidId ? " active" : "";
       return `
         <tr class="selectable bid-row${active}" data-bid-id="${escapeHtml(bid.id)}" tabindex="0">
-          <td><strong class="table-link">${escapeHtml(bidDisplayNumber(bid))}</strong></td>
+          <td><div class="bid-number-cell"><strong class="table-link">${escapeHtml(bidDisplayNumber(bid))}</strong><span class="creator-tag compact">${creatorTagMarkup(bid)}</span></div></td>
           <td>${escapeHtml(bid.buyer_agency || "")}</td>
           <td>${formatDateTime(bid.session_datetime)}</td>
           <td>${escapeHtml(bid.bid_type || "")}</td>
@@ -2267,7 +2419,7 @@ function renderHomeSummary() {
         const date = new Date(bid.session_datetime);
         return `<button class="timeline-item" type="button" data-upcoming-bid="${escapeHtml(bid.id)}">
           <span class="date-box"><strong>${String(date.getDate()).padStart(2, "0")}</strong><small>${date.toLocaleDateString("pt-BR", { month: "short" }).replace(".", "").toUpperCase()}</small></span>
-          <span class="timeline-copy"><strong>${escapeHtml(bidDisplayNumber(bid))}</strong><span>${escapeHtml(bid.buyer_agency || "")}</span><small>${date.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })} • ${escapeHtml(bid.bid_type || "")}</small></span>
+          <span class="timeline-copy"><span class="bid-title-line"><strong>${escapeHtml(bidDisplayNumber(bid))}</strong><span class="creator-tag compact">${creatorTagMarkup(bid)}</span></span><span>${escapeHtml(bid.buyer_agency || "")}</span><small>${date.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })} • ${escapeHtml(bid.bid_type || "")}</small></span>
           <span class="status-pill ${statusBadgeClass(bid.status)}">${escapeHtml(statusDisplay(bid.status))}</span>
         </button>`;
       }).join("")
@@ -2442,6 +2594,7 @@ function downloadCurrentBidItemsCsv() {
       model,
       manufacturer,
       item.technical_registration_text || item.description,
+      money(item.max_acceptable_value),
       formatSupplierLinksForCsv(item.supplier_links),
     ];
   });
@@ -2460,6 +2613,7 @@ function downloadCurrentQuotationItemsCsv() {
     item.model,
     item.manufacturer,
     item.technical_text,
+    money(item.final_bid),
     formatSupplierLinksForCsv(item.supplier_links),
   ]);
   const identifier = sanitizeStorageFileName(quotation.edital || quotation.id);
@@ -2478,7 +2632,7 @@ function formatSupplierLinksForCsv(value) {
 }
 
 function downloadItemsCsv(rows, fileName) {
-  const headers = ["ITEM", "DESCRIÇÃO", "MODELO", "MARCA/FABRICANTE", "TEXTO TÉCNICO", "LINK'S DO FORNECEDOR"];
+  const headers = ["ITEM", "DESCRIÇÃO", "MODELO", "MARCA/FABRICANTE", "TEXTO TÉCNICO", "VALOR FINAL", "LINK'S DO FORNECEDOR"];
   const csv = `\uFEFF${[headers, ...rows].map((row) => row.map(escapeCsvCell).join(";")).join("\r\n")}\r\n`;
   const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
   const objectUrl = URL.createObjectURL(blob);
@@ -3585,85 +3739,143 @@ function formatNumber(value) {
   return Number(value || 0).toLocaleString("pt-BR", { maximumFractionDigits: 4 });
 }
 
-async function saveUser(event) {
-  event.preventDefault();
-  refs.userFormError.textContent = "";
-  try {
-    const data = collectUserData();
-    await store.saveUser(data);
-    await reloadData();
-    clearUserForm();
-    showToast("Usuário cadastrado.");
-  } catch (error) {
-    refs.userFormError.textContent = error.message;
-  }
-}
-
-function collectUserData() {
-  const email = normalizeEmail(refs.userEmail.value);
-  const password = refs.userPassword.value;
-  const confirmation = refs.userPasswordConfirm.value;
-  if (!email) throw new Error("Preencha o e-mail do usuário.");
-  if (!password) throw new Error("Preencha a senha do usuário.");
-  if (password.length < 6) throw new Error("A senha deve ter pelo menos 6 caracteres.");
-  if (password !== confirmation) throw new Error("A confirmação de senha não confere.");
-  return {
-    name: refs.userName.value.trim(),
-    email,
-    password,
-    role: "Acesso total",
-  };
-}
-
-function clearUserForm() {
-  refs.userForm.reset();
-  refs.userRole.value = "Acesso total";
-  refs.userFormError.textContent = "";
-}
-
 function renderUsers() {
-  refs.userCountLabel.textContent = `${appState.users.length} ${appState.users.length === 1 ? "usuário" : "usuários"}`;
-  if (!appState.users.length) {
-    refs.usersTableBody.innerHTML = `<tr><td colspan="5">Nenhum usuário cadastrado.</td></tr>`;
+  if (!isCurrentUserAdmin()) return;
+  const totalLabel = `${appState.users.length} ${appState.users.length === 1 ? "usuário" : "usuários"}`;
+  const query = normalizeSearchText(refs.userSearchInput.value);
+  const roleFilter = refs.userRoleFilter.value;
+  const visibleUsers = appState.users.filter((user) => {
+    const role = normalizeUserRole(user.role);
+    const matchesRole = roleFilter === "all" || role === roleFilter;
+    const searchableText = normalizeSearchText(`${user.name || ""} ${user.email || ""}`);
+    return matchesRole && (!query || searchableText.includes(query));
+  });
+  refs.usersTotalLabel.textContent = totalLabel;
+  refs.userCountLabel.textContent = query || roleFilter !== "all"
+    ? `${visibleUsers.length} de ${totalLabel}`
+    : totalLabel;
+  if (!visibleUsers.length) {
+    const message = appState.users.length
+      ? "Nenhum usuário corresponde à busca ou ao filtro selecionado."
+      : "Nenhum usuário cadastrado na organização.";
+    refs.usersTableBody.innerHTML = `<tr><td colspan="5" class="users-empty-row">${message}</td></tr>`;
     return;
   }
 
-  refs.usersTableBody.innerHTML = appState.users
+  refs.usersTableBody.innerHTML = visibleUsers
     .map((user) => {
-      const isCurrent = user.email === appState.currentUserEmail;
-      const action = isCurrent
-        ? `<span class="current-user-pill">Usuário atual</span>`
-        : `<button class="danger-action compact-action" type="button" data-delete-user="${escapeHtml(user.email)}">Excluir</button>`;
+      const isCurrent = normalizeEmail(user.email) === normalizeEmail(appState.currentUserEmail);
+      const role = normalizeUserRole(user.role);
+      const canConfigure = role === USER_ROLES.ANALYST && Boolean(user.auth_user_id);
+      const assignedBidCount = user.auth_user_id
+        ? appState.bids.filter((bid) => bid.assigned_to === user.auth_user_id).length
+        : 0;
+      const initials = userInitials(user.name || user.email);
+      const action = canConfigure
+        ? `<button class="quiet-action compact-action configure-user-action" type="button" data-configure-user="${escapeHtml(user.auth_user_id)}"><span aria-hidden="true">⚙</span> Configurar acessos</button>`
+        : isCurrent
+          ? `<span class="current-user-pill"><span aria-hidden="true">♙</span> Usuário atual</span>`
+          : `<span class="muted-text">—</span>`;
+      const assignedBids = role === USER_ROLES.ADMIN
+        ? `<span class="all-bids-label"><span aria-hidden="true">∞</span> Todos os editais</span>`
+        : `<span class="assigned-bids-pill" title="Editais atribuídos diretamente pelo administrador"><span aria-hidden="true">▱</span> ${assignedBidCount} ${assignedBidCount === 1 ? "edital" : "editais"}</span>`;
       return `
         <tr>
-          <td>${escapeHtml(user.name || "")}</td>
+          <td><div class="user-identity"><span class="user-avatar" aria-hidden="true">${escapeHtml(initials)}</span><span><strong>${escapeHtml(user.name || "")}</strong><small>${escapeHtml(role === USER_ROLES.ADMIN ? "Conta principal" : role)}</small></span></div></td>
           <td>${escapeHtml(user.email || "")}</td>
-          <td>${escapeHtml(user.role || "Acesso total")}</td>
-          <td>${formatDateTime(user.created_at || "")}</td>
+          <td><span class="user-role-pill ${role === USER_ROLES.ADMIN ? "admin" : "analyst"}"><span aria-hidden="true">${role === USER_ROLES.ADMIN ? "♢" : "♙"}</span> ${escapeHtml(role)}</span></td>
+          <td>${assignedBids}</td>
           <td>${action}</td>
         </tr>
       `;
     })
     .join("");
 
-  refs.usersTableBody.querySelectorAll("[data-delete-user]").forEach((button) => {
-    button.addEventListener("click", withBlockingLoading(() => deleteUser(button.dataset.deleteUser), "Excluindo usuário…"));
+  refs.usersTableBody.querySelectorAll("[data-configure-user]").forEach((button) => {
+    button.addEventListener("click", () => openUserAssignments(button.dataset.configureUser));
   });
 }
 
-async function deleteUser(email) {
-  if (normalizeEmail(email) === appState.currentUserEmail) {
-    showToast("O usuário atual não pode ser excluído durante a sessão.");
+function normalizeSearchText(value) {
+  return String(value || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLocaleLowerCase("pt-BR")
+    .trim();
+}
+
+function userInitials(value) {
+  const parts = String(value || "?").trim().split(/\s+/).filter(Boolean);
+  if (!parts.length) return "?";
+  const initials = parts.length === 1 ? parts[0].slice(0, 2) : `${parts[0][0]}${parts.at(-1)[0]}`;
+  return initials.toLocaleUpperCase("pt-BR");
+}
+
+function openUserAssignments(analystId) {
+  if (!isCurrentUserAdmin()) return;
+  const analyst = appState.users.find((user) => user.auth_user_id === analystId && normalizeUserRole(user.role) === USER_ROLES.ANALYST);
+  if (!analyst) {
+    showToast("Analista não encontrado na organização.");
     return;
   }
-  if (appState.users.length <= 1) {
-    showToast("Mantenha pelo menos um usuário cadastrado.");
-    return;
-  }
-  if (!confirm(`Excluir o usuário ${email}?`)) return;
-  await store.deleteUser(email);
+  refs.userAssignmentsModal.dataset.analystId = analystId;
+  refs.userAssignmentsTitle.textContent = `Acessos de ${analyst.name || analyst.email}`;
+  refs.userAssignmentsDescription.textContent = "Marque os editais e orçamentos que este analista também poderá visualizar e editar. Registros criados por ele já ficam disponíveis.";
+  refs.userAssignmentsError.textContent = "";
+  const bidOptions = appState.bids.length
+    ? appState.bids.map((bid) => {
+        const createdByAnalyst = bid.created_by === analystId;
+        const assignedToAnalyst = bid.assigned_to === analystId;
+        const assignedUser = appState.users.find((user) => user.auth_user_id === bid.assigned_to);
+        const note = createdByAnalyst
+          ? "Criado pelo analista"
+          : assignedUser && !assignedToAnalyst
+            ? `Atualmente atribuído a ${assignedUser.name || assignedUser.email}`
+            : assignedToAnalyst ? "Atribuído ao analista" : "Sem atribuição";
+        return `<label class="user-assignment-option">
+          <input type="checkbox" value="${escapeHtml(bid.id)}" ${createdByAnalyst || assignedToAnalyst ? "checked" : ""} ${createdByAnalyst ? "disabled" : ""} />
+          <span><strong>${escapeHtml(bidDisplayNumber(bid))}</strong><small>${escapeHtml(bid.buyer_agency || "Órgão não informado")} · ${escapeHtml(note)}</small></span>
+        </label>`;
+      }).join("")
+    : `<div class="empty-state compact-empty">Nenhum edital cadastrado na organização.</div>`;
+  const quotationOptions = appState.quotations.length
+    ? appState.quotations.map((quotation) => {
+        const createdByAnalyst = quotation.created_by === analystId;
+        const assignedToAnalyst = quotation.assigned_to === analystId;
+        const assignedUser = appState.users.find((user) => user.auth_user_id === quotation.assigned_to);
+        const note = createdByAnalyst
+          ? "Criado pelo analista"
+          : assignedUser && !assignedToAnalyst
+            ? `Atualmente atribuído a ${assignedUser.name || assignedUser.email}`
+            : assignedToAnalyst ? "Atribuído ao analista" : "Sem atribuição";
+        return `<label class="user-assignment-option">
+          <input type="checkbox" data-access-type="quotation" value="${quotation.id}" ${createdByAnalyst || assignedToAnalyst ? "checked" : ""} ${createdByAnalyst ? "disabled" : ""} />
+          <span><strong>Orçamento #${quotation.id} · ${escapeHtml(quotation.edital)}</strong><small>${escapeHtml(quotation.agency || "Órgão não informado")} · ${escapeHtml(note)}</small></span>
+        </label>`;
+      }).join("")
+    : `<div class="empty-state compact-empty">Nenhum orçamento cadastrado na organização.</div>`;
+  refs.userAssignmentsList.innerHTML = `
+    <section class="user-assignment-group"><h3>Editais</h3>${bidOptions}</section>
+    <section class="user-assignment-group"><h3>Orçamentos</h3>${quotationOptions}</section>`;
+  refs.userAssignmentsModal.showModal();
+}
+
+function closeUserAssignments(event) {
+  event?.preventDefault();
+  if (refs.userAssignmentsModal.open) refs.userAssignmentsModal.close();
+  delete refs.userAssignmentsModal.dataset.analystId;
+}
+
+async function saveUserAssignments(event) {
+  event.preventDefault();
+  const analystId = refs.userAssignmentsModal.dataset.analystId;
+  if (!analystId || !isCurrentUserAdmin()) return;
+  const selectedBidIds = Array.from(refs.userAssignmentsList.querySelectorAll("input[type='checkbox']:checked:not([data-access-type])"), (input) => input.value);
+  const selectedQuotationIds = Array.from(refs.userAssignmentsList.querySelectorAll("input[data-access-type='quotation']:checked"), (input) => Number(input.value));
+  await store.assignAccessToAnalyst(analystId, selectedBidIds, selectedQuotationIds);
   await reloadData();
-  showToast("Usuário excluído.");
+  closeUserAssignments();
+  showToast("Atribuições do analista atualizadas.");
 }
 
 function currentItems() {
@@ -3854,6 +4066,9 @@ function normalizeBidRecord(record) {
     edital_file_size: Number(record.edital_file_size || 0),
     edital_files: editalFiles,
     quotation_id: record.quotation_id === undefined || record.quotation_id === null || record.quotation_id === "" ? null : Number(record.quotation_id),
+    organization_id: record.organization_id || null,
+    created_by: record.created_by || null,
+    assigned_to: record.assigned_to || null,
     ...(record.edital_file_blob ? { edital_file_blob: record.edital_file_blob } : {}),
     created_at: record.created_at || timestampNow(),
     updated_at: record.updated_at || timestampNow(),
@@ -4046,6 +4261,9 @@ function normalizeQuotationRecord(record) {
     city: record.city || "",
     cep: formatCep(record.cep),
     delivery_deadline: record.delivery_deadline || "",
+    organization_id: record.organization_id || null,
+    created_by: record.created_by || null,
+    assigned_to: record.assigned_to || null,
     created_at: record.created_at || timestampNow(),
     updated_at: record.updated_at || timestampNow(),
   };
@@ -4384,7 +4602,7 @@ async function createLocalUserRecord(userData) {
   return {
     email,
     name: userData.name?.trim() || email,
-    role: userData.role || "Acesso total",
+    role: userData.role || USER_ROLES.ANALYST,
     salt,
     password_hash,
     created_at: timestampNow(),
