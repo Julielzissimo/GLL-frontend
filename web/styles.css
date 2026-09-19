@@ -1476,6 +1476,46 @@ tr.warning-row {
   --shadow: 0 12px 34px rgba(16, 24, 40, 0.08);
   --radius: 14px;
   --sidebar-width: 250px;
+  --scrollbar-track: #e9edf3;
+  --scrollbar-thumb: #8794aa;
+  --scrollbar-thumb-hover: var(--primary);
+  --scrollbar-thumb-active: var(--primary-dark);
+}
+
+/* Mantém todas as áreas roláveis alinhadas à identidade visual do GLL. */
+* {
+  scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+  scrollbar-width: thin;
+}
+
+*::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+
+*::-webkit-scrollbar-track {
+  border-radius: 999px;
+  background: var(--scrollbar-track);
+}
+
+*::-webkit-scrollbar-thumb {
+  min-width: 36px;
+  min-height: 36px;
+  border: 3px solid var(--scrollbar-track);
+  border-radius: 999px;
+  background: var(--scrollbar-thumb);
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: var(--scrollbar-thumb-hover);
+}
+
+*::-webkit-scrollbar-thumb:active {
+  background: var(--scrollbar-thumb-active);
+}
+
+*::-webkit-scrollbar-corner {
+  background: var(--scrollbar-track);
 }
 
 body {
