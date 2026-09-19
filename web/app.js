@@ -289,6 +289,9 @@ const refs = {
   clearQuotationItemButton: $("clearQuotationItemButton"),
   quotationItemsTableBody: $("quotationItemsTableBody"),
   userCountLabel: $("userCountLabel"),
+  usersTotalLabel: $("usersTotalLabel"),
+  userSearchInput: $("userSearchInput"),
+  userRoleFilter: $("userRoleFilter"),
   usersTableBody: $("usersTableBody"),
   usersOrganizationLabel: $("usersOrganizationLabel"),
   userAssignmentsModal: $("userAssignmentsModal"),
@@ -1737,6 +1740,8 @@ function bindEvents() {
   refs.closeUserAssignmentsButton.addEventListener("click", closeUserAssignments);
   refs.cancelUserAssignmentsButton.addEventListener("click", closeUserAssignments);
   refs.userAssignmentsModal.addEventListener("cancel", closeUserAssignments);
+  refs.userSearchInput.addEventListener("input", renderUsers);
+  refs.userRoleFilter.addEventListener("change", renderUsers);
   refs.itemsTabButton.addEventListener("click", () => setPage("items"));
   refs.documentsTabButton.addEventListener("click", () => setPage("documents"));
   refs.failuresTabButton.addEventListener("click", () => setPage("failures"));
@@ -3741,27 +3746,50 @@ function formatNumber(value) {
 
 function renderUsers() {
   if (!isCurrentUserAdmin()) return;
-  refs.userCountLabel.textContent = `${appState.users.length} ${appState.users.length === 1 ? "usuário" : "usuários"}`;
-  if (!appState.users.length) {
-    refs.usersTableBody.innerHTML = `<tr><td colspan="4">Nenhum usuário cadastrado na organização.</td></tr>`;
+  const totalLabel = `${appState.users.length} ${appState.users.length === 1 ? "usuário" : "usuários"}`;
+  const query = normalizeSearchText(refs.userSearchInput.value);
+  const roleFilter = refs.userRoleFilter.value;
+  const visibleUsers = appState.users.filter((user) => {
+    const role = normalizeUserRole(user.role);
+    const matchesRole = roleFilter === "all" || role === roleFilter;
+    const searchableText = normalizeSearchText(`${user.name || ""} ${user.email || ""}`);
+    return matchesRole && (!query || searchableText.includes(query));
+  });
+  refs.usersTotalLabel.textContent = totalLabel;
+  refs.userCountLabel.textContent = query || roleFilter !== "all"
+    ? `${visibleUsers.length} de ${totalLabel}`
+    : totalLabel;
+  if (!visibleUsers.length) {
+    const message = appState.users.length
+      ? "Nenhum usuário corresponde à busca ou ao filtro selecionado."
+      : "Nenhum usuário cadastrado na organização.";
+    refs.usersTableBody.innerHTML = `<tr><td colspan="5" class="users-empty-row">${message}</td></tr>`;
     return;
   }
 
-  refs.usersTableBody.innerHTML = appState.users
+  refs.usersTableBody.innerHTML = visibleUsers
     .map((user) => {
       const isCurrent = normalizeEmail(user.email) === normalizeEmail(appState.currentUserEmail);
       const role = normalizeUserRole(user.role);
       const canConfigure = role === USER_ROLES.ANALYST && Boolean(user.auth_user_id);
+      const assignedBidCount = user.auth_user_id
+        ? appState.bids.filter((bid) => bid.assigned_to === user.auth_user_id).length
+        : 0;
+      const initials = userInitials(user.name || user.email);
       const action = canConfigure
-        ? `<button class="quiet-action compact-action" type="button" data-configure-user="${escapeHtml(user.auth_user_id)}">Configurar acessos</button>`
+        ? `<button class="quiet-action compact-action configure-user-action" type="button" data-configure-user="${escapeHtml(user.auth_user_id)}"><span aria-hidden="true">⚙</span> Configurar acessos</button>`
         : isCurrent
-          ? `<span class="current-user-pill">Usuário atual</span>`
+          ? `<span class="current-user-pill"><span aria-hidden="true">♙</span> Usuário atual</span>`
           : `<span class="muted-text">—</span>`;
+      const assignedBids = role === USER_ROLES.ADMIN
+        ? `<span class="all-bids-label"><span aria-hidden="true">∞</span> Todos os editais</span>`
+        : `<span class="assigned-bids-pill" title="Editais atribuídos diretamente pelo administrador"><span aria-hidden="true">▱</span> ${assignedBidCount} ${assignedBidCount === 1 ? "edital" : "editais"}</span>`;
       return `
         <tr>
-          <td>${escapeHtml(user.name || "")}</td>
+          <td><div class="user-identity"><span class="user-avatar" aria-hidden="true">${escapeHtml(initials)}</span><span><strong>${escapeHtml(user.name || "")}</strong><small>${escapeHtml(role === USER_ROLES.ADMIN ? "Conta principal" : role)}</small></span></div></td>
           <td>${escapeHtml(user.email || "")}</td>
-          <td><span class="current-user-pill">${escapeHtml(role)}</span></td>
+          <td><span class="user-role-pill ${role === USER_ROLES.ADMIN ? "admin" : "analyst"}"><span aria-hidden="true">${role === USER_ROLES.ADMIN ? "♢" : "♙"}</span> ${escapeHtml(role)}</span></td>
+          <td>${assignedBids}</td>
           <td>${action}</td>
         </tr>
       `;
@@ -3771,6 +3799,21 @@ function renderUsers() {
   refs.usersTableBody.querySelectorAll("[data-configure-user]").forEach((button) => {
     button.addEventListener("click", () => openUserAssignments(button.dataset.configureUser));
   });
+}
+
+function normalizeSearchText(value) {
+  return String(value || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLocaleLowerCase("pt-BR")
+    .trim();
+}
+
+function userInitials(value) {
+  const parts = String(value || "?").trim().split(/\s+/).filter(Boolean);
+  if (!parts.length) return "?";
+  const initials = parts.length === 1 ? parts[0].slice(0, 2) : `${parts[0][0]}${parts.at(-1)[0]}`;
+  return initials.toLocaleUpperCase("pt-BR");
 }
 
 function openUserAssignments(analystId) {

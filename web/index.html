@@ -747,38 +747,75 @@
       </section>
 
       <section id="usersPage" class="users-page hidden">
-        <section class="section-band workspace-header">
-          <div>
-            <span class="workspace-kicker">Equipe</span>
-            <h2>Usuários e acessos</h2>
-            <p id="usersOrganizationLabel">Usuários vinculados à organização.</p>
+        <section class="section-band users-hero">
+          <div class="users-hero-title">
+            <span class="workspace-kicker users-kicker"><span aria-hidden="true"></span>Equipe</span>
+            <h1>Usuários com acesso</h1>
+            <p>Gerencie perfis, níveis de acesso e atribuição de editais.</p>
+          </div>
+          <div class="users-hero-note">
+            <span class="users-icon-tile" aria-hidden="true">ⓘ</span>
+            <p>Os logins são cadastrados no Supabase. Aqui você consulta os perfis e atribui editais aos analistas.</p>
+          </div>
+          <div class="users-total-card" aria-live="polite">
+            <span aria-hidden="true">♟</span>
+            <strong id="usersTotalLabel">0 usuários</strong>
           </div>
         </section>
 
-        <section class="section-band">
-          <div class="section-title">
-            <h2>Usuários com acesso</h2>
-            <span>Os logins são cadastrados no Supabase. Aqui você consulta os perfis e atribui editais aos analistas.</span>
-          </div>
-        </section>
-
-        <section class="section-band">
-          <div class="section-title">
-            <h2>Lista de Usuários</h2>
-            <span id="userCountLabel">0 usuários</span>
+        <section class="section-band users-list-panel">
+          <div class="users-list-toolbar">
+            <div class="users-list-heading">
+              <span class="users-icon-tile" aria-hidden="true">♟</span>
+              <h2>Lista de Usuários</h2>
+            </div>
+            <div class="users-list-controls">
+              <label class="users-search-control">
+                <span class="sr-only">Buscar usuário</span>
+                <span aria-hidden="true">⌕</span>
+                <input id="userSearchInput" type="search" placeholder="Buscar usuário..." autocomplete="off" />
+              </label>
+              <label class="users-filter-control">
+                <span class="sr-only">Filtrar por nível de acesso</span>
+                <span aria-hidden="true">▽</span>
+                <select id="userRoleFilter">
+                  <option value="all">Todos os níveis</option>
+                  <option value="Administrador">Administrador</option>
+                  <option value="Analista">Analista</option>
+                </select>
+              </label>
+              <span id="userCountLabel" class="users-visible-count">0 usuários</span>
+            </div>
           </div>
           <div class="table-wrap users-table-wrap">
-            <table>
+            <table class="users-access-table">
               <thead>
                 <tr>
                   <th>Nome</th>
                   <th>Login</th>
                   <th>Nível de acesso</th>
+                  <th>Editais atribuídos</th>
                   <th>Ações</th>
                 </tr>
               </thead>
               <tbody id="usersTableBody"></tbody>
             </table>
+          </div>
+        </section>
+
+        <section class="section-band users-access-guide">
+          <div class="users-guide-intro">
+            <span class="workspace-kicker users-kicker"><span aria-hidden="true"></span>Equipe</span>
+            <h2>Usuários e acessos</h2>
+            <p id="usersOrganizationLabel">Usuários vinculados à organização.</p>
+          </div>
+          <div class="users-guide-item">
+            <span class="users-guide-icon admin" aria-hidden="true">♢</span>
+            <p><strong>Administrador</strong><span>Acesso global a todos os editais e funcionalidades do sistema.</span></p>
+          </div>
+          <div class="users-guide-item">
+            <span class="users-guide-icon analyst" aria-hidden="true">♙</span>
+            <p><strong>Analista</strong><span>Acesso aos editais criados por ele ou atribuídos pelo administrador.</span></p>
           </div>
         </section>
 
