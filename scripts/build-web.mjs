@@ -13,7 +13,7 @@ const TARGETS = {
     storageSuffix: "homolog",
     supabaseUrl: "https://dwotbzrjcetizyygzoty.supabase.co",
     supabaseAnonKey: "sb_publishable_Xud-GtYCKZdIsXkAaa43rA_pXPqGTPn",
-    sessionIdleTimeoutMinutes: 30,
+    sessionIdleTimeoutMinutes: 120,
     sessionMaxLifetimeHours: 8,
   },
   production: {
