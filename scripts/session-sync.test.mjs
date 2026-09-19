@@ -170,6 +170,39 @@ test("quotation normalization preserves the delivery deadline", () => {
   assert.equal(quotation.delivery_deadline, "30 dias");
 });
 
+test("exclusão lógica preserva o edital e oculta seus dados da interface", async () => {
+  const db = backend();
+  db.tables.items.push({ id: 1, bid_id: "TEST-1", item_number: 1 });
+  db.tables.documents.push({ id: 1, bid_id: "TEST-1", document_type: "Certidão" });
+  db.tables.failure_history.push({ id: 1, bid_id: "TEST-1", failure_type: "Preço" });
+  const app = client(db);
+  app.store.client.from = (table) => {
+    assert.equal(table, "bids");
+    return {
+      update: (changes) => ({
+        eq: async (_column, bidId) => {
+          const bid = db.tables.bids.find((row) => row.id === bidId);
+          Object.assign(bid, changes);
+          return { error: null };
+        },
+      }),
+    };
+  };
+
+  await app.store.deleteBid("TEST-1");
+  assert.equal(db.tables.bids.length, 1);
+  assert.ok(db.tables.bids[0].deleted_at);
+  assert.equal(db.tables.items.length, 1);
+  assert.equal(db.tables.documents.length, 1);
+  assert.equal(db.tables.failure_history.length, 1);
+
+  await app.restoreSession();
+  assert.equal(app.appState.bids.length, 0);
+  assert.equal(app.appState.items.length, 0);
+  assert.equal(app.appState.documents.length, 0);
+  assert.equal(app.appState.failureHistory.length, 0);
+});
+
 test("quotation normalization preserves creator and analyst assignment", () => {
   const app = client();
   const quotation = app.normalizeQuotationRecord({ edital: "PE 12/2026", created_by: "creator-id", assigned_to: "analyst-id" });
