@@ -323,6 +323,16 @@ function assertSupabase(error) {
   throw new Error(error.message || "Erro ao acessar o Supabase.");
 }
 
+function quotationSaveError(error) {
+  const message = String(error?.message || "");
+  if (error?.code === "42501" || /row-level security|organiza[cç][aã]o v[aá]lida/i.test(message)) {
+    return new Error(
+      "Não foi possível confirmar seu acesso à organização para salvar o orçamento. Atualize a página e, se o problema persistir, contate o administrador.",
+    );
+  }
+  return new Error(message || "Não foi possível salvar o orçamento.");
+}
+
 async function deleteAllSupabaseRows(client, tableName, columnName) {
   const { error } = await client.from(tableName).delete().not(columnName, "is", null);
   assertSupabase(error);
@@ -1319,12 +1329,22 @@ class SupabaseStore {
       assertSupabase(error);
       return Number(data.id);
     }
+    const { data: authData, error: authError } = await client.auth.getUser();
+    if (authError || !authData.user?.id || !appState.currentOrganizationId) {
+      throw quotationSaveError(authError || { code: "42501" });
+    }
     const { data, error } = await client
       .from("quotations")
-      .insert({ ...quotationData, created_at: now, updated_at: now })
+      .insert({
+        ...quotationData,
+        organization_id: appState.currentOrganizationId,
+        created_by: authData.user.id,
+        created_at: now,
+        updated_at: now,
+      })
       .select("id")
       .single();
-    assertSupabase(error);
+    if (error) throw quotationSaveError(error);
     return Number(data.id);
   }
 
