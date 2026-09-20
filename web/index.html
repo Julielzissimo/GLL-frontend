@@ -49,9 +49,7 @@
           <button id="navHomeButton" class="nav-link active" type="button" data-navigation-page="home"><span aria-hidden="true">⌂</span>Visão geral</button>
           <button id="navBidsButton" class="nav-link" type="button" data-navigation-page="bids"><span aria-hidden="true">▤</span>Licitações</button>
           <button id="navQuotationsButton" class="nav-link" type="button" data-navigation-page="quotations"><span aria-hidden="true">▧</span>Orçamento</button>
-          <button id="navSuppliersButton" class="nav-link nav-link-disabled" type="button" aria-disabled="true" title="Fornecedores temporariamente indisponível" disabled>
-            <span class="nav-disabled-icon" aria-hidden="true">▦</span>Fornecedores
-          </button>
+          <button id="navSuppliersButton" class="nav-link" type="button" data-navigation-page="suppliers"><span aria-hidden="true">▦</span>Fornecedores</button>
           <button id="navUsersButton" class="nav-link" type="button" data-navigation-page="users"><span aria-hidden="true">♙</span>Usuários</button>
           <button id="navSettingsButton" class="nav-link" type="button" data-navigation-page="settings"><span aria-hidden="true">⚙</span>Configurações</button>
         </nav>
@@ -838,25 +836,92 @@
         </dialog>
       </section>
 
-      <section id="suppliersPage" class="users-page hidden">
-        <div class="page-heading"><div><span class="eyebrow">CADASTRO</span><h1>Fornecedores</h1><p>Encontre fornecedores de varejo pelas tags dos produtos que procura.</p></div><button id="newSupplierButton" class="primary-action" type="button">＋ Novo fornecedor</button></div>
-        <section class="section-band">
-          <label>Pesquisar fornecedores<input id="supplierSearch" type="search" placeholder="Nome ou tags: papelaria, informática, limpeza..." /></label>
-          <p id="supplierCount" role="status"></p>
-          <div class="table-wrap"><table class="bids-table"><thead><tr><th>Fornecedor</th><th>Site</th><th>Contato</th><th>Tags de produtos</th><th>Ações</th></tr></thead><tbody id="suppliersTableBody"></tbody></table></div>
-        </section>
-        <form id="supplierForm" class="section-band">
-          <div class="section-title"><h2 id="supplierFormTitle">Novo fornecedor</h2><span>Varejo</span></div>
-          <input id="supplierId" type="hidden" />
-          <div class="form-grid">
-            <label>Nome do fornecedor *<input id="supplierName" required maxlength="200" /></label>
-            <label>Site<input id="supplierWebsite" type="url" placeholder="https://www.exemplo.com.br" /></label>
-            <label>Contato<input id="supplierContact" maxlength="300" placeholder="Telefone, e-mail ou pessoa de contato" /></label>
-            <label>Tags de produtos<textarea id="supplierTags" rows="3" aria-describedby="supplierTagsHint" placeholder="papelaria, informática, limpeza"></textarea><small id="supplierTagsHint">Adicione quantas tags precisar, separadas por vírgulas ou quebras de linha. Todas serão consideradas na pesquisa.</small></label>
+      <section id="suppliersPage" class="users-page suppliers-page hidden">
+        <div class="page-heading suppliers-heading"><div><span class="eyebrow">GESTÃO</span><h1>Fornecedores</h1><p>Cadastre e gerencie seus fornecedores e seus produtos.</p></div><button id="newSupplierButton" class="primary-action" type="button">＋ Novo fornecedor</button></div>
+        <div class="supplier-global-filters" aria-label="Filtros de fornecedores">
+          <label class="supplier-search-field"><span aria-hidden="true">⌕</span><input id="supplierSearch" type="search" aria-label="Buscar fornecedor, produto ou tag" placeholder="Buscar fornecedor, produto ou tag..." /></label>
+          <label class="supplier-select-field"><span aria-hidden="true">◇</span><select id="supplierTagFilter" aria-label="Filtrar fornecedores por tag"><option value="">Todas as tags</option></select></label>
+          <label class="supplier-select-field"><span aria-hidden="true">⇅</span><select id="supplierSort" aria-label="Ordenar fornecedores"><option value="name">Ordenar por nome</option><option value="products-desc">Mais produtos</option><option value="products-asc">Menos produtos</option></select></label>
+        </div>
+
+        <div class="suppliers-workspace">
+          <aside class="supplier-list-panel" aria-label="Fornecedores cadastrados">
+            <div class="supplier-list-heading"><h2>Fornecedores cadastrados</h2><span id="supplierCount" role="status"></span></div>
+            <div id="suppliersList" class="supplier-list"></div>
+          </aside>
+
+          <section id="supplierDetail" class="supplier-detail-panel" aria-live="polite">
+            <div id="supplierEmptyDetail" class="empty-state supplier-detail-empty">Cadastre ou selecione um fornecedor para visualizar seus produtos.</div>
+            <div id="supplierDetailContent" class="hidden">
+              <div class="supplier-profile">
+                <div id="supplierDetailAvatar" class="supplier-avatar large" aria-hidden="true"></div>
+                <div class="supplier-profile-copy">
+                  <h2 id="supplierDetailName"></h2>
+                  <p id="supplierDetailSubtitle">Fornecedor cadastrado</p>
+                  <div id="supplierContactLinks" class="supplier-contact-links"></div>
+                </div>
+                <button id="editSupplierButton" class="quiet-action supplier-edit-action" type="button">✎ Editar fornecedor</button>
+              </div>
+              <div class="supplier-meta-row">
+                <div class="supplier-tags-block"><strong>Tags do fornecedor</strong><div id="supplierDetailTags" class="supplier-detail-tags"></div></div>
+                <div class="supplier-product-total"><span aria-hidden="true">◇</span><div><small>Total de produtos</small><strong id="supplierProductTotal">0</strong></div></div>
+              </div>
+              <section class="supplier-products-section">
+                <div class="supplier-products-heading"><h2>Produtos do fornecedor</h2><button id="newSupplierProductButton" class="primary-action" type="button">＋ Novo produto</button></div>
+                <div class="supplier-product-filters">
+                  <label class="supplier-search-field"><span aria-hidden="true">⌕</span><input id="supplierProductSearch" type="search" aria-label="Buscar produto" placeholder="Buscar produto..." /></label>
+                  <label class="supplier-select-field"><span aria-hidden="true">◇</span><select id="supplierProductTagFilter" aria-label="Filtrar produtos por tag"><option value="">Todas as tags</option></select></label>
+                </div>
+                <div class="supplier-products-table-wrap">
+                  <table class="supplier-products-table"><thead><tr><th>Produto</th><th>Tags</th><th>Preço médio</th><th>Ações</th></tr></thead><tbody id="supplierProductsTableBody"></tbody></table>
+                </div>
+                <p id="supplierProductsStatus" class="supplier-products-status" role="status"></p>
+              </section>
+            </div>
+          </section>
+        </div>
+
+        <dialog id="supplierModal" class="quotation-item-modal supplier-modal" aria-labelledby="supplierFormTitle">
+          <div class="quotation-item-modal-shell">
+            <div class="quotation-item-modal-header"><div><span class="eyebrow">FORNECEDOR</span><h2 id="supplierFormTitle">Novo fornecedor</h2></div><button id="closeSupplierModalButton" class="quotation-item-modal-close" type="button" aria-label="Fechar modal">×</button></div>
+            <form id="supplierForm" class="quotation-item-modal-form">
+              <input id="supplierId" type="hidden" />
+              <div class="form-grid">
+                <label>Nome do fornecedor *<input id="supplierName" required maxlength="200" /></label>
+                <label>Site<input id="supplierWebsite" type="url" placeholder="https://www.exemplo.com.br" /></label>
+                <label>Contato<input id="supplierContact" maxlength="300" placeholder="Telefone, e-mail ou pessoa de contato" /></label>
+                <label>Tags de produtos<textarea id="supplierTags" rows="3" aria-describedby="supplierTagsHint" placeholder="papelaria, informática, limpeza"></textarea><small id="supplierTagsHint">Separe as tags por vírgulas ou quebras de linha.</small></label>
+              </div>
+              <p id="supplierMessage" class="form-error" role="status" aria-live="polite"></p>
+              <div class="button-row end"><button id="cancelSupplierButton" class="quiet-action" type="button">Cancelar</button><button class="primary-action" type="submit">Salvar fornecedor</button></div>
+            </form>
           </div>
-          <p id="supplierMessage" role="status" aria-live="polite"></p>
-          <div class="form-actions"><button class="primary-action" type="submit">Salvar fornecedor</button><button id="cancelSupplierButton" class="quiet-action" type="button">Limpar cadastro</button></div>
-        </form>
+        </dialog>
+
+        <dialog id="supplierProductModal" class="quotation-item-modal" aria-labelledby="supplierProductModalTitle">
+          <div class="quotation-item-modal-shell">
+            <div class="quotation-item-modal-header"><div><span class="eyebrow">PRODUTO DO FORNECEDOR</span><h2 id="supplierProductModalTitle">Cadastrar produto</h2></div><button id="closeSupplierProductModalButton" class="quotation-item-modal-close" type="button" aria-label="Fechar modal">×</button></div>
+            <form id="supplierProductForm" class="quotation-item-modal-form">
+              <input id="supplierProductId" type="hidden" />
+              <div class="form-grid supplier-product-form-grid">
+                <label>Produto *<input id="supplierProductName" required maxlength="240" /></label>
+                <label>SKU<input id="supplierProductSku" maxlength="120" /></label>
+                <label>Modelo<input id="supplierProductModel" maxlength="200" /></label>
+                <label>Fabricante<input id="supplierProductManufacturer" maxlength="200" /></label>
+                <label>Tags<textarea id="supplierProductTags" rows="2" placeholder="eletrônicos, notebook, escritório"></textarea></label>
+                <label>Preço médio<input id="supplierProductAveragePrice" inputmode="decimal" placeholder="R$ 0,00" /></label>
+                <label class="supplier-product-technical-text">Cadastro técnico<textarea id="supplierProductTechnicalText" class="auto-grow-textarea" rows="4" placeholder="Descreva as características técnicas do produto"></textarea></label>
+              </div>
+              <details id="supplierProductSpecificationsSection" class="quotation-technical-specifications" open>
+                <summary><span><strong>Especificações técnicas</strong><small>Cadastre requisitos e valores oferecidos, como no item de orçamento.</small></span></summary>
+                <div id="supplierProductSpecificationsList" class="quotation-specifications-list"></div>
+                <button id="addSupplierProductSpecificationButton" class="quotation-add-specification" type="button">＋ Adicionar especificação</button>
+              </details>
+              <p id="supplierProductFormError" class="form-error" role="alert"></p>
+              <div class="button-row end"><button id="deleteSupplierProductButton" class="danger-action hidden" type="button">Excluir produto</button><button id="clearSupplierProductButton" class="quiet-action" type="button">Limpar</button><button class="primary-action" type="submit">Cadastrar</button></div>
+            </form>
+          </div>
+        </dialog>
       </section>
 
       <section id="settingsPage" class="users-page settings-page hidden">

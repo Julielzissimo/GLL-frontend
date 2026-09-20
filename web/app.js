@@ -81,6 +81,9 @@ const appState = {
   supplierLinksDraft: [],
   quotationSupplierLinksDraft: [],
   quotationTechnicalSpecificationsDraft: [],
+  supplierProductSpecificationsDraft: [],
+  currentSupplierId: null,
+  currentSupplierProductId: null,
   sidebarCollapsed: false,
   appNavigationCollapsed: false,
   bids: [],
@@ -91,6 +94,7 @@ const appState = {
   quotationItems: [],
   users: [],
   suppliers: [],
+  supplierProducts: [],
 };
 
 const $ = (id) => document.getElementById(id);
@@ -113,6 +117,7 @@ const refs = {
   navHomeButton: $("navHomeButton"),
   navBidsButton: $("navBidsButton"),
   navQuotationsButton: $("navQuotationsButton"),
+  navSuppliersButton: $("navSuppliersButton"),
   navUsersButton: $("navUsersButton"),
   navSettingsButton: $("navSettingsButton"),
   menuToggleButton: $("menuToggleButton"),
@@ -140,6 +145,37 @@ const refs = {
   currentBidAgency: $("currentBidAgency"),
   usersPage: $("usersPage"),
   settingsPage: $("settingsPage"),
+  suppliersPage: $("suppliersPage"),
+  suppliersList: $("suppliersList"),
+  supplierTagFilter: $("supplierTagFilter"),
+  supplierSort: $("supplierSort"),
+  supplierDetailContent: $("supplierDetailContent"),
+  supplierEmptyDetail: $("supplierEmptyDetail"),
+  supplierDetailAvatar: $("supplierDetailAvatar"),
+  supplierDetailName: $("supplierDetailName"),
+  supplierDetailSubtitle: $("supplierDetailSubtitle"),
+  supplierContactLinks: $("supplierContactLinks"),
+  supplierDetailTags: $("supplierDetailTags"),
+  supplierProductTotal: $("supplierProductTotal"),
+  supplierProductSearch: $("supplierProductSearch"),
+  supplierProductTagFilter: $("supplierProductTagFilter"),
+  supplierProductsTableBody: $("supplierProductsTableBody"),
+  supplierProductsStatus: $("supplierProductsStatus"),
+  supplierModal: $("supplierModal"),
+  supplierProductModal: $("supplierProductModal"),
+  supplierProductForm: $("supplierProductForm"),
+  supplierProductModalTitle: $("supplierProductModalTitle"),
+  supplierProductName: $("supplierProductName"),
+  supplierProductSku: $("supplierProductSku"),
+  supplierProductModel: $("supplierProductModel"),
+  supplierProductManufacturer: $("supplierProductManufacturer"),
+  supplierProductTags: $("supplierProductTags"),
+  supplierProductAveragePrice: $("supplierProductAveragePrice"),
+  supplierProductTechnicalText: $("supplierProductTechnicalText"),
+  supplierProductSpecificationsSection: $("supplierProductSpecificationsSection"),
+  supplierProductSpecificationsList: $("supplierProductSpecificationsList"),
+  supplierProductFormError: $("supplierProductFormError"),
+  deleteSupplierProductButton: $("deleteSupplierProductButton"),
   logoutButton: $("logoutButton"),
   resetDataButton: $("resetDataButton"),
   filterForm: $("filterForm"),
@@ -357,7 +393,7 @@ class IndexedDbStore {
     this.requiresAuthenticationBeforeData = false;
     const storageSuffix = sanitizeStorageSuffix(GLL_CONFIG.storageSuffix || GLL_CONFIG.environment);
     this.dbName = `gll-web-data-v4-${storageSuffix}`;
-    this.version = 4;
+    this.version = 5;
     this.authDbName = `gll-web-auth-v2-${storageSuffix}`;
     this.authVersion = 1;
     this.db = null;
@@ -390,6 +426,10 @@ class IndexedDbStore {
           store.createIndex("bid_id", "bid_id", { unique: false });
         }
         if (!db.objectStoreNames.contains("suppliers")) db.createObjectStore("suppliers", { keyPath: "id", autoIncrement: true });
+        if (!db.objectStoreNames.contains("supplier_products")) {
+          const store = db.createObjectStore("supplier_products", { keyPath: "id", autoIncrement: true });
+          store.createIndex("supplier_id", "supplier_id", { unique: false });
+        }
         if (!db.objectStoreNames.contains("quotations")) db.createObjectStore("quotations", { keyPath: "id", autoIncrement: true });
         if (!db.objectStoreNames.contains("quotation_items")) {
           const store = db.createObjectStore("quotation_items", { keyPath: "id", autoIncrement: true });
@@ -465,15 +505,17 @@ class IndexedDbStore {
 
   async clearAll() {
     await this.tx(
-      ["bids", "items", "documents", "failure_history", "quotations", "quotation_items", "meta"],
+      ["bids", "items", "documents", "failure_history", "quotations", "quotation_items", "suppliers", "supplier_products", "meta"],
       "readwrite",
-      ([bids, items, documents, failures, quotations, quotationItems, meta]) => {
+      ([bids, items, documents, failures, quotations, quotationItems, suppliers, supplierProducts, meta]) => {
       bids.clear();
       items.clear();
       documents.clear();
       failures.clear();
       quotations.clear();
       quotationItems.clear();
+      suppliers.clear();
+      supplierProducts.clear();
       meta.clear();
     });
   }
@@ -738,9 +780,47 @@ class IndexedDbStore {
   }
 
   async saveSupplier(record, id) {
-    const data = { ...record, updated_at: timestampNow() };
+    const existing = id ? (await this.getAll("suppliers")).find((supplier) => Number(supplier.id) === Number(id)) : null;
+    const data = {
+      ...existing,
+      ...record,
+      organization_id: existing?.organization_id || appState.currentOrganizationId,
+      created_at: existing?.created_at || timestampNow(),
+      updated_at: timestampNow(),
+    };
     if (id) data.id = Number(id);
-    await this.tx("suppliers", "readwrite", (suppliers) => { suppliers.put(data); });
+    let savedId;
+    await this.tx("suppliers", "readwrite", (suppliers) => {
+      const request = suppliers.put(data);
+      request.onsuccess = () => { savedId = request.result; };
+    });
+    return Number(savedId);
+  }
+
+  async saveSupplierProduct(supplierId, productData, productId) {
+    const existing = productId
+      ? (await this.getAll("supplier_products")).find((product) => Number(product.id) === Number(productId))
+      : null;
+    const record = normalizeSupplierProductRecord({
+      ...existing,
+      ...productData,
+      id: productId || undefined,
+      supplier_id: Number(supplierId),
+      organization_id: existing?.organization_id || appState.currentOrganizationId,
+      created_at: existing?.created_at || timestampNow(),
+      updated_at: timestampNow(),
+    });
+    let savedId;
+    await this.tx("supplier_products", "readwrite", (products) => {
+      if (!record.id) delete record.id;
+      const request = products.put(record);
+      request.onsuccess = () => { savedId = request.result; };
+    });
+    return Number(savedId);
+  }
+
+  async deleteSupplierProduct(productId) {
+    await this.tx("supplier_products", "readwrite", (products) => products.delete(Number(productId)));
   }
 
   async saveQuotation(quotationData, quotationId) {
@@ -1302,7 +1382,32 @@ class SupabaseStore {
     const client = await this.open();
     const data = { ...record, updated_at: new Date().toISOString() };
     const query = id ? client.from("suppliers").update(data).eq("id", Number(id)) : client.from("suppliers").insert(data);
-    const { error } = await query.select("id").single();
+    const { data: saved, error } = await query.select("id").single();
+    assertSupabase(error);
+    return Number(saved.id);
+  }
+
+  async saveSupplierProduct(supplierId, productData, productId) {
+    const client = await this.open();
+    const record = normalizeSupplierProductRecord({
+      ...productData,
+      id: productId || undefined,
+      supplier_id: Number(supplierId),
+      organization_id: appState.currentOrganizationId,
+      updated_at: timestampNow(),
+    });
+    const { id, ...payload } = record;
+    const operation = id
+      ? client.from("supplier_products").update(payload).eq("id", Number(id)).select("id").single()
+      : client.from("supplier_products").insert(payload).select("id").single();
+    const { data, error } = await operation;
+    assertSupabase(error);
+    return Number(data.id);
+  }
+
+  async deleteSupplierProduct(productId) {
+    const client = await this.open();
+    const { error } = await client.from("supplier_products").delete().eq("id", Number(productId));
     assertSupabase(error);
   }
 
@@ -1575,23 +1680,35 @@ function withBlockingLoading(operation, message) {
 
 function bindEvents() {
   $("supplierForm").addEventListener("submit", withBlockingLoading(saveSupplier, "Salvando fornecedor…"));
-  $("newSupplierButton").addEventListener("click", clearSupplierForm);
-  $("cancelSupplierButton").addEventListener("click", clearSupplierForm);
+  $("newSupplierButton").addEventListener("click", () => openSupplierModal());
+  $("editSupplierButton").addEventListener("click", () => openSupplierModal(currentSupplier()));
+  $("cancelSupplierButton").addEventListener("click", closeSupplierModal);
+  $("closeSupplierModalButton").addEventListener("click", closeSupplierModal);
+  refs.supplierModal.addEventListener("cancel", (event) => { event.preventDefault(); closeSupplierModal(); });
   $("supplierSearch").addEventListener("input", renderSuppliers);
-  $("suppliersTableBody").addEventListener("click", (event) => {
-    const button = event.target.closest("[data-edit-supplier]");
+  refs.supplierTagFilter.addEventListener("change", renderSuppliers);
+  refs.supplierSort.addEventListener("change", renderSuppliers);
+  refs.suppliersList.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-supplier-id]");
     if (!button) return;
-    const record = appState.suppliers.find((row) => Number(row.id) === Number(button.dataset.editSupplier));
-    if (!record) return;
-    $("supplierId").value = record.id;
-    $("supplierName").value = record.name;
-    $("supplierWebsite").value = record.website;
-    $("supplierContact").value = record.contact;
-    $("supplierTags").value = record.tags.join(", ");
-    $("supplierFormTitle").textContent = "Editar fornecedor";
-    $("supplierMessage").textContent = "";
-    $("supplierName").focus();
+    appState.currentSupplierId = Number(button.dataset.supplierId);
+    refs.supplierProductSearch.value = "";
+    refs.supplierProductTagFilter.value = "";
+    renderSuppliers();
   });
+  $("newSupplierProductButton").addEventListener("click", () => openSupplierProductModal());
+  $("closeSupplierProductModalButton").addEventListener("click", closeSupplierProductModal);
+  $("clearSupplierProductButton").addEventListener("click", () => clearSupplierProductForm({ focus: true }));
+  refs.supplierProductModal.addEventListener("cancel", (event) => { event.preventDefault(); closeSupplierProductModal(); });
+  refs.supplierProductForm.addEventListener("submit", withBlockingLoading(saveSupplierProduct, "Salvando produto do fornecedor…"));
+  refs.supplierProductSearch.addEventListener("input", renderSupplierProducts);
+  refs.supplierProductTagFilter.addEventListener("change", renderSupplierProducts);
+  refs.supplierProductsTableBody.addEventListener("click", handleSupplierProductTableClick);
+  $("addSupplierProductSpecificationButton").addEventListener("click", addSupplierProductSpecification);
+  refs.supplierProductSpecificationsList.addEventListener("input", updateSupplierProductSpecificationDraft);
+  refs.supplierProductSpecificationsList.addEventListener("click", handleSupplierProductSpecificationAction);
+  refs.deleteSupplierProductButton.addEventListener("click", deleteCurrentSupplierProduct);
+  bindAutoGrowTextareas(refs.supplierProductForm);
   document.getElementById("blockingLoadingModal").addEventListener("cancel", (event) => event.preventDefault());
   refs.loginForm.addEventListener("submit", withBlockingLoading(handleLogin, "Entrando no sistema…"));
   window.addEventListener("popstate", () => {
@@ -1932,7 +2049,7 @@ async function resetSeedData() {
   showToast("Base inicial restaurada.");
 }
 
-const DATA_KEYS = ["bids", "items", "documents", "failureHistory", "quotations", "quotationItems", "users", "suppliers"];
+const DATA_KEYS = ["bids", "items", "documents", "failureHistory", "quotations", "quotationItems", "users", "suppliers", "supplierProducts"];
 let sessionEpoch = 0;
 let dataRequest = 0;
 let liveChannel = null;
@@ -1966,6 +2083,8 @@ function selectedDataSignature(data) {
     data.failureHistory.find((row) => Number(row.id) === Number(appState.currentFailureId)),
     data.quotations.find((row) => Number(row.id) === Number(appState.currentQuotationId)),
     data.quotationItems.find((row) => Number(row.id) === Number(appState.currentQuotationItemId)),
+    data.suppliers.find((row) => Number(row.id) === Number(appState.currentSupplierId)),
+    data.supplierProducts.find((row) => Number(row.id) === Number(appState.currentSupplierProductId)),
   ]);
 }
 
@@ -2023,7 +2142,7 @@ async function reloadData({ background = false } = {}) {
   const rows = await Promise.all([
     store.getAll("bids"), store.getAll("items"), store.getAll("documents"),
     store.getAll("failure_history"), store.getAll("quotations"),
-    store.getAll("quotation_items"), store.getUsers(), store.getAll("suppliers"),
+    store.getAll("quotation_items"), store.getUsers(), store.getAll("suppliers"), store.getAll("supplier_products"),
   ]);
   // Discard stale responses after logout, another login, or a newer refresh.
   if (epoch !== sessionEpoch || request !== dataRequest || !appState.authenticated) return;
@@ -2051,7 +2170,8 @@ async function reloadData({ background = false } = {}) {
   next.quotationItems = rows[5]
     .map(normalizeQuotationItemRecord)
     .sort((a, b) => Number(a.item_number || 0) - Number(b.item_number || 0));
-  next.suppliers = rows[7].sort((a, b) => a.name.localeCompare(b.name, "pt-BR"));
+  next.suppliers = rows[7].map(normalizeSupplierRecord).sort((a, b) => a.name.localeCompare(b.name, "pt-BR"));
+  next.supplierProducts = (rows[8] || []).map(normalizeSupplierProductRecord).sort((a, b) => a.name.localeCompare(b.name, "pt-BR"));
   next.users = rows[6].sort((a, b) => String(a.name).localeCompare(String(b.name)));
   if (store.requiresAuthenticationBeforeData && !next.users.some((user) => normalizeEmail(user.email) === normalizeEmail(appState.currentUserEmail))) {
     resetAuthenticatedView();
@@ -3217,7 +3337,25 @@ function clearSupplierForm() {
   $("supplierId").value = "";
   $("supplierFormTitle").textContent = "Novo fornecedor";
   $("supplierMessage").textContent = "";
-  $("supplierName").focus();
+}
+
+function openSupplierModal(record = null) {
+  clearSupplierForm();
+  if (record) {
+    $("supplierId").value = record.id;
+    $("supplierName").value = record.name;
+    $("supplierWebsite").value = record.website;
+    $("supplierContact").value = record.contact;
+    $("supplierTags").value = record.tags.join(", ");
+    $("supplierFormTitle").textContent = "Editar fornecedor";
+  }
+  if (!refs.supplierModal.open) refs.supplierModal.showModal();
+  requestAnimationFrame(() => $("supplierName").focus());
+}
+
+function closeSupplierModal() {
+  if (refs.supplierModal.open) refs.supplierModal.close();
+  clearSupplierForm();
 }
 
 async function saveSupplier(event) {
@@ -3232,49 +3370,260 @@ async function saveSupplier(event) {
   try {
     if (!record.name) throw new Error("Informe o nome do fornecedor.");
     if (record.website && !/^https?:\/\//i.test(record.website)) throw new Error("Informe um site iniciado por https:// ou http://.");
-    await store.saveSupplier(record, $("supplierId").value);
-    clearSupplierForm();
+    const savedId = await store.saveSupplier(record, $("supplierId").value);
+    appState.currentSupplierId = savedId;
     await reloadData();
-    $("supplierMessage").textContent = "Fornecedor salvo com sucesso.";
+    closeSupplierModal();
+    showToast("Fornecedor salvo com sucesso.");
   } catch (error) {
     $("supplierMessage").textContent = error.message || "Não foi possível salvar o fornecedor. Tente novamente.";
   }
 }
 
-let supplierTagsObserver;
+function currentSupplier() {
+  return appState.suppliers.find((supplier) => Number(supplier.id) === Number(appState.currentSupplierId)) || null;
+}
 
-function fitSupplierTags(box) {
-  if (!box.clientWidth) return;
-  const tags = [...box.querySelectorAll(".supplier-tag")];
-  const more = box.querySelector(".supplier-tags-more");
-  tags.forEach((tag) => { tag.hidden = false; });
-  more.hidden = true;
-  const fits = (element) => element.offsetTop + element.offsetHeight <= box.clientHeight;
-  const overflow = tags.findIndex((tag) => !fits(tag));
-  if (overflow < 0) return;
-  tags.slice(overflow).forEach((tag) => { tag.hidden = true; });
-  more.hidden = false;
-  let last = overflow - 1;
-  while (!fits(more) && last >= 0) tags[last--].hidden = true;
+function currentSupplierProducts() {
+  if (!appState.currentSupplierId) return [];
+  return appState.supplierProducts.filter((product) => Number(product.supplier_id) === Number(appState.currentSupplierId));
+}
+
+function supplierInitials(name) {
+  const parts = String(name || "").trim().split(/\s+/).filter(Boolean);
+  if (!parts.length) return "?";
+  return (parts.length === 1 ? parts[0].slice(0, 2) : `${parts[0][0]}${parts.at(-1)[0]}`).toLocaleUpperCase("pt-BR");
+}
+
+function supplierTagsMarkup(tags, maximum = Infinity) {
+  const visible = tags.slice(0, maximum);
+  const hidden = tags.length - visible.length;
+  return visible.map((tag) => `<span class="supplier-tag">${escapeHtml(tag)}</span>`).join("")
+    + (hidden > 0 ? `<span class="supplier-tag">+${hidden}</span>` : "");
+}
+
+function populateSupplierTagFilters() {
+  const selectedSupplierTag = refs.supplierTagFilter.value;
+  const allTags = [...new Set([
+    ...appState.suppliers.flatMap((supplier) => supplier.tags),
+    ...appState.supplierProducts.flatMap((product) => product.tags),
+  ])].sort((a, b) => a.localeCompare(b, "pt-BR"));
+  refs.supplierTagFilter.innerHTML = `<option value="">Todas as tags</option>${allTags.map((tag) => `<option value="${escapeHtml(tag)}">${escapeHtml(tag)}</option>`).join("")}`;
+  if (allTags.includes(selectedSupplierTag)) refs.supplierTagFilter.value = selectedSupplierTag;
+}
+
+function renderSupplierContact(supplier) {
+  const parts = String(supplier.contact || "").split(/[,;\n]/).map((part) => part.trim()).filter(Boolean);
+  const website = /^https?:\/\//i.test(supplier.website)
+    ? `<a href="${escapeHtml(supplier.website)}" target="_blank" rel="noopener noreferrer">◎ ${escapeHtml(supplier.website)}</a>`
+    : "";
+  const contacts = parts.map((part) => {
+    if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(part)) return `<a href="mailto:${escapeHtml(part)}">✉ ${escapeHtml(part)}</a>`;
+    if (/^[+()\d\s-]{8,}$/.test(part)) return `<a href="tel:${escapeHtml(part.replace(/[^+\d]/g, ""))}">⌕ ${escapeHtml(part)}</a>`;
+    return `<span>● ${escapeHtml(part)}</span>`;
+  }).join("");
+  refs.supplierContactLinks.innerHTML = website + contacts || `<span>Contato não informado</span>`;
 }
 
 function renderSuppliers() {
-  supplierTagsObserver?.disconnect();
+  populateSupplierTagFilters();
   const terms = supplierSearchText($("supplierSearch").value).trim().split(/\s+/).filter(Boolean);
-  const rows = appState.suppliers.filter((row) => {
-    const text = supplierSearchText([row.name, ...row.tags].join(" "));
-    return terms.every((term) => text.includes(term));
+  const selectedTag = supplierSearchText(refs.supplierTagFilter.value);
+  const productCounts = new Map(appState.suppliers.map((supplier) => [Number(supplier.id), appState.supplierProducts.filter((product) => Number(product.supplier_id) === Number(supplier.id)).length]));
+  const rows = appState.suppliers.filter((supplier) => {
+    const products = appState.supplierProducts.filter((product) => Number(product.supplier_id) === Number(supplier.id));
+    const searchable = supplierSearchText([
+      supplier.name,
+      supplier.website,
+      supplier.contact,
+      ...supplier.tags,
+      ...products.flatMap((product) => [product.name, product.sku, product.model, product.manufacturer, ...product.tags]),
+    ].join(" "));
+    const tags = [...supplier.tags, ...products.flatMap((product) => product.tags)].map(supplierSearchText);
+    return terms.every((term) => searchable.includes(term)) && (!selectedTag || tags.includes(selectedTag));
   });
-  $("supplierCount").textContent = rows.length + " de " + appState.suppliers.length + " fornecedores";
-  $("suppliersTableBody").innerHTML = rows.length ? rows.map((row) => {
-    const site = /^https?:\/\//i.test(row.website) ? '<a href="' + escapeHtml(row.website) + '" target="_blank" rel="noopener noreferrer">Visitar site ↗</a>' : '—';
-    return '<tr><td><strong>' + escapeHtml(row.name) + '</strong></td><td>' + site + '</td><td>' + escapeHtml(row.contact || '—') + '</td><td><div class="supplier-tags" title="' + escapeHtml(row.tags.join(", ")) + '" aria-label="' + escapeHtml(row.tags.join(", ")) + '">' + row.tags.map((tag) => '<span class="supplier-tag">' + escapeHtml(tag) + '</span>').join('') + '<span class="supplier-tags-more" aria-hidden="true" hidden>...</span></div></td><td><button class="quiet-action" type="button" data-edit-supplier="' + Number(row.id) + '">Editar<span class="visually-hidden"> ' + escapeHtml(row.name) + '</span></button></td></tr>';
-  }).join('') : '<tr><td colspan="5"><div class="empty-state compact-empty">' + (appState.suppliers.length ? 'Nenhum fornecedor encontrado. Tente outro nome ou tag.' : 'Nenhum fornecedor cadastrado. Cadastre seu primeiro fornecedor abaixo.') + '</div></td></tr>';
-  supplierTagsObserver ||= new ResizeObserver((entries) => entries.forEach(({ target }) => fitSupplierTags(target)));
-  $("suppliersTableBody").querySelectorAll(".supplier-tags").forEach((box) => {
-    fitSupplierTags(box);
-    supplierTagsObserver.observe(box);
+  const sortMode = refs.supplierSort.value;
+  rows.sort((a, b) => sortMode === "products-desc"
+    ? productCounts.get(Number(b.id)) - productCounts.get(Number(a.id)) || a.name.localeCompare(b.name, "pt-BR")
+    : sortMode === "products-asc"
+      ? productCounts.get(Number(a.id)) - productCounts.get(Number(b.id)) || a.name.localeCompare(b.name, "pt-BR")
+      : a.name.localeCompare(b.name, "pt-BR"));
+  $("supplierCount").textContent = `${rows.length} ${rows.length === 1 ? "fornecedor" : "fornecedores"}`;
+  refs.suppliersList.innerHTML = rows.length
+    ? rows.map((supplier) => `<button class="supplier-list-card ${Number(supplier.id) === Number(appState.currentSupplierId) ? "active" : ""}" type="button" data-supplier-id="${supplier.id}">
+        <span class="supplier-avatar" aria-hidden="true">${escapeHtml(supplierInitials(supplier.name))}</span>
+        <span class="supplier-card-copy"><strong>${escapeHtml(supplier.name)}</strong><small>${productCounts.get(Number(supplier.id))} ${productCounts.get(Number(supplier.id)) === 1 ? "produto" : "produtos"}</small><span class="supplier-tags">${supplierTagsMarkup(supplier.tags, 3)}</span></span>
+        <span class="supplier-card-chevron" aria-hidden="true">›</span>
+      </button>`).join("")
+    : `<div class="empty-state compact-empty">${appState.suppliers.length ? "Nenhum fornecedor encontrado." : "Nenhum fornecedor cadastrado."}</div>`;
+  if (!currentSupplier() && rows.length) appState.currentSupplierId = Number(rows[0].id);
+  renderSupplierDetail();
+}
+
+function renderSupplierDetail() {
+  const supplier = currentSupplier();
+  refs.supplierEmptyDetail.classList.toggle("hidden", Boolean(supplier));
+  refs.supplierDetailContent.classList.toggle("hidden", !supplier);
+  if (!supplier) return;
+  refs.supplierDetailAvatar.textContent = supplierInitials(supplier.name);
+  refs.supplierDetailName.textContent = supplier.name;
+  refs.supplierDetailSubtitle.textContent = supplier.tags[0] ? `Fornecedor de ${supplier.tags[0].toLocaleLowerCase("pt-BR")}` : "Fornecedor cadastrado";
+  refs.supplierDetailTags.innerHTML = supplierTagsMarkup(supplier.tags, 10) || `<span class="supplier-tag">Sem tags</span>`;
+  renderSupplierContact(supplier);
+  renderSupplierProducts();
+}
+
+function populateSupplierProductTagFilter(products) {
+  const selected = refs.supplierProductTagFilter.value;
+  const tags = [...new Set(products.flatMap((product) => product.tags))].sort((a, b) => a.localeCompare(b, "pt-BR"));
+  refs.supplierProductTagFilter.innerHTML = `<option value="">Todas as tags</option>${tags.map((tag) => `<option value="${escapeHtml(tag)}">${escapeHtml(tag)}</option>`).join("")}`;
+  if (tags.includes(selected)) refs.supplierProductTagFilter.value = selected;
+}
+
+function renderSupplierProducts() {
+  const products = currentSupplierProducts();
+  populateSupplierProductTagFilter(products);
+  const terms = supplierSearchText(refs.supplierProductSearch.value).trim().split(/\s+/).filter(Boolean);
+  const selectedTag = supplierSearchText(refs.supplierProductTagFilter.value);
+  const visible = products.filter((product) => {
+    const searchable = supplierSearchText([product.name, product.sku, product.model, product.manufacturer, product.technical_text, ...product.tags].join(" "));
+    return terms.every((term) => searchable.includes(term)) && (!selectedTag || product.tags.map(supplierSearchText).includes(selectedTag));
   });
+  refs.supplierProductTotal.textContent = String(products.length);
+  refs.supplierProductsStatus.textContent = `Mostrando ${visible.length} de ${products.length} ${products.length === 1 ? "produto" : "produtos"}`;
+  refs.supplierProductsTableBody.innerHTML = visible.length
+    ? visible.map((product) => `<tr class="supplier-product-row" data-supplier-product-id="${product.id}" tabindex="0">
+        <td><span class="supplier-product-name"><strong>${escapeHtml(product.name)}</strong><small>${product.sku ? `SKU: ${escapeHtml(product.sku)}` : "SKU não informado"}</small></span></td>
+        <td><div class="supplier-product-tags">${supplierTagsMarkup(product.tags, 3)}</div></td>
+        <td><strong>${money(product.average_price)}</strong></td>
+        <td><div class="supplier-product-actions"><button class="supplier-product-icon-action" type="button" data-edit-supplier-product="${product.id}" aria-label="Editar ${escapeHtml(product.name)}">✎</button><button class="supplier-product-icon-action danger" type="button" data-delete-supplier-product="${product.id}" aria-label="Excluir ${escapeHtml(product.name)}">♲</button></div></td>
+      </tr>`).join("")
+    : `<tr><td colspan="4"><div class="empty-state compact-empty">${products.length ? "Nenhum produto encontrado." : "Nenhum produto cadastrado para este fornecedor."}</div></td></tr>`;
+}
+
+function handleSupplierProductTableClick(event) {
+  const deleteButton = event.target.closest("[data-delete-supplier-product]");
+  if (deleteButton) {
+    event.stopPropagation();
+    void deleteSupplierProduct(Number(deleteButton.dataset.deleteSupplierProduct));
+    return;
+  }
+  const target = event.target.closest("[data-edit-supplier-product], [data-supplier-product-id]");
+  if (!target) return;
+  const id = Number(target.dataset.editSupplierProduct || target.dataset.supplierProductId);
+  const product = appState.supplierProducts.find((row) => Number(row.id) === id);
+  if (product) openSupplierProductModal(product);
+}
+
+function openSupplierProductModal(product = null) {
+  if (!currentSupplier()) return;
+  clearSupplierProductForm();
+  if (product) {
+    appState.currentSupplierProductId = product.id;
+    $("supplierProductId").value = product.id;
+    refs.supplierProductName.value = product.name;
+    refs.supplierProductSku.value = product.sku;
+    refs.supplierProductModel.value = product.model;
+    refs.supplierProductManufacturer.value = product.manufacturer;
+    refs.supplierProductTags.value = product.tags.join(", ");
+    refs.supplierProductAveragePrice.value = product.average_price ? money(product.average_price) : "";
+    refs.supplierProductTechnicalText.value = product.technical_text;
+    appState.supplierProductSpecificationsDraft = product.technical_specifications.map((item) => ({ ...item }));
+    refs.supplierProductModalTitle.textContent = "Editar produto";
+    refs.deleteSupplierProductButton.classList.remove("hidden");
+    renderSupplierProductSpecifications();
+  }
+  if (!refs.supplierProductModal.open) refs.supplierProductModal.showModal();
+  resizeTextarea(refs.supplierProductTechnicalText);
+  requestAnimationFrame(() => refs.supplierProductName.focus());
+}
+
+function closeSupplierProductModal() {
+  if (refs.supplierProductModal.open) refs.supplierProductModal.close();
+  clearSupplierProductForm();
+}
+
+function clearSupplierProductForm(options = {}) {
+  refs.supplierProductForm.reset();
+  appState.currentSupplierProductId = null;
+  appState.supplierProductSpecificationsDraft = [];
+  $("supplierProductId").value = "";
+  refs.supplierProductModalTitle.textContent = "Cadastrar produto";
+  refs.supplierProductFormError.textContent = "";
+  refs.deleteSupplierProductButton.classList.add("hidden");
+  renderSupplierProductSpecifications();
+  resizeTextarea(refs.supplierProductTechnicalText);
+  if (options.focus && refs.supplierProductModal.open) refs.supplierProductName.focus();
+}
+
+async function saveSupplierProduct(event) {
+  event.preventDefault();
+  refs.supplierProductFormError.textContent = "";
+  try {
+    const supplier = currentSupplier();
+    if (!supplier) throw new Error("Selecione um fornecedor.");
+    const name = refs.supplierProductName.value.trim();
+    if (!name) throw new Error("Informe o nome do produto.");
+    const averagePrice = parseDecimal(refs.supplierProductAveragePrice.value, "Preço médio", false);
+    await store.saveSupplierProduct(supplier.id, {
+      name,
+      sku: refs.supplierProductSku.value.trim(),
+      model: refs.supplierProductModel.value.trim(),
+      manufacturer: refs.supplierProductManufacturer.value.trim(),
+      technical_text: refs.supplierProductTechnicalText.value.trim(),
+      technical_specifications: normalizeTechnicalSpecifications(appState.supplierProductSpecificationsDraft),
+      tags: parseSupplierTags(refs.supplierProductTags.value),
+      average_price: averagePrice,
+    }, appState.currentSupplierProductId);
+    await reloadData();
+    closeSupplierProductModal();
+    showToast("Produto do fornecedor salvo.");
+  } catch (error) {
+    refs.supplierProductFormError.textContent = error.message || "Não foi possível salvar o produto.";
+  }
+}
+
+async function deleteSupplierProduct(productId) {
+  const product = appState.supplierProducts.find((row) => Number(row.id) === Number(productId));
+  if (!product || !confirm(`Excluir o produto ${product.name}?`)) return;
+  await store.deleteSupplierProduct(product.id);
+  if (Number(appState.currentSupplierProductId) === Number(product.id)) closeSupplierProductModal();
+  await reloadData();
+  showToast("Produto excluído.");
+}
+
+async function deleteCurrentSupplierProduct() {
+  if (appState.currentSupplierProductId) await deleteSupplierProduct(appState.currentSupplierProductId);
+}
+
+function addSupplierProductSpecification() {
+  appState.supplierProductSpecificationsDraft.push({ name: "", required: "", offered: "" });
+  refs.supplierProductSpecificationsSection.open = true;
+  renderSupplierProductSpecifications();
+  refs.supplierProductSpecificationsList.querySelector(`[data-supplier-specification-index="${appState.supplierProductSpecificationsDraft.length - 1}"][data-supplier-specification-field="name"]`)?.focus();
+}
+
+function updateSupplierProductSpecificationDraft(event) {
+  const input = event.target.closest("[data-supplier-specification-index][data-supplier-specification-field]");
+  if (!input) return;
+  const specification = appState.supplierProductSpecificationsDraft[Number(input.dataset.supplierSpecificationIndex)];
+  if (specification) specification[input.dataset.supplierSpecificationField] = input.value;
+}
+
+function handleSupplierProductSpecificationAction(event) {
+  const button = event.target.closest("[data-delete-supplier-specification]");
+  if (!button) return;
+  appState.supplierProductSpecificationsDraft.splice(Number(button.dataset.deleteSupplierSpecification), 1);
+  renderSupplierProductSpecifications();
+}
+
+function renderSupplierProductSpecifications() {
+  refs.supplierProductSpecificationsList.innerHTML = appState.supplierProductSpecificationsDraft.length
+    ? appState.supplierProductSpecificationsDraft.map((specification, index) => `<div class="quotation-specification-card">
+        <div class="quotation-specification-name-row"><label>Nome da especificação<input value="${escapeHtml(specification.name)}" data-supplier-specification-index="${index}" data-supplier-specification-field="name" placeholder="Ex.: Memória RAM" /></label><button class="quotation-delete-specification" type="button" data-delete-supplier-specification="${index}" aria-label="Excluir especificação ${index + 1}">🗑</button></div>
+        <div class="quotation-specification-values"><label>Requisito<input value="${escapeHtml(specification.required)}" data-supplier-specification-index="${index}" data-supplier-specification-field="required" placeholder="Ex.: Mínimo 12 GB" /></label><label>Produto ofertado<input value="${escapeHtml(specification.offered)}" data-supplier-specification-index="${index}" data-supplier-specification-field="offered" placeholder="Ex.: 16 GB" /></label></div>
+      </div>`).join("")
+    : `<p class="quotation-specifications-empty">Nenhuma especificação cadastrada.</p>`;
 }
 
 function currentQuotationItems() {
@@ -4299,6 +4648,37 @@ function normalizeQuotationItemRecord(record) {
     minimum_bid: Number(record.minimum_bid || 0),
     quantity,
     total: record.total === undefined || record.total === null ? finalBid * quantity : Number(record.total),
+  };
+}
+
+function normalizeSupplierRecord(record) {
+  return {
+    id: record.id ? Number(record.id) : undefined,
+    name: String(record.name || "").trim(),
+    website: String(record.website || "").trim(),
+    contact: String(record.contact || "").trim(),
+    tags: parseSupplierTags(Array.isArray(record.tags) ? record.tags.join(",") : record.tags),
+    organization_id: record.organization_id || null,
+    created_at: record.created_at || timestampNow(),
+    updated_at: record.updated_at || timestampNow(),
+  };
+}
+
+function normalizeSupplierProductRecord(record) {
+  return {
+    id: record.id ? Number(record.id) : undefined,
+    supplier_id: Number(record.supplier_id),
+    organization_id: record.organization_id || null,
+    name: String(record.name || "").trim(),
+    sku: String(record.sku || "").trim(),
+    model: String(record.model || "").trim(),
+    manufacturer: String(record.manufacturer || "").trim(),
+    technical_text: String(record.technical_text || "").trim(),
+    technical_specifications: normalizeTechnicalSpecifications(record.technical_specifications),
+    tags: parseSupplierTags(Array.isArray(record.tags) ? record.tags.join(",") : record.tags),
+    average_price: Number(record.average_price || 0),
+    created_at: record.created_at || timestampNow(),
+    updated_at: record.updated_at || timestampNow(),
   };
 }
 
