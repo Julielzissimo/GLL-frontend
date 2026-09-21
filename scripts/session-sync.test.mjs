@@ -218,9 +218,11 @@ test("quotation normalization preserves creator and analyst assignment", () => {
   assert.equal(quotation.assigned_to, "analyst-id");
 });
 
-test("bid creator tag uses the app_users name", () => {
+test("creator tag prioritizes the editable stored name", () => {
   const app = client();
   app.appState.users = [{ auth_user_id: "creator-id", name: "Maria Silva" }];
+  assert.equal(app.creatorName({ created_by: "creator-id", created_by_name: "Nome ajustado" }), "Nome ajustado");
+  assert.equal(app.creatorInitials({ created_by: "creator-id", created_by_name: "Nome ajustado" }), "NA");
   assert.equal(app.creatorName({ created_by: "creator-id" }), "Maria Silva");
   assert.equal(app.creatorInitials({ created_by: "creator-id" }), "MS");
   assert.match(app.creatorTagMarkup({ created_by: "creator-id" }), /creator-avatar[^>]*>MS<.*Criado por.*Maria Silva/s);

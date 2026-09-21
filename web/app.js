@@ -2036,6 +2036,8 @@ function isCurrentUserAdmin() {
 }
 
 function creatorName(record) {
+  const storedName = String(record?.created_by_name || "").trim();
+  if (storedName) return storedName;
   const creator = appState.users.find((user) => user.auth_user_id === record?.created_by);
   return creator?.name || "Usuário Removido";
 }
@@ -4443,6 +4445,7 @@ function normalizeBidRecord(record) {
     quotation_id: record.quotation_id === undefined || record.quotation_id === null || record.quotation_id === "" ? null : Number(record.quotation_id),
     organization_id: record.organization_id || null,
     created_by: record.created_by || null,
+    created_by_name: record.created_by_name || "",
     assigned_to: record.assigned_to || null,
     deleted_at: record.deleted_at || null,
     ...(record.edital_file_blob ? { edital_file_blob: record.edital_file_blob } : {}),
@@ -4639,6 +4642,7 @@ function normalizeQuotationRecord(record) {
     delivery_deadline: record.delivery_deadline || "",
     organization_id: record.organization_id || null,
     created_by: record.created_by || null,
+    created_by_name: record.created_by_name || "",
     assigned_to: record.assigned_to || null,
     created_at: record.created_at || timestampNow(),
     updated_at: record.updated_at || timestampNow(),
