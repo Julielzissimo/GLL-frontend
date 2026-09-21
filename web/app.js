@@ -861,26 +861,10 @@ class IndexedDbStore {
   }
 
   async deleteQuotation(quotationId) {
-    const linkedItemIds = (await this.getAll("quotation_items"))
-      .filter((item) => Number(item.quotation_id) === Number(quotationId))
-      .map((item) => Number(item.id));
-    await this.tx(["bids", "items", "quotations", "quotation_items"], "readwrite", ([bids, items, quotations, quotationItems]) => {
-      quotations.delete(Number(quotationId));
-      deleteChildrenByIndex(quotationItems, "quotation_id", Number(quotationId));
-      const bidRequest = bids.openCursor();
-      bidRequest.onsuccess = () => {
-        const cursor = bidRequest.result;
-        if (!cursor) return;
-        if (Number(cursor.value.quotation_id) === Number(quotationId)) cursor.update({ ...cursor.value, quotation_id: null });
-        cursor.continue();
-      };
-      const itemRequest = items.openCursor();
-      itemRequest.onsuccess = () => {
-        const cursor = itemRequest.result;
-        if (!cursor) return;
-        if (linkedItemIds.includes(Number(cursor.value.quotation_item_id))) cursor.delete();
-        cursor.continue();
-      };
+    const existing = (await this.getAll("quotations")).find((row) => Number(row.id) === Number(quotationId));
+    if (!existing) throw new Error("Orçamento não encontrado.");
+    await this.tx("quotations", "readwrite", (quotations) => {
+      quotations.put({ ...existing, deleted_at: timestampNow(), updated_at: timestampNow() });
     });
   }
 
@@ -992,7 +976,7 @@ class SupabaseStore {
   async getAll(tableName) {
     const client = await this.open();
     const query = client.from(tableName).select("*");
-    const { data, error } = tableName === "bids" ? await query.is("deleted_at", null) : await query;
+    const { data, error } = ["bids", "quotations"].includes(tableName) ? await query.is("deleted_at", null) : await query;
     if (tableName === "failure_history" && isMissingFailureHistoryTableError(error)) return [];
     assertSupabase(error);
     return data || [];
@@ -1456,8 +1440,14 @@ class SupabaseStore {
 
   async deleteQuotation(quotationId) {
     const client = await this.open();
-    const { error } = await client.from("quotations").delete().eq("id", Number(quotationId));
+    const now = timestampNow();
+    const { data, error } = await client.from("quotations")
+      .update({ deleted_at: now, updated_at: now })
+      .eq("id", Number(quotationId))
+      .is("deleted_at", null)
+      .select("id");
     assertSupabase(error);
+    if (!data?.length) throw new Error("Orçamento não encontrado.");
   }
 
   async saveQuotationItem(quotationId, itemData, itemId) {
@@ -2194,6 +2184,7 @@ async function reloadData({ background = false } = {}) {
     .sort((a, b) => Number(a.id || 0) - Number(b.id || 0));
   next.quotations = rows[4]
     .map(normalizeQuotationRecord)
+    .filter((quotation) => !quotation.deleted_at)
     .sort((a, b) => Number(b.id || 0) - Number(a.id || 0));
   next.quotationItems = rows[5]
     .map(normalizeQuotationItemRecord)
@@ -4651,6 +4642,7 @@ function normalizeQuotationRecord(record) {
     created_by: record.created_by || null,
     created_by_name: record.created_by_name || "",
     assigned_to: record.assigned_to || null,
+    deleted_at: record.deleted_at || null,
     created_at: record.created_at || timestampNow(),
     updated_at: record.updated_at || timestampNow(),
   };
