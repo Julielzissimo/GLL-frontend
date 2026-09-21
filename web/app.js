@@ -39,6 +39,7 @@ const DEFAULT_GLL_CONFIG = {
   supabaseAnonKey: "",
   sessionIdleTimeoutMinutes: 30,
   sessionMaxLifetimeHours: 8,
+  suppliersEnabled: true,
 };
 const GLL_CONFIG = {
   ...DEFAULT_GLL_CONFIG,
@@ -1657,6 +1658,11 @@ function applyEnvironmentConfig() {
   refs.authClientVersion.textContent = hasSupabaseConfig() ? `Supabase JS ${SUPABASE_CLIENT_VERSION}` : "Autenticação local demonstrativa";
   refs.resetDataButton.classList.toggle("hidden", hasSupabaseConfig());
   refs.loginHint.classList.toggle("hidden", hasSupabaseConfig());
+  const suppliersEnabled = GLL_CONFIG.suppliersEnabled !== false;
+  refs.navSuppliersButton.disabled = !suppliersEnabled;
+  refs.navSuppliersButton.classList.toggle("nav-link-disabled", !suppliersEnabled);
+  refs.navSuppliersButton.setAttribute("aria-disabled", String(!suppliersEnabled));
+  refs.navSuppliersButton.title = suppliersEnabled ? "" : "Fornecedores temporariamente indisponível";
 }
 
 function populateOptions() {
@@ -2264,6 +2270,7 @@ function applyNavigationRoute(options = {}) {
 
 function setPage(page, options = {}) {
   const detailPages = ["items", "documents", "failures"];
+  if (page === "suppliers" && GLL_CONFIG.suppliersEnabled === false) page = "home";
   if (page === "users" && !isCurrentUserAdmin()) page = "home";
   if (detailPages.includes(page) && !appState.currentBidId) {
     page = "home";

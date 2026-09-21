@@ -15,6 +15,7 @@ const TARGETS = {
     supabaseAnonKey: "sb_publishable_Xud-GtYCKZdIsXkAaa43rA_pXPqGTPn",
     sessionIdleTimeoutMinutes: 120,
     sessionMaxLifetimeHours: 8,
+    suppliersEnabled: true,
   },
   production: {
     outputDir: "prod",
@@ -27,6 +28,7 @@ const TARGETS = {
     supabaseAnonKey: "sb_publishable_MiojjcG8vXoQxn3NBcRgUQ_ymOMWAkW",
     sessionIdleTimeoutMinutes: 120,
     sessionMaxLifetimeHours: 8,
+    suppliersEnabled: false,
   },
   prod: null,
 };
@@ -61,6 +63,7 @@ const runtimeConfig = {
   supabaseAnonKey: process.env.GLL_SUPABASE_ANON_KEY || process.env.GLL_SUPABASE_PUBLISHABLE_KEY || target.supabaseAnonKey || "",
   sessionIdleTimeoutMinutes: Number(process.env.GLL_SESSION_IDLE_TIMEOUT_MINUTES || target.sessionIdleTimeoutMinutes),
   sessionMaxLifetimeHours: Number(process.env.GLL_SESSION_MAX_LIFETIME_HOURS || target.sessionMaxLifetimeHours),
+  suppliersEnabled: target.suppliersEnabled,
 };
 
 await writeFile(
