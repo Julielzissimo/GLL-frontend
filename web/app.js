@@ -1131,7 +1131,6 @@ class SupabaseStore {
         .update(changes)
         .eq("id", originalId);
       assertSupabase(error);
-      if (existing?.status !== FINAL_BID_STATUS) await this.syncBidWithQuotation(data.id, data.quotation_id);
       return;
     }
     const { error } = await client.from("bids").insert({
@@ -1140,7 +1139,6 @@ class SupabaseStore {
       updated_at: now,
     });
     assertSupabase(error);
-    await this.syncBidWithQuotation(data.id, data.quotation_id);
   }
 
   async syncBidWithQuotation(bidId, quotationId) {
@@ -1274,50 +1272,13 @@ class SupabaseStore {
 
   async saveItem(bidId, itemData, itemId) {
     const client = await this.open();
-    const { data: bid, error: bidError } = await client.from("bids").select("quotation_id").eq("id", bidId).maybeSingle();
-    assertSupabase(bidError);
-    let existingItem = null;
-    if (itemId) {
-      const { data, error } = await client.from("items").select("*").eq("id", Number(itemId)).maybeSingle();
-      assertSupabase(error);
-      existingItem = data ? normalizeItemRecord(data) : null;
-    }
-    let quotationItemId = existingItem?.quotation_item_id || null;
-    if (bid?.quotation_id) {
-      let existingQuotationItem = null;
-      if (quotationItemId) {
-        const { data, error } = await client.from("quotation_items").select("*").eq("id", Number(quotationItemId)).maybeSingle();
-        assertSupabase(error);
-        existingQuotationItem = data ? normalizeQuotationItemRecord(data) : null;
-      }
-      if (!existingQuotationItem) {
-        const { data, error } = await client
-          .from("quotation_items")
-          .select("*")
-          .eq("quotation_id", Number(bid.quotation_id))
-          .eq("item_number", Number(itemData.item_number))
-          .maybeSingle();
-        assertSupabase(error);
-        existingQuotationItem = data ? normalizeQuotationItemRecord(data) : null;
-      }
-      const quotationRecord = bidItemToQuotationItem(
-        normalizeItemRecord({ ...existingItem, ...itemData, bid_id: bidId, quotation_item_id: quotationItemId }),
-        { ...existingQuotationItem, quotation_id: Number(bid.quotation_id) }
-      );
-      quotationItemId = await this.putQuotationItem(quotationRecord);
-    }
-    const record = normalizeItemRecord({ ...itemData, id: itemId || undefined, bid_id: bidId, quotation_item_id: quotationItemId });
-    const operation = record.id ? client.from("items").upsert(record) : client.from("items").insert(removeEmptyId(record));
-    const { error } = await operation;
-    if (isMissingSupabaseColumnError(error)) {
-      const legacyRecord = legacySupabaseItemRecord(record);
-      const legacyOperation = legacyRecord.id ? client.from("items").upsert(legacyRecord) : client.from("items").insert(removeEmptyId(legacyRecord));
-      const { error: legacyError } = await legacyOperation;
-      assertSupabase(legacyError);
-      return;
-    }
+    const record = normalizeItemRecord({ ...itemData, id: itemId || undefined, bid_id: bidId });
+    const { error } = await client.rpc("save_bid_item_consistently", {
+      p_bid_id: bidId,
+      p_item: removeEmptyId(record),
+      p_item_id: itemId ? Number(itemId) : null,
+    });
     assertSupabase(error);
-    if (quotationItemId) await this.syncQuotationItemToBids(quotationItemId);
   }
 
   async setItemWon(itemId, isWon) {
@@ -1452,9 +1413,7 @@ class SupabaseStore {
 
   async saveQuotationItem(quotationId, itemData, itemId) {
     const record = normalizeQuotationItemRecord({ ...itemData, id: itemId || undefined, quotation_id: quotationId });
-    const savedId = await this.putQuotationItem(record);
-    await this.syncQuotationItemToBids(savedId);
-    return savedId;
+    return this.putQuotationItem(record);
   }
 
   async deleteQuotationItem(itemId) {
@@ -3787,7 +3746,7 @@ async function saveQuotation(event) {
 async function deleteCurrentQuotation() {
   const quotation = currentQuotation();
   if (!quotation) return;
-  if (!confirm(`Excluir o orçamento do edital ${quotation.edital} e todos os seus itens?`)) return;
+  if (!confirm(`Excluir o orçamento do edital ${quotation.edital}? Ele deixará de aparecer no sistema, mas seus itens e demais dados permanecerão preservados.`)) return;
   try {
     await store.deleteQuotation(quotation.id);
     appState.currentQuotationId = null;
@@ -3795,7 +3754,7 @@ async function deleteCurrentQuotation() {
     refs.quotationForm.reset();
     await reloadData();
     clearQuotationForm();
-    showToast("Orçamento excluído.");
+    showToast("Orçamento excluído da visualização. Os dados foram preservados.");
   } catch (error) {
     refs.quotationFormError.textContent = error.message;
   }

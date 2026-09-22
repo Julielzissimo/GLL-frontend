@@ -71,6 +71,19 @@ test("modal de orçamento exibe somente orçamentos ainda não vinculados a edit
   );
 });
 
+test("operações remotas de orçamento e edital usam a transação do servidor", () => {
+  assert.match(source, /rpc\("save_bid_item_consistently"/);
+  assert.doesNotMatch(
+    source.slice(source.indexOf("class SupabaseStore"), source.indexOf("const store = createStore()")),
+    /await this\.syncBidWithQuotation\(data\.id, data\.quotation_id\)/,
+  );
+  assert.match(
+    source,
+    /Ele deixará de aparecer no sistema, mas seus itens e demais dados permanecerão preservados\./,
+  );
+  assert.doesNotMatch(source, /Excluir o orçamento do edital \$\{quotation\.edital\} e todos os seus itens\?/);
+});
+
 function backend() {
   return {
     tables: { bids: [{ id: "TEST-1", buyer_agency: "Original" }], items: [], documents: [], failure_history: [], quotations: [{ id: 1, edital: "Original" }], quotation_items: [], suppliers: [] },
