@@ -1,6 +1,6 @@
 # Plano de Melhorias e Lacunas — GLL
 
-**Revisão:** 3.0 · **Data da análise:** 22/09/2026 · **Público:** responsáveis pelo negócio e pela operação do GLL.
+**Revisão:** 3.1 · **Data da análise:** 22/09/2026 · **Público:** responsáveis pelo negócio e pela operação do GLL.
 
 Este documento apresenta, em linguagem direta, as melhorias recomendadas para tornar o GLL mais seguro, confiável e fácil de evoluir. Ele atualiza o diagnóstico com o estado das branches `main` (produção) e `homolog` (homologação). Esta revisão não promove funcionalidades para produção e, portanto, não altera a especificação técnica vigente.
 
@@ -22,10 +22,10 @@ Os estados usados são **Aberto**, **Parcial**, **Atendido** e **A verificar no 
 
 | Repositório | Produção — `main` | Homologação — `homolog` | Diferença observada em homologação |
 |---|---|---|---|
-| GLL-frontend | `7822fcb` | `d606435` | Novos textos de status, exclusão lógica de orçamentos e filtro de orçamentos já vinculados. |
-| GLL-backend | `468d9cc` | `3d276dc` | Exclusão lógica de orçamentos e limite de um edital por orçamento. |
+| GLL-frontend | `7822fcb` | `e2fcbc6` | Novos textos de status, exclusão lógica de orçamentos, filtro de vínculos e testes obrigatórios antes da publicação. |
+| GLL-backend | `468d9cc` | `8624ab3` | Exclusão lógica de orçamentos, limite de um edital por orçamento e documentação revisada. |
 
-A especificação técnica 3.8 representa a produção de 20/09/2026. Foram verificados código, schema, 25 migrações, testes, builds, publicação e documentação. Os **31 testes existentes passaram** e os builds de homologação e produção foram gerados com sucesso.
+A especificação técnica 3.8 representa a produção de 20/09/2026. Foram verificados código, schema, 25 migrações, testes, builds, publicação e documentação. Os **32 testes existentes passaram** e os builds de homologação e produção foram gerados com sucesso.
 
 Avanços desde a revisão anterior:
 
@@ -40,21 +40,25 @@ Principais riscos restantes:
 1. Editar um item ainda pode substituir silenciosamente campos antigos de frete.
 2. Sincronização entre edital e orçamento e tratamento de anexos podem terminar pela metade após falha de rede.
 3. Não há restauração completa de backup comprovada.
-4. Os testes não bloqueiam automaticamente a publicação do GitHub Pages.
+4. O frontend já bloqueia a publicação quando seus testes falham, mas o backend ainda não possui barreira equivalente e a suíte usa serviços simulados.
 5. A documentação operacional contém instruções contraditórias sobre um arquivo legado.
 
 Os testes atuais usam simulações e não substituem testes completos no Supabase real com diferentes usuários e permissões.
 
-## 3. Carteira priorizada
+## 3. Débito técnico
+
+O registro técnico detalhado foi centralizado em [Débito Técnico — GLL](./DEBITO_TECNICO_GLL.md). Esse documento é a fonte oficial para campos não exibidos, compatibilidades legadas, estruturas descontinuadas, riscos técnicos e ações de quitação. O presente plano mantém a visão de prioridade e impacto para o negócio, evitando duplicar inventários que poderiam ficar divergentes.
+
+## 4. Carteira priorizada
 
 | ID | Prioridade | Estado | Resultado esperado |
 |---|---|---|---|
 | IMP-003 | P0 | Parcial | Edição não apaga valores que o usuário não alterou. |
 | IMP-001, 005, 012–017, 023, 024, 027, 029 | P1 | Parcial ou a verificar | Segurança, recuperação e gravações confiáveis. |
-| IMP-002, 010, 011, 020–022, 025, 026, 028 | P2 | Aberto ou parcial | Operação sustentável e crescimento seguro. |
+| IMP-002, 010, 011, 020–022, 025, 026, 028, 030 | P2 | Aberto ou parcial | Operação sustentável e crescimento seguro. |
 | IMP-004, 018 | Manutenção | Atendido | Comportamentos já corrigidos protegidos por testes. |
 
-## 4. Melhorias de prioridade imediata e alta
+## 5. Melhorias de prioridade imediata e alta
 
 ### IMP-003 — Preservar campos não editados do item
 
@@ -106,15 +110,15 @@ Os testes atuais usam simulações e não substituem testes completos no Supabas
 
 ### IMP-013 — Usar testes como barreira de publicação
 
-**Situação atual:** há 31 testes, todos aprovados nesta revisão, mas o Pages publica sem executá-los e a maioria usa serviços simulados.
+**Situação atual:** há 32 testes, todos aprovados nesta revisão. O Pages agora executa a suíte e bloqueia a publicação quando ela falha. A maioria dos cenários ainda usa serviços simulados, e o backend não possui barreira equivalente para schema e políticas.
 
-**Melhoria recomendada:** executar testes e builds antes de cada deploy, bloqueando a publicação em caso de falha, e ampliar testes reais de permissões, migrações, concorrência, frete e banco vazio.
+**Melhoria recomendada:** manter a barreira do frontend e ampliar testes reais de permissões, migrações, concorrência e frete. Criar validação obrigatória de schema e políticas no backend.
 
-**Consequências de não aplicar:** uma versão quebrada pode ser publicada mesmo existindo teste capaz de detectar o problema.
+**Consequências de não aplicar:** problemas que dependem do Supabase real ou do backend podem passar pelas simulações e chegar ao ambiente publicado.
 
 **Vantagens ao aplicar:** erros chegam menos aos usuários e cada publicação possui evidência objetiva de qualidade.
 
-**Como saber que está pronta:** um teste propositalmente quebrado bloqueia o deploy e o resultado identifica commit e ambiente.
+**Como saber que está pronta:** frontend e backend bloqueiam a entrega em caso de falha, e o resultado identifica commit, ambiente e cenários reais ou simulados.
 
 ### IMP-014 — Comprovar backup e restauração
 
@@ -212,7 +216,7 @@ Os testes atuais usam simulações e não substituem testes completos no Supabas
 
 **Como saber que está pronta:** README, guia e workflow concordam e cada deploy possui evidência única.
 
-## 5. Melhorias planejadas
+## 6. Melhorias planejadas
 
 ### IMP-011 — Comprovar e endurecer a autorização por perfil
 
@@ -237,6 +241,18 @@ Os testes atuais usam simulações e não substituem testes completos no Supabas
 **Vantagens ao aplicar:** o ambiente fica mais simples, com regra clara de preservação histórica.
 
 **Como saber que está pronta:** cada conjunto tem finalidade e prazo; o desnecessário é exportado ou removido por processo aprovado.
+
+### IMP-030 — Governar campos ocultos e descontinuados
+
+**Situação atual:** o inventário central de [Débito Técnico — GLL](./DEBITO_TECNICO_GLL.md) identifica metadados necessários, campos antigos, informações ocultas relevantes e módulos descontinuados ainda presentes no banco ou no navegador. Não existe um responsável e uma decisão de destino para cada grupo.
+
+**Melhoria recomendada:** manter um catálogo versionado com responsável, finalidade, exibição, prazo de retenção e destino de cada campo legado. Antes de remover, medir a existência de dados por ambiente, exportar o que precisar ser preservado, migrar dependências e validar homologação.
+
+**Consequências de não aplicar:** informações invisíveis podem ser alteradas, esquecidas ou acumuladas; a empresa continua protegendo e copiando dados sem saber se ainda são necessários, e uma limpeza direta pode apagar histórico importante.
+
+**Vantagens ao aplicar:** usuários sabem quais informações existem, a base fica mais simples, backups diminuem e futuras mudanças têm menor risco de perda ou incompatibilidade.
+
+**Como saber que está pronta:** todos os itens do registro de débito técnico possuem decisão; campos removidos têm migração, exportação e teste; campos mantidos possuem justificativa, proteção e forma de consulta quando necessária.
 
 ### IMP-004 — Manter a identificação interna estável
 
@@ -336,9 +352,9 @@ Os testes atuais usam simulações e não substituem testes completos no Supabas
 
 ### IMP-018 — Manter login remoto sem demonstração automática
 
-**Situação atual:** atendido por inspeção do código. Login remoto não cria dados demonstrativos; falta teste explícito com Supabase vazio.
+**Situação atual:** atendido e protegido por teste automatizado. Login e restauração remotos não criam dados demonstrativos, e o cenário de base remota vazia foi incluído na suíte obrigatória.
 
-**Melhoria recomendada:** adicionar esse teste à barreira da IMP-013.
+**Melhoria recomendada:** manter o teste na barreira da IMP-013 e reavaliá-lo quando o fluxo de inicialização mudar.
 
 **Consequências de não aplicar:** uma regressão futura pode inserir demonstração em ambiente real sem ser percebida.
 
@@ -346,7 +362,7 @@ Os testes atuais usam simulações e não substituem testes completos no Supabas
 
 **Como saber que está pronta:** base vazia continua vazia após login, recarga e restauração de sessão.
 
-## 6. Expansões de negócio — P3
+## 7. Expansões de negócio — P3
 
 | Evolução | Consequências de não aplicar | Vantagens ao aplicar |
 |---|---|---|
@@ -360,19 +376,19 @@ Os testes atuais usam simulações e não substituem testes completos no Supabas
 | E-mail/calendário | Avisos são repetidos manualmente. | Eventos chegam aos canais usados pela equipe. |
 | API/webhooks | Integrações dependem de tabelas internas. | Outros sistemas usam contratos estáveis e auditáveis. |
 
-## 7. Sequência recomendada
+## 8. Sequência recomendada
 
 | Etapa | Escopo | Evidência para avançar |
 |---|---|---|
 | 1 — Evitar perda silenciosa | IMP-003 e teste da IMP-013. | Campos não exibidos são preservados. |
 | 2 — Proteger acesso e recuperação | IMP-001, 005, 011, 014 e 017. | Revogação, rotação e restauração comprovadas. |
 | 3 — Tornar gravações confiáveis | IMP-012, 015, 016, 023, 024 e 027. | Migrações repetíveis, conflitos visíveis e falhas recuperáveis. |
-| 4 — Sustentar crescimento | IMP-002, 010, 020–022, 025, 026, 028 e 029. | Procedimentos coerentes e experiência validada. |
+| 4 — Sustentar crescimento | IMP-002, 010, 020–022, 025, 026, 028, 029 e 030. | Procedimentos coerentes, legado governado e experiência validada. |
 | 5 — Expandir | Evoluções P3 escolhidas. | Benefício, regra, responsável e aceite definidos. |
 
 IMP-004 e IMP-018 permanecem em manutenção. Código escrito não basta: é necessário publicar em homologação, validar na web e registrar evidência.
 
-## 8. Critérios de entrega e promoção
+## 9. Critérios de entrega e promoção
 
 **Em homologação:** definir escopo e risco; implementar; testar; publicar em `homolog`; validar na web; registrar URL, commit, resultado e pendências.
 
@@ -380,20 +396,20 @@ IMP-004 e IMP-018 permanecem em manutenção. Código escrito não basta: é nec
 
 A especificação técnica não deve ser atualizada por mudança restrita a homologação. **Implementado**, **publicado em homologação**, **validado pelo negócio** e **promovido** são estados diferentes.
 
-## 9. Limites da análise
+## 10. Limites da análise
 
 Não foram alterados dados operacionais. Ainda dependem de comprovação no serviço: senha e recuperação, MFA, proteção contra tentativas, histórico remoto de migrações, backups, restauração e revogação de sessões. Ausência de evidência no repositório não prova ausência do recurso; apenas indica que ele não foi confirmado.
 
-## 10. Fontes e rastreabilidade técnica
+## 11. Fontes e rastreabilidade técnica
 
 - **Frontend:** [produção][F1], [testes de homologação][F2], [Pages][F3] e [branch homolog][F4].
 - **Backend:** [schema de produção][B1], [migrações de homologação][B2], [guia][B3], [workflow][B4] e [branch homolog][B5].
 - **Ambientes:** [homologação][H1], [produção][H2] e [plano publicado][H3].
 
 [F1]: https://github.com/Julielzissimo/GLL-frontend/blob/7822fcb8b8ad53721c2b0d9477ce17cc7f8f477b/web/app.js
-[F2]: https://github.com/Julielzissimo/GLL-frontend/blob/d606435fa1735a9a3c2daf7a811bbc030ac3daf4/scripts/session-sync.test.mjs
+[F2]: https://github.com/Julielzissimo/GLL-frontend/blob/e2fcbc6/scripts/session-sync.test.mjs
 [F3]: https://github.com/Julielzissimo/GLL-frontend/blob/7822fcb8b8ad53721c2b0d9477ce17cc7f8f477b/.github/workflows/pages.yml
-[F4]: https://github.com/Julielzissimo/GLL-frontend/tree/d606435fa1735a9a3c2daf7a811bbc030ac3daf4
+[F4]: https://github.com/Julielzissimo/GLL-frontend/tree/e2fcbc6
 [B1]: https://github.com/Julielzissimo/GLL-backend/blob/468d9ccfc2292f92f05d9bdbfe3fbbb9a15c13e7/supabase/schema.sql
 [B2]: https://github.com/Julielzissimo/GLL-backend/tree/3d276dcfe63d66f6311c218e1c27ad70574c798b/supabase/migrations
 [B3]: https://github.com/Julielzissimo/GLL-backend/blob/468d9ccfc2292f92f05d9bdbfe3fbbb9a15c13e7/docs/supabase.md

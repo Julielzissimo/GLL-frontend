@@ -1,0 +1,594 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Registro central de débito técnico do GLL, incluindo campos ocultos, compatibilidades legadas, estruturas descontinuadas, riscos e ações de quitação.">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="source-sha256" content="16272aa65a2a702ba61c13a7eb967623fd21077ff1e99069068ad747696e637b">
+  <title>Débito Técnico — GLL</title>
+  <style>
+    :root{color-scheme:light;--ink:#1c3044;--muted:#526476;--blue:#1558a0;--line:#d8e1ea;--soft:#eef4fa}
+    *{box-sizing:border-box}html{scroll-padding-top:1rem}body{margin:0;background:#f5f7fa;color:var(--ink);font:16px/1.65 system-ui,-apple-system,"Segoe UI",sans-serif}
+    a{color:var(--blue);text-underline-offset:3px}a:hover{text-decoration-thickness:2px}a:focus-visible,.table-scroll:focus-visible{outline:3px solid #c26900;outline-offset:4px}
+    .topbar{display:flex;justify-content:space-between;gap:1rem;flex-wrap:wrap;max-width:1180px;margin:auto;padding:1.2rem 1.5rem;font-weight:600}
+    main{max-width:1180px;margin:0 auto 3rem;padding:clamp(1.2rem,4vw,3.4rem);background:white;border:1px solid var(--line);border-radius:14px}
+    .eyebrow{margin:0 0 1rem;color:var(--muted);font-size:.8rem;font-weight:700;letter-spacing:.13em;text-transform:uppercase}
+    h1{font-size:clamp(1.8rem,4vw,2.6rem);line-height:1.18;letter-spacing:-.025em;margin:.3rem 0 1.4rem}h2{font-size:1.6rem;line-height:1.3;margin:3rem 0 1.25rem;border-top:1px solid var(--line);padding-top:1.6rem}h3{font-size:1.18rem;line-height:1.4;margin:2rem 0 .8rem;color:#144b80}
+    p{margin:.8rem 0 1rem}li{margin:.4rem 0}strong{font-weight:650}code{font-family:ui-monospace,Consolas,monospace;font-size:.88em;background:var(--soft);padding:.1rem .3rem;border-radius:4px;overflow-wrap:anywhere}
+    details{background:var(--soft);border:1px solid var(--line);padding:.85rem 1.1rem;border-radius:8px;margin-bottom:2rem}summary{font-weight:650;cursor:pointer}nav{display:grid;gap:.45rem;padding-top:1rem}nav a{text-decoration:none}
+    .table-scroll{overflow-x:auto;margin:1.2rem 0 1.5rem;border:1px solid var(--line);border-radius:8px}table{border-collapse:collapse;width:100%;min-width:650px;font-size:.9rem;line-height:1.5}th,td{text-align:left;vertical-align:top;padding:.8rem .9rem;border-bottom:1px solid var(--line)}th{background:var(--soft);font-weight:650}tr:last-child td{border-bottom:0}tbody tr:nth-child(even){background:#fafbfd}
+    footer{border-top:1px solid var(--line);margin-top:2.5rem;padding-top:1rem;color:var(--muted);font-size:.85rem}article a{overflow-wrap:anywhere}
+    @media(max-width:650px){body{font-size:15px}.topbar{padding:1rem}main{border-radius:0;border-left:0;border-right:0;margin-bottom:0}h2{font-size:1.35rem}}
+    @media print{body{background:white;font-size:10pt}.topbar,details{display:none}main{border:0;margin:0;padding:0;max-width:none}h2,h3{break-after:avoid}h2{margin-top:1.5rem}.table-scroll{overflow:visible}table{min-width:0;font-size:8pt}tr{break-inside:avoid}a{color:inherit}code{overflow-wrap:anywhere}}
+  </style>
+</head>
+<body>
+  <a class="topbar" href="#conteudo">Ir para o conteúdo</a>
+  <header class="topbar"><a href="../">← Voltar ao GLL</a><a href="./DEBITO_TECNICO_GLL.md" download>Baixar Markdown</a></header>
+  <main id="conteudo">
+    <p class="eyebrow">GLL · Débito técnico</p>
+    <details><summary>Navegar pelo plano</summary><nav aria-label="Seções do débito técnico"><a href="#como-este-registro-deve-ser-usado">1. Como este registro deve ser usado</a>
+<a href="#resumo-executivo">2. Resumo executivo</a>
+<a href="#inventario-de-campos-e-informacoes-nao-exibidas">3. Inventário de campos e informações não exibidas</a>
+<a href="#campos-legados-ainda-preservados">4. Campos legados ainda preservados</a>
+<a href="#estruturas-e-informacoes-descontinuadas">5. Estruturas e informações descontinuadas</a>
+<a href="#demais-debitos-por-dominio">6. Demais débitos por domínio</a>
+<a href="#ordem-recomendada-de-quitacao">7. Ordem recomendada de quitação</a>
+<a href="#criterio-para-encerrar-um-debito">8. Critério para encerrar um débito</a>
+<a href="#base-e-limites-do-levantamento">9. Base e limites do levantamento</a></nav></details>
+    <article><h1 id="debito-tecnico-gll">Débito Técnico — GLL</h1>
+<p><strong>Revisão:</strong> 1.0 · <strong>Data de referência:</strong> 22/09/2026 · <strong>Estado:</strong> diagnóstico de <code>main</code> e <code>homolog</code>.</p>
+<p>Este documento centraliza o débito técnico conhecido do GLL. Ele é a fonte oficial para limitações de arquitetura, segurança, dados, testes, operação e manutenção, incluindo campos não exibidos e estruturas descontinuadas que continuam armazenadas.</p>
+<p>O <a href="./PLANO_DE_MELHORIAS_GLL.md">Plano de Melhorias</a> apresenta prioridade, consequência e benefício em visão executiva. A especificação técnica descreve o comportamento promovido para produção. Este arquivo não altera o funcionamento do sistema nem autoriza a exclusão de dados.</p>
+<h2 id="como-este-registro-deve-ser-usado">1. Como este registro deve ser usado</h2>
+<ul>
+<li>Registrar aqui todo novo débito técnico identificado.</li>
+<li>Relacionar o débito à melhoria <code>IMP</code> correspondente quando existir.</li>
+<li>Não remover campo, tabela, arquivo ou dado antes de medir uso, dependências e existência de conteúdo em cada ambiente.</li>
+<li>Para quitar um débito, exigir migração ou recuperação, teste, publicação e validação em homologação.</li>
+<li>Atualizar a especificação técnica somente quando a correção for promovida para produção.</li>
+</ul>
+<p><strong>Estados:</strong> Aberto; Parcial; A verificar no ambiente; Quitado com teste de manutenção.</p>
+<p><strong>Criticidade:</strong> Crítica — risco imediato de perda ou alteração; Alta — segurança ou continuidade; Média — qualidade, custo ou crescimento; Baixa — manutenção preventiva.</p>
+<h2 id="resumo-executivo">2. Resumo executivo</h2>
+<div class="table-scroll" tabindex="0" role="region" aria-label="Tabela com rolagem horizontal"><table>
+<thead>
+<tr>
+<th>ID</th>
+<th>Débito técnico</th>
+<th>Criticidade</th>
+<th>Estado</th>
+<th>Melhoria relacionada</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>DT-001</td>
+<td>Campos ocultos de frete são sobrescritos no salvamento</td>
+<td>Crítica</td>
+<td>Aberto</td>
+<td>IMP-003</td>
+</tr>
+<tr>
+<td>DT-002</td>
+<td>Campos legados duplicam ou ocultam informações</td>
+<td>Média</td>
+<td>Aberto</td>
+<td>IMP-002, IMP-030</td>
+</tr>
+<tr>
+<td>DT-003</td>
+<td>Tabelas, stores e arquivos descontinuados permanecem armazenados</td>
+<td>Média</td>
+<td>Aberto</td>
+<td>IMP-002, IMP-029, IMP-030</td>
+</tr>
+<tr>
+<td>DT-004</td>
+<td>Exclusão lógica não possui lixeira, restauração ou retenção definida</td>
+<td>Alta</td>
+<td>Parcial</td>
+<td>IMP-014, IMP-023, IMP-030</td>
+</tr>
+<tr>
+<td>DT-005</td>
+<td>Metadados úteis de auditoria não são exibidos ou historizados</td>
+<td>Média</td>
+<td>Parcial</td>
+<td>IMP-010, IMP-015, IMP-021, IMP-030</td>
+</tr>
+<tr>
+<td>DT-006</td>
+<td>Linha de base e migrações não têm reprodução completa comprovada</td>
+<td>Alta</td>
+<td>Parcial</td>
+<td>IMP-012</td>
+</tr>
+<tr>
+<td>DT-007</td>
+<td>Frontend possui barreira de testes; backend e integrações reais ainda não</td>
+<td>Alta</td>
+<td>Parcial</td>
+<td>IMP-013</td>
+</tr>
+<tr>
+<td>DT-008</td>
+<td>Backup e restauração completos não foram comprovados</td>
+<td>Alta</td>
+<td>A verificar</td>
+<td>IMP-014</td>
+</tr>
+<tr>
+<td>DT-009</td>
+<td>Datas, fusos e arredondamentos não usam uma regra única</td>
+<td>Alta</td>
+<td>Parcial</td>
+<td>IMP-015</td>
+</tr>
+<tr>
+<td>DT-010</td>
+<td>Gravações concorrentes podem sobrescrever alterações</td>
+<td>Alta</td>
+<td>Aberto</td>
+<td>IMP-016</td>
+</tr>
+<tr>
+<td>DT-011</td>
+<td>Configurações reais de autenticação ainda não foram auditadas por completo</td>
+<td>Alta</td>
+<td>A verificar</td>
+<td>IMP-001, IMP-005, IMP-017</td>
+</tr>
+<tr>
+<td>DT-012</td>
+<td>Operações entre edital e orçamento não são atômicas</td>
+<td>Alta</td>
+<td>Parcial</td>
+<td>IMP-023</td>
+</tr>
+<tr>
+<td>DT-013</td>
+<td>Parte das regras existe somente na interface</td>
+<td>Alta</td>
+<td>Parcial</td>
+<td>IMP-024</td>
+</tr>
+<tr>
+<td>DT-014</td>
+<td>Banco e armazenamento de anexos podem divergir após falha</td>
+<td>Alta</td>
+<td>Parcial</td>
+<td>IMP-027</td>
+</tr>
+<tr>
+<td>DT-015</td>
+<td>Documentação operacional possui instruções contraditórias</td>
+<td>Alta</td>
+<td>Aberto</td>
+<td>IMP-029</td>
+</tr>
+<tr>
+<td>DT-016</td>
+<td>Listagens carregam conjuntos completos de dados</td>
+<td>Média</td>
+<td>Aberto</td>
+<td>IMP-020</td>
+</tr>
+<tr>
+<td>DT-017</td>
+<td>Falhas não possuem observabilidade e alerta centralizados</td>
+<td>Média</td>
+<td>Aberto</td>
+<td>IMP-021</td>
+</tr>
+<tr>
+<td>DT-018</td>
+<td>Acessibilidade ainda não foi validada de ponta a ponta</td>
+<td>Média</td>
+<td>Parcial</td>
+<td>IMP-022</td>
+</tr>
+<tr>
+<td>DT-019</td>
+<td>Modo local não possui sincronização e pode reter legado no navegador</td>
+<td>Média</td>
+<td>Parcial</td>
+<td>IMP-026, IMP-030</td>
+</tr>
+<tr>
+<td>DT-020</td>
+<td>Fornecedores estruturados não estão integrados aos itens</td>
+<td>Média</td>
+<td>Parcial em homologação</td>
+<td>IMP-028</td>
+</tr>
+<tr>
+<td>DT-021</td>
+<td>Autorização por perfil precisa de matriz de testes reais</td>
+<td>Média</td>
+<td>Parcial avançado</td>
+<td>IMP-011</td>
+</tr>
+<tr>
+<td>DT-022</td>
+<td>Ciclo de vida de status não possui trilha de transições</td>
+<td>Média</td>
+<td>Parcial</td>
+<td>IMP-010</td>
+</tr>
+<tr>
+<td>DT-023</td>
+<td>Impedir seed automático em base remota vazia</td>
+<td>Baixa</td>
+<td>Quitado com teste de manutenção</td>
+<td>IMP-018</td>
+</tr>
+</tbody>
+</table></div>
+<h2 id="inventario-de-campos-e-informacoes-nao-exibidas">3. Inventário de campos e informações não exibidas</h2>
+<p>Um campo oculto pode ser necessário. Esta seção distingue metadados técnicos que devem ser mantidos de informações que precisam ser expostas, reduzidas ou governadas.</p>
+<h3 id="campos-ativos-e-necessarios">3.1 Campos ativos e necessários</h3>
+<div class="table-scroll" tabindex="0" role="region" aria-label="Tabela com rolagem horizontal"><table>
+<thead>
+<tr>
+<th>Campo ou grupo</th>
+<th>Onde permanece</th>
+<th>Exibição atual</th>
+<th>Motivo e ação recomendada</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Identificadores <code>id</code></td>
+<td>Todas as entidades principais</td>
+<td>Não são exibidos, exceto o ID comercial do orçamento</td>
+<td>Mantêm identidade e relações. Devem ficar protegidos e incluídos em backup.</td>
+</tr>
+<tr>
+<td>Chaves <code>bid_id</code>, <code>quotation_id</code>, <code>quotation_item_id</code> e <code>supplier_id</code></td>
+<td>Itens, documentos, falhas, orçamentos e produtos</td>
+<td>O usuário vê o registro relacionado, não a chave técnica</td>
+<td>Necessárias aos vínculos. Não remover. Validar integridade nas migrações e restaurações.</td>
+</tr>
+<tr>
+<td><code>organization_id</code></td>
+<td>Editais, orçamentos, fornecedores, produtos, usuários e configurações</td>
+<td>O nome da organização aparece em contexto; o identificador não</td>
+<td>Necessário para separar empresas e aplicar RLS. Manter oculto.</td>
+</tr>
+<tr>
+<td><code>auth_user_id</code> e <code>created_by</code></td>
+<td>Usuários, editais e orçamentos</td>
+<td>A interface mostra o nome do criador, não o UUID</td>
+<td>Necessários à autoria e autorização. Mostrar somente em diagnóstico administrativo controlado.</td>
+</tr>
+<tr>
+<td><code>assigned_to</code></td>
+<td>Editais e orçamentos</td>
+<td>A atribuição é gerenciada por analista, mas o valor técnico não aparece no formulário do registro</td>
+<td>Manter e criar histórico de atribuições para auditoria.</td>
+</tr>
+<tr>
+<td><code>created_at</code> e <code>updated_at</code></td>
+<td>Editais, orçamentos, usuários, fornecedores, produtos e outros registros</td>
+<td>Quase nunca exibidos</td>
+<td>Úteis para suporte, mas não substituem histórico. Padronizar formato/fuso e exibir em detalhe administrativo quando necessário.</td>
+</tr>
+<tr>
+<td><code>failure_history.created_at</code></td>
+<td>Histórico de falhas</td>
+<td>Não exibido na tabela de falhas</td>
+<td>A data dá contexto de negócio. Deve ser apresentada ao usuário.</td>
+</tr>
+<tr>
+<td><code>deleted_at</code></td>
+<td>Editais e, em homologação, orçamentos</td>
+<td>Registros marcados deixam de aparecer</td>
+<td>Necessário à exclusão lógica, mas exige retenção, lixeira e restauração administrativa.</td>
+</tr>
+<tr>
+<td><code>organizations.cnpj</code></td>
+<td>Organizações</td>
+<td>Consultado pelo frontend, mas não exibido; somente o nome aparece</td>
+<td>Decidir se o administrador precisa vê-lo. Se não precisar, deixar de consultar o dado.</td>
+</tr>
+<tr>
+<td>Caminho interno, tipo e outros metadados de <code>edital_files</code></td>
+<td>Editais e Storage</td>
+<td>Nome, tamanho e ações aparecem; caminho interno não</td>
+<td>Necessários para localizar e autorizar arquivos. Manter protegidos e verificar em backup.</td>
+</tr>
+<tr>
+<td><code>quotation_items.total</code></td>
+<td>Itens de orçamento</td>
+<td>Valor é exibido, mas não editável</td>
+<td>Campo calculado pelo banco. Manter e testar igualdade com o cálculo da interface.</td>
+</tr>
+<tr>
+<td><code>app_users.created_at</code></td>
+<td>Usuários</td>
+<td>Não exibido</td>
+<td>Pode apoiar auditoria de acesso. Avaliar exibição administrativa junto com trilha de criação/remoção.</td>
+</tr>
+<tr>
+<td><code>suppliers.created_at</code>, <code>suppliers.updated_at</code> e equivalentes de produtos</td>
+<td>Fornecedores e produtos</td>
+<td>Não exibidos</td>
+<td>Podem apoiar suporte e auditoria. Padronizar e exibir somente quando houver necessidade definida.</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="registros-preservados-mas-invisiveis-apos-exclusao">3.2 Registros preservados, mas invisíveis após exclusão</h3>
+<div class="table-scroll" tabindex="0" role="region" aria-label="Tabela com rolagem horizontal"><table>
+<thead>
+<tr>
+<th>Informação</th>
+<th>Persistência atual</th>
+<th>Lacuna</th>
+<th>Destino recomendado</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Editais com <code>bids.deleted_at</code></td>
+<td>Registro, itens, documentos, falhas e anexos permanecem</td>
+<td>Não existe lixeira ou restauração na interface</td>
+<td>Criar consulta/restauração administrativa, retenção e descarte auditado.</td>
+</tr>
+<tr>
+<td>Orçamentos com <code>quotations.deleted_at</code> em homologação</td>
+<td>Orçamento e itens permanecem</td>
+<td>Não existe lixeira; textos de confirmação ainda podem sugerir exclusão dos itens</td>
+<td>Corrigir mensagens, criar recuperação e definir retenção antes da promoção.</td>
+</tr>
+<tr>
+<td>Arquivos ligados a registros excluídos</td>
+<td>Objetos permanecem no bucket privado</td>
+<td>Operação comum não os encontra; backup e descarte não estão formalizados</td>
+<td>Incluir na reconciliação de anexos, backup e política de retenção.</td>
+</tr>
+</tbody>
+</table></div>
+<h2 id="campos-legados-ainda-preservados">4. Campos legados ainda preservados</h2>
+<div class="table-scroll" tabindex="0" role="region" aria-label="Tabela com rolagem horizontal"><table>
+<thead>
+<tr>
+<th>Campo</th>
+<th>Função antiga</th>
+<th>Uso atual no código</th>
+<th>Risco</th>
+<th>Plano de quitação</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>bids.edital_link</code></td>
+<td>Campo “Link do edital”, removido da tela</td>
+<td>Apenas normalizado na leitura; não existe consulta ou edição na interface</td>
+<td>Pode conter informação desconhecida do usuário</td>
+<td>Medir preenchimento, exportar se necessário e remover em migração aprovada.</td>
+</tr>
+<tr>
+<td><code>bids.edital_file_path</code></td>
+<td>Caminho do único anexo antigo</td>
+<td>Fallback quando a lista moderna não existe</td>
+<td>Remover cedo pode tornar anexo histórico inacessível</td>
+<td>Migrar para <code>edital_files</code> e testar download.</td>
+</tr>
+<tr>
+<td><code>bids.edital_file_name</code></td>
+<td>Nome do único anexo antigo</td>
+<td>Fallback de compatibilidade</td>
+<td>Duplicidade de metadados</td>
+<td>Migrar com caminho, tipo e tamanho.</td>
+</tr>
+<tr>
+<td><code>bids.edital_file_type</code></td>
+<td>Tipo do único anexo antigo</td>
+<td>Fallback de compatibilidade</td>
+<td>Duplicidade de metadados</td>
+<td>Migrar e validar arquivos históricos.</td>
+</tr>
+<tr>
+<td><code>bids.edital_file_size</code></td>
+<td>Tamanho do único anexo antigo</td>
+<td>Fallback de compatibilidade</td>
+<td>Duplicidade de metadados</td>
+<td>Migrar e validar limites/exibição.</td>
+</tr>
+<tr>
+<td><code>items.description</code></td>
+<td>Texto técnico e recipiente de compatibilidade em versões antigas</td>
+<td>Espelha <code>technical_registration_text</code> e é usado como fallback</td>
+<td>Duas fontes podem divergir</td>
+<td>Migrar todos os registros e adotar um campo canônico.</td>
+</tr>
+<tr>
+<td><code>items.supplier_link</code></td>
+<td>Um fornecedor por item</td>
+<td>Espelha o primeiro valor de <code>supplier_links</code></td>
+<td>Pode divergir da lista moderna</td>
+<td>Validar lista, interromper espelhamento e remover.</td>
+</tr>
+<tr>
+<td><code>items.freight_included</code></td>
+<td>Indicador antigo de frete</td>
+<td>Não aparece; o formulário sempre salva <code>1</code></td>
+<td>Sobrescrita silenciosa</td>
+<td>Corrigir imediatamente na IMP-003 e decidir regra de negócio.</td>
+</tr>
+<tr>
+<td><code>items.unit_freight</code></td>
+<td>Frete unitário antigo</td>
+<td>Não aparece; o formulário sempre salva <code>0</code></td>
+<td>Perda silenciosa de valor</td>
+<td>Corrigir imediatamente na IMP-003 e migrar ou remover.</td>
+</tr>
+<tr>
+<td><code>edital_file_blob</code> no IndexedDB</td>
+<td>Arquivo armazenado dentro do registro local</td>
+<td>Fallback para bases locais antigas</td>
+<td>Dados grandes e invisíveis no navegador</td>
+<td>Migrar ao abrir/exportar e testar base antiga antes de retirar.</td>
+</tr>
+</tbody>
+</table></div>
+<p>O schema e o código confirmam a existência e o tratamento desses campos, mas não confirmam quais possuem conteúdo em cada ambiente. A medição deve usar apenas contagens e classificações administrativas, sem publicar valores operacionais ou pessoais.</p>
+<h2 id="estruturas-e-informacoes-descontinuadas">5. Estruturas e informações descontinuadas</h2>
+<div class="table-scroll" tabindex="0" role="region" aria-label="Tabela com rolagem horizontal"><table>
+<thead>
+<tr>
+<th>Estrutura</th>
+<th>Situação atual</th>
+<th>Consequências de não quitar</th>
+<th>Vantagens da quitação</th>
+<th>Ação segura</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>budget_models</code></td>
+<td>Tabela da antiga aba “Modelo de Orçamento”; não acessada pelo frontend</td>
+<td>Dados invisíveis continuam protegidos, copiados e confundidos com o orçamento atual</td>
+<td>Modelo de dados mais simples e menor superfície de manutenção</td>
+<td>Medir registros, definir retenção, exportar e remover por migração.</td>
+</tr>
+<tr>
+<td><code>budget_rows</code></td>
+<td>Linhas da antiga aba “Modelo de Orçamento”; não acessadas</td>
+<td>Mesmo risco de retenção invisível e custo operacional</td>
+<td>Menos dados órfãos e menor custo de backup</td>
+<td>Tratar junto com <code>budget_models</code>, preservando vínculo histórico quando necessário.</td>
+</tr>
+<tr>
+<td><code>app_settings</code></td>
+<td>Configurações privadas da antiga proposta/modelo; frontend não consulta</td>
+<td>Configuração sem uso ainda exige acesso, segurança e backup</td>
+<td>Menor superfície de segurança e instruções mais claras</td>
+<td>Classificar conteúdo e remover somente após descartar dependências.</td>
+</tr>
+<tr>
+<td><code>supabase/private-settings.sql</code></td>
+<td>Script legado de configurações privadas</td>
+<td>Pode ser aplicado por engano devido a documentação contraditória</td>
+<td>Instalação nova mais previsível</td>
+<td>Não automatizar; corrigir guias e retirar após decisão sobre <code>app_settings</code>.</td>
+</tr>
+<tr>
+<td><code>supabase/seed-data.json</code> privado</td>
+<td>Fotografia operacional histórica fora da interface</td>
+<td>Pode reter informação sensível ou desatualizada sem finalidade definida</td>
+<td>Retenção e acesso passam a ser conscientes</td>
+<td>Definir proprietário, finalidade, prazo e descarte. Não reproduzir valores neste documento.</td>
+</tr>
+<tr>
+<td>Stores IndexedDB antigas <code>budget_models</code> e <code>budget_rows</code></td>
+<td>Podem permanecer em navegadores atualizados, embora o código atual não as acesse</td>
+<td>Dados invisíveis ocupam espaço no computador do usuário</td>
+<td>Navegador local fica coerente com o modelo atual</td>
+<td>Criar migração local controlada ou orientar exportação e limpeza.</td>
+</tr>
+</tbody>
+</table></div>
+<h2 id="demais-debitos-por-dominio">6. Demais débitos por domínio</h2>
+<h3 id="seguranca-e-acesso">6.1 Segurança e acesso</h3>
+<ul>
+<li><strong>DT-011:</strong> confirmar rotação de credenciais, política de senha, recuperação, MFA, proteção contra tentativas e revogação de sessões.</li>
+<li><strong>DT-021:</strong> testar diretamente a API com anônimo, usuário removido, analista, administrador e usuário de outra organização.</li>
+<li><strong>Risco de não quitar:</strong> acesso indevido pode não ser detectado pela interface.</li>
+<li><strong>Benefício:</strong> separação de dados e revogação tornam-se comprováveis.</li>
+</ul>
+<h3 id="banco-migracoes-e-recuperacao">6.2 Banco, migrações e recuperação</h3>
+<ul>
+<li><strong>DT-006:</strong> criar linha de base reproduzível para base vazia e atualização de versão anterior.</li>
+<li><strong>DT-008:</strong> provar backup e restauração de banco, relações e Storage.</li>
+<li><strong>DT-013:</strong> levar ao banco regras de domínio ainda existentes apenas na interface.</li>
+<li><strong>Risco de não quitar:</strong> instalação, recuperação ou integração pode produzir dados inválidos ou ambiente diferente da produção.</li>
+<li><strong>Benefício:</strong> mudanças previsíveis e recuperação mensurável.</li>
+</ul>
+<h3 id="consistencia-de-gravacao">6.3 Consistência de gravação</h3>
+<ul>
+<li><strong>DT-009:</strong> unificar centavos, arredondamento, datas e fusos.</li>
+<li><strong>DT-010:</strong> impedir sobrescrita por versão antiga.</li>
+<li><strong>DT-012:</strong> tornar vínculo e sincronização edital–orçamento atômicos e repetíveis.</li>
+<li><strong>DT-014:</strong> reconciliar banco e anexos após falha.</li>
+<li><strong>Risco de não quitar:</strong> perda silenciosa, valores divergentes ou sucesso parcial.</li>
+<li><strong>Benefício:</strong> dados permanecem confiáveis mesmo com duas pessoas ou falha de rede.</li>
+</ul>
+<h3 id="qualidade-e-operacao">6.4 Qualidade e operação</h3>
+<ul>
+<li><strong>DT-007:</strong> manter a barreira já aplicada ao frontend e estendê-la ao backend, schema, RLS e integrações reais.</li>
+<li><strong>DT-015:</strong> unificar README, guia Supabase e workflow.</li>
+<li><strong>DT-016:</strong> paginar e atualizar dados de forma incremental.</li>
+<li><strong>DT-017:</strong> centralizar erros, métricas e alertas sem dados sensíveis.</li>
+<li><strong>DT-018:</strong> validar fluxos com teclado, leitor de tela, zoom e celular.</li>
+<li><strong>Risco de não quitar:</strong> falhas chegam ao usuário, diagnóstico demora e desempenho degrada com crescimento.</li>
+<li><strong>Benefício:</strong> publicações mais seguras e operação sustentável.</li>
+</ul>
+<h3 id="evolucao-e-manutencao">6.5 Evolução e manutenção</h3>
+<ul>
+<li><strong>DT-019:</strong> deixar explícitos os limites do modo local e limpar legado do IndexedDB.</li>
+<li><strong>DT-020:</strong> integrar fornecedor/produto estruturado aos itens preservando histórico textual.</li>
+<li><strong>DT-022:</strong> registrar transições de status com autor, data e motivo.</li>
+<li><strong>DT-023:</strong> manter na suíte obrigatória o teste já existente de que login remoto não cria demonstração em base vazia.</li>
+<li><strong>Risco de não quitar:</strong> comportamento ambíguo, duplicidade e decisões sem histórico.</li>
+<li><strong>Benefício:</strong> evolução do produto com menor retrabalho e maior rastreabilidade.</li>
+</ul>
+<h2 id="ordem-recomendada-de-quitacao">7. Ordem recomendada de quitação</h2>
+<div class="table-scroll" tabindex="0" role="region" aria-label="Tabela com rolagem horizontal"><table>
+<thead>
+<tr>
+<th>Ordem</th>
+<th>Débitos</th>
+<th>Condição de saída</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1 — Evitar alteração silenciosa</td>
+<td>DT-001</td>
+<td>Campos ocultos preservados e teste automatizado.</td>
+</tr>
+<tr>
+<td>2 — Garantir acesso e recuperação</td>
+<td>DT-008, DT-011, DT-021</td>
+<td>Revogação e permissões testadas; restauração demonstrada.</td>
+</tr>
+<tr>
+<td>3 — Garantir consistência</td>
+<td>DT-006, DT-009, DT-010, DT-012, DT-013, DT-014</td>
+<td>Migração repetível e falhas sem estado parcial.</td>
+</tr>
+<tr>
+<td>4 — Governar legado</td>
+<td>DT-002, DT-003, DT-004, DT-005, DT-015, DT-019</td>
+<td>Cada item possui retenção, migração, consulta ou descarte aprovado.</td>
+</tr>
+<tr>
+<td>5 — Sustentar crescimento</td>
+<td>DT-007, DT-016, DT-017, DT-018, DT-020, DT-022, DT-023</td>
+<td>Deploy protegido, operação observável e regressões cobertas.</td>
+</tr>
+</tbody>
+</table></div>
+<h2 id="criterio-para-encerrar-um-debito">8. Critério para encerrar um débito</h2>
+<p>Um débito só pode ser marcado como quitado quando:</p>
+<ol>
+<li>dependências e dados existentes forem medidos por ambiente;</li>
+<li>decisão de manter, exibir, migrar ou remover estiver registrada;</li>
+<li>houver backup, exportação ou reversão proporcional ao risco;</li>
+<li>migração e código forem testados, incluindo registros antigos;</li>
+<li>a alteração estiver publicada e validada na web de homologação;</li>
+<li>o Plano de Melhorias apontar o novo estado;</li>
+<li>na promoção, a especificação técnica for atualizada no mesmo fluxo;</li>
+<li>produção for sincronizada de volta para homologação conforme as regras do projeto.</li>
+</ol>
+<h2 id="base-e-limites-do-levantamento">9. Base e limites do levantamento</h2>
+<p>Base comprometida analisada: frontend <code>e2fcbc6</code> e backend <code>8624ab3</code>, ambos em <code>homolog</code>, além da produção registrada no Plano de Melhorias. Foram inspecionados schema, migrações, adaptadores, interface, testes e documentação. Alterações locais ainda não comprometidas nos dois repositórios foram preservadas e não foram tratadas como estado publicado.</p>
+<p>Não foram consultados ou reproduzidos valores operacionais. Backup gerenciado, configurações de autenticação, conteúdo efetivo dos campos legados e stores existentes nos navegadores continuam <strong>a verificar no ambiente</strong>.</p>
+</article>
+    <footer>Cópia de leitura gerada a partir de DEBITO_TECNICO_GLL.md. O conteúdo centraliza os débitos técnicos conhecidos do GLL.</footer>
+  </main>
+</body>
+</html>

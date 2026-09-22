@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="Plano de melhorias do GLL, revisado em 22 de setembro de 2026 com riscos, benefícios, prioridades e critérios de aceite em linguagem acessível.">
   <meta name="robots" content="noindex, nofollow">
-  <meta name="source-sha256" content="86990d0bd1e2586a9ed9a48255cc01a034e63105d17be7f5236e358de4059013">
+  <meta name="source-sha256" content="1ba358fe5b715912a393d9c7a227e2fdbb5b1bd3f5eb95beff67d78b3160beea">
   <title>Plano de Melhorias e Lacunas — GLL</title>
   <style>
     :root{color-scheme:light;--ink:#1c3044;--muted:#526476;--blue:#1558a0;--line:#d8e1ea;--soft:#eef4fa}
@@ -30,16 +30,17 @@
     <p class="eyebrow">GLL · Planejamento</p>
     <details><summary>Navegar pelo plano</summary><nav aria-label="Seções do plano"><a href="#como-ler-este-plano">1. Como ler este plano</a>
 <a href="#resumo-da-analise-atual">2. Resumo da análise atual</a>
-<a href="#carteira-priorizada">3. Carteira priorizada</a>
-<a href="#melhorias-de-prioridade-imediata-e-alta">4. Melhorias de prioridade imediata e alta</a>
-<a href="#melhorias-planejadas">5. Melhorias planejadas</a>
-<a href="#expansoes-de-negocio-p3">6. Expansões de negócio — P3</a>
-<a href="#sequencia-recomendada">7. Sequência recomendada</a>
-<a href="#criterios-de-entrega-e-promocao">8. Critérios de entrega e promoção</a>
-<a href="#limites-da-analise">9. Limites da análise</a>
-<a href="#fontes-e-rastreabilidade-tecnica">10. Fontes e rastreabilidade técnica</a></nav></details>
+<a href="#debito-tecnico">3. Débito técnico</a>
+<a href="#carteira-priorizada">4. Carteira priorizada</a>
+<a href="#melhorias-de-prioridade-imediata-e-alta">5. Melhorias de prioridade imediata e alta</a>
+<a href="#melhorias-planejadas">6. Melhorias planejadas</a>
+<a href="#expansoes-de-negocio-p3">7. Expansões de negócio — P3</a>
+<a href="#sequencia-recomendada">8. Sequência recomendada</a>
+<a href="#criterios-de-entrega-e-promocao">9. Critérios de entrega e promoção</a>
+<a href="#limites-da-analise">10. Limites da análise</a>
+<a href="#fontes-e-rastreabilidade-tecnica">11. Fontes e rastreabilidade técnica</a></nav></details>
     <article><h1 id="plano-de-melhorias-e-lacunas-gll">Plano de Melhorias e Lacunas — GLL</h1>
-<p><strong>Revisão:</strong> 3.0 · <strong>Data da análise:</strong> 22/09/2026 · <strong>Público:</strong> responsáveis pelo negócio e pela operação do GLL.</p>
+<p><strong>Revisão:</strong> 3.1 · <strong>Data da análise:</strong> 22/09/2026 · <strong>Público:</strong> responsáveis pelo negócio e pela operação do GLL.</p>
 <p>Este documento apresenta, em linguagem direta, as melhorias recomendadas para tornar o GLL mais seguro, confiável e fácil de evoluir. Ele atualiza o diagnóstico com o estado das branches <code>main</code> (produção) e <code>homolog</code> (homologação). Esta revisão não promove funcionalidades para produção e, portanto, não altera a especificação técnica vigente.</p>
 <h2 id="como-ler-este-plano">1. Como ler este plano</h2>
 <p>Cada melhoria informa a situação, a ação recomendada, as consequências de não aplicá-la, as vantagens de aplicá-la e a evidência necessária para considerá-la pronta.</p>
@@ -88,18 +89,18 @@
 <tr>
 <td>GLL-frontend</td>
 <td><code>7822fcb</code></td>
-<td><code>d606435</code></td>
-<td>Novos textos de status, exclusão lógica de orçamentos e filtro de orçamentos já vinculados.</td>
+<td><code>e2fcbc6</code></td>
+<td>Novos textos de status, exclusão lógica de orçamentos, filtro de vínculos e testes obrigatórios antes da publicação.</td>
 </tr>
 <tr>
 <td>GLL-backend</td>
 <td><code>468d9cc</code></td>
-<td><code>3d276dc</code></td>
-<td>Exclusão lógica de orçamentos e limite de um edital por orçamento.</td>
+<td><code>8624ab3</code></td>
+<td>Exclusão lógica de orçamentos, limite de um edital por orçamento e documentação revisada.</td>
 </tr>
 </tbody>
 </table></div>
-<p>A especificação técnica 3.8 representa a produção de 20/09/2026. Foram verificados código, schema, 25 migrações, testes, builds, publicação e documentação. Os <strong>31 testes existentes passaram</strong> e os builds de homologação e produção foram gerados com sucesso.</p>
+<p>A especificação técnica 3.8 representa a produção de 20/09/2026. Foram verificados código, schema, 25 migrações, testes, builds, publicação e documentação. Os <strong>32 testes existentes passaram</strong> e os builds de homologação e produção foram gerados com sucesso.</p>
 <p>Avanços desde a revisão anterior:</p>
 <ul>
 <li>controle de acesso por organização, administrador e analista no banco e na interface;</li>
@@ -113,11 +114,13 @@
 <li>Editar um item ainda pode substituir silenciosamente campos antigos de frete.</li>
 <li>Sincronização entre edital e orçamento e tratamento de anexos podem terminar pela metade após falha de rede.</li>
 <li>Não há restauração completa de backup comprovada.</li>
-<li>Os testes não bloqueiam automaticamente a publicação do GitHub Pages.</li>
+<li>O frontend já bloqueia a publicação quando seus testes falham, mas o backend ainda não possui barreira equivalente e a suíte usa serviços simulados.</li>
 <li>A documentação operacional contém instruções contraditórias sobre um arquivo legado.</li>
 </ol>
 <p>Os testes atuais usam simulações e não substituem testes completos no Supabase real com diferentes usuários e permissões.</p>
-<h2 id="carteira-priorizada">3. Carteira priorizada</h2>
+<h2 id="debito-tecnico">3. Débito técnico</h2>
+<p>O registro técnico detalhado foi centralizado em <a href="./DEBITO_TECNICO_GLL.md">Débito Técnico — GLL</a>. Esse documento é a fonte oficial para campos não exibidos, compatibilidades legadas, estruturas descontinuadas, riscos técnicos e ações de quitação. O presente plano mantém a visão de prioridade e impacto para o negócio, evitando duplicar inventários que poderiam ficar divergentes.</p>
+<h2 id="carteira-priorizada">4. Carteira priorizada</h2>
 <div class="table-scroll" tabindex="0" role="region" aria-label="Tabela com rolagem horizontal"><table>
 <thead>
 <tr>
@@ -141,7 +144,7 @@
 <td>Segurança, recuperação e gravações confiáveis.</td>
 </tr>
 <tr>
-<td>IMP-002, 010, 011, 020–022, 025, 026, 028</td>
+<td>IMP-002, 010, 011, 020–022, 025, 026, 028, 030</td>
 <td>P2</td>
 <td>Aberto ou parcial</td>
 <td>Operação sustentável e crescimento seguro.</td>
@@ -154,7 +157,7 @@
 </tr>
 </tbody>
 </table></div>
-<h2 id="melhorias-de-prioridade-imediata-e-alta">4. Melhorias de prioridade imediata e alta</h2>
+<h2 id="melhorias-de-prioridade-imediata-e-alta">5. Melhorias de prioridade imediata e alta</h2>
 <h3 id="imp-003-preservar-campos-nao-editados-do-item">IMP-003 — Preservar campos não editados do item</h3>
 <p><strong>Situação atual:</strong> ao salvar um item, o sistema ainda envia valores fixos para dois campos antigos de frete que não aparecem no formulário. Uma edição simples pode trocar dados existentes sem aviso.</p>
 <p><strong>Melhoria recomendada:</strong> manter os valores existentes dos campos que não aparecem na tela e decidir, depois, se eles serão exibidos, migrados ou removidos.</p>
@@ -180,11 +183,11 @@
 <p><strong>Vantagens ao aplicar:</strong> atualizações e recuperações tornam-se previsíveis e com menor risco de parada.</p>
 <p><strong>Como saber que está pronta:</strong> bases nova e antiga terminam iguais, repetir a atualização não causa conflito e o histórico remoto confere.</p>
 <h3 id="imp-013-usar-testes-como-barreira-de-publicacao">IMP-013 — Usar testes como barreira de publicação</h3>
-<p><strong>Situação atual:</strong> há 31 testes, todos aprovados nesta revisão, mas o Pages publica sem executá-los e a maioria usa serviços simulados.</p>
-<p><strong>Melhoria recomendada:</strong> executar testes e builds antes de cada deploy, bloqueando a publicação em caso de falha, e ampliar testes reais de permissões, migrações, concorrência, frete e banco vazio.</p>
-<p><strong>Consequências de não aplicar:</strong> uma versão quebrada pode ser publicada mesmo existindo teste capaz de detectar o problema.</p>
+<p><strong>Situação atual:</strong> há 32 testes, todos aprovados nesta revisão. O Pages agora executa a suíte e bloqueia a publicação quando ela falha. A maioria dos cenários ainda usa serviços simulados, e o backend não possui barreira equivalente para schema e políticas.</p>
+<p><strong>Melhoria recomendada:</strong> manter a barreira do frontend e ampliar testes reais de permissões, migrações, concorrência e frete. Criar validação obrigatória de schema e políticas no backend.</p>
+<p><strong>Consequências de não aplicar:</strong> problemas que dependem do Supabase real ou do backend podem passar pelas simulações e chegar ao ambiente publicado.</p>
 <p><strong>Vantagens ao aplicar:</strong> erros chegam menos aos usuários e cada publicação possui evidência objetiva de qualidade.</p>
-<p><strong>Como saber que está pronta:</strong> um teste propositalmente quebrado bloqueia o deploy e o resultado identifica commit e ambiente.</p>
+<p><strong>Como saber que está pronta:</strong> frontend e backend bloqueiam a entrega em caso de falha, e o resultado identifica commit, ambiente e cenários reais ou simulados.</p>
 <h3 id="imp-014-comprovar-backup-e-restauracao">IMP-014 — Comprovar backup e restauração</h3>
 <p><strong>Situação atual:</strong> o CSV não contém toda a base, relações, usuários e anexos. Não foi encontrado teste documentado de restauração completa.</p>
 <p><strong>Melhoria recomendada:</strong> definir conteúdo, frequência, retenção, responsável, perda máxima e tempo de recuperação; restaurar uma cópia isolada.</p>
@@ -233,7 +236,7 @@
 <p><strong>Consequências de não aplicar:</strong> pessoas podem instalar ou promover o sistema de maneiras diferentes e esquecer etapas.</p>
 <p><strong>Vantagens ao aplicar:</strong> publicações tornam-se repetíveis, auditáveis e menos dependentes da memória.</p>
 <p><strong>Como saber que está pronta:</strong> README, guia e workflow concordam e cada deploy possui evidência única.</p>
-<h2 id="melhorias-planejadas">5. Melhorias planejadas</h2>
+<h2 id="melhorias-planejadas">6. Melhorias planejadas</h2>
 <h3 id="imp-011-comprovar-e-endurecer-a-autorizacao-por-perfil">IMP-011 — Comprovar e endurecer a autorização por perfil</h3>
 <p><strong>Situação atual:</strong> organizações, administradores, analistas e restrições por autoria/atribuição já reduziram o risco original. Faltam testes completos com usuários reais e proteção de operações administrativas futuras.</p>
 <p><strong>Melhoria recomendada:</strong> testar API e interface com anônimo, removido, analista, administrador e pessoa de outra organização.</p>
@@ -246,6 +249,12 @@
 <p><strong>Consequências de não aplicar:</strong> dados desnecessários aumentam exposição e confundem o que deve ser protegido.</p>
 <p><strong>Vantagens ao aplicar:</strong> o ambiente fica mais simples, com regra clara de preservação histórica.</p>
 <p><strong>Como saber que está pronta:</strong> cada conjunto tem finalidade e prazo; o desnecessário é exportado ou removido por processo aprovado.</p>
+<h3 id="imp-030-governar-campos-ocultos-e-descontinuados">IMP-030 — Governar campos ocultos e descontinuados</h3>
+<p><strong>Situação atual:</strong> o inventário central de <a href="./DEBITO_TECNICO_GLL.md">Débito Técnico — GLL</a> identifica metadados necessários, campos antigos, informações ocultas relevantes e módulos descontinuados ainda presentes no banco ou no navegador. Não existe um responsável e uma decisão de destino para cada grupo.</p>
+<p><strong>Melhoria recomendada:</strong> manter um catálogo versionado com responsável, finalidade, exibição, prazo de retenção e destino de cada campo legado. Antes de remover, medir a existência de dados por ambiente, exportar o que precisar ser preservado, migrar dependências e validar homologação.</p>
+<p><strong>Consequências de não aplicar:</strong> informações invisíveis podem ser alteradas, esquecidas ou acumuladas; a empresa continua protegendo e copiando dados sem saber se ainda são necessários, e uma limpeza direta pode apagar histórico importante.</p>
+<p><strong>Vantagens ao aplicar:</strong> usuários sabem quais informações existem, a base fica mais simples, backups diminuem e futuras mudanças têm menor risco de perda ou incompatibilidade.</p>
+<p><strong>Como saber que está pronta:</strong> todos os itens do registro de débito técnico possuem decisão; campos removidos têm migração, exportação e teste; campos mantidos possuem justificativa, proteção e forma de consulta quando necessária.</p>
 <h3 id="imp-004-manter-a-identificacao-interna-estavel">IMP-004 — Manter a identificação interna estável</h3>
 <p><strong>Situação atual:</strong> atendido. O sistema separa identificador interno do número visível, aceita números repetidos e preserva relações.</p>
 <p><strong>Melhoria recomendada:</strong> manter testes ao mudar cadastro, importação, vínculos ou anexos.</p>
@@ -295,12 +304,12 @@
 <p><strong>Vantagens ao aplicar:</strong> informações podem ser reaproveitadas e comparações de preço tornam-se possíveis.</p>
 <p><strong>Como saber que está pronta:</strong> cadastro, produtos, permissões e conflitos passam em homologação e a integração não apaga dados antigos.</p>
 <h3 id="imp-018-manter-login-remoto-sem-demonstracao-automatica">IMP-018 — Manter login remoto sem demonstração automática</h3>
-<p><strong>Situação atual:</strong> atendido por inspeção do código. Login remoto não cria dados demonstrativos; falta teste explícito com Supabase vazio.</p>
-<p><strong>Melhoria recomendada:</strong> adicionar esse teste à barreira da IMP-013.</p>
+<p><strong>Situação atual:</strong> atendido e protegido por teste automatizado. Login e restauração remotos não criam dados demonstrativos, e o cenário de base remota vazia foi incluído na suíte obrigatória.</p>
+<p><strong>Melhoria recomendada:</strong> manter o teste na barreira da IMP-013 e reavaliá-lo quando o fluxo de inicialização mudar.</p>
 <p><strong>Consequências de não aplicar:</strong> uma regressão futura pode inserir demonstração em ambiente real sem ser percebida.</p>
 <p><strong>Vantagens ao aplicar:</strong> ambientes novos permanecem vazios até ação autorizada.</p>
 <p><strong>Como saber que está pronta:</strong> base vazia continua vazia após login, recarga e restauração de sessão.</p>
-<h2 id="expansoes-de-negocio-p3">6. Expansões de negócio — P3</h2>
+<h2 id="expansoes-de-negocio-p3">7. Expansões de negócio — P3</h2>
 <div class="table-scroll" tabindex="0" role="region" aria-label="Tabela com rolagem horizontal"><table>
 <thead>
 <tr>
@@ -357,7 +366,7 @@
 </tr>
 </tbody>
 </table></div>
-<h2 id="sequencia-recomendada">7. Sequência recomendada</h2>
+<h2 id="sequencia-recomendada">8. Sequência recomendada</h2>
 <div class="table-scroll" tabindex="0" role="region" aria-label="Tabela com rolagem horizontal"><table>
 <thead>
 <tr>
@@ -384,8 +393,8 @@
 </tr>
 <tr>
 <td>4 — Sustentar crescimento</td>
-<td>IMP-002, 010, 020–022, 025, 026, 028 e 029.</td>
-<td>Procedimentos coerentes e experiência validada.</td>
+<td>IMP-002, 010, 020–022, 025, 026, 028, 029 e 030.</td>
+<td>Procedimentos coerentes, legado governado e experiência validada.</td>
 </tr>
 <tr>
 <td>5 — Expandir</td>
@@ -395,15 +404,15 @@
 </tbody>
 </table></div>
 <p>IMP-004 e IMP-018 permanecem em manutenção. Código escrito não basta: é necessário publicar em homologação, validar na web e registrar evidência.</p>
-<h2 id="criterios-de-entrega-e-promocao">8. Critérios de entrega e promoção</h2>
+<h2 id="criterios-de-entrega-e-promocao">9. Critérios de entrega e promoção</h2>
 <p><strong>Em homologação:</strong> definir escopo e risco; implementar; testar; publicar em <code>homolog</code>; validar na web; registrar URL, commit, resultado e pendências.</p>
 <p><strong>Após aprovação para produção:</strong> atualizar a especificação e documentos afetados; aplicar migrações antes do frontend; publicar e validar produção; fazer merge de <code>main</code> em <code>homolog</code> nos dois repositórios, sem rebase ou force push; republicar e revalidar homologação.</p>
 <p>A especificação técnica não deve ser atualizada por mudança restrita a homologação. <strong>Implementado</strong>, <strong>publicado em homologação</strong>, <strong>validado pelo negócio</strong> e <strong>promovido</strong> são estados diferentes.</p>
-<h2 id="limites-da-analise">9. Limites da análise</h2>
+<h2 id="limites-da-analise">10. Limites da análise</h2>
 <p>Não foram alterados dados operacionais. Ainda dependem de comprovação no serviço: senha e recuperação, MFA, proteção contra tentativas, histórico remoto de migrações, backups, restauração e revogação de sessões. Ausência de evidência no repositório não prova ausência do recurso; apenas indica que ele não foi confirmado.</p>
-<h2 id="fontes-e-rastreabilidade-tecnica">10. Fontes e rastreabilidade técnica</h2>
+<h2 id="fontes-e-rastreabilidade-tecnica">11. Fontes e rastreabilidade técnica</h2>
 <ul>
-<li><strong>Frontend:</strong> <a href="https://github.com/Julielzissimo/GLL-frontend/blob/7822fcb8b8ad53721c2b0d9477ce17cc7f8f477b/web/app.js">produção</a>, <a href="https://github.com/Julielzissimo/GLL-frontend/blob/d606435fa1735a9a3c2daf7a811bbc030ac3daf4/scripts/session-sync.test.mjs">testes de homologação</a>, <a href="https://github.com/Julielzissimo/GLL-frontend/blob/7822fcb8b8ad53721c2b0d9477ce17cc7f8f477b/.github/workflows/pages.yml">Pages</a> e <a href="https://github.com/Julielzissimo/GLL-frontend/tree/d606435fa1735a9a3c2daf7a811bbc030ac3daf4">branch homolog</a>.</li>
+<li><strong>Frontend:</strong> <a href="https://github.com/Julielzissimo/GLL-frontend/blob/7822fcb8b8ad53721c2b0d9477ce17cc7f8f477b/web/app.js">produção</a>, <a href="https://github.com/Julielzissimo/GLL-frontend/blob/e2fcbc6/scripts/session-sync.test.mjs">testes de homologação</a>, <a href="https://github.com/Julielzissimo/GLL-frontend/blob/7822fcb8b8ad53721c2b0d9477ce17cc7f8f477b/.github/workflows/pages.yml">Pages</a> e <a href="https://github.com/Julielzissimo/GLL-frontend/tree/e2fcbc6">branch homolog</a>.</li>
 <li><strong>Backend:</strong> <a href="https://github.com/Julielzissimo/GLL-backend/blob/468d9ccfc2292f92f05d9bdbfe3fbbb9a15c13e7/supabase/schema.sql">schema de produção</a>, <a href="https://github.com/Julielzissimo/GLL-backend/tree/3d276dcfe63d66f6311c218e1c27ad70574c798b/supabase/migrations">migrações de homologação</a>, <a href="https://github.com/Julielzissimo/GLL-backend/blob/468d9ccfc2292f92f05d9bdbfe3fbbb9a15c13e7/docs/supabase.md">guia</a>, <a href="https://github.com/Julielzissimo/GLL-backend/blob/468d9ccfc2292f92f05d9bdbfe3fbbb9a15c13e7/.github/workflows/supabase-production.yml">workflow</a> e <a href="https://github.com/Julielzissimo/GLL-backend/tree/3d276dcfe63d66f6311c218e1c27ad70574c798b">branch homolog</a>.</li>
 <li><strong>Ambientes:</strong> <a href="https://julielzissimo.github.io/GLL-frontend/homolog/">homologação</a>, <a href="https://julielzissimo.github.io/GLL-frontend/">produção</a> e <a href="https://julielzissimo.github.io/GLL-frontend/homolog/docs/plano-de-melhorias.html">plano publicado</a>.</li>
 </ul>
