@@ -7,7 +7,7 @@ on:
       - homolog
     paths:
       - "web/**"
-      - "scripts/build-web.mjs"
+      - "scripts/**"
       - "package.json"
       - ".github/workflows/pages.yml"
   workflow_dispatch:
@@ -22,7 +22,47 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  quality:
+    name: Testes obrigatorios (${{ github.ref_name }})
+    if: github.ref_name == 'main' || github.ref_name == 'homolog'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Obter branch que iniciou a publicacao
+        uses: actions/checkout@v6
+
+      - name: Preparar Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+
+      - name: Executar testes
+        id: tests
+        run: npm test
+
+      - name: Registrar evidencia da barreira
+        if: always()
+        shell: bash
+        env:
+          TEST_RESULT: ${{ steps.tests.outcome }}
+        run: |
+          if [[ "${GITHUB_REF_NAME}" == "main" ]]; then
+            target_environment="producao"
+          else
+            target_environment="homologacao"
+          fi
+
+          {
+            echo "## Barreira de publicacao"
+            echo "- Commit: \`${GITHUB_SHA}\`"
+            echo "- Branch: \`${GITHUB_REF_NAME}\`"
+            echo "- Ambiente: \`${target_environment}\`"
+            echo "- Testes: \`${TEST_RESULT}\`"
+          } >> "${GITHUB_STEP_SUMMARY}"
+
   build:
+    needs: quality
     if: github.ref_name == 'main' || github.ref_name == 'homolog'
     runs-on: ubuntu-latest
     timeout-minutes: 10

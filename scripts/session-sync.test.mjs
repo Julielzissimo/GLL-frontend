@@ -276,6 +276,18 @@ test("reload restores a persisted session without entering a password", async ()
   assert.equal(reloaded.appState.bids.length, 1);
 });
 
+test("empty remote database stays empty after authentication", async () => {
+  const db = backend();
+  for (const table of Object.keys(db.tables)) db.tables[table] = [];
+  const app = client(db);
+  await app.restoreSession();
+  app.stopLiveUpdates();
+  assert.equal(app.appState.authenticated, true);
+  assert.deepEqual(structuredClone(app.appState.bids), []);
+  assert.deepEqual(structuredClone(app.appState.quotations), []);
+  assert.deepEqual(structuredClone(db.tables.bids), []);
+});
+
 test("missing session stays at login without reading protected tables", async () => {
   const app = client(backend(), { session: null });
   app.store.getAll = () => { throw new Error("must not read"); };
