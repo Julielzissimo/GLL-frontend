@@ -2449,10 +2449,19 @@ function closeBidQuotationModal(event) {
   if (refs.bidQuotationModal.open) refs.bidQuotationModal.close();
 }
 
+function availableBidQuotations(quotations, bids) {
+  const linkedQuotationIds = new Set(
+    bids
+      .map((bid) => Number(bid.quotation_id))
+      .filter((quotationId) => Number.isFinite(quotationId) && quotationId > 0),
+  );
+  return quotations.filter((quotation) => !linkedQuotationIds.has(Number(quotation.id)));
+}
+
 function renderBidQuotationResults() {
   const idFilter = refs.bidQuotationFilterId.value.trim().toLowerCase();
   const agencyFilter = refs.bidQuotationFilterAgency.value.trim().toLowerCase();
-  const quotations = appState.quotations.filter((quotation) => {
+  const quotations = availableBidQuotations(appState.quotations, appState.bids).filter((quotation) => {
     const matchesId = !idFilter || String(quotation.id).toLowerCase().includes(idFilter);
     const matchesAgency = !agencyFilter || String(quotation.agency || "").toLowerCase().includes(agencyFilter);
     return matchesId && matchesAgency;

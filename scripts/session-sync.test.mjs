@@ -57,6 +57,20 @@ test("cada arquivo do edital mantém o limite individual de 20 MB", () => {
   );
 });
 
+test("modal de orçamento exibe somente orçamentos ainda não vinculados a edital", () => {
+  const app = client();
+  const quotations = [{ id: 1 }, { id: 2 }, { id: 3 }];
+  const bids = [
+    { id: "edital-1", quotation_id: 1 },
+    { id: "edital-2", quotation_id: null },
+    { id: "edital-3", quotation_id: "3" },
+  ];
+  assert.deepEqual(
+    JSON.parse(JSON.stringify(app.availableBidQuotations(quotations, bids))),
+    [{ id: 2 }],
+  );
+});
+
 function backend() {
   return {
     tables: { bids: [{ id: "TEST-1", buyer_agency: "Original" }], items: [], documents: [], failure_history: [], quotations: [{ id: 1, edital: "Original" }], quotation_items: [], suppliers: [] },
@@ -116,7 +130,7 @@ function client(db = backend(), auth = { session: { user } }) {
     clearInterval: (id) => timers.delete(id),
   });
   vm.runInContext(application, context);
-  const api = vm.runInContext(`({ store, appState, restoreSession, logout, reloadData, refreshInBackground, startLiveUpdates, stopLiveUpdates, resetAuthenticatedView, scheduleLiveRefresh, calculateBidSummary, readNavigationRoute, writeNavigationRoute, normalizeBidRecord, normalizeBidAttachments, validateEditalFiles, bidDisplayNumber, creatorName, creatorInitials, creatorTagMarkup, normalizeQuotationRecord, normalizeQuotationItemRecord, quotationItemToBidItem, bidItemToQuotationItem, normalizeTechnicalSpecifications, quotationSaveError, sessionPolicyStorageKey, enforceSessionPolicy })`, context);
+  const api = vm.runInContext(`({ store, appState, restoreSession, logout, reloadData, refreshInBackground, startLiveUpdates, stopLiveUpdates, resetAuthenticatedView, scheduleLiveRefresh, calculateBidSummary, readNavigationRoute, writeNavigationRoute, normalizeBidRecord, normalizeBidAttachments, validateEditalFiles, bidDisplayNumber, creatorName, creatorInitials, creatorTagMarkup, normalizeQuotationRecord, normalizeQuotationItemRecord, quotationItemToBidItem, bidItemToQuotationItem, normalizeTechnicalSpecifications, quotationSaveError, sessionPolicyStorageKey, enforceSessionPolicy, availableBidQuotations })`, context);
   vm.runInContext(`
     renderSuppliers = renderBids = renderDetails = renderQuotations = renderUsers = () => {};
     clearBidForm = clearQuotationForm = setPage = updateMainNavigationState = () => {};
