@@ -119,6 +119,31 @@ jobs:
 
           touch _site/.nojekyll
 
+      - name: Identificar commits publicados
+        shell: bash
+        run: |
+          if [[ "${GITHUB_REF_NAME}" == "main" ]]; then
+            production_sha="${GITHUB_SHA}"
+            homolog_sha="$(git -C .pages-source/homolog rev-parse HEAD)"
+          else
+            production_sha="$(git -C .pages-source/main rev-parse HEAD)"
+            homolog_sha="${GITHUB_SHA}"
+          fi
+
+          jq -n \
+            --arg environment "production" \
+            --arg commit "$production_sha" \
+            --arg run "https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}" \
+            '{environment: $environment, commit: $commit, workflow_run: $run}' \
+            > _site/deployment.json
+
+          jq -n \
+            --arg environment "homolog" \
+            --arg commit "$homolog_sha" \
+            --arg run "https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}" \
+            '{environment: $environment, commit: $commit, workflow_run: $run}' \
+            > _site/homolog/deployment.json
+
       - name: Configurar GitHub Pages
         uses: actions/configure-pages@v5
 
@@ -139,3 +164,71 @@ jobs:
       - name: Publicar no GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
+
+      - name: Validar commit disponível na web
+        id: validation
+        shell: bash
+        env:
+          PAGE_URL: ${{ steps.deployment.outputs.page_url }}
+        run: |
+          if [[ "${GITHUB_REF_NAME}" == "homolog" ]]; then
+            target_url="${PAGE_URL%/}/homolog/"
+          else
+            target_url="${PAGE_URL%/}/"
+          fi
+
+          metadata_url="${target_url}deployment.json"
+          for attempt in {1..12}; do
+            published_sha="$(curl --silent --show-error --location --fail "$metadata_url" | jq -r '.commit' || true)"
+            if [[ "$published_sha" == "$GITHUB_SHA" ]]; then
+              break
+            fi
+            sleep 5
+          done
+
+          test "$published_sha" = "$GITHUB_SHA"
+          echo "url=$target_url" >> "$GITHUB_OUTPUT"
+          echo "metadata_url=$metadata_url" >> "$GITHUB_OUTPUT"
+          echo "published_sha=$published_sha" >> "$GITHUB_OUTPUT"
+
+      - name: Gerar evidência única
+        if: success()
+        shell: bash
+        env:
+          TARGET_URL: ${{ steps.validation.outputs.url }}
+          METADATA_URL: ${{ steps.validation.outputs.metadata_url }}
+          PUBLISHED_SHA: ${{ steps.validation.outputs.published_sha }}
+        run: |
+          if [[ "${GITHUB_REF_NAME}" == "main" ]]; then
+            target_environment="produção"
+          else
+            target_environment="homologação"
+          fi
+
+          evidence="evidencia-publicacao-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}.md"
+          {
+            echo "# Evidência de publicação do frontend"
+            echo
+            echo "- Ambiente: ${target_environment}"
+            echo "- Commit: \`${GITHUB_SHA}\`"
+            echo "- Branch: \`${GITHUB_REF_NAME}\`"
+            echo "- Execução: https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+            echo "- Data UTC: $(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+            echo "- Migrações: não se aplica a esta publicação de frontend"
+            echo "- Testes: \`npm test\` concluído"
+            echo "- URL publicada: ${TARGET_URL}"
+            echo "- Metadado validado: ${METADATA_URL}"
+            echo "- Commit observado na web: \`${PUBLISHED_SHA}\`"
+            echo "- Validação: concluída"
+          } > "$evidence"
+          cat "$evidence" >> "$GITHUB_STEP_SUMMARY"
+          echo "EVIDENCE_FILE=$evidence" >> "$GITHUB_ENV"
+
+      - name: Armazenar evidência
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: evidencia-publicacao-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ env.EVIDENCE_FILE }}
+          if-no-files-found: error
+          retention-days: 90
