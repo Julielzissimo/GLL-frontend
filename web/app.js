@@ -26,6 +26,10 @@ const BID_EDITAL_BUCKET = "bid-edital-files";
 const MAX_EDITAL_FILE_SIZE = 20 * 1024 * 1024;
 const MAX_EDITAL_FILES = 4;
 const SUPABASE_CLIENT_VERSION = "2.57.4";
+const BUSINESS_TIME_ZONE = "America/Sao_Paulo";
+const MONEY_FRACTION_DIGITS = 2;
+const QUANTITY_FRACTION_DIGITS = 4;
+const MARGIN_FRACTION_DIGITS = 4;
 const USER_ROLES = { ADMIN: "Administrador", ANALYST: "Analista" };
 const DEFAULT_ADMIN = {
   email: "demo@gll.local",
@@ -2172,7 +2176,7 @@ async function reloadData({ background = false } = {}) {
   next.bids = rows[0]
     .map(normalizeBidRecord)
     .filter((bid) => !bid.deleted_at)
-    .sort((a, b) => String(a.session_datetime).localeCompare(String(b.session_datetime)));
+    .sort((a, b) => parseStoredDateTime(a.session_datetime) - parseStoredDateTime(b.session_datetime));
   const visibleBidIds = new Set(next.bids.map((bid) => bid.id));
   next.items = rows[1]
     .map(normalizeItemRecord)
@@ -2599,15 +2603,16 @@ function renderHomeSummary() {
   });
 
   const upcoming = appState.bids
-    .filter((bid) => new Date(bid.session_datetime).getTime() >= Date.now() - 86400000)
-    .sort((a, b) => new Date(a.session_datetime) - new Date(b.session_datetime))
+    .filter((bid) => parseStoredDateTime(bid.session_datetime).getTime() >= Date.now() - 86400000)
+    .sort((a, b) => parseStoredDateTime(a.session_datetime) - parseStoredDateTime(b.session_datetime))
     .slice(0, 4);
   refs.upcomingBidsList.innerHTML = upcoming.length
     ? upcoming.map((bid) => {
-        const date = new Date(bid.session_datetime);
+        const date = parseStoredDateTime(bid.session_datetime);
+        const dateParts = zonedDateTimeParts(date);
         return `<button class="timeline-item" type="button" data-upcoming-bid="${escapeHtml(bid.id)}">
-          <span class="date-box"><strong>${String(date.getDate()).padStart(2, "0")}</strong><small>${date.toLocaleDateString("pt-BR", { month: "short" }).replace(".", "").toUpperCase()}</small></span>
-          <span class="timeline-copy"><span class="bid-title-line"><strong>${escapeHtml(bidDisplayNumber(bid))}</strong><span class="creator-tag compact">${creatorTagMarkup(bid)}</span></span><span>${escapeHtml(bid.buyer_agency || "")}</span><small>${date.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })} • ${escapeHtml(bid.bid_type || "")}</small></span>
+          <span class="date-box"><strong>${dateParts.day}</strong><small>${dateParts.monthShort.toUpperCase()}</small></span>
+          <span class="timeline-copy"><span class="bid-title-line"><strong>${escapeHtml(bidDisplayNumber(bid))}</strong><span class="creator-tag compact">${creatorTagMarkup(bid)}</span></span><span>${escapeHtml(bid.buyer_agency || "")}</span><small>${dateParts.time} • ${escapeHtml(bid.bid_type || "")}</small></span>
           <span class="status-pill ${statusBadgeClass(bid.status)}">${escapeHtml(statusDisplay(bid.status))}</span>
         </button>`;
       }).join("")
@@ -2953,10 +2958,10 @@ function renderMetrics(items) {
   const totals = itemsForTotals.reduce(
     (acc, item) => {
       const quantity = Number(item.required_quantity || 0);
-      acc.final += Number(item.max_acceptable_value || 0) * quantity;
-      acc.cost += Number(item.supplier_cost || 0) * quantity;
+      acc.final = roundMoney(acc.final + calculateLineTotal(item.max_acceptable_value, quantity));
+      acc.cost = roundMoney(acc.cost + calculateLineTotal(item.supplier_cost, quantity));
       if (Number(item.max_acceptable_value) && Number(item.supplier_cost)) {
-        acc.profit += calculateItemProfit(item.max_acceptable_value, item.supplier_cost, item.required_quantity);
+        acc.profit = roundMoney(acc.profit + calculateItemProfit(item.max_acceptable_value, item.supplier_cost, item.required_quantity));
       }
       return acc;
     },
@@ -3050,17 +3055,17 @@ function formatStoredProfitMargin(item) {
 }
 
 function calculateItemProfit(finalValue, costValue, quantity) {
-  return (Number(finalValue) - Number(costValue)) * Number(quantity || 0);
+  return roundMoney((Number(finalValue) - Number(costValue)) * Number(quantity || 0));
 }
 
 function calculateProfitMargin(finalValue, costValue) {
   const cost = Number(costValue);
   if (!cost) return null;
-  return ((Number(finalValue) - cost) / cost) * 100;
+  return roundMargin(((Number(finalValue) - cost) / cost) * 100);
 }
 
 function calculateValueWithMargin(costValue, marginValue) {
-  return Number(costValue) * (1 + Number(marginValue) / 100);
+  return roundMoney(Number(costValue) * (1 + Number(marginValue) / 100));
 }
 
 function loadItem(itemId) {
@@ -3174,7 +3179,7 @@ function collectItemData() {
   const name = refs.itemName.value.trim();
   if (!name) throw new Error("Preencha a Descrição.");
   const quantity = refs.requiredQuantity.value.trim()
-    ? parseDecimal(refs.requiredQuantity.value, "Quantidade Exigida", false)
+    ? parseDecimal(refs.requiredQuantity.value, "Quantidade Exigida", false, QUANTITY_FRACTION_DIGITS)
     : 0;
   const technicalText = refs.technicalRegistrationText.value.trim();
   const supplierCost = parseDecimal(refs.supplierCost.value, "Valor de Custo", false);
@@ -3743,7 +3748,7 @@ function renderQuotations() {
     refs.quotationsTableBody.innerHTML = appState.quotations
       .map((quotation) => {
         const items = appState.quotationItems.filter((item) => Number(item.quotation_id) === Number(quotation.id));
-        const total = items.reduce((sum, item) => sum + Number(item.total || 0), 0);
+        const total = items.reduce((sum, item) => roundMoney(sum + Number(item.total || 0)), 0);
         const selected = Number(quotation.id) === Number(appState.currentQuotationId) ? " selected" : "";
         const location = [quotation.city, quotation.cep].filter(Boolean).join(" · ") || "—";
         return `
@@ -3873,7 +3878,7 @@ function renderQuotationItems() {
     return;
   }
   const items = currentQuotationItems();
-  const grandTotal = items.reduce((sum, item) => sum + Number(item.total || 0), 0);
+  const grandTotal = items.reduce((sum, item) => roundMoney(sum + Number(item.total || 0)), 0);
   refs.quotationItemsStatus.textContent = `${items.length} ${items.length === 1 ? "item cadastrado" : "itens cadastrados"}`;
   refs.quotationGrandTotal.textContent = `Total: ${money(grandTotal)}`;
   if (!items.length) {
@@ -4049,7 +4054,7 @@ async function saveQuotationItem(event) {
     );
     if (linkedBidConflict) throw new Error(`O item ${itemNumber} já existe em um edital vinculado a este orçamento.`);
     const quantity = refs.quotationItemQuantity.value.trim()
-      ? parseDecimal(refs.quotationItemQuantity.value, "Quantidade", false)
+      ? parseDecimal(refs.quotationItemQuantity.value, "Quantidade", false, QUANTITY_FRACTION_DIGITS)
       : 1;
     const supplierCost = parseDecimal(refs.quotationItemSupplierCost.value, "Valor de Custo", false);
     const finalBid = parseDecimal(refs.quotationItemFinalBid.value, "Lance Final", false);
@@ -4103,9 +4108,9 @@ function updateQuotationItemTotals() {
     const finalBid = parseDecimal(refs.quotationItemFinalBid.value, "Lance Final", false);
     const supplierCost = parseDecimal(refs.quotationItemSupplierCost.value, "Valor de Custo", false);
     const quantity = refs.quotationItemQuantity.value.trim()
-      ? parseDecimal(refs.quotationItemQuantity.value, "Quantidade", false)
+      ? parseDecimal(refs.quotationItemQuantity.value, "Quantidade", false, QUANTITY_FRACTION_DIGITS)
       : 1;
-    refs.quotationItemTotal.value = money(finalBid * quantity);
+    refs.quotationItemTotal.value = money(calculateLineTotal(finalBid, quantity));
     refs.quotationItemTotalProfit.value = money(calculateItemProfit(finalBid, supplierCost, quantity));
   } catch {
     refs.quotationItemTotal.value = money(0);
@@ -4352,9 +4357,9 @@ function calculateBidSummary(bidId) {
       (acc, item) => {
         const quantity = Number(item.required_quantity || 0);
         if (!onlyWonItems || Boolean(Number(item.is_won))) {
-          acc.totalFinal += Number(item.max_acceptable_value || 0) * quantity;
+          acc.totalFinal = roundMoney(acc.totalFinal + calculateLineTotal(item.max_acceptable_value, quantity));
         }
-        acc.totalEstimated += Number(item.estimated_value || 0) * quantity;
+        acc.totalEstimated = roundMoney(acc.totalEstimated + calculateLineTotal(item.estimated_value, quantity));
         acc.itemCount += 1;
         return acc;
       },
@@ -4362,7 +4367,30 @@ function calculateBidSummary(bidId) {
     );
 }
 
-function parseDecimal(value, fieldName, required = true) {
+function roundDecimal(value, fractionDigits) {
+  const number = Number(value || 0);
+  if (!Number.isFinite(number)) return 0;
+  const factor = 10 ** fractionDigits;
+  return Math.sign(number) * Math.round(Math.abs(number) * factor + 1e-10) / factor;
+}
+
+function roundMoney(value) {
+  return roundDecimal(value, MONEY_FRACTION_DIGITS);
+}
+
+function roundQuantity(value) {
+  return roundDecimal(value, QUANTITY_FRACTION_DIGITS);
+}
+
+function roundMargin(value) {
+  return roundDecimal(value, MARGIN_FRACTION_DIGITS);
+}
+
+function calculateLineTotal(unitValue, quantity) {
+  return roundMoney(Number(unitValue || 0) * Number(quantity || 0));
+}
+
+function parseDecimal(value, fieldName, required = true, fractionDigits = MONEY_FRACTION_DIGITS) {
   let raw = String(value || "").trim();
   if (!raw) {
     if (required) throw new Error(`Preencha o campo ${fieldName}.`);
@@ -4373,7 +4401,7 @@ function parseDecimal(value, fieldName, required = true) {
   const number = Number(raw);
   if (Number.isNaN(number)) throw new Error(`Informe um valor numérico válido para ${fieldName}.`);
   if (number < 0) throw new Error(`O campo ${fieldName} não pode ser negativo.`);
-  return number;
+  return roundDecimal(number, fractionDigits);
 }
 
 function parseProfitMargin(value) {
@@ -4382,7 +4410,7 @@ function parseProfitMargin(value) {
   if (raw.includes(",")) raw = raw.replace(/\./g, "").replace(",", ".");
   const number = Number(raw);
   if (!Number.isFinite(number)) throw new Error("Informe uma porcentagem válida para Margem.");
-  return number;
+  return roundMargin(number);
 }
 
 function parseIntRequired(value, fieldName) {
@@ -4430,7 +4458,12 @@ function normalizeUrlValue(value) {
 }
 
 function money(value) {
-  return Number(value || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+  return roundMoney(value).toLocaleString("pt-BR", {
+    style: "currency",
+    currency: "BRL",
+    minimumFractionDigits: MONEY_FRACTION_DIGITS,
+    maximumFractionDigits: MONEY_FRACTION_DIGITS,
+  });
 }
 
 function percent(value) {
@@ -4438,30 +4471,81 @@ function percent(value) {
 }
 
 function formatProfitMargin(value) {
-  return `${Number(value || 0).toLocaleString("pt-BR", { minimumFractionDigits: 4, maximumFractionDigits: 4 })}%`;
+  return `${roundMargin(value).toLocaleString("pt-BR", { minimumFractionDigits: MARGIN_FRACTION_DIGITS, maximumFractionDigits: MARGIN_FRACTION_DIGITS })}%`;
 }
 
 function formatDateTime(value) {
   if (!value) return "";
-  const normalized = value.replace(" ", "T");
-  const date = new Date(normalized);
+  const date = parseStoredDateTime(value);
   if (Number.isNaN(date.getTime())) return value;
-  return date.toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" });
+  return new Intl.DateTimeFormat("pt-BR", {
+    timeZone: BUSINESS_TIME_ZONE,
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).format(date);
 }
 
 function toDateTimeInputValue(value) {
   if (!value) return "";
-  return String(value).replace(" ", "T").slice(0, 16);
+  const date = parseStoredDateTime(value);
+  if (Number.isNaN(date.getTime())) return "";
+  const parts = dateTimeParts(date);
+  return `${parts.year}-${parts.month}-${parts.day}T${parts.hour}:${parts.minute}`;
 }
 
 function toDateInputValue(value) {
   if (!value) return "";
-  return String(value).slice(0, 10);
+  const date = parseStoredDateTime(value);
+  if (Number.isNaN(date.getTime())) return "";
+  const parts = dateTimeParts(date);
+  return `${parts.year}-${parts.month}-${parts.day}`;
 }
 
 function fromDateTimeInputValue(value) {
-  if (!value) return "";
-  return value.replace("T", " ");
+  if (!value) return null;
+  const match = String(value).match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/);
+  if (!match) return null;
+  const desiredUtc = Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3]), Number(match[4]), Number(match[5]));
+  let instant = desiredUtc;
+  for (let iteration = 0; iteration < 2; iteration += 1) {
+    const parts = dateTimeParts(new Date(instant));
+    const representedUtc = Date.UTC(Number(parts.year), Number(parts.month) - 1, Number(parts.day), Number(parts.hour), Number(parts.minute));
+    instant += desiredUtc - representedUtc;
+  }
+  return new Date(instant).toISOString();
+}
+
+function parseStoredDateTime(value) {
+  const text = String(value || "").trim();
+  if (!text) return new Date(NaN);
+  if (/^\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}(:\d{2}(\.\d+)?)?$/.test(text)) {
+    return new Date(fromDateTimeInputValue(text.replace(" ", "T").slice(0, 16)));
+  }
+  return new Date(text);
+}
+
+function dateTimeParts(date) {
+  return Object.fromEntries(new Intl.DateTimeFormat("en-CA", {
+    timeZone: BUSINESS_TIME_ZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(date).filter((part) => part.type !== "literal").map((part) => [part.type, part.value]));
+}
+
+function zonedDateTimeParts(date) {
+  const numeric = dateTimeParts(date);
+  const monthShort = new Intl.DateTimeFormat("pt-BR", { timeZone: BUSINESS_TIME_ZONE, month: "short" })
+    .format(date)
+    .replace(".", "");
+  return { ...numeric, monthShort, time: `${numeric.hour}:${numeric.minute}` };
 }
 
 function statusDisplay(status) {
@@ -4759,7 +4843,9 @@ function normalizeQuotationItemRecord(record) {
     final_bid: finalBid,
     minimum_bid: Number(record.minimum_bid || 0),
     quantity,
-    total: record.total === undefined || record.total === null ? finalBid * quantity : Number(record.total),
+    total: record.total === undefined || record.total === null
+      ? calculateLineTotal(finalBid, quantity)
+      : roundMoney(record.total),
   };
 }
 
