@@ -143,7 +143,7 @@ function client(db = backend(), auth = { session: { user } }) {
     clearInterval: (id) => timers.delete(id),
   });
   vm.runInContext(application, context);
-  const api = vm.runInContext(`({ store, appState, restoreSession, logout, reloadData, refreshInBackground, startLiveUpdates, stopLiveUpdates, resetAuthenticatedView, scheduleLiveRefresh, calculateBidSummary, readNavigationRoute, writeNavigationRoute, normalizeBidRecord, normalizeBidAttachments, validateEditalFiles, bidDisplayNumber, creatorName, creatorInitials, creatorTagMarkup, normalizeQuotationRecord, normalizeQuotationItemRecord, quotationItemToBidItem, bidItemToQuotationItem, normalizeTechnicalSpecifications, quotationSaveError, sessionPolicyStorageKey, enforceSessionPolicy, availableBidQuotations })`, context);
+  const api = vm.runInContext(`({ store, appState, restoreSession, logout, reloadData, refreshInBackground, startLiveUpdates, stopLiveUpdates, resetAuthenticatedView, scheduleLiveRefresh, calculateBidSummary, calculateLineTotal, calculateItemProfit, calculateProfitMargin, calculateValueWithMargin, parseDecimal, parseProfitMargin, money, formatDateTime, toDateTimeInputValue, fromDateTimeInputValue, readNavigationRoute, writeNavigationRoute, normalizeBidRecord, normalizeBidAttachments, validateEditalFiles, bidDisplayNumber, creatorName, creatorInitials, creatorTagMarkup, normalizeQuotationRecord, normalizeQuotationItemRecord, quotationItemToBidItem, bidItemToQuotationItem, normalizeTechnicalSpecifications, quotationSaveError, sessionPolicyStorageKey, enforceSessionPolicy, availableBidQuotations })`, context);
   vm.runInContext(`
     renderSuppliers = renderBids = renderDetails = renderQuotations = renderUsers = () => {};
     clearBidForm = clearQuotationForm = setPage = updateMainNavigationState = () => {};
@@ -195,6 +195,28 @@ test("quotation normalization preserves the delivery deadline", () => {
   const app = client();
   const quotation = app.normalizeQuotationRecord({ edital: "PE 12/2026", delivery_deadline: "30 dias" });
   assert.equal(quotation.delivery_deadline, "30 dias");
+});
+
+test("valores monetários, quantidades e margens seguem uma precisão única", () => {
+  const app = client();
+  assert.equal(app.parseDecimal("1.234,567", "Valor"), 1234.57);
+  assert.equal(app.parseDecimal("1,23456", "Quantidade", true, 4), 1.2346);
+  assert.equal(app.parseProfitMargin("-12,34567%"), -12.3457);
+  assert.equal(app.calculateLineTotal(10.005, 3), 30.02);
+  assert.equal(app.calculateItemProfit(9.99, 10, 2.5), -0.03);
+  assert.equal(app.calculateProfitMargin(8, 10), -20);
+  assert.equal(app.calculateProfitMargin(10, 0), null);
+  assert.equal(app.calculateValueWithMargin(10, -12.3457), 8.77);
+  assert.equal(app.money(1.005), "R$ 1,01");
+});
+
+test("datas são persistidas em UTC e exibidas no fuso de São Paulo", () => {
+  const app = client();
+  const stored = app.fromDateTimeInputValue("2026-09-23T14:30");
+  assert.equal(stored, "2026-09-23T17:30:00.000Z");
+  assert.equal(app.toDateTimeInputValue(stored), "2026-09-23T14:30");
+  assert.equal(app.formatDateTime(stored), "23/09/2026, 14:30");
+  assert.equal(app.toDateTimeInputValue("2026-09-23 14:30:00"), "2026-09-23T14:30");
 });
 
 test("quotation RLS errors are translated into an actionable message", () => {
