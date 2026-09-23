@@ -57,6 +57,33 @@ test("cada arquivo do edital mantém o limite individual de 20 MB", () => {
   );
 });
 
+test("modal de orçamento exibe somente orçamentos ainda não vinculados a edital", () => {
+  const app = client();
+  const quotations = [{ id: 1 }, { id: 2 }, { id: 3 }];
+  const bids = [
+    { id: "edital-1", quotation_id: 1 },
+    { id: "edital-2", quotation_id: null },
+    { id: "edital-3", quotation_id: "3" },
+  ];
+  assert.deepEqual(
+    JSON.parse(JSON.stringify(app.availableBidQuotations(quotations, bids))),
+    [{ id: 2 }],
+  );
+});
+
+test("operações remotas de orçamento e edital usam a transação do servidor", () => {
+  assert.match(source, /rpc\("save_bid_item_consistently"/);
+  assert.doesNotMatch(
+    source.slice(source.indexOf("class SupabaseStore"), source.indexOf("const store = createStore()")),
+    /await this\.syncBidWithQuotation\(data\.id, data\.quotation_id\)/,
+  );
+  assert.match(
+    source,
+    /Ele deixará de aparecer no sistema, mas seus itens e demais dados permanecerão preservados\./,
+  );
+  assert.doesNotMatch(source, /Excluir o orçamento do edital \$\{quotation\.edital\} e todos os seus itens\?/);
+});
+
 function backend() {
   return {
     tables: { bids: [{ id: "TEST-1", buyer_agency: "Original" }], items: [], documents: [], failure_history: [], quotations: [{ id: 1, edital: "Original" }], quotation_items: [], suppliers: [] },
@@ -116,7 +143,7 @@ function client(db = backend(), auth = { session: { user } }) {
     clearInterval: (id) => timers.delete(id),
   });
   vm.runInContext(application, context);
-  const api = vm.runInContext(`({ store, appState, restoreSession, logout, reloadData, refreshInBackground, startLiveUpdates, stopLiveUpdates, resetAuthenticatedView, scheduleLiveRefresh, calculateBidSummary, readNavigationRoute, writeNavigationRoute, normalizeBidRecord, normalizeBidAttachments, validateEditalFiles, bidDisplayNumber, creatorName, creatorInitials, creatorTagMarkup, normalizeQuotationRecord, normalizeQuotationItemRecord, quotationItemToBidItem, bidItemToQuotationItem, normalizeTechnicalSpecifications, quotationSaveError, sessionPolicyStorageKey, enforceSessionPolicy })`, context);
+  const api = vm.runInContext(`({ store, appState, restoreSession, logout, reloadData, refreshInBackground, startLiveUpdates, stopLiveUpdates, resetAuthenticatedView, scheduleLiveRefresh, calculateBidSummary, readNavigationRoute, writeNavigationRoute, normalizeBidRecord, normalizeBidAttachments, validateEditalFiles, bidDisplayNumber, creatorName, creatorInitials, creatorTagMarkup, normalizeQuotationRecord, normalizeQuotationItemRecord, quotationItemToBidItem, bidItemToQuotationItem, normalizeTechnicalSpecifications, quotationSaveError, sessionPolicyStorageKey, enforceSessionPolicy, availableBidQuotations })`, context);
   vm.runInContext(`
     renderSuppliers = renderBids = renderDetails = renderQuotations = renderUsers = () => {};
     clearBidForm = clearQuotationForm = setPage = updateMainNavigationState = () => {};
@@ -260,6 +287,18 @@ test("reload restores a persisted session without entering a password", async ()
   assert.equal(reloaded.appState.currentUserEmail, user.email);
   assert.equal(reloaded.element("loginView").classList.contains("hidden"), true);
   assert.equal(reloaded.appState.bids.length, 1);
+});
+
+test("empty remote database stays empty after authentication", async () => {
+  const db = backend();
+  for (const table of Object.keys(db.tables)) db.tables[table] = [];
+  const app = client(db);
+  await app.restoreSession();
+  app.stopLiveUpdates();
+  assert.equal(app.appState.authenticated, true);
+  assert.deepEqual(structuredClone(app.appState.bids), []);
+  assert.deepEqual(structuredClone(app.appState.quotations), []);
+  assert.deepEqual(structuredClone(db.tables.bids), []);
 });
 
 test("missing session stays at login without reading protected tables", async () => {

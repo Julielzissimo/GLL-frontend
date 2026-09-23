@@ -27,9 +27,12 @@ Acesse `http://127.0.0.1:4173`. O modo local usa IndexedDB, dados vazios e a cre
 npm run build:homolog
 npm run build:prod
 npm run build:all
+npm test
 ```
 
 As saídas são geradas em `dist/homolog` e `dist/prod`. URL e chave publicável do Supabase podem ser sobrescritas por `GLL_SUPABASE_URL` e `GLL_SUPABASE_ANON_KEY` (ou `GLL_SUPABASE_PUBLISHABLE_KEY`). Nunca use uma chave `service_role` no frontend.
+
+O workflow do GitHub Pages executa `npm test` antes do build. Se qualquer teste falhar, os jobs de build e deploy não são iniciados; o resumo da execução registra commit, branch, ambiente e resultado da barreira.
 
 ## Estrutura
 
