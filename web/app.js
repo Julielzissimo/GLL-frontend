@@ -4,6 +4,14 @@ STATUS_OPTIONS.splice(1, 0, "Descartada");
 STATUS_OPTIONS.splice(3, 0, "Faturado");
 const WON_ITEM_TOTAL_STATUSES = ["Descartada", "Aprovada", "Faturado", "Disputada"];
 const FINAL_BID_STATUS = "Faturado";
+const BID_STATUS_TRANSITIONS = Object.freeze({
+  "Em Analise": ["Descartada", "Aprovada", "Desclassificado", "Disputada"],
+  Descartada: ["Em Analise", "Disputada"],
+  Aprovada: ["Em Analise", "Faturado", "Desclassificado", "Disputada"],
+  Faturado: ["Aprovada"],
+  Desclassificado: ["Em Analise", "Disputada"],
+  Disputada: ["Em Analise", "Descartada", "Aprovada", "Desclassificado"],
+});
 const BID_TYPE_OPTIONS = [
   "Pregao Eletronico",
   "Pregao Presencial",
@@ -91,6 +99,7 @@ const appState = {
   items: [],
   documents: [],
   failureHistory: [],
+  statusHistory: [],
   quotations: [],
   quotationItems: [],
   users: [],
@@ -201,6 +210,9 @@ const refs = {
   editalAttachmentList: $("editalAttachmentList"),
   bidType: $("bidType"),
   bidStatus: $("bidStatus"),
+  bidStatusReasonField: $("bidStatusReasonField"),
+  bidStatusReason: $("bidStatusReason"),
+  bidStatusHistory: $("bidStatusHistory"),
   bidQuotation: $("bidQuotation"),
   clearBidQuotationButton: $("clearBidQuotationButton"),
   bidQuotationModal: $("bidQuotationModal"),
@@ -404,7 +416,7 @@ class IndexedDbStore {
     this.requiresAuthenticationBeforeData = false;
     const storageSuffix = sanitizeStorageSuffix(GLL_CONFIG.storageSuffix || GLL_CONFIG.environment);
     this.dbName = `gll-web-data-v4-${storageSuffix}`;
-    this.version = 5;
+    this.version = 6;
     this.authDbName = `gll-web-auth-v2-${storageSuffix}`;
     this.authVersion = 1;
     this.db = null;
@@ -434,6 +446,10 @@ class IndexedDbStore {
         }
         if (!db.objectStoreNames.contains("failure_history")) {
           const store = db.createObjectStore("failure_history", { keyPath: "id", autoIncrement: true });
+          store.createIndex("bid_id", "bid_id", { unique: false });
+        }
+        if (!db.objectStoreNames.contains("bid_status_history")) {
+          const store = db.createObjectStore("bid_status_history", { keyPath: "id", autoIncrement: true });
           store.createIndex("bid_id", "bid_id", { unique: false });
         }
         if (!db.objectStoreNames.contains("suppliers")) db.createObjectStore("suppliers", { keyPath: "id", autoIncrement: true });
@@ -516,13 +532,14 @@ class IndexedDbStore {
 
   async clearAll() {
     await this.tx(
-      ["bids", "items", "documents", "failure_history", "quotations", "quotation_items", "suppliers", "supplier_products", "meta"],
+      ["bids", "items", "documents", "failure_history", "bid_status_history", "quotations", "quotation_items", "suppliers", "supplier_products", "meta"],
       "readwrite",
-      ([bids, items, documents, failures, quotations, quotationItems, suppliers, supplierProducts, meta]) => {
+      ([bids, items, documents, failures, statusHistory, quotations, quotationItems, suppliers, supplierProducts, meta]) => {
       bids.clear();
       items.clear();
       documents.clear();
       failures.clear();
+      statusHistory.clear();
       quotations.clear();
       quotationItems.clear();
       suppliers.clear();
@@ -617,14 +634,29 @@ class IndexedDbStore {
     });
   }
 
-  async saveBid(data, originalId) {
+  async saveBid(data, originalId, statusReason = "") {
     const now = timestampNow();
     let wasBilled = false;
-    await this.tx(["bids", "items", "documents", "failure_history"], "readwrite", ([bids, items, documents, failures]) => {
+    await this.tx(["bids", "items", "documents", "failure_history", "bid_status_history"], "readwrite", ([bids, items, documents, failures, statusHistory]) => {
       const request = bids.get(originalId || data.id);
       request.onsuccess = () => {
         const existing = request.result;
         wasBilled = existing?.status === FINAL_BID_STATUS;
+        if (existing && existing.status !== data.status) {
+          validateBidStatusTransition(existing.status, data.status, statusReason);
+          const historyRecord = normalizeStatusHistoryRecord({
+            bid_id: existing.id,
+            from_status: existing.status,
+            to_status: data.status,
+            reason: statusReason,
+            changed_by: appState.currentUserAuthId,
+            changed_by_name: currentUserProfile()?.name || appState.currentUserEmail,
+            changed_by_email: appState.currentUserEmail,
+            changed_at: new Date().toISOString(),
+          });
+          delete historyRecord.id;
+          statusHistory.add(historyRecord);
+        }
         bids.put(wasBilled
           ? { ...existing, status: data.status, updated_at: now }
           : {
@@ -1117,20 +1149,32 @@ class SupabaseStore {
     }
   }
 
-  async saveBid(data, originalId) {
+  async saveBid(data, originalId, statusReason = "") {
     const client = await this.open();
     const now = timestampNow();
     if (originalId) {
       const { data: existing, error: readError } = await client.from("bids").select("created_at, status").eq("id", originalId).maybeSingle();
       assertSupabase(readError);
+      const statusChanged = existing?.status !== data.status;
+      if (statusChanged) validateBidStatusTransition(existing.status, data.status, statusReason);
       const changes = existing?.status === FINAL_BID_STATUS
-        ? { status: data.status, updated_at: now }
-        : { ...data, created_at: existing?.created_at || now, updated_at: now };
-      const { error } = await client
-        .from("bids")
-        .update(changes)
-        .eq("id", originalId);
-      assertSupabase(error);
+        ? { updated_at: now }
+        : { ...data, status: existing?.status || data.status, created_at: existing?.created_at || now, updated_at: now };
+      if (existing?.status !== FINAL_BID_STATUS) {
+        const { error } = await client
+          .from("bids")
+          .update(changes)
+          .eq("id", originalId);
+        assertSupabase(error);
+      }
+      if (statusChanged) {
+        const { error: statusError } = await client.rpc("change_bid_status", {
+          target_bid_id: originalId,
+          target_status: data.status,
+          change_reason: statusReason.trim(),
+        });
+        assertSupabase(statusError);
+      }
       return;
     }
     const { error } = await client.from("bids").insert({
@@ -2026,7 +2070,7 @@ async function resetSeedData() {
   showToast("Base inicial restaurada.");
 }
 
-const DATA_KEYS = ["bids", "items", "documents", "failureHistory", "quotations", "quotationItems", "users", "suppliers", "supplierProducts"];
+const DATA_KEYS = ["bids", "items", "documents", "failureHistory", "statusHistory", "quotations", "quotationItems", "users", "suppliers", "supplierProducts"];
 let sessionEpoch = 0;
 let dataRequest = 0;
 let liveChannel = null;
@@ -2118,8 +2162,8 @@ async function reloadData({ background = false } = {}) {
   const request = ++dataRequest;
   const rows = await Promise.all([
     store.getAll("bids"), store.getAll("items"), store.getAll("documents"),
-    store.getAll("failure_history"), store.getAll("quotations"),
-    store.getAll("quotation_items"), store.getUsers(), store.getAll("suppliers"), store.getAll("supplier_products"),
+    store.getAll("failure_history"), store.getAll("quotations"), store.getAll("quotation_items"),
+    store.getUsers(), store.getAll("suppliers"), store.getAll("supplier_products"), store.getAll("bid_status_history"),
   ]);
   // Discard stale responses after logout, another login, or a newer refresh.
   if (epoch !== sessionEpoch || request !== dataRequest || !appState.authenticated) return;
@@ -2141,6 +2185,10 @@ async function reloadData({ background = false } = {}) {
     .map(normalizeFailureRecord)
     .filter((failure) => visibleBidIds.has(failure.bid_id))
     .sort((a, b) => Number(a.id || 0) - Number(b.id || 0));
+  next.statusHistory = (rows[9] || [])
+    .map(normalizeStatusHistoryRecord)
+    .filter((entry) => visibleBidIds.has(entry.bid_id))
+    .sort((a, b) => String(b.changed_at).localeCompare(String(a.changed_at)));
   next.quotations = rows[4]
     .map(normalizeQuotationRecord)
     .filter((quotation) => !quotation.deleted_at)
@@ -2281,10 +2329,34 @@ function updateBidWorkspaceHeader() {
 }
 
 function handleBidStatusChange() {
+  updateBidStatusControls();
   refs.failuresTabButton.classList.toggle("hidden", !shouldShowFailureHistory());
   renderMetrics(currentItems());
   renderItems(currentItems());
   if (appState.activePage === "failures" && !shouldShowFailureHistory()) setPage("items");
+}
+
+function allowedBidStatusTargets(status) {
+  return BID_STATUS_TRANSITIONS[status] || [];
+}
+
+function validateBidStatusTransition(fromStatus, toStatus, reason) {
+  if (fromStatus === toStatus) return;
+  if (!allowedBidStatusTargets(fromStatus).includes(toStatus)) {
+    throw new Error(`Não é permitido alterar o status de ${statusDisplay(fromStatus)} para ${statusDisplay(toStatus)}.`);
+  }
+  if (!String(reason || "").trim()) throw new Error("Informe o motivo da alteração de status.");
+}
+
+function updateBidStatusControls() {
+  const bid = currentBid();
+  const statusChanged = Boolean(bid && refs.bidStatus.value !== bid.status);
+  for (const option of refs.bidStatus.options) {
+    option.disabled = Boolean(bid) && option.value !== bid.status && !allowedBidStatusTargets(bid.status).includes(option.value);
+  }
+  refs.bidStatusReasonField.classList.toggle("hidden", !statusChanged);
+  refs.bidStatusReason.required = statusChanged;
+  if (!statusChanged) refs.bidStatusReason.value = "";
 }
 
 function shouldShowFailureHistory() {
@@ -2485,6 +2557,8 @@ function loadBid(bidId, options = {}) {
   refs.publicSessionLink.value = bid.public_session_link || "";
   refs.bidType.value = bid.bid_type || BID_TYPE_OPTIONS[0];
   refs.bidStatus.value = bid.status || STATUS_OPTIONS[0];
+  refs.bidStatusReason.value = "";
+  updateBidStatusControls();
   renderBidQuotationSelection();
   refs.editalFile.value = "";
   renderBidAttachment(bid);
@@ -2570,6 +2644,8 @@ function clearBidForm(options = {}) {
   renderPublicSessionLink();
   refs.bidType.value = BID_TYPE_OPTIONS[0];
   refs.bidStatus.value = STATUS_OPTIONS[0];
+  refs.bidStatusReason.value = "";
+  updateBidStatusControls();
   refs.selectedBidLabel.textContent = "Novo edital";
   refs.bidFormError.textContent = "";
   clearItemForm();
@@ -2588,7 +2664,9 @@ async function saveBid(event) {
     const previousBid = appState.bids.find((bid) => bid.id === appState.originalBidId);
     const files = Array.from(refs.editalFile.files || []);
     validateEditalFiles(files, normalizeBidAttachments(previousBid).length);
-    await store.saveBid(data, appState.originalBidId);
+    const statusReason = refs.bidStatusReason.value.trim();
+    if (previousBid) validateBidStatusTransition(previousBid.status, data.status, statusReason);
+    await store.saveBid(data, appState.originalBidId, statusReason);
     if (files.length) await store.saveBidAttachments(data.id, files);
     appState.currentBidId = data.id;
     appState.originalBidId = data.id;
@@ -2815,6 +2893,8 @@ function renderDetails() {
   renderItems(items);
   renderDocuments(documents);
   renderFailures(failures);
+  renderBidStatusHistory();
+  updateBidStatusControls();
   const hasBid = Boolean(appState.currentBidId);
   const readOnly = isCurrentBidReadOnly();
   refs.bidForm.querySelectorAll("input, select, textarea, button").forEach((el) => {
@@ -2837,6 +2917,29 @@ function renderDetails() {
   refs.failureForm.querySelectorAll("input, textarea, button").forEach((el) => {
     if (el.id !== "clearFailureButton") el.disabled = !hasBid || readOnly;
   });
+}
+
+function renderBidStatusHistory() {
+  const entries = appState.statusHistory.filter((entry) => entry.bid_id === appState.currentBidId);
+  refs.bidStatusHistory.classList.toggle("hidden", !appState.currentBidId);
+  if (!appState.currentBidId) {
+    refs.bidStatusHistory.innerHTML = "";
+    return;
+  }
+  refs.bidStatusHistory.innerHTML = `
+    <h3>Histórico de status</h3>
+    <div class="status-history-list">
+      ${entries.length ? entries.map((entry) => `
+        <article class="status-history-item">
+          <div class="status-history-transition">
+            <span class="status-pill ${statusBadgeClass(entry.from_status)}">${escapeHtml(statusDisplay(entry.from_status))}</span>
+            <span aria-hidden="true">→</span>
+            <span class="status-pill ${statusBadgeClass(entry.to_status)}">${escapeHtml(statusDisplay(entry.to_status))}</span>
+          </div>
+          <p>${escapeHtml(entry.reason)}</p>
+          <small>${escapeHtml(entry.changed_by_name || entry.changed_by_email || "Usuário")} · ${escapeHtml(formatDateTime(entry.changed_at))}</small>
+        </article>`).join("") : '<div class="empty-state compact-empty">Nenhuma alteração de status registrada.</div>'}
+    </div>`;
 }
 
 function renderMetrics(items) {
@@ -4595,6 +4698,24 @@ function normalizeFailureRecord(record) {
     action_plan: record.action_plan || "",
     created_at: record.created_at || timestampNow(),
   };
+}
+
+function normalizeStatusHistoryRecord(record) {
+  return {
+    id: record.id ? Number(record.id) : undefined,
+    bid_id: record.bid_id,
+    from_status: normalizeBidStatus(record.from_status),
+    to_status: normalizeBidStatus(record.to_status),
+    reason: String(record.reason || "").trim(),
+    changed_by: record.changed_by || null,
+    changed_by_name: record.changed_by_name || "",
+    changed_by_email: record.changed_by_email || "",
+    changed_at: record.changed_at || new Date().toISOString(),
+  };
+}
+
+function currentUserProfile() {
+  return appState.users.find((user) => normalizeEmail(user.email) === normalizeEmail(appState.currentUserEmail));
 }
 
 function normalizeQuotationRecord(record) {

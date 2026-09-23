@@ -2327,6 +2327,41 @@ td {
 .status-pill.disputed { background: var(--info-bg); color: #245caf; }
 .status-pill.rejected { background: #feeaea; color: #aa3030; }
 
+.status-history {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border);
+}
+
+.status-history h3 {
+  margin: 0 0 .75rem;
+  font-size: .95rem;
+}
+
+.status-history-list {
+  display: grid;
+  gap: .65rem;
+}
+
+.status-history-item {
+  display: grid;
+  gap: .3rem;
+  padding: .75rem;
+  border: 1px solid var(--border);
+  border-radius: .65rem;
+  background: var(--surface, #fff);
+}
+
+.status-history-item p,
+.status-history-item small { margin: 0; }
+
+.status-history-transition {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: .4rem;
+}
+
 .item-won-header,
 .item-won-cell {
   text-align: center;
