@@ -204,9 +204,13 @@ test("valores monetários, quantidades e margens seguem uma precisão única", (
   assert.equal(app.parseProfitMargin("-12,34567%"), -12.3457);
   assert.equal(app.calculateLineTotal(10.005, 3), 30.02);
   assert.equal(app.calculateItemProfit(9.99, 10, 2.5), -0.03);
-  assert.equal(app.calculateProfitMargin(8, 10), -20);
-  assert.equal(app.calculateProfitMargin(10, 0), null);
-  assert.equal(app.calculateValueWithMargin(10, -12.3457), 8.77);
+  assert.equal(app.calculateProfitMargin(8, 10), -25);
+  assert.equal(app.calculateProfitMargin(10, 8), 20);
+  assert.equal(app.calculateProfitMargin(10, 0), 100);
+  assert.equal(app.calculateProfitMargin(0, 10), null);
+  assert.equal(app.calculateValueWithMargin(10, 20), 12.5);
+  assert.equal(app.calculateValueWithMargin(10, -25), 8);
+  assert.equal(app.calculateValueWithMargin(10, 100), null);
   assert.equal(app.money(1.005), "R$ 1,01");
 });
 

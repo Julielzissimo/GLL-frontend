@@ -2970,7 +2970,7 @@ function renderMetrics(items) {
   refs.metricItemCount.textContent = String(items.length);
   refs.metricMargin.textContent = money(totals.final);
   refs.metricTotalProfit.textContent = money(totals.profit);
-  if (hasCompleteProfitValues && totals.cost) {
+  if (hasCompleteProfitValues && totals.final) {
     refs.metricTotalProfitMargin.textContent = formatProfitMargin(calculateProfitMargin(totals.final, totals.cost));
     refs.metricTotalProfitMargin.removeAttribute("title");
   } else {
@@ -3059,13 +3059,16 @@ function calculateItemProfit(finalValue, costValue, quantity) {
 }
 
 function calculateProfitMargin(finalValue, costValue) {
+  const final = Number(finalValue);
   const cost = Number(costValue);
-  if (!cost) return null;
-  return roundMargin(((Number(finalValue) - cost) / cost) * 100);
+  if (!final) return null;
+  return roundMargin(((final - cost) / final) * 100);
 }
 
 function calculateValueWithMargin(costValue, marginValue) {
-  return roundMoney(Number(costValue) * (1 + Number(marginValue) / 100));
+  const marginFactor = 1 - Number(marginValue) / 100;
+  if (!Number.isFinite(marginFactor) || marginFactor <= 0) return null;
+  return roundMoney(Number(costValue) / marginFactor);
 }
 
 function loadItem(itemId) {
@@ -4125,7 +4128,8 @@ function formatQuotationFinalBidMargin(item) {
 
 function formatQuotationValueWithMargin(item) {
   if (!Number(item.supplier_cost) || item.profit_margin === null || item.profit_margin === undefined || item.profit_margin === "") return "—";
-  return money(calculateValueWithMargin(item.supplier_cost, item.profit_margin));
+  const valueWithMargin = calculateValueWithMargin(item.supplier_cost, item.profit_margin);
+  return valueWithMargin === null ? "—" : money(valueWithMargin);
 }
 
 function updateQuotationValueWithMarginFromMargin() {
@@ -4153,7 +4157,8 @@ function updateQuotationValueWithMargin() {
   try {
     const costValue = parseDecimal(refs.quotationItemSupplierCost.value, "Valor de Custo", false);
     const margin = parseProfitMargin(refs.quotationItemProfitMargin.value);
-    refs.quotationItemValueWithMargin.value = money(calculateValueWithMargin(costValue, margin));
+    const valueWithMargin = calculateValueWithMargin(costValue, margin);
+    refs.quotationItemValueWithMargin.value = valueWithMargin === null ? "" : money(valueWithMargin);
   } catch {
     refs.quotationItemValueWithMargin.value = "";
   }
@@ -5113,7 +5118,8 @@ function updateMarginFromFinalValue() {
       refs.valueWithMargin.value = "";
     } else {
       refs.profitMargin.value = formatProfitMargin(margin);
-      refs.valueWithMargin.value = money(calculateValueWithMargin(costValue, margin));
+      const valueWithMargin = calculateValueWithMargin(costValue, margin);
+      refs.valueWithMargin.value = valueWithMargin === null ? "" : money(valueWithMargin);
     }
   } catch {
     refs.profitMargin.value = "";
@@ -5139,7 +5145,8 @@ function updateValueWithMargin() {
   try {
     const costValue = parseDecimal(refs.supplierCost.value, "Valor de Custo", false);
     const margin = parseProfitMargin(refs.profitMargin.value);
-    refs.valueWithMargin.value = money(calculateValueWithMargin(costValue, margin));
+    const valueWithMargin = calculateValueWithMargin(costValue, margin);
+    refs.valueWithMargin.value = valueWithMargin === null ? "" : money(valueWithMargin);
   } catch {
     refs.valueWithMargin.value = "";
   }
