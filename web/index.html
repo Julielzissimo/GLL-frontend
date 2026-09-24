@@ -200,6 +200,10 @@
                 Status
                 <select id="bidStatus"></select>
               </label>
+              <label id="bidStatusReasonField" class="wide full hidden">
+                Motivo da alteração de status *
+                <textarea id="bidStatusReason" rows="2" maxlength="500" placeholder="Explique por que o status está sendo alterado."></textarea>
+              </label>
               <label class="bid-quotation-field">
                 Orçamento
                 <div class="bid-quotation-control">
@@ -214,6 +218,8 @@
                 <div id="editalAttachmentList" class="attachment-list" aria-live="polite"></div>
               </div>
             </div>
+
+            <section id="bidStatusHistory" class="status-history hidden" aria-live="polite"></section>
 
             <p id="bidFormError" class="form-error" role="alert"></p>
             <div class="button-row end">

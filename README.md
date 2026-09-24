@@ -32,7 +32,9 @@ npm test
 
 As saídas são geradas em `dist/homolog` e `dist/prod`. URL e chave publicável do Supabase podem ser sobrescritas por `GLL_SUPABASE_URL` e `GLL_SUPABASE_ANON_KEY` (ou `GLL_SUPABASE_PUBLISHABLE_KEY`). Nunca use uma chave `service_role` no frontend.
 
-O workflow do GitHub Pages executa `npm test` antes do build. Se qualquer teste falhar, os jobs de build e deploy não são iniciados; o resumo da execução registra commit, branch, ambiente e resultado da barreira.
+O workflow do GitHub Pages executa `npm test` antes do build. Se qualquer teste falhar, os jobs de build e deploy não são iniciados. Após publicar, o workflow consulta `deployment.json` na URL do ambiente e exige que o commit observado seja o commit da execução.
+
+Cada execução bem-sucedida armazena um artefato Markdown `evidencia-publicacao-<execução>-<tentativa>` com commit, branch, ambiente, testes, URL e resultado da validação. Migrações são registradas como “não se aplica” nesse artefato; a evidência das migrações fica nos workflows do repositório backend. O procedimento canônico completo está em `docs/PROCESSO_DE_PUBLICACAO.md` do repositório privado `GLL-backend`.
 
 ## Estrutura
 

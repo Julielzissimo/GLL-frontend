@@ -4,6 +4,14 @@ STATUS_OPTIONS.splice(1, 0, "Descartada");
 STATUS_OPTIONS.splice(3, 0, "Faturado");
 const WON_ITEM_TOTAL_STATUSES = ["Descartada", "Aprovada", "Faturado", "Disputada"];
 const FINAL_BID_STATUS = "Faturado";
+const BID_STATUS_TRANSITIONS = Object.freeze({
+  "Em Analise": ["Descartada", "Aprovada", "Desclassificado", "Disputada"],
+  Descartada: ["Em Analise", "Disputada"],
+  Aprovada: ["Em Analise", "Faturado", "Desclassificado", "Disputada"],
+  Faturado: ["Aprovada"],
+  Desclassificado: ["Em Analise", "Disputada"],
+  Disputada: ["Em Analise", "Descartada", "Aprovada", "Desclassificado"],
+});
 const BID_TYPE_OPTIONS = [
   "Pregao Eletronico",
   "Pregao Presencial",
@@ -18,6 +26,10 @@ const BID_EDITAL_BUCKET = "bid-edital-files";
 const MAX_EDITAL_FILE_SIZE = 20 * 1024 * 1024;
 const MAX_EDITAL_FILES = 4;
 const SUPABASE_CLIENT_VERSION = "2.57.4";
+const BUSINESS_TIME_ZONE = "America/Sao_Paulo";
+const MONEY_FRACTION_DIGITS = 2;
+const QUANTITY_FRACTION_DIGITS = 4;
+const MARGIN_FRACTION_DIGITS = 4;
 const USER_ROLES = { ADMIN: "Administrador", ANALYST: "Analista" };
 const DEFAULT_ADMIN = {
   email: "demo@gll.local",
@@ -91,6 +103,7 @@ const appState = {
   items: [],
   documents: [],
   failureHistory: [],
+  statusHistory: [],
   quotations: [],
   quotationItems: [],
   users: [],
@@ -201,6 +214,9 @@ const refs = {
   editalAttachmentList: $("editalAttachmentList"),
   bidType: $("bidType"),
   bidStatus: $("bidStatus"),
+  bidStatusReasonField: $("bidStatusReasonField"),
+  bidStatusReason: $("bidStatusReason"),
+  bidStatusHistory: $("bidStatusHistory"),
   bidQuotation: $("bidQuotation"),
   clearBidQuotationButton: $("clearBidQuotationButton"),
   bidQuotationModal: $("bidQuotationModal"),
@@ -404,7 +420,7 @@ class IndexedDbStore {
     this.requiresAuthenticationBeforeData = false;
     const storageSuffix = sanitizeStorageSuffix(GLL_CONFIG.storageSuffix || GLL_CONFIG.environment);
     this.dbName = `gll-web-data-v4-${storageSuffix}`;
-    this.version = 5;
+    this.version = 6;
     this.authDbName = `gll-web-auth-v2-${storageSuffix}`;
     this.authVersion = 1;
     this.db = null;
@@ -434,6 +450,10 @@ class IndexedDbStore {
         }
         if (!db.objectStoreNames.contains("failure_history")) {
           const store = db.createObjectStore("failure_history", { keyPath: "id", autoIncrement: true });
+          store.createIndex("bid_id", "bid_id", { unique: false });
+        }
+        if (!db.objectStoreNames.contains("bid_status_history")) {
+          const store = db.createObjectStore("bid_status_history", { keyPath: "id", autoIncrement: true });
           store.createIndex("bid_id", "bid_id", { unique: false });
         }
         if (!db.objectStoreNames.contains("suppliers")) db.createObjectStore("suppliers", { keyPath: "id", autoIncrement: true });
@@ -516,13 +536,14 @@ class IndexedDbStore {
 
   async clearAll() {
     await this.tx(
-      ["bids", "items", "documents", "failure_history", "quotations", "quotation_items", "suppliers", "supplier_products", "meta"],
+      ["bids", "items", "documents", "failure_history", "bid_status_history", "quotations", "quotation_items", "suppliers", "supplier_products", "meta"],
       "readwrite",
-      ([bids, items, documents, failures, quotations, quotationItems, suppliers, supplierProducts, meta]) => {
+      ([bids, items, documents, failures, statusHistory, quotations, quotationItems, suppliers, supplierProducts, meta]) => {
       bids.clear();
       items.clear();
       documents.clear();
       failures.clear();
+      statusHistory.clear();
       quotations.clear();
       quotationItems.clear();
       suppliers.clear();
@@ -617,14 +638,29 @@ class IndexedDbStore {
     });
   }
 
-  async saveBid(data, originalId) {
+  async saveBid(data, originalId, statusReason = "") {
     const now = timestampNow();
     let wasBilled = false;
-    await this.tx(["bids", "items", "documents", "failure_history"], "readwrite", ([bids, items, documents, failures]) => {
+    await this.tx(["bids", "items", "documents", "failure_history", "bid_status_history"], "readwrite", ([bids, items, documents, failures, statusHistory]) => {
       const request = bids.get(originalId || data.id);
       request.onsuccess = () => {
         const existing = request.result;
         wasBilled = existing?.status === FINAL_BID_STATUS;
+        if (existing && existing.status !== data.status) {
+          validateBidStatusTransition(existing.status, data.status, statusReason);
+          const historyRecord = normalizeStatusHistoryRecord({
+            bid_id: existing.id,
+            from_status: existing.status,
+            to_status: data.status,
+            reason: statusReason,
+            changed_by: appState.currentUserAuthId,
+            changed_by_name: currentUserProfile()?.name || appState.currentUserEmail,
+            changed_by_email: appState.currentUserEmail,
+            changed_at: new Date().toISOString(),
+          });
+          delete historyRecord.id;
+          statusHistory.add(historyRecord);
+        }
         bids.put(wasBilled
           ? { ...existing, status: data.status, updated_at: now }
           : {
@@ -1117,20 +1153,32 @@ class SupabaseStore {
     }
   }
 
-  async saveBid(data, originalId) {
+  async saveBid(data, originalId, statusReason = "") {
     const client = await this.open();
     const now = timestampNow();
     if (originalId) {
       const { data: existing, error: readError } = await client.from("bids").select("created_at, status").eq("id", originalId).maybeSingle();
       assertSupabase(readError);
+      const statusChanged = existing?.status !== data.status;
+      if (statusChanged) validateBidStatusTransition(existing.status, data.status, statusReason);
       const changes = existing?.status === FINAL_BID_STATUS
-        ? { status: data.status, updated_at: now }
-        : { ...data, created_at: existing?.created_at || now, updated_at: now };
-      const { error } = await client
-        .from("bids")
-        .update(changes)
-        .eq("id", originalId);
-      assertSupabase(error);
+        ? { updated_at: now }
+        : { ...data, status: existing?.status || data.status, created_at: existing?.created_at || now, updated_at: now };
+      if (existing?.status !== FINAL_BID_STATUS) {
+        const { error } = await client
+          .from("bids")
+          .update(changes)
+          .eq("id", originalId);
+        assertSupabase(error);
+      }
+      if (statusChanged) {
+        const { error: statusError } = await client.rpc("change_bid_status", {
+          target_bid_id: originalId,
+          target_status: data.status,
+          change_reason: statusReason.trim(),
+        });
+        assertSupabase(statusError);
+      }
       return;
     }
     const { error } = await client.from("bids").insert({
@@ -2026,7 +2074,7 @@ async function resetSeedData() {
   showToast("Base inicial restaurada.");
 }
 
-const DATA_KEYS = ["bids", "items", "documents", "failureHistory", "quotations", "quotationItems", "users", "suppliers", "supplierProducts"];
+const DATA_KEYS = ["bids", "items", "documents", "failureHistory", "statusHistory", "quotations", "quotationItems", "users", "suppliers", "supplierProducts"];
 let sessionEpoch = 0;
 let dataRequest = 0;
 let liveChannel = null;
@@ -2118,8 +2166,8 @@ async function reloadData({ background = false } = {}) {
   const request = ++dataRequest;
   const rows = await Promise.all([
     store.getAll("bids"), store.getAll("items"), store.getAll("documents"),
-    store.getAll("failure_history"), store.getAll("quotations"),
-    store.getAll("quotation_items"), store.getUsers(), store.getAll("suppliers"), store.getAll("supplier_products"),
+    store.getAll("failure_history"), store.getAll("quotations"), store.getAll("quotation_items"),
+    store.getUsers(), store.getAll("suppliers"), store.getAll("supplier_products"), store.getAll("bid_status_history"),
   ]);
   // Discard stale responses after logout, another login, or a newer refresh.
   if (epoch !== sessionEpoch || request !== dataRequest || !appState.authenticated) return;
@@ -2128,7 +2176,7 @@ async function reloadData({ background = false } = {}) {
   next.bids = rows[0]
     .map(normalizeBidRecord)
     .filter((bid) => !bid.deleted_at)
-    .sort((a, b) => String(a.session_datetime).localeCompare(String(b.session_datetime)));
+    .sort((a, b) => parseStoredDateTime(a.session_datetime) - parseStoredDateTime(b.session_datetime));
   const visibleBidIds = new Set(next.bids.map((bid) => bid.id));
   next.items = rows[1]
     .map(normalizeItemRecord)
@@ -2141,6 +2189,10 @@ async function reloadData({ background = false } = {}) {
     .map(normalizeFailureRecord)
     .filter((failure) => visibleBidIds.has(failure.bid_id))
     .sort((a, b) => Number(a.id || 0) - Number(b.id || 0));
+  next.statusHistory = (rows[9] || [])
+    .map(normalizeStatusHistoryRecord)
+    .filter((entry) => visibleBidIds.has(entry.bid_id))
+    .sort((a, b) => String(b.changed_at).localeCompare(String(a.changed_at)));
   next.quotations = rows[4]
     .map(normalizeQuotationRecord)
     .filter((quotation) => !quotation.deleted_at)
@@ -2281,10 +2333,34 @@ function updateBidWorkspaceHeader() {
 }
 
 function handleBidStatusChange() {
+  updateBidStatusControls();
   refs.failuresTabButton.classList.toggle("hidden", !shouldShowFailureHistory());
   renderMetrics(currentItems());
   renderItems(currentItems());
   if (appState.activePage === "failures" && !shouldShowFailureHistory()) setPage("items");
+}
+
+function allowedBidStatusTargets(status) {
+  return BID_STATUS_TRANSITIONS[status] || [];
+}
+
+function validateBidStatusTransition(fromStatus, toStatus, reason) {
+  if (fromStatus === toStatus) return;
+  if (!allowedBidStatusTargets(fromStatus).includes(toStatus)) {
+    throw new Error(`Não é permitido alterar o status de ${statusDisplay(fromStatus)} para ${statusDisplay(toStatus)}.`);
+  }
+  if (!String(reason || "").trim()) throw new Error("Informe o motivo da alteração de status.");
+}
+
+function updateBidStatusControls() {
+  const bid = currentBid();
+  const statusChanged = Boolean(bid && refs.bidStatus.value !== bid.status);
+  for (const option of refs.bidStatus.options) {
+    option.disabled = Boolean(bid) && option.value !== bid.status && !allowedBidStatusTargets(bid.status).includes(option.value);
+  }
+  refs.bidStatusReasonField.classList.toggle("hidden", !statusChanged);
+  refs.bidStatusReason.required = statusChanged;
+  if (!statusChanged) refs.bidStatusReason.value = "";
 }
 
 function shouldShowFailureHistory() {
@@ -2485,6 +2561,8 @@ function loadBid(bidId, options = {}) {
   refs.publicSessionLink.value = bid.public_session_link || "";
   refs.bidType.value = bid.bid_type || BID_TYPE_OPTIONS[0];
   refs.bidStatus.value = bid.status || STATUS_OPTIONS[0];
+  refs.bidStatusReason.value = "";
+  updateBidStatusControls();
   renderBidQuotationSelection();
   refs.editalFile.value = "";
   renderBidAttachment(bid);
@@ -2525,15 +2603,16 @@ function renderHomeSummary() {
   });
 
   const upcoming = appState.bids
-    .filter((bid) => new Date(bid.session_datetime).getTime() >= Date.now() - 86400000)
-    .sort((a, b) => new Date(a.session_datetime) - new Date(b.session_datetime))
+    .filter((bid) => parseStoredDateTime(bid.session_datetime).getTime() >= Date.now() - 86400000)
+    .sort((a, b) => parseStoredDateTime(a.session_datetime) - parseStoredDateTime(b.session_datetime))
     .slice(0, 4);
   refs.upcomingBidsList.innerHTML = upcoming.length
     ? upcoming.map((bid) => {
-        const date = new Date(bid.session_datetime);
+        const date = parseStoredDateTime(bid.session_datetime);
+        const dateParts = zonedDateTimeParts(date);
         return `<button class="timeline-item" type="button" data-upcoming-bid="${escapeHtml(bid.id)}">
-          <span class="date-box"><strong>${String(date.getDate()).padStart(2, "0")}</strong><small>${date.toLocaleDateString("pt-BR", { month: "short" }).replace(".", "").toUpperCase()}</small></span>
-          <span class="timeline-copy"><span class="bid-title-line"><strong>${escapeHtml(bidDisplayNumber(bid))}</strong><span class="creator-tag compact">${creatorTagMarkup(bid)}</span></span><span>${escapeHtml(bid.buyer_agency || "")}</span><small>${date.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })} • ${escapeHtml(bid.bid_type || "")}</small></span>
+          <span class="date-box"><strong>${dateParts.day}</strong><small>${dateParts.monthShort.toUpperCase()}</small></span>
+          <span class="timeline-copy"><span class="bid-title-line"><strong>${escapeHtml(bidDisplayNumber(bid))}</strong><span class="creator-tag compact">${creatorTagMarkup(bid)}</span></span><span>${escapeHtml(bid.buyer_agency || "")}</span><small>${dateParts.time} • ${escapeHtml(bid.bid_type || "")}</small></span>
           <span class="status-pill ${statusBadgeClass(bid.status)}">${escapeHtml(statusDisplay(bid.status))}</span>
         </button>`;
       }).join("")
@@ -2570,6 +2649,8 @@ function clearBidForm(options = {}) {
   renderPublicSessionLink();
   refs.bidType.value = BID_TYPE_OPTIONS[0];
   refs.bidStatus.value = STATUS_OPTIONS[0];
+  refs.bidStatusReason.value = "";
+  updateBidStatusControls();
   refs.selectedBidLabel.textContent = "Novo edital";
   refs.bidFormError.textContent = "";
   clearItemForm();
@@ -2588,7 +2669,9 @@ async function saveBid(event) {
     const previousBid = appState.bids.find((bid) => bid.id === appState.originalBidId);
     const files = Array.from(refs.editalFile.files || []);
     validateEditalFiles(files, normalizeBidAttachments(previousBid).length);
-    await store.saveBid(data, appState.originalBidId);
+    const statusReason = refs.bidStatusReason.value.trim();
+    if (previousBid) validateBidStatusTransition(previousBid.status, data.status, statusReason);
+    await store.saveBid(data, appState.originalBidId, statusReason);
     if (files.length) await store.saveBidAttachments(data.id, files);
     appState.currentBidId = data.id;
     appState.originalBidId = data.id;
@@ -2815,6 +2898,8 @@ function renderDetails() {
   renderItems(items);
   renderDocuments(documents);
   renderFailures(failures);
+  renderBidStatusHistory();
+  updateBidStatusControls();
   const hasBid = Boolean(appState.currentBidId);
   const readOnly = isCurrentBidReadOnly();
   refs.bidForm.querySelectorAll("input, select, textarea, button").forEach((el) => {
@@ -2839,6 +2924,29 @@ function renderDetails() {
   });
 }
 
+function renderBidStatusHistory() {
+  const entries = appState.statusHistory.filter((entry) => entry.bid_id === appState.currentBidId);
+  refs.bidStatusHistory.classList.toggle("hidden", !appState.currentBidId);
+  if (!appState.currentBidId) {
+    refs.bidStatusHistory.innerHTML = "";
+    return;
+  }
+  refs.bidStatusHistory.innerHTML = `
+    <h3>Histórico de status</h3>
+    <div class="status-history-list">
+      ${entries.length ? entries.map((entry) => `
+        <article class="status-history-item">
+          <div class="status-history-transition">
+            <span class="status-pill ${statusBadgeClass(entry.from_status)}">${escapeHtml(statusDisplay(entry.from_status))}</span>
+            <span aria-hidden="true">→</span>
+            <span class="status-pill ${statusBadgeClass(entry.to_status)}">${escapeHtml(statusDisplay(entry.to_status))}</span>
+          </div>
+          <p>${escapeHtml(entry.reason)}</p>
+          <small>${escapeHtml(entry.changed_by_name || entry.changed_by_email || "Usuário")} · ${escapeHtml(formatDateTime(entry.changed_at))}</small>
+        </article>`).join("") : '<div class="empty-state compact-empty">Nenhuma alteração de status registrada.</div>'}
+    </div>`;
+}
+
 function renderMetrics(items) {
   const itemsForTotals = shouldCalculateWonItemsTotal(refs.bidStatus.value)
     ? items.filter((item) => Boolean(Number(item.is_won)))
@@ -2850,10 +2958,10 @@ function renderMetrics(items) {
   const totals = itemsForTotals.reduce(
     (acc, item) => {
       const quantity = Number(item.required_quantity || 0);
-      acc.final += Number(item.max_acceptable_value || 0) * quantity;
-      acc.cost += Number(item.supplier_cost || 0) * quantity;
+      acc.final = roundMoney(acc.final + calculateLineTotal(item.max_acceptable_value, quantity));
+      acc.cost = roundMoney(acc.cost + calculateLineTotal(item.supplier_cost, quantity));
       if (Number(item.max_acceptable_value) && Number(item.supplier_cost)) {
-        acc.profit += calculateItemProfit(item.max_acceptable_value, item.supplier_cost, item.required_quantity);
+        acc.profit = roundMoney(acc.profit + calculateItemProfit(item.max_acceptable_value, item.supplier_cost, item.required_quantity));
       }
       return acc;
     },
@@ -2862,7 +2970,7 @@ function renderMetrics(items) {
   refs.metricItemCount.textContent = String(items.length);
   refs.metricMargin.textContent = money(totals.final);
   refs.metricTotalProfit.textContent = money(totals.profit);
-  if (hasCompleteProfitValues && totals.cost) {
+  if (hasCompleteProfitValues && totals.final) {
     refs.metricTotalProfitMargin.textContent = formatProfitMargin(calculateProfitMargin(totals.final, totals.cost));
     refs.metricTotalProfitMargin.removeAttribute("title");
   } else {
@@ -2947,17 +3055,20 @@ function formatStoredProfitMargin(item) {
 }
 
 function calculateItemProfit(finalValue, costValue, quantity) {
-  return (Number(finalValue) - Number(costValue)) * Number(quantity || 0);
+  return roundMoney((Number(finalValue) - Number(costValue)) * Number(quantity || 0));
 }
 
 function calculateProfitMargin(finalValue, costValue) {
+  const final = Number(finalValue);
   const cost = Number(costValue);
-  if (!cost) return null;
-  return ((Number(finalValue) - cost) / cost) * 100;
+  if (!final) return null;
+  return roundMargin(((final - cost) / final) * 100);
 }
 
 function calculateValueWithMargin(costValue, marginValue) {
-  return Number(costValue) * (1 + Number(marginValue) / 100);
+  const marginFactor = 1 - Number(marginValue) / 100;
+  if (!Number.isFinite(marginFactor) || marginFactor <= 0) return null;
+  return roundMoney(Number(costValue) / marginFactor);
 }
 
 function loadItem(itemId) {
@@ -3071,7 +3182,7 @@ function collectItemData() {
   const name = refs.itemName.value.trim();
   if (!name) throw new Error("Preencha a Descrição.");
   const quantity = refs.requiredQuantity.value.trim()
-    ? parseDecimal(refs.requiredQuantity.value, "Quantidade Exigida", false)
+    ? parseDecimal(refs.requiredQuantity.value, "Quantidade Exigida", false, QUANTITY_FRACTION_DIGITS)
     : 0;
   const technicalText = refs.technicalRegistrationText.value.trim();
   const supplierCost = parseDecimal(refs.supplierCost.value, "Valor de Custo", false);
@@ -3640,7 +3751,7 @@ function renderQuotations() {
     refs.quotationsTableBody.innerHTML = appState.quotations
       .map((quotation) => {
         const items = appState.quotationItems.filter((item) => Number(item.quotation_id) === Number(quotation.id));
-        const total = items.reduce((sum, item) => sum + Number(item.total || 0), 0);
+        const total = items.reduce((sum, item) => roundMoney(sum + Number(item.total || 0)), 0);
         const selected = Number(quotation.id) === Number(appState.currentQuotationId) ? " selected" : "";
         const location = [quotation.city, quotation.cep].filter(Boolean).join(" · ") || "—";
         return `
@@ -3770,7 +3881,7 @@ function renderQuotationItems() {
     return;
   }
   const items = currentQuotationItems();
-  const grandTotal = items.reduce((sum, item) => sum + Number(item.total || 0), 0);
+  const grandTotal = items.reduce((sum, item) => roundMoney(sum + Number(item.total || 0)), 0);
   refs.quotationItemsStatus.textContent = `${items.length} ${items.length === 1 ? "item cadastrado" : "itens cadastrados"}`;
   refs.quotationGrandTotal.textContent = `Total: ${money(grandTotal)}`;
   if (!items.length) {
@@ -3946,7 +4057,7 @@ async function saveQuotationItem(event) {
     );
     if (linkedBidConflict) throw new Error(`O item ${itemNumber} já existe em um edital vinculado a este orçamento.`);
     const quantity = refs.quotationItemQuantity.value.trim()
-      ? parseDecimal(refs.quotationItemQuantity.value, "Quantidade", false)
+      ? parseDecimal(refs.quotationItemQuantity.value, "Quantidade", false, QUANTITY_FRACTION_DIGITS)
       : 1;
     const supplierCost = parseDecimal(refs.quotationItemSupplierCost.value, "Valor de Custo", false);
     const finalBid = parseDecimal(refs.quotationItemFinalBid.value, "Lance Final", false);
@@ -4000,9 +4111,9 @@ function updateQuotationItemTotals() {
     const finalBid = parseDecimal(refs.quotationItemFinalBid.value, "Lance Final", false);
     const supplierCost = parseDecimal(refs.quotationItemSupplierCost.value, "Valor de Custo", false);
     const quantity = refs.quotationItemQuantity.value.trim()
-      ? parseDecimal(refs.quotationItemQuantity.value, "Quantidade", false)
+      ? parseDecimal(refs.quotationItemQuantity.value, "Quantidade", false, QUANTITY_FRACTION_DIGITS)
       : 1;
-    refs.quotationItemTotal.value = money(finalBid * quantity);
+    refs.quotationItemTotal.value = money(calculateLineTotal(finalBid, quantity));
     refs.quotationItemTotalProfit.value = money(calculateItemProfit(finalBid, supplierCost, quantity));
   } catch {
     refs.quotationItemTotal.value = money(0);
@@ -4017,7 +4128,8 @@ function formatQuotationFinalBidMargin(item) {
 
 function formatQuotationValueWithMargin(item) {
   if (!Number(item.supplier_cost) || item.profit_margin === null || item.profit_margin === undefined || item.profit_margin === "") return "—";
-  return money(calculateValueWithMargin(item.supplier_cost, item.profit_margin));
+  const valueWithMargin = calculateValueWithMargin(item.supplier_cost, item.profit_margin);
+  return valueWithMargin === null ? "—" : money(valueWithMargin);
 }
 
 function updateQuotationValueWithMarginFromMargin() {
@@ -4045,7 +4157,8 @@ function updateQuotationValueWithMargin() {
   try {
     const costValue = parseDecimal(refs.quotationItemSupplierCost.value, "Valor de Custo", false);
     const margin = parseProfitMargin(refs.quotationItemProfitMargin.value);
-    refs.quotationItemValueWithMargin.value = money(calculateValueWithMargin(costValue, margin));
+    const valueWithMargin = calculateValueWithMargin(costValue, margin);
+    refs.quotationItemValueWithMargin.value = valueWithMargin === null ? "" : money(valueWithMargin);
   } catch {
     refs.quotationItemValueWithMargin.value = "";
   }
@@ -4249,9 +4362,9 @@ function calculateBidSummary(bidId) {
       (acc, item) => {
         const quantity = Number(item.required_quantity || 0);
         if (!onlyWonItems || Boolean(Number(item.is_won))) {
-          acc.totalFinal += Number(item.max_acceptable_value || 0) * quantity;
+          acc.totalFinal = roundMoney(acc.totalFinal + calculateLineTotal(item.max_acceptable_value, quantity));
         }
-        acc.totalEstimated += Number(item.estimated_value || 0) * quantity;
+        acc.totalEstimated = roundMoney(acc.totalEstimated + calculateLineTotal(item.estimated_value, quantity));
         acc.itemCount += 1;
         return acc;
       },
@@ -4259,7 +4372,30 @@ function calculateBidSummary(bidId) {
     );
 }
 
-function parseDecimal(value, fieldName, required = true) {
+function roundDecimal(value, fractionDigits) {
+  const number = Number(value || 0);
+  if (!Number.isFinite(number)) return 0;
+  const factor = 10 ** fractionDigits;
+  return Math.sign(number) * Math.round(Math.abs(number) * factor + 1e-10) / factor;
+}
+
+function roundMoney(value) {
+  return roundDecimal(value, MONEY_FRACTION_DIGITS);
+}
+
+function roundQuantity(value) {
+  return roundDecimal(value, QUANTITY_FRACTION_DIGITS);
+}
+
+function roundMargin(value) {
+  return roundDecimal(value, MARGIN_FRACTION_DIGITS);
+}
+
+function calculateLineTotal(unitValue, quantity) {
+  return roundMoney(Number(unitValue || 0) * Number(quantity || 0));
+}
+
+function parseDecimal(value, fieldName, required = true, fractionDigits = MONEY_FRACTION_DIGITS) {
   let raw = String(value || "").trim();
   if (!raw) {
     if (required) throw new Error(`Preencha o campo ${fieldName}.`);
@@ -4270,7 +4406,7 @@ function parseDecimal(value, fieldName, required = true) {
   const number = Number(raw);
   if (Number.isNaN(number)) throw new Error(`Informe um valor numérico válido para ${fieldName}.`);
   if (number < 0) throw new Error(`O campo ${fieldName} não pode ser negativo.`);
-  return number;
+  return roundDecimal(number, fractionDigits);
 }
 
 function parseProfitMargin(value) {
@@ -4279,7 +4415,7 @@ function parseProfitMargin(value) {
   if (raw.includes(",")) raw = raw.replace(/\./g, "").replace(",", ".");
   const number = Number(raw);
   if (!Number.isFinite(number)) throw new Error("Informe uma porcentagem válida para Margem.");
-  return number;
+  return roundMargin(number);
 }
 
 function parseIntRequired(value, fieldName) {
@@ -4327,7 +4463,12 @@ function normalizeUrlValue(value) {
 }
 
 function money(value) {
-  return Number(value || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+  return roundMoney(value).toLocaleString("pt-BR", {
+    style: "currency",
+    currency: "BRL",
+    minimumFractionDigits: MONEY_FRACTION_DIGITS,
+    maximumFractionDigits: MONEY_FRACTION_DIGITS,
+  });
 }
 
 function percent(value) {
@@ -4335,30 +4476,81 @@ function percent(value) {
 }
 
 function formatProfitMargin(value) {
-  return `${Number(value || 0).toLocaleString("pt-BR", { minimumFractionDigits: 4, maximumFractionDigits: 4 })}%`;
+  return `${roundMargin(value).toLocaleString("pt-BR", { minimumFractionDigits: MARGIN_FRACTION_DIGITS, maximumFractionDigits: MARGIN_FRACTION_DIGITS })}%`;
 }
 
 function formatDateTime(value) {
   if (!value) return "";
-  const normalized = value.replace(" ", "T");
-  const date = new Date(normalized);
+  const date = parseStoredDateTime(value);
   if (Number.isNaN(date.getTime())) return value;
-  return date.toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" });
+  return new Intl.DateTimeFormat("pt-BR", {
+    timeZone: BUSINESS_TIME_ZONE,
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).format(date);
 }
 
 function toDateTimeInputValue(value) {
   if (!value) return "";
-  return String(value).replace(" ", "T").slice(0, 16);
+  const date = parseStoredDateTime(value);
+  if (Number.isNaN(date.getTime())) return "";
+  const parts = dateTimeParts(date);
+  return `${parts.year}-${parts.month}-${parts.day}T${parts.hour}:${parts.minute}`;
 }
 
 function toDateInputValue(value) {
   if (!value) return "";
-  return String(value).slice(0, 10);
+  const date = parseStoredDateTime(value);
+  if (Number.isNaN(date.getTime())) return "";
+  const parts = dateTimeParts(date);
+  return `${parts.year}-${parts.month}-${parts.day}`;
 }
 
 function fromDateTimeInputValue(value) {
-  if (!value) return "";
-  return value.replace("T", " ");
+  if (!value) return null;
+  const match = String(value).match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/);
+  if (!match) return null;
+  const desiredUtc = Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3]), Number(match[4]), Number(match[5]));
+  let instant = desiredUtc;
+  for (let iteration = 0; iteration < 2; iteration += 1) {
+    const parts = dateTimeParts(new Date(instant));
+    const representedUtc = Date.UTC(Number(parts.year), Number(parts.month) - 1, Number(parts.day), Number(parts.hour), Number(parts.minute));
+    instant += desiredUtc - representedUtc;
+  }
+  return new Date(instant).toISOString();
+}
+
+function parseStoredDateTime(value) {
+  const text = String(value || "").trim();
+  if (!text) return new Date(NaN);
+  if (/^\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}(:\d{2}(\.\d+)?)?$/.test(text)) {
+    return new Date(fromDateTimeInputValue(text.replace(" ", "T").slice(0, 16)));
+  }
+  return new Date(text);
+}
+
+function dateTimeParts(date) {
+  return Object.fromEntries(new Intl.DateTimeFormat("en-CA", {
+    timeZone: BUSINESS_TIME_ZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(date).filter((part) => part.type !== "literal").map((part) => [part.type, part.value]));
+}
+
+function zonedDateTimeParts(date) {
+  const numeric = dateTimeParts(date);
+  const monthShort = new Intl.DateTimeFormat("pt-BR", { timeZone: BUSINESS_TIME_ZONE, month: "short" })
+    .format(date)
+    .replace(".", "");
+  return { ...numeric, monthShort, time: `${numeric.hour}:${numeric.minute}` };
 }
 
 function statusDisplay(status) {
@@ -4597,6 +4789,24 @@ function normalizeFailureRecord(record) {
   };
 }
 
+function normalizeStatusHistoryRecord(record) {
+  return {
+    id: record.id ? Number(record.id) : undefined,
+    bid_id: record.bid_id,
+    from_status: normalizeBidStatus(record.from_status),
+    to_status: normalizeBidStatus(record.to_status),
+    reason: String(record.reason || "").trim(),
+    changed_by: record.changed_by || null,
+    changed_by_name: record.changed_by_name || "",
+    changed_by_email: record.changed_by_email || "",
+    changed_at: record.changed_at || new Date().toISOString(),
+  };
+}
+
+function currentUserProfile() {
+  return appState.users.find((user) => normalizeEmail(user.email) === normalizeEmail(appState.currentUserEmail));
+}
+
 function normalizeQuotationRecord(record) {
   return {
     id: record.id ? Number(record.id) : undefined,
@@ -4638,7 +4848,9 @@ function normalizeQuotationItemRecord(record) {
     final_bid: finalBid,
     minimum_bid: Number(record.minimum_bid || 0),
     quantity,
-    total: record.total === undefined || record.total === null ? finalBid * quantity : Number(record.total),
+    total: record.total === undefined || record.total === null
+      ? calculateLineTotal(finalBid, quantity)
+      : roundMoney(record.total),
   };
 }
 
@@ -4906,7 +5118,8 @@ function updateMarginFromFinalValue() {
       refs.valueWithMargin.value = "";
     } else {
       refs.profitMargin.value = formatProfitMargin(margin);
-      refs.valueWithMargin.value = money(calculateValueWithMargin(costValue, margin));
+      const valueWithMargin = calculateValueWithMargin(costValue, margin);
+      refs.valueWithMargin.value = valueWithMargin === null ? "" : money(valueWithMargin);
     }
   } catch {
     refs.profitMargin.value = "";
@@ -4932,7 +5145,8 @@ function updateValueWithMargin() {
   try {
     const costValue = parseDecimal(refs.supplierCost.value, "Valor de Custo", false);
     const margin = parseProfitMargin(refs.profitMargin.value);
-    refs.valueWithMargin.value = money(calculateValueWithMargin(costValue, margin));
+    const valueWithMargin = calculateValueWithMargin(costValue, margin);
+    refs.valueWithMargin.value = valueWithMargin === null ? "" : money(valueWithMargin);
   } catch {
     refs.valueWithMargin.value = "";
   }
