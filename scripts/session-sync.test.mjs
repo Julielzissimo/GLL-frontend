@@ -84,6 +84,14 @@ test("operações remotas de orçamento e edital usam a transação do servidor"
   assert.doesNotMatch(source, /Excluir o orçamento do edital \$\{quotation\.edital\} e todos os seus itens\?/);
 });
 
+test("itens não carregam nem enviam os campos antigos de frete", () => {
+  const collectItemSource = source.slice(source.indexOf("function collectItemData"), source.indexOf("async function deleteCurrentItem"));
+  const normalizeItemSource = source.slice(source.indexOf("function normalizeItemRecord"), source.indexOf("function parseItemExtraPayload"));
+
+  assert.doesNotMatch(collectItemSource, /freight_included|unit_freight/);
+  assert.doesNotMatch(normalizeItemSource, /freight_included|unit_freight/);
+});
+
 function backend() {
   return {
     tables: { bids: [{ id: "TEST-1", buyer_agency: "Original" }], items: [], documents: [], failure_history: [], quotations: [{ id: 1, edital: "Original" }], quotation_items: [], suppliers: [] },
