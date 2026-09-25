@@ -3261,8 +3261,6 @@ function collectItemData() {
     profit_margin: profitMargin,
     supplier_link: appState.supplierLinksDraft[0] || "",
     supplier_links: [...appState.supplierLinksDraft],
-    freight_included: 1,
-    unit_freight: 0,
     sales_unit: refs.salesUnit.value || SALES_UNIT_OPTIONS[0],
     required_quantity: quantity,
   };
@@ -4852,8 +4850,6 @@ function normalizeItemRecord(record) {
     profit_margin: profitMargin,
     supplier_link: supplierLinks[0] || "",
     supplier_links: supplierLinks,
-    freight_included: Number(record.freight_included ?? 1),
-    unit_freight: Number(record.unit_freight || 0),
     sales_unit: record.sales_unit || SALES_UNIT_OPTIONS[0],
     required_quantity:
       record.required_quantity === undefined || record.required_quantity === null || record.required_quantity === "" ? 0 : Number(record.required_quantity),
