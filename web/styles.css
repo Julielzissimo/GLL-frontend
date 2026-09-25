@@ -1161,11 +1161,18 @@ input[readonly] {
 .bid-quotation-editor-host > #quotationEditor,
 #quotationEditorHome > #quotationEditor {
   display: grid;
+  width: 100%;
+  max-width: 100%;
   min-width: 0;
+  grid-template-columns: minmax(0, 1fr);
   gap: 18px;
 }
 
-#quotationEditorHome {
+.bid-quotation-editor-host,
+#quotationEditorHome,
+#quotationEditor > .section-band {
+  width: 100%;
+  max-width: 100%;
   min-width: 0;
 }
 
