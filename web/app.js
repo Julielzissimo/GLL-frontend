@@ -90,7 +90,6 @@ const appState = {
   quotationListCollapsed: false,
   currentQuotationItemId: null,
   quotationItemFormBaseline: "",
-  itemMarginCalculationSource: "margin",
   supplierLinksDraft: [],
   quotationSupplierLinksDraft: [],
   quotationTechnicalSpecificationsDraft: [],
@@ -1891,7 +1890,7 @@ function bindEvents() {
     refs.profitMargin.value = refs.profitMargin.value.replace("%", "");
   });
   refs.profitMargin.addEventListener("blur", formatProfitMarginInput);
-  refs.maxValue.addEventListener("input", updateMarginFromFinalValue);
+  refs.maxValue.addEventListener("input", updateItemProfit);
   refs.supplierCost.addEventListener("input", updateItemPricingFromCost);
   refs.requiredQuantity.addEventListener("input", updateItemProfit);
 }
@@ -3084,7 +3083,6 @@ function loadItem(itemId) {
   refs.minimumBid.value = item.minimum_bid ? money(item.minimum_bid) : "";
   refs.requiredQuantity.value = item.required_quantity ? item.required_quantity : "";
   refs.profitMargin.value = item.profit_margin === null ? "" : formatProfitMargin(item.profit_margin);
-  appState.itemMarginCalculationSource = "margin";
   updateValueWithMargin();
   updateItemProfit();
   refs.brandModel.value = item.brand_model || "";
@@ -3102,7 +3100,6 @@ function clearItemForm() {
   refs.salesUnit.value = SALES_UNIT_OPTIONS[0];
   appState.supplierLinksDraft = [];
   renderSupplierLinks();
-  appState.itemMarginCalculationSource = "margin";
   updateValueWithMargin();
   updateItemProfit();
   refs.selectedItemLabel.textContent = "Novo item";
@@ -3189,9 +3186,7 @@ function collectItemData() {
   const finalValue = parseDecimal(refs.maxValue.value, "Valor Final", false);
   const profitMargin = refs.profitMargin.value.trim()
     ? parseProfitMargin(refs.profitMargin.value)
-    : supplierCost && refs.maxValue.value.trim()
-      ? calculateProfitMargin(finalValue, supplierCost)
-      : null;
+    : null;
   const currentItem = currentItems().find((item) => Number(item.id) === Number(appState.currentItemId));
   return {
     item_number: itemNumber,
@@ -5094,47 +5089,12 @@ function updateItemProfit() {
 }
 
 function updateValueWithMarginFromMargin() {
-  appState.itemMarginCalculationSource = "margin";
   updateValueWithMargin();
 }
 
-function updateMarginFromFinalValue() {
-  appState.itemMarginCalculationSource = "final";
-  const hasFinalValue = Boolean(refs.maxValue.value.trim());
-  const hasCostValue = Boolean(refs.supplierCost.value.trim());
-  if (!hasFinalValue || !hasCostValue) {
-    refs.profitMargin.value = "";
-    refs.valueWithMargin.value = "";
-    updateItemProfit();
-    return;
-  }
-
-  try {
-    const finalValue = parseDecimal(refs.maxValue.value, "Valor Final", false);
-    const costValue = parseDecimal(refs.supplierCost.value, "Valor de Custo", false);
-    const margin = calculateProfitMargin(finalValue, costValue);
-    if (margin === null) {
-      refs.profitMargin.value = "";
-      refs.valueWithMargin.value = "";
-    } else {
-      refs.profitMargin.value = formatProfitMargin(margin);
-      const valueWithMargin = calculateValueWithMargin(costValue, margin);
-      refs.valueWithMargin.value = valueWithMargin === null ? "" : money(valueWithMargin);
-    }
-  } catch {
-    refs.profitMargin.value = "";
-    refs.valueWithMargin.value = "";
-  }
-  updateItemProfit();
-}
-
 function updateItemPricingFromCost() {
-  if (appState.itemMarginCalculationSource === "final" && refs.maxValue.value.trim()) {
-    updateMarginFromFinalValue();
-  } else {
-    updateValueWithMargin();
-    updateItemProfit();
-  }
+  updateValueWithMargin();
+  updateItemProfit();
 }
 
 function updateValueWithMargin() {

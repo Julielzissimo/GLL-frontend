@@ -335,14 +335,6 @@
                     <input id="supplierCost" inputmode="decimal" />
                   </label>
                   <label class="item-field currency">
-                    Margem
-                    <input id="profitMargin" inputmode="decimal" placeholder="0,0000%" />
-                  </label>
-                  <label class="item-field currency">
-                    Valor com margem
-                    <input id="valueWithMargin" readonly title="Calculado com base no Valor de Custo e na Margem." />
-                  </label>
-                  <label class="item-field currency">
                     Valor Final
                     <input id="maxValue" inputmode="decimal" />
                   </label>
@@ -376,6 +368,24 @@
                     <input id="itemProfit" readonly title="Preencha Valor Final e Valor de Custo para exibir o lucro do item." />
                   </label>
                 </div>
+
+                <div class="margin-calculator" aria-labelledby="itemMarginCalculatorTitle">
+                  <div class="margin-calculator-heading">
+                    <h3 id="itemMarginCalculatorTitle">Calculadora de margem</h3>
+                    <p>Informe uma margem para testar o valor calculado a partir do Valor de Custo. O Valor Final não altera esta simulação.</p>
+                  </div>
+                  <div class="form-grid margin-calculator-grid">
+                    <label>
+                      Margem
+                      <input id="profitMargin" inputmode="decimal" placeholder="0,0000%" />
+                    </label>
+                    <label>
+                      Valor com margem
+                      <input id="valueWithMargin" readonly title="Calculado com base no Valor de Custo e na Margem informada na calculadora." />
+                    </label>
+                  </div>
+                </div>
+
                 <p id="itemFormError" class="form-error" role="alert"></p>
                 <div class="button-row end">
                   <button id="deleteItemButton" class="danger-action" type="button">Excluir</button>
@@ -709,12 +719,12 @@
                   </div>
                 </div>
 
-                <div class="quotation-margin-calculator" aria-labelledby="quotationMarginCalculatorTitle">
-                  <div class="quotation-margin-calculator-heading">
+                <div class="margin-calculator" aria-labelledby="quotationMarginCalculatorTitle">
+                  <div class="margin-calculator-heading">
                     <h3 id="quotationMarginCalculatorTitle">Calculadora de margem</h3>
                     <p>Informe uma margem para testar o valor calculado a partir do Valor de Custo. O Lance Final não altera esta simulação.</p>
                   </div>
-                  <div class="form-grid quotation-margin-calculator-grid">
+                  <div class="form-grid margin-calculator-grid">
                     <label>
                       Margem
                       <input id="quotationItemProfitMargin" inputmode="decimal" placeholder="0,0000%" />
