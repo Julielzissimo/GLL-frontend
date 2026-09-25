@@ -1036,13 +1036,13 @@ input[readonly] {
 }
 
 .section-band.bid-quotation-empty-state {
-  min-height: 166px;
-  gap: 28px;
-  padding: 36px;
+  min-height: 104px;
+  gap: 18px;
+  padding: 22px;
   border-color: #dbe4ef;
-  border-radius: 18px;
+  border-radius: var(--radius);
   background: #fff;
-  box-shadow: 0 8px 26px rgba(36, 65, 96, 0.09);
+  box-shadow: 0 5px 18px rgba(16, 24, 40, 0.04);
 }
 
 .bid-quotation-empty-copy,
@@ -1058,10 +1058,10 @@ input[readonly] {
 
 .bid-quotation-empty-state h2 {
   color: #111c30;
-  font-size: 28px;
+  font-size: 18px;
   font-weight: 800;
-  letter-spacing: -0.35px;
-  line-height: 1.15;
+  letter-spacing: -0.15px;
+  line-height: 1.2;
 }
 
 .bid-quotation-empty-state p,
@@ -1071,31 +1071,31 @@ input[readonly] {
 }
 
 .bid-quotation-empty-state p {
-  margin-top: 10px;
+  margin-top: 5px;
   color: #7b899f;
-  font-size: 20px;
-  line-height: 1.35;
+  font-size: 14px;
+  line-height: 1.4;
 }
 
 .bid-quotation-empty-icon {
   display: grid;
-  width: 92px;
-  height: 92px;
-  flex: 0 0 92px;
+  width: 52px;
+  height: 52px;
+  flex: 0 0 52px;
   place-items: center;
-  border-radius: 20px;
+  border-radius: 12px;
   background: #edf5ff;
   color: #3478d5;
 }
 
 .bid-quotation-empty-icon svg {
-  width: 50px;
-  height: 50px;
+  width: 29px;
+  height: 29px;
   fill: none;
   stroke: currentColor;
   stroke-linecap: round;
   stroke-linejoin: round;
-  stroke-width: 2.5;
+  stroke-width: 2.25;
 }
 
 .bid-quotation-empty-actions {
@@ -1103,27 +1103,27 @@ input[readonly] {
   flex: 0 0 auto;
   flex-wrap: nowrap;
   justify-content: flex-end;
-  gap: 20px;
+  gap: 10px;
 }
 
 .bid-quotation-empty-actions > button {
   display: inline-flex;
-  min-height: 64px;
+  min-height: 40px;
   align-items: center;
   justify-content: center;
-  gap: 16px;
-  border-radius: 12px;
-  padding: 15px 24px;
-  font-size: 18px;
+  gap: 8px;
+  border-radius: 9px;
+  padding: 10px 16px;
+  font-size: 13px;
   font-weight: 700;
   line-height: 1;
   white-space: nowrap;
 }
 
 .bid-quotation-empty-actions > button svg {
-  width: 27px;
-  height: 27px;
-  flex: 0 0 27px;
+  width: 18px;
+  height: 18px;
+  flex: 0 0 18px;
   fill: none;
   stroke: currentColor;
   stroke-linecap: round;
@@ -1132,7 +1132,7 @@ input[readonly] {
 }
 
 .bid-quotation-empty-actions .bid-quotation-link-action {
-  min-width: 350px;
+  min-width: 0;
   border-color: #d4deeb;
   background: #fff;
   color: #16223a;
@@ -1148,7 +1148,7 @@ input[readonly] {
 }
 
 .bid-quotation-empty-actions .bid-quotation-create-action {
-  min-width: 280px;
+  min-width: 0;
   border-color: transparent;
   background: #eef5ff;
   color: #1261e9;
@@ -3837,22 +3837,6 @@ tr.item-won td {
   bottom: 28px;
   border-radius: 10px;
   background: #163e2d;
-}
-
-@media (max-width: 1600px) {
-  .bid-quotation-empty-state {
-    flex-wrap: wrap;
-  }
-
-  .bid-quotation-empty-copy {
-    flex-basis: calc(100% - 120px);
-  }
-
-  .bid-quotation-empty-actions {
-    width: 100%;
-    justify-content: flex-start;
-    padding-left: 120px;
-  }
 }
 
 @media (max-width: 1180px) {
