@@ -74,8 +74,10 @@ test("modal de orçamento exibe somente orçamentos ainda não vinculados a edit
 
 test("aba do edital usa o fluxo de orçamento com vínculo, criação e cadastro de itens", () => {
   assert.match(html, /id="itemsTabButton"[^>]*>Orçamento<\/button>/);
-  assert.match(html, /id="linkExistingBidQuotationButton"[^>]*>Vincular orçamento existente<\/button>/);
-  assert.match(html, /id="createBidQuotationButton"[^>]*>Criar novo orçamento<\/button>/);
+  assert.match(html, /id="linkExistingBidQuotationButton"/);
+  assert.match(html, /Vincular orçamento existente/);
+  assert.match(html, /id="createBidQuotationButton"/);
+  assert.match(html, /Criar novo orçamento/);
   assert.match(html, /id="quotationCep"/);
   assert.match(html, /id="quotationDeliveryDeadline"/);
   assert.match(html, /id="openQuotationItemModalButton"[^>]*>Cadastrar Item<\/button>/);
