@@ -4,6 +4,7 @@ import vm from "node:vm";
 import test from "node:test";
 
 const source = await readFile(new URL("../web/app.js", import.meta.url), "utf8");
+const html = await readFile(new URL("../web/index.html", import.meta.url), "utf8");
 const application = source.slice(0, source.lastIndexOf('withBlockingLoading(main, "Verificando sessão…")'));
 const user = { email: "test@example.test", name: "Teste" };
 
@@ -69,6 +70,19 @@ test("modal de orçamento exibe somente orçamentos ainda não vinculados a edit
     JSON.parse(JSON.stringify(app.availableBidQuotations(quotations, bids))),
     [{ id: 2 }],
   );
+});
+
+test("aba do edital usa o fluxo de orçamento com vínculo, criação e cadastro de itens", () => {
+  assert.match(html, /id="itemsTabButton"[^>]*>Orçamento<\/button>/);
+  assert.match(html, /id="linkExistingBidQuotationButton"/);
+  assert.match(html, /Vincular orçamento existente/);
+  assert.match(html, /id="createBidQuotationButton"/);
+  assert.match(html, /Criar novo orçamento/);
+  assert.match(html, /id="quotationCep"/);
+  assert.match(html, /id="quotationDeliveryDeadline"/);
+  assert.match(html, /id="openQuotationItemModalButton"[^>]*>Cadastrar Item<\/button>/);
+  assert.match(source, /await store\.setBidQuotation\(bidContextId, savedId\)/);
+  assert.match(source, /async function startBidQuotationCreation\(\)[\s\S]*await store\.saveQuotation\([\s\S]*openQuotationItemModal\(\)/);
 });
 
 test("operações remotas de orçamento e edital usam a transação do servidor", () => {

@@ -294,12 +294,49 @@
 
           <section id="detailsArea" class="details-area">
             <div class="tabs" role="tablist" aria-label="Detalhes do edital">
-              <button id="itemsTabButton" class="tab active" type="button">Itens</button>
+              <button id="itemsTabButton" class="tab active" type="button">Orçamento</button>
               <button id="documentsTabButton" class="tab" type="button">Documentações</button>
               <button id="failuresTabButton" class="tab hidden" type="button">Histórico de Falhas</button>
             </div>
 
             <div id="itemsPanel" class="tab-panel">
+              <section id="bidQuotationEmptyState" class="section-band bid-quotation-empty-state hidden" aria-live="polite">
+                <span class="bid-quotation-empty-icon" aria-hidden="true">
+                  <svg viewBox="0 0 48 48" focusable="false">
+                    <path d="M14 7.5h14.5L38 17v23.5H14a4 4 0 0 1-4-4v-25a4 4 0 0 1 4-4Z" />
+                    <path d="M28 7.5V17h10M17 23h14M17 29h14M17 35h9" />
+                  </svg>
+                </span>
+                <div class="bid-quotation-empty-copy">
+                  <h2>Nenhum orçamento vinculado</h2>
+                  <p>Vincule um orçamento já cadastrado ou crie um novo para cadastrar os itens deste edital.</p>
+                </div>
+                <div class="bid-quotation-empty-actions">
+                  <button id="linkExistingBidQuotationButton" class="quiet-action bid-quotation-link-action" type="button">
+                    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                      <path d="M10.5 13.5a4 4 0 0 0 5.7.1l2.4-2.4a4 4 0 0 0-5.7-5.7l-1.4 1.4M13.5 10.5a4 4 0 0 0-5.7-.1l-2.4 2.4a4 4 0 0 0 5.7 5.7l1.4-1.4" />
+                    </svg>
+                    Vincular orçamento existente
+                  </button>
+                  <button id="createBidQuotationButton" class="primary-action bid-quotation-create-action" type="button">
+                    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 4v16M4 12h16" /></svg>
+                    Criar novo orçamento
+                  </button>
+                </div>
+              </section>
+
+              <section id="bidQuotationSummary" class="section-band bid-quotation-summary hidden" aria-live="polite">
+                <div>
+                  <span class="eyebrow">ORÇAMENTO VINCULADO</span>
+                  <h2 id="bidQuotationSummaryTitle">Orçamento</h2>
+                  <p id="bidQuotationSummaryDescription"></p>
+                </div>
+                <button id="changeBidQuotationButton" class="quiet-action" type="button">Trocar orçamento</button>
+              </section>
+
+              <div id="bidQuotationEditorHost" class="bid-quotation-editor-host hidden"></div>
+
+              <div id="legacyBidItemsArea" class="hidden" aria-hidden="true">
               <form id="itemForm" class="section-band compact-band">
                 <div class="section-title">
                   <h2>Itens do Edital</h2>
@@ -335,14 +372,6 @@
                     <input id="supplierCost" inputmode="decimal" />
                   </label>
                   <label class="item-field currency">
-                    Margem
-                    <input id="profitMargin" inputmode="decimal" placeholder="0,0000%" />
-                  </label>
-                  <label class="item-field currency">
-                    Valor com margem
-                    <input id="valueWithMargin" readonly title="Calculado com base no Valor de Custo e na Margem." />
-                  </label>
-                  <label class="item-field currency">
                     Valor Final
                     <input id="maxValue" inputmode="decimal" />
                   </label>
@@ -376,6 +405,24 @@
                     <input id="itemProfit" readonly title="Preencha Valor Final e Valor de Custo para exibir o lucro do item." />
                   </label>
                 </div>
+
+                <div class="margin-calculator" aria-labelledby="itemMarginCalculatorTitle">
+                  <div class="margin-calculator-heading">
+                    <h3 id="itemMarginCalculatorTitle">Calculadora de margem</h3>
+                    <p>Informe uma margem para testar o valor calculado a partir do Valor de Custo. O Valor Final não altera esta simulação.</p>
+                  </div>
+                  <div class="form-grid margin-calculator-grid">
+                    <label>
+                      Margem
+                      <input id="profitMargin" inputmode="decimal" placeholder="0,0000%" />
+                    </label>
+                    <label>
+                      Valor com margem
+                      <input id="valueWithMargin" readonly title="Calculado com base no Valor de Custo e na Margem informada na calculadora." />
+                    </label>
+                  </div>
+                </div>
+
                 <p id="itemFormError" class="form-error" role="alert"></p>
                 <div class="button-row end">
                   <button id="deleteItemButton" class="danger-action" type="button">Excluir</button>
@@ -404,6 +451,7 @@
                   </thead>
                   <tbody id="itemsTableBody"></tbody>
                 </table>
+              </div>
               </div>
             </div>
 
@@ -538,6 +586,8 @@
           </div>
         </section>
 
+        <div id="quotationEditorHome">
+        <div id="quotationEditor">
         <form id="quotationForm" class="section-band">
           <div class="section-title">
             <h2>Dados do orçamento</h2>
@@ -709,12 +759,12 @@
                   </div>
                 </div>
 
-                <div class="quotation-margin-calculator" aria-labelledby="quotationMarginCalculatorTitle">
-                  <div class="quotation-margin-calculator-heading">
+                <div class="margin-calculator" aria-labelledby="quotationMarginCalculatorTitle">
+                  <div class="margin-calculator-heading">
                     <h3 id="quotationMarginCalculatorTitle">Calculadora de margem</h3>
                     <p>Informe uma margem para testar o valor calculado a partir do Valor de Custo. O Lance Final não altera esta simulação.</p>
                   </div>
-                  <div class="form-grid quotation-margin-calculator-grid">
+                  <div class="form-grid margin-calculator-grid">
                     <label>
                       Margem
                       <input id="quotationItemProfitMargin" inputmode="decimal" placeholder="0,0000%" />
@@ -747,6 +797,8 @@
             </div>
           </dialog>
         </section>
+        </div>
+        </div>
       </section>
 
       <section id="usersPage" class="users-page hidden">

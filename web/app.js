@@ -87,10 +87,10 @@ const appState = {
   currentDocumentId: null,
   currentFailureId: null,
   currentQuotationId: null,
+  bidQuotationCreating: false,
   quotationListCollapsed: false,
   currentQuotationItemId: null,
   quotationItemFormBaseline: "",
-  itemMarginCalculationSource: "margin",
   supplierLinksDraft: [],
   quotationSupplierLinksDraft: [],
   quotationTechnicalSpecificationsDraft: [],
@@ -238,6 +238,14 @@ const refs = {
   documentsTabButton: $("documentsTabButton"),
   failuresTabButton: $("failuresTabButton"),
   itemsPanel: $("itemsPanel"),
+  bidQuotationEmptyState: $("bidQuotationEmptyState"),
+  linkExistingBidQuotationButton: $("linkExistingBidQuotationButton"),
+  createBidQuotationButton: $("createBidQuotationButton"),
+  bidQuotationSummary: $("bidQuotationSummary"),
+  bidQuotationSummaryTitle: $("bidQuotationSummaryTitle"),
+  bidQuotationSummaryDescription: $("bidQuotationSummaryDescription"),
+  changeBidQuotationButton: $("changeBidQuotationButton"),
+  bidQuotationEditorHost: $("bidQuotationEditorHost"),
   documentsPanel: $("documentsPanel"),
   failuresPanel: $("failuresPanel"),
   itemForm: $("itemForm"),
@@ -291,6 +299,8 @@ const refs = {
   selectedQuotationSummary: $("selectedQuotationSummary"),
   quotationCountLabel: $("quotationCountLabel"),
   quotationsTableBody: $("quotationsTableBody"),
+  quotationEditorHome: $("quotationEditorHome"),
+  quotationEditor: $("quotationEditor"),
   quotationForm: $("quotationForm"),
   selectedQuotationLabel: $("selectedQuotationLabel"),
   quotationId: $("quotationId"),
@@ -675,6 +685,17 @@ class IndexedDbStore {
       };
     });
     if (!wasBilled) await this.syncBidWithQuotation(data.id, data.quotation_id);
+  }
+
+  async setBidQuotation(bidId, quotationId) {
+    const existing = (await this.getAll("bids")).find((bid) => bid.id === bidId);
+    if (!existing) throw new Error("Edital não encontrado.");
+    await this.tx("bids", "readwrite", (bids) => bids.put({
+      ...existing,
+      quotation_id: quotationId ? Number(quotationId) : null,
+      updated_at: timestampNow(),
+    }));
+    await this.syncBidWithQuotation(bidId, quotationId);
   }
 
   async syncBidWithQuotation(bidId, quotationId) {
@@ -1186,6 +1207,15 @@ class SupabaseStore {
       created_at: now,
       updated_at: now,
     });
+    assertSupabase(error);
+  }
+
+  async setBidQuotation(bidId, quotationId) {
+    const client = await this.open();
+    const { error } = await client
+      .from("bids")
+      .update({ quotation_id: quotationId ? Number(quotationId) : null, updated_at: timestampNow() })
+      .eq("id", bidId);
     assertSupabase(error);
   }
 
@@ -1783,6 +1813,9 @@ function bindEvents() {
   });
   refs.bidQuotationFilterId.addEventListener("input", renderBidQuotationResults);
   refs.bidQuotationFilterAgency.addEventListener("input", renderBidQuotationResults);
+  refs.linkExistingBidQuotationButton.addEventListener("click", openBidQuotationModal);
+  refs.createBidQuotationButton.addEventListener("click", withBlockingLoading(startBidQuotationCreation, "Criando orçamento…"));
+  refs.changeBidQuotationButton.addEventListener("click", openBidQuotationModal);
   refs.editalAttachmentList.addEventListener("click", (event) => {
     if (!event.target.closest("[data-attachment-action]")) return;
     withBlockingLoading(handleBidAttachmentAction, "Processando arquivo…")(event);
@@ -1891,7 +1924,7 @@ function bindEvents() {
     refs.profitMargin.value = refs.profitMargin.value.replace("%", "");
   });
   refs.profitMargin.addEventListener("blur", formatProfitMarginInput);
-  refs.maxValue.addEventListener("input", updateMarginFromFinalValue);
+  refs.maxValue.addEventListener("input", updateItemProfit);
   refs.supplierCost.addEventListener("input", updateItemPricingFromCost);
   refs.requiredQuantity.addEventListener("input", updateItemProfit);
 }
@@ -2281,6 +2314,7 @@ function setPage(page, options = {}) {
     page = appState.currentBidId ? "items" : "home";
   }
   appState.activePage = page;
+  placeQuotationEditor(page);
   const showUsers = page === "users";
   const showSettings = page === "settings";
   const showSuppliers = page === "suppliers";
@@ -2320,6 +2354,7 @@ function setPage(page, options = {}) {
   updateSidebarVisibility();
   if (showUsers) renderUsers();
   if (showQuotations) renderQuotations();
+  if (page === "items") renderBidQuotationWorkspace();
   if (showSuppliers) renderSuppliers();
   writeNavigationRoute(page, options.history || "push");
 }
@@ -2532,6 +2567,9 @@ function selectBidQuotation(quotationId) {
   appState.selectedBidQuotationId = Number(quotationId);
   renderBidQuotationSelection();
   closeBidQuotationModal();
+  if (appState.activePage === "items" && appState.currentBidId) {
+    withBlockingLoading(() => linkQuotationToCurrentBid(quotationId), "Vinculando orçamento…")();
+  }
 }
 
 function clearBidQuotationSelection() {
@@ -2546,6 +2584,22 @@ function renderBidQuotationSelection() {
   refs.clearBidQuotationButton.classList.toggle("hidden", !quotation);
 }
 
+async function linkQuotationToCurrentBid(quotationId) {
+  const bidId = appState.currentBidId;
+  if (!bidId) return;
+  try {
+    await store.setBidQuotation(bidId, quotationId);
+    appState.selectedBidQuotationId = Number(quotationId);
+    appState.bidQuotationCreating = false;
+    await reloadData();
+    loadBid(bidId, { history: "none" });
+    showToast("Orçamento vinculado ao edital.");
+  } catch (error) {
+    refs.bidFormError.textContent = error.message;
+    throw error;
+  }
+}
+
 function loadBid(bidId, options = {}) {
   const bid = appState.bids.find((row) => row.id === bidId);
   if (!bid) return;
@@ -2553,6 +2607,7 @@ function loadBid(bidId, options = {}) {
   appState.currentBidId = bid.id;
   appState.originalBidId = bid.id;
   appState.selectedBidQuotationId = bid.quotation_id;
+  appState.bidQuotationCreating = false;
   refs.bidId.value = bidDisplayNumber(bid);
   refs.buyerAgency.value = bid.buyer_agency || "";
   refs.sessionDatetime.value = toDateTimeInputValue(bid.session_datetime);
@@ -2564,6 +2619,7 @@ function loadBid(bidId, options = {}) {
   refs.bidStatusReason.value = "";
   updateBidStatusControls();
   renderBidQuotationSelection();
+  prepareBidQuotationEditor(bid);
   refs.editalFile.value = "";
   renderBidAttachment(bid);
   renderPublicSessionLink();
@@ -2642,6 +2698,7 @@ function clearBidForm(options = {}) {
   appState.currentBidId = null;
   appState.originalBidId = null;
   appState.selectedBidQuotationId = null;
+  appState.bidQuotationCreating = false;
   appState.currentFailureId = null;
   refs.bidForm.reset();
   renderBidQuotationSelection();
@@ -2922,6 +2979,7 @@ function renderDetails() {
   refs.failureForm.querySelectorAll("input, textarea, button").forEach((el) => {
     if (el.id !== "clearFailureButton") el.disabled = !hasBid || readOnly;
   });
+  if (appState.activePage === "items") renderBidQuotationWorkspace();
 }
 
 function renderBidStatusHistory() {
@@ -3084,7 +3142,6 @@ function loadItem(itemId) {
   refs.minimumBid.value = item.minimum_bid ? money(item.minimum_bid) : "";
   refs.requiredQuantity.value = item.required_quantity ? item.required_quantity : "";
   refs.profitMargin.value = item.profit_margin === null ? "" : formatProfitMargin(item.profit_margin);
-  appState.itemMarginCalculationSource = "margin";
   updateValueWithMargin();
   updateItemProfit();
   refs.brandModel.value = item.brand_model || "";
@@ -3102,7 +3159,6 @@ function clearItemForm() {
   refs.salesUnit.value = SALES_UNIT_OPTIONS[0];
   appState.supplierLinksDraft = [];
   renderSupplierLinks();
-  appState.itemMarginCalculationSource = "margin";
   updateValueWithMargin();
   updateItemProfit();
   refs.selectedItemLabel.textContent = "Novo item";
@@ -3189,9 +3245,7 @@ function collectItemData() {
   const finalValue = parseDecimal(refs.maxValue.value, "Valor Final", false);
   const profitMargin = refs.profitMargin.value.trim()
     ? parseProfitMargin(refs.profitMargin.value)
-    : supplierCost && refs.maxValue.value.trim()
-      ? calculateProfitMargin(finalValue, supplierCost)
-      : null;
+    : null;
   const currentItem = currentItems().find((item) => Number(item.id) === Number(appState.currentItemId));
   return {
     item_number: itemNumber,
@@ -3730,6 +3784,110 @@ function currentQuotationItems() {
   return appState.quotationItems.filter((item) => Number(item.quotation_id) === Number(appState.currentQuotationId));
 }
 
+function placeQuotationEditor(page) {
+  const target = page === "items" ? refs.bidQuotationEditorHost : refs.quotationEditorHome;
+  if (refs.quotationEditor.parentElement !== target) target.append(refs.quotationEditor);
+  if (page !== "items") {
+    refs.quotationEditor.classList.remove("hidden");
+    refs.clearQuotationButton.textContent = "Limpar";
+    refs.deleteQuotationButton.classList.toggle("hidden", !currentQuotation());
+  }
+}
+
+function fillQuotationForm(quotation) {
+  appState.currentQuotationId = quotation.id;
+  appState.currentQuotationItemId = null;
+  refs.quotationId.value = String(quotation.id);
+  refs.quotationOpeningDate.value = toDateInputValue(quotation.opening_date);
+  refs.quotationEdital.value = quotation.edital;
+  refs.quotationAgency.value = quotation.agency;
+  refs.quotationCity.value = quotation.city;
+  refs.quotationCep.value = formatCep(quotation.cep);
+  refs.quotationDeliveryDeadline.value = quotation.delivery_deadline;
+  refs.selectedQuotationLabel.textContent = `Edital ${quotation.edital}`;
+  refs.quotationFormError.textContent = "";
+  refs.deleteQuotationButton.classList.remove("hidden");
+  clearQuotationItemForm();
+}
+
+function resetQuotationFormValues() {
+  closeQuotationItemModal();
+  appState.currentQuotationId = null;
+  appState.currentQuotationItemId = null;
+  refs.quotationForm.reset();
+  refs.quotationId.value = "";
+  refs.selectedQuotationLabel.textContent = "Novo orçamento";
+  refs.quotationFormError.textContent = "";
+  refs.deleteQuotationButton.classList.add("hidden");
+  clearQuotationItemForm();
+}
+
+function prepareBidQuotationEditor(bid = currentBid()) {
+  const quotation = bid?.quotation_id
+    ? appState.quotations.find((row) => Number(row.id) === Number(bid.quotation_id))
+    : null;
+  if (quotation) fillQuotationForm(quotation);
+  else resetQuotationFormValues();
+}
+
+function renderBidQuotationWorkspace() {
+  const bid = currentBid();
+  const quotation = bid?.quotation_id
+    ? appState.quotations.find((row) => Number(row.id) === Number(bid.quotation_id))
+    : null;
+  const creating = Boolean(bid && appState.bidQuotationCreating && !quotation);
+  if (quotation && Number(appState.currentQuotationId) !== Number(quotation.id)) fillQuotationForm(quotation);
+
+  refs.bidQuotationEmptyState.classList.toggle("hidden", !bid || Boolean(quotation) || creating);
+  refs.bidQuotationSummary.classList.toggle("hidden", !quotation);
+  refs.bidQuotationEditorHost.classList.toggle("hidden", !quotation && !creating);
+  refs.quotationEditor.classList.toggle("hidden", !quotation && !creating);
+  refs.linkExistingBidQuotationButton.disabled = !bid || isCurrentBidReadOnly();
+  refs.createBidQuotationButton.disabled = !bid || isCurrentBidReadOnly();
+  refs.changeBidQuotationButton.disabled = !bid || isCurrentBidReadOnly();
+
+  if (quotation) {
+    refs.bidQuotationSummaryTitle.textContent = `#${quotation.id} · ${quotation.edital}`;
+    refs.bidQuotationSummaryDescription.textContent = [
+      quotation.agency,
+      quotation.cep ? `CEP ${quotation.cep}` : "",
+      quotation.delivery_deadline ? `Prazo: ${quotation.delivery_deadline}` : "",
+    ].filter(Boolean).join(" · ");
+  }
+
+  refs.deleteQuotationButton.classList.add("hidden");
+  refs.clearQuotationButton.textContent = creating ? "Cancelar" : "Descartar alterações";
+  const readOnly = isCurrentBidReadOnly();
+  refs.quotationForm.querySelectorAll("input, button").forEach((element) => {
+    if (element === refs.clearQuotationButton) element.disabled = false;
+    else element.disabled = readOnly;
+  });
+  refs.openQuotationItemModalButton.disabled = !quotation || readOnly;
+  renderQuotationItems();
+}
+
+async function startBidQuotationCreation() {
+  const bid = currentBid();
+  if (!bid || guardCurrentBidReadOnly()) return;
+  const savedId = await store.saveQuotation({
+    opening_date: null,
+    edital: bidDisplayNumber(bid),
+    agency: bid.buyer_agency || "",
+    city: "",
+    cep: "",
+    delivery_deadline: "",
+  });
+  await store.setBidQuotation(bid.id, savedId);
+  appState.currentQuotationId = savedId;
+  appState.selectedBidQuotationId = savedId;
+  appState.bidQuotationCreating = false;
+  await reloadData();
+  loadBid(bid.id, { history: "none" });
+  loadQuotation(savedId, { scroll: false, stayOnPage: true });
+  openQuotationItemModal();
+  showToast("Orçamento criado. Cadastre o primeiro item.");
+}
+
 function setQuotationListCollapsed(collapsed) {
   appState.quotationListCollapsed = Boolean(collapsed);
   refs.quotationsListPanel.classList.toggle("is-collapsed", appState.quotationListCollapsed);
@@ -3784,36 +3942,28 @@ function loadQuotation(quotationId, options = {}) {
   if (!quotation) return;
   setSyncNotice("");
   closeQuotationItemModal();
-  appState.currentQuotationId = quotation.id;
   appState.quotationListCollapsed = true;
-  appState.currentQuotationItemId = null;
-  refs.quotationId.value = String(quotation.id);
-  refs.quotationOpeningDate.value = toDateInputValue(quotation.opening_date);
-  refs.quotationEdital.value = quotation.edital;
-  refs.quotationAgency.value = quotation.agency;
-  refs.quotationCity.value = quotation.city;
-  refs.quotationCep.value = formatCep(quotation.cep);
-  refs.quotationDeliveryDeadline.value = quotation.delivery_deadline;
-  refs.selectedQuotationLabel.textContent = `Edital ${quotation.edital}`;
-  refs.quotationFormError.textContent = "";
-  refs.deleteQuotationButton.classList.remove("hidden");
-  clearQuotationItemForm();
+  fillQuotationForm(quotation);
   renderQuotations();
-  setPage("quotations", { history: options.history });
+  if (!options.stayOnPage) setPage("quotations", { history: options.history });
+  else renderBidQuotationWorkspace();
   if (options.scroll !== false) refs.quotationForm.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
 function clearQuotationForm() {
+  if (appState.activePage === "items" && appState.currentBidId) {
+    const quotation = currentBid()?.quotation_id
+      ? appState.quotations.find((row) => Number(row.id) === Number(currentBid().quotation_id))
+      : null;
+    appState.bidQuotationCreating = false;
+    if (quotation) fillQuotationForm(quotation);
+    else resetQuotationFormValues();
+    renderBidQuotationWorkspace();
+    return;
+  }
   closeQuotationItemModal();
-  appState.currentQuotationId = null;
   appState.quotationListCollapsed = false;
-  appState.currentQuotationItemId = null;
-  refs.quotationForm.reset();
-  refs.quotationId.value = "";
-  refs.selectedQuotationLabel.textContent = "Novo orçamento";
-  refs.quotationFormError.textContent = "";
-  refs.deleteQuotationButton.classList.add("hidden");
-  clearQuotationItemForm();
+  resetQuotationFormValues();
   renderQuotations();
   refs.quotationEdital.focus();
 }
@@ -3834,6 +3984,7 @@ async function saveQuotation(event) {
     return;
   }
   try {
+    const bidContextId = appState.activePage === "items" ? appState.currentBidId : null;
     const savedId = await store.saveQuotation(
       {
         opening_date: refs.quotationOpeningDate.value || null,
@@ -3845,10 +3996,18 @@ async function saveQuotation(event) {
       },
       appState.currentQuotationId
     );
+    if (bidContextId) await store.setBidQuotation(bidContextId, savedId);
     appState.currentQuotationId = savedId;
+    appState.bidQuotationCreating = false;
     await reloadData();
-    loadQuotation(savedId, { scroll: false });
-    showToast("Orçamento salvo.");
+    if (bidContextId) {
+      loadBid(bidContextId, { history: "none" });
+      loadQuotation(savedId, { scroll: false, stayOnPage: true });
+      showToast("Orçamento salvo e vinculado ao edital.");
+    } else {
+      loadQuotation(savedId, { scroll: false });
+      showToast("Orçamento salvo.");
+    }
   } catch (error) {
     refs.quotationFormError.textContent = error.message;
   }
@@ -5094,47 +5253,12 @@ function updateItemProfit() {
 }
 
 function updateValueWithMarginFromMargin() {
-  appState.itemMarginCalculationSource = "margin";
   updateValueWithMargin();
 }
 
-function updateMarginFromFinalValue() {
-  appState.itemMarginCalculationSource = "final";
-  const hasFinalValue = Boolean(refs.maxValue.value.trim());
-  const hasCostValue = Boolean(refs.supplierCost.value.trim());
-  if (!hasFinalValue || !hasCostValue) {
-    refs.profitMargin.value = "";
-    refs.valueWithMargin.value = "";
-    updateItemProfit();
-    return;
-  }
-
-  try {
-    const finalValue = parseDecimal(refs.maxValue.value, "Valor Final", false);
-    const costValue = parseDecimal(refs.supplierCost.value, "Valor de Custo", false);
-    const margin = calculateProfitMargin(finalValue, costValue);
-    if (margin === null) {
-      refs.profitMargin.value = "";
-      refs.valueWithMargin.value = "";
-    } else {
-      refs.profitMargin.value = formatProfitMargin(margin);
-      const valueWithMargin = calculateValueWithMargin(costValue, margin);
-      refs.valueWithMargin.value = valueWithMargin === null ? "" : money(valueWithMargin);
-    }
-  } catch {
-    refs.profitMargin.value = "";
-    refs.valueWithMargin.value = "";
-  }
-  updateItemProfit();
-}
-
 function updateItemPricingFromCost() {
-  if (appState.itemMarginCalculationSource === "final" && refs.maxValue.value.trim()) {
-    updateMarginFromFinalValue();
-  } else {
-    updateValueWithMargin();
-    updateItemProfit();
-  }
+  updateValueWithMargin();
+  updateItemProfit();
 }
 
 function updateValueWithMargin() {

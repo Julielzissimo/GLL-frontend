@@ -1028,6 +1028,142 @@ input[readonly] {
   gap: 8px;
 }
 
+.bid-quotation-empty-state,
+.bid-quotation-summary {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+
+.section-band.bid-quotation-empty-state {
+  min-height: 104px;
+  gap: 18px;
+  padding: 22px;
+  border-color: #dbe4ef;
+  border-radius: var(--radius);
+  background: #fff;
+  box-shadow: 0 5px 18px rgba(16, 24, 40, 0.04);
+}
+
+.bid-quotation-empty-copy,
+.bid-quotation-summary > div {
+  min-width: 0;
+  flex: 1;
+}
+
+.bid-quotation-empty-state h2,
+.bid-quotation-summary h2 {
+  margin: 0;
+}
+
+.bid-quotation-empty-state h2 {
+  color: #111c30;
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: -0.15px;
+  line-height: 1.2;
+}
+
+.bid-quotation-empty-state p,
+.bid-quotation-summary p {
+  margin: 5px 0 0;
+  color: var(--muted);
+}
+
+.bid-quotation-empty-state p {
+  margin-top: 5px;
+  color: #7b899f;
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.bid-quotation-empty-icon {
+  display: grid;
+  width: 52px;
+  height: 52px;
+  flex: 0 0 52px;
+  place-items: center;
+  border-radius: 12px;
+  background: #edf5ff;
+  color: #3478d5;
+}
+
+.bid-quotation-empty-icon svg {
+  width: 29px;
+  height: 29px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2.25;
+}
+
+.bid-quotation-empty-actions {
+  display: flex;
+  flex: 0 0 auto;
+  flex-wrap: nowrap;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.bid-quotation-empty-actions > button {
+  display: inline-flex;
+  min-height: 40px;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border-radius: 9px;
+  padding: 10px 16px;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.bid-quotation-empty-actions > button svg {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2;
+}
+
+.bid-quotation-empty-actions .bid-quotation-link-action {
+  min-width: 0;
+  border-color: #d4deeb;
+  background: #fff;
+  color: #16223a;
+}
+
+.bid-quotation-empty-actions .bid-quotation-link-action svg {
+  color: #70819a;
+}
+
+.bid-quotation-empty-actions .bid-quotation-link-action:hover {
+  border-color: #b8c8dc;
+  background: #f8fbff;
+}
+
+.bid-quotation-empty-actions .bid-quotation-create-action {
+  min-width: 0;
+  border-color: transparent;
+  background: #eef5ff;
+  color: #1261e9;
+}
+
+.bid-quotation-empty-actions .bid-quotation-create-action:hover {
+  background: #e2eeff;
+}
+
+.bid-quotation-editor-host > #quotationEditor,
+#quotationEditorHome > #quotationEditor {
+  display: grid;
+  gap: 18px;
+}
+
 #bidQuotation[readonly] {
   cursor: pointer;
 }
@@ -3339,7 +3475,7 @@ tr.item-won td {
   padding-bottom: 18px;
 }
 
-.quotation-margin-calculator {
+.margin-calculator {
   display: grid;
   grid-template-columns: minmax(220px, 0.8fr) minmax(0, 1.2fr);
   gap: 22px;
@@ -3350,20 +3486,20 @@ tr.item-won td {
   background: var(--success-bg);
 }
 
-.quotation-margin-calculator-heading h3 {
+.margin-calculator-heading h3 {
   margin: 0 0 7px;
   color: var(--success);
   font-size: 15px;
 }
 
-.quotation-margin-calculator-heading p {
+.margin-calculator-heading p {
   margin: 0;
   color: #3d6654;
   font-size: 12px;
   line-height: 1.5;
 }
 
-.quotation-margin-calculator-grid {
+.margin-calculator-grid {
   grid-template-columns: repeat(2, minmax(0, 1fr));
   align-items: start;
 }
@@ -3722,7 +3858,7 @@ tr.item-won td {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .quotation-margin-calculator {
+  .margin-calculator {
     grid-template-columns: 1fr;
   }
 
@@ -3739,6 +3875,22 @@ tr.item-won td {
   .quotation-items-toolbar {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .bid-quotation-empty-state,
+  .bid-quotation-summary {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .bid-quotation-empty-actions,
+  .bid-quotation-empty-actions > button,
+  .bid-quotation-summary > button {
+    width: 100%;
+  }
+
+  .bid-quotation-empty-actions {
+    padding-left: 0;
   }
 
   .quotation-items-actions,
