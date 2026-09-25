@@ -80,6 +80,7 @@ test("aba do edital usa o fluxo de orçamento com vínculo, criação e cadastro
   assert.match(html, /id="quotationDeliveryDeadline"/);
   assert.match(html, /id="openQuotationItemModalButton"[^>]*>Cadastrar Item<\/button>/);
   assert.match(source, /await store\.setBidQuotation\(bidContextId, savedId\)/);
+  assert.match(source, /async function startBidQuotationCreation\(\)[\s\S]*await store\.saveQuotation\([\s\S]*openQuotationItemModal\(\)/);
 });
 
 test("operações remotas de orçamento e edital usam a transação do servidor", () => {

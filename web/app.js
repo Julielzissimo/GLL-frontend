@@ -1814,7 +1814,7 @@ function bindEvents() {
   refs.bidQuotationFilterId.addEventListener("input", renderBidQuotationResults);
   refs.bidQuotationFilterAgency.addEventListener("input", renderBidQuotationResults);
   refs.linkExistingBidQuotationButton.addEventListener("click", openBidQuotationModal);
-  refs.createBidQuotationButton.addEventListener("click", startBidQuotationCreation);
+  refs.createBidQuotationButton.addEventListener("click", withBlockingLoading(startBidQuotationCreation, "Criando orçamento…"));
   refs.changeBidQuotationButton.addEventListener("click", openBidQuotationModal);
   refs.editalAttachmentList.addEventListener("click", (event) => {
     if (!event.target.closest("[data-attachment-action]")) return;
@@ -3866,16 +3866,26 @@ function renderBidQuotationWorkspace() {
   renderQuotationItems();
 }
 
-function startBidQuotationCreation() {
+async function startBidQuotationCreation() {
   const bid = currentBid();
   if (!bid || guardCurrentBidReadOnly()) return;
-  appState.bidQuotationCreating = true;
-  resetQuotationFormValues();
-  refs.quotationEdital.value = bidDisplayNumber(bid);
-  refs.quotationAgency.value = bid.buyer_agency || "";
-  renderBidQuotationWorkspace();
-  refs.quotationForm.scrollIntoView({ behavior: "smooth", block: "start" });
-  requestAnimationFrame(() => refs.quotationCep.focus());
+  const savedId = await store.saveQuotation({
+    opening_date: null,
+    edital: bidDisplayNumber(bid),
+    agency: bid.buyer_agency || "",
+    city: "",
+    cep: "",
+    delivery_deadline: "",
+  });
+  await store.setBidQuotation(bid.id, savedId);
+  appState.currentQuotationId = savedId;
+  appState.selectedBidQuotationId = savedId;
+  appState.bidQuotationCreating = false;
+  await reloadData();
+  loadBid(bid.id, { history: "none" });
+  loadQuotation(savedId, { scroll: false, stayOnPage: true });
+  openQuotationItemModal();
+  showToast("Orçamento criado. Cadastre o primeiro item.");
 }
 
 function setQuotationListCollapsed(collapsed) {
