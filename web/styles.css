@@ -1028,6 +1028,55 @@ input[readonly] {
   gap: 8px;
 }
 
+.bid-quotation-empty-state,
+.bid-quotation-summary {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+
+.bid-quotation-empty-state > div:nth-child(2),
+.bid-quotation-summary > div {
+  min-width: 0;
+  flex: 1;
+}
+
+.bid-quotation-empty-state h2,
+.bid-quotation-summary h2 {
+  margin: 0;
+}
+
+.bid-quotation-empty-state p,
+.bid-quotation-summary p {
+  margin: 5px 0 0;
+  color: var(--muted);
+}
+
+.bid-quotation-empty-icon {
+  display: grid;
+  width: 46px;
+  height: 46px;
+  flex: 0 0 46px;
+  place-items: center;
+  border-radius: 12px;
+  background: #eaf3ff;
+  color: #2d78ca;
+  font-size: 24px;
+}
+
+.bid-quotation-empty-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.bid-quotation-editor-host > #quotationEditor,
+#quotationEditorHome > #quotationEditor {
+  display: grid;
+  gap: 18px;
+}
+
 #bidQuotation[readonly] {
   cursor: pointer;
 }
@@ -3739,6 +3788,18 @@ tr.item-won td {
   .quotation-items-toolbar {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .bid-quotation-empty-state,
+  .bid-quotation-summary {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .bid-quotation-empty-actions,
+  .bid-quotation-empty-actions > button,
+  .bid-quotation-summary > button {
+    width: 100%;
   }
 
   .quotation-items-actions,

@@ -294,12 +294,36 @@
 
           <section id="detailsArea" class="details-area">
             <div class="tabs" role="tablist" aria-label="Detalhes do edital">
-              <button id="itemsTabButton" class="tab active" type="button">Itens</button>
+              <button id="itemsTabButton" class="tab active" type="button">Orçamento</button>
               <button id="documentsTabButton" class="tab" type="button">Documentações</button>
               <button id="failuresTabButton" class="tab hidden" type="button">Histórico de Falhas</button>
             </div>
 
             <div id="itemsPanel" class="tab-panel">
+              <section id="bidQuotationEmptyState" class="section-band bid-quotation-empty-state hidden" aria-live="polite">
+                <span class="bid-quotation-empty-icon" aria-hidden="true">▧</span>
+                <div>
+                  <h2>Nenhum orçamento vinculado</h2>
+                  <p>Vincule um orçamento já cadastrado ou crie um novo para cadastrar os itens deste edital.</p>
+                </div>
+                <div class="bid-quotation-empty-actions">
+                  <button id="linkExistingBidQuotationButton" class="quiet-action" type="button">Vincular orçamento existente</button>
+                  <button id="createBidQuotationButton" class="primary-action" type="button">Criar novo orçamento</button>
+                </div>
+              </section>
+
+              <section id="bidQuotationSummary" class="section-band bid-quotation-summary hidden" aria-live="polite">
+                <div>
+                  <span class="eyebrow">ORÇAMENTO VINCULADO</span>
+                  <h2 id="bidQuotationSummaryTitle">Orçamento</h2>
+                  <p id="bidQuotationSummaryDescription"></p>
+                </div>
+                <button id="changeBidQuotationButton" class="quiet-action" type="button">Trocar orçamento</button>
+              </section>
+
+              <div id="bidQuotationEditorHost" class="bid-quotation-editor-host hidden"></div>
+
+              <div id="legacyBidItemsArea" class="hidden" aria-hidden="true">
               <form id="itemForm" class="section-band compact-band">
                 <div class="section-title">
                   <h2>Itens do Edital</h2>
@@ -414,6 +438,7 @@
                   </thead>
                   <tbody id="itemsTableBody"></tbody>
                 </table>
+              </div>
               </div>
             </div>
 
@@ -548,6 +573,8 @@
           </div>
         </section>
 
+        <div id="quotationEditorHome">
+        <div id="quotationEditor">
         <form id="quotationForm" class="section-band">
           <div class="section-title">
             <h2>Dados do orçamento</h2>
@@ -757,6 +784,8 @@
             </div>
           </dialog>
         </section>
+        </div>
+        </div>
       </section>
 
       <section id="usersPage" class="users-page hidden">
