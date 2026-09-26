@@ -1161,7 +1161,19 @@ input[readonly] {
 .bid-quotation-editor-host > #quotationEditor,
 #quotationEditorHome > #quotationEditor {
   display: grid;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  grid-template-columns: minmax(0, 1fr);
   gap: 18px;
+}
+
+.bid-quotation-editor-host,
+#quotationEditorHome,
+#quotationEditor > .section-band {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
 }
 
 #bidQuotation[readonly] {
@@ -3766,6 +3778,8 @@ tr.item-won td {
   max-width: 100%;
   min-width: 0;
   margin-top: 22px;
+  overflow-x: auto;
+  overscroll-behavior-inline: contain;
   border: 1px solid var(--border);
   border-radius: 10px;
 }

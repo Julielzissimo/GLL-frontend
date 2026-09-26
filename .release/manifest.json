@@ -1,0 +1,44 @@
+{
+  "schema_version": 1,
+  "release_id": "2026-09-24-integridade-promocao",
+  "environment": "homolog",
+  "target_branch": "homolog",
+  "items": [
+    {
+      "id": "IMP-003",
+      "backend_commits": [
+        "5f6d98adefd8b7b721ed384d044032e3d6604a66"
+      ],
+      "frontend_commits": [
+        "85ec08d1735afc66ce27cecf512b5346253cce64"
+      ],
+      "migrations": [
+        "supabase/migrations/20260924220000_remove_legacy_freight_fields.sql"
+      ]
+    },
+    {
+      "id": "IMP-010",
+      "backend_commits": [
+        "e5502cdea4c0f0f9df7c1a9d86661eae8667ec6c"
+      ],
+      "frontend_commits": [
+        "f56a2ce70c614b228205a7e74fa720038e08e63d"
+      ],
+      "migrations": [
+        "supabase/migrations/20260923180000_add_bid_status_history.sql"
+      ]
+    },
+    {
+      "id": "IMP-015",
+      "backend_commits": [
+        "64fcf23db9ee134cbccc015d99d0e21750533376"
+      ],
+      "frontend_commits": [
+        "b6bb8ea26939f2ee7111ec997c080bbb119e1d2d"
+      ],
+      "migrations": [
+        "supabase/migrations/20260923193000_standardize_dates_and_money.sql"
+      ]
+    }
+  ]
+}

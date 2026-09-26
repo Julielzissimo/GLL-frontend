@@ -8,6 +8,7 @@ on:
     paths:
       - "web/**"
       - "scripts/**"
+      - ".release/**"
       - "package.json"
       - ".github/workflows/pages.yml"
   workflow_dispatch:
@@ -31,6 +32,20 @@ jobs:
     steps:
       - name: Obter branch que iniciou a publicacao
         uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Validar manifesto da entrega
+        shell: bash
+        run: |
+          test "$(jq -r '.schema_version' .release/manifest.json)" = "1"
+          test "$(jq -r '.target_branch' .release/manifest.json)" = "$GITHUB_REF_NAME"
+          test "$(jq -r '.items | length' .release/manifest.json)" -gt 0
+          while read -r commit; do
+            [[ "$commit" =~ ^[0-9a-f]{40}$ ]]
+            git cat-file -e "${commit}^{commit}"
+            git merge-base --is-ancestor "$commit" HEAD
+          done < <(jq -r '.items[].frontend_commits[]' .release/manifest.json)
 
       - name: Preparar Node.js
         uses: actions/setup-node@v6
