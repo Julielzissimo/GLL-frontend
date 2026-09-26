@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "release_id": "2026-09-26-integridade-promocao",
+  "release_id": "2026-09-26-design-system",
   "environment": "homolog",
   "target_branch": "homolog",
   "items": [
@@ -39,6 +39,14 @@
       "migrations": [
         "supabase/migrations/20260923193000_standardize_dates_and_money.sql"
       ]
+    },
+    {
+      "id": "DESIGN-SYSTEM-001",
+      "backend_commits": [],
+      "frontend_commits": [
+        "6a2ed4537dadd706c473d472f1ae3492a76f30f4"
+      ],
+      "migrations": []
     }
   ]
 }
