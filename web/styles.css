@@ -1,24 +1,3 @@
-:root {
-  --bg: #eef2f5;
-  --panel: #ffffff;
-  --panel-alt: #f8fafc;
-  --border: #d6dde6;
-  --border-strong: #b9c4d2;
-  --text: #172033;
-  --muted: #667085;
-  --primary: #1f6f8b;
-  --primary-dark: #155873;
-  --danger: #b42318;
-  --danger-bg: #fff1f0;
-  --success: #167647;
-  --success-bg: #ecfdf3;
-  --warning: #b54708;
-  --warning-bg: #fff7e6;
-  --info-bg: #eff6ff;
-  --shadow: 0 18px 45px rgba(23, 32, 51, 0.10);
-  --sidebar-width: 340px;
-}
-
 * {
   box-sizing: border-box;
 }
@@ -1601,35 +1580,6 @@ tr.warning-row {
   }
 }
 
-/* Reformulação visual baseada no protótipo aprovado */
-:root {
-  --bg: #f4f6f9;
-  --panel: #ffffff;
-  --panel-alt: #f7f8fa;
-  --border: #e5e7eb;
-  --border-strong: #d6dbe5;
-  --text: #172033;
-  --muted: #6b7280;
-  --primary: #2458d3;
-  --primary-dark: #1846b5;
-  --sidebar: #111b32;
-  --danger: #c53d3d;
-  --danger-bg: #fff0f0;
-  --success: #1b8f5a;
-  --success-bg: #e5f6ee;
-  --warning: #bd7700;
-  --warning-bg: #fff2d8;
-  --info: #3875d7;
-  --info-bg: #e6efff;
-  --shadow: 0 12px 34px rgba(16, 24, 40, 0.08);
-  --radius: 14px;
-  --sidebar-width: 250px;
-  --scrollbar-track: #e9edf3;
-  --scrollbar-thumb: #8794aa;
-  --scrollbar-thumb-hover: var(--primary);
-  --scrollbar-thumb-active: var(--primary-dark);
-}
-
 /* Mantém todas as áreas roláveis alinhadas à identidade visual do GLL. */
 * {
   scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
@@ -1668,7 +1618,7 @@ tr.warning-row {
 
 body {
   background: var(--bg);
-  font-family: Inter, "Segoe UI", Arial, sans-serif;
+  font-family: var(--font-family-sans);
   overflow-x: hidden;
 }
 

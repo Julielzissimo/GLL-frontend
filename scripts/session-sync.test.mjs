@@ -165,7 +165,7 @@ function client(db = backend(), auth = { session: { user } }) {
     clearInterval: (id) => timers.delete(id),
   });
   vm.runInContext(application, context);
-  const api = vm.runInContext(`({ store, appState, restoreSession, logout, reloadData, refreshInBackground, startLiveUpdates, stopLiveUpdates, resetAuthenticatedView, scheduleLiveRefresh, calculateBidSummary, calculateLineTotal, calculateItemProfit, calculateProfitMargin, calculateValueWithMargin, parseDecimal, parseProfitMargin, money, formatDateTime, toDateTimeInputValue, fromDateTimeInputValue, readNavigationRoute, writeNavigationRoute, normalizeBidRecord, normalizeBidAttachments, validateEditalFiles, bidDisplayNumber, creatorName, creatorInitials, creatorTagMarkup, normalizeQuotationRecord, normalizeQuotationItemRecord, quotationItemToBidItem, bidItemToQuotationItem, normalizeTechnicalSpecifications, quotationSaveError, sessionPolicyStorageKey, enforceSessionPolicy, availableBidQuotations })`, context);
+  const api = vm.runInContext(`({ store, appState, restoreSession, logout, reloadData, refreshInBackground, startLiveUpdates, stopLiveUpdates, resetAuthenticatedView, scheduleLiveRefresh, calculateBidSummary, calculateLineTotal, calculateItemProfit, calculateProfitMargin, calculateValueWithMargin, parseDecimal, parseProfitMargin, money, formatDateTime, toDateTimeInputValue, fromDateTimeInputValue, readNavigationRoute, writeNavigationRoute, resolveAuthorizedPage, normalizeBidRecord, normalizeBidAttachments, validateEditalFiles, bidDisplayNumber, creatorName, creatorInitials, creatorTagMarkup, normalizeQuotationRecord, normalizeQuotationItemRecord, quotationItemToBidItem, bidItemToQuotationItem, normalizeTechnicalSpecifications, quotationSaveError, sessionPolicyStorageKey, enforceSessionPolicy, availableBidQuotations })`, context);
   vm.runInContext(`
     renderSuppliers = renderBids = renderDetails = renderQuotations = renderUsers = () => {};
     clearBidForm = clearQuotationForm = setPage = updateMainNavigationState = () => {};
@@ -211,6 +211,14 @@ test("navigation writes readable URLs without discarding unrelated parameters", 
   assert.equal(route.page, "documents");
   assert.equal(route.bidId, "PE 12/2026");
   assert.equal(route.quotationId, null);
+});
+
+test("design system route is available to administrators and blocked for analysts", () => {
+  const app = client();
+  app.appState.currentUserRole = "Administrador";
+  assert.equal(app.resolveAuthorizedPage("designSystem"), "designSystem");
+  app.appState.currentUserRole = "Analista";
+  assert.equal(app.resolveAuthorizedPage("designSystem"), "settings");
 });
 
 test("quotation normalization preserves the delivery deadline", () => {

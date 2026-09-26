@@ -9,8 +9,16 @@
     "build:homolog": "node scripts/build-web.mjs homolog",
     "build:prod": "node scripts/build-web.mjs production",
     "build:all": "npm run build:homolog && npm run build:prod",
+    "storybook": "storybook dev -p 6006",
+    "build-storybook": "storybook build --output-dir storybook-static",
     "serve:web": "python -m http.server 4173 --bind 127.0.0.1 --directory web",
     "serve:homolog": "python -m http.server 4174 --bind 127.0.0.1 --directory dist/homolog",
     "serve:prod": "python -m http.server 4175 --bind 127.0.0.1 --directory dist/prod"
+  },
+  "devDependencies": {
+    "@storybook/addon-a11y": "^10.6.0",
+    "@storybook/addon-docs": "^10.6.0",
+    "@storybook/html-vite": "^10.6.0",
+    "storybook": "^10.6.0"
   }
 }

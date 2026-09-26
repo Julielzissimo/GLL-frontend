@@ -1,0 +1,112 @@
+:root {
+  /* Colors: canonical GLL 2.0 palette */
+  --color-primary: #2458d3;
+  --color-primary-hover: #1846b5;
+  --color-secondary: #111b32;
+  --color-background: #f4f6f9;
+  --color-surface: #ffffff;
+  --color-surface-subtle: #f7f8fa;
+  --color-border: #e5e7eb;
+  --color-border-strong: #d6dbe5;
+  --color-text-primary: #172033;
+  --color-text-secondary: #6b7280;
+  --color-muted: #8794aa;
+  --color-success: #1b8f5a;
+  --color-success-surface: #e5f6ee;
+  --color-warning: #bd7700;
+  --color-warning-surface: #fff2d8;
+  --color-danger: #c53d3d;
+  --color-danger-surface: #fff0f0;
+  --color-info: #3875d7;
+  --color-info-surface: #e6efff;
+  --color-focus-ring: rgba(36, 88, 211, 0.26);
+  --color-overlay: rgba(16, 24, 40, 0.52);
+
+  /* Typography */
+  --font-family-sans: Inter, "Segoe UI", Arial, sans-serif;
+  --font-size-xs: 0.75rem;
+  --font-size-sm: 0.8125rem;
+  --font-size-md: 0.875rem;
+  --font-size-lg: 1rem;
+  --font-size-xl: 1.25rem;
+  --font-size-2xl: 1.5rem;
+  --font-size-3xl: 2rem;
+  --font-weight-regular: 400;
+  --font-weight-medium: 600;
+  --font-weight-bold: 700;
+  --font-weight-extrabold: 800;
+  --line-height-tight: 1.2;
+  --line-height-normal: 1.5;
+  --line-height-relaxed: 1.65;
+
+  /* Spacing */
+  --space-0: 0;
+  --space-xs: 0.25rem;
+  --space-sm: 0.5rem;
+  --space-md: 0.75rem;
+  --space-lg: 1rem;
+  --space-xl: 1.5rem;
+  --space-2xl: 2rem;
+  --space-3xl: 3rem;
+
+  /* Shape and borders */
+  --radius-xs: 0.375rem;
+  --radius-sm: 0.5rem;
+  --radius-md: 0.625rem;
+  --radius-lg: 0.875rem;
+  --radius-xl: 1.25rem;
+  --radius-pill: 999px;
+  --border-width: 1px;
+  --border-default: var(--border-width) solid var(--color-border);
+  --border-strong: var(--border-width) solid var(--color-border-strong);
+
+  /* Elevation */
+  --shadow-sm: 0 2px 8px rgba(16, 24, 40, 0.06);
+  --shadow-md: 0 8px 24px rgba(16, 24, 40, 0.08);
+  --shadow-lg: 0 12px 34px rgba(16, 24, 40, 0.12);
+  --shadow-focus: 0 0 0 3px var(--color-focus-ring);
+
+  /* Layering */
+  --z-base: 0;
+  --z-sticky: 10;
+  --z-menu: 100;
+  --z-dropdown: 200;
+  --z-overlay: 800;
+  --z-modal: 900;
+  --z-toast: 1000;
+  --z-tooltip: 1100;
+
+  /* Component dimensions */
+  --control-height-sm: 2rem;
+  --control-height-md: 2.5rem;
+  --control-height-lg: 3rem;
+  --sidebar-width: 250px;
+
+  /* Scrollbars */
+  --scrollbar-track: #e9edf3;
+  --scrollbar-thumb: var(--color-muted);
+  --scrollbar-thumb-hover: var(--color-primary);
+  --scrollbar-thumb-active: var(--color-primary-hover);
+
+  /* Compatibility aliases used by the existing interface. */
+  --bg: var(--color-background);
+  --panel: var(--color-surface);
+  --panel-alt: var(--color-surface-subtle);
+  --border: var(--color-border);
+  --border-strong: var(--color-border-strong);
+  --text: var(--color-text-primary);
+  --muted: var(--color-text-secondary);
+  --primary: var(--color-primary);
+  --primary-dark: var(--color-primary-hover);
+  --sidebar: var(--color-secondary);
+  --danger: var(--color-danger);
+  --danger-bg: var(--color-danger-surface);
+  --success: var(--color-success);
+  --success-bg: var(--color-success-surface);
+  --warning: var(--color-warning);
+  --warning-bg: var(--color-warning-surface);
+  --info: var(--color-info);
+  --info-bg: var(--color-info-surface);
+  --shadow: var(--shadow-lg);
+  --radius: var(--radius-lg);
+}

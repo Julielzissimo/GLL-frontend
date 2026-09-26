@@ -6,7 +6,9 @@
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net; connect-src 'self' https://*.supabase.co wss://*.supabase.co; img-src 'self' data: blob:; style-src 'self'; font-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'; upgrade-insecure-requests" />
     <title>GLL Web</title>
     <link rel="icon" type="image/svg+xml" href="./assets/favicon.svg" />
+    <link rel="stylesheet" href="./design-system/tokens.css" />
     <link rel="stylesheet" href="./styles.css" />
+    <link rel="stylesheet" href="./design-system/design-system.css" />
   </head>
   <body>
     <main id="loginView" class="login-view">
@@ -994,12 +996,32 @@
             <div class="setting-row"><div><strong>Cliente de autenticação</strong><small>Versão fixada para atualizações reproduzíveis.</small></div><strong id="authClientVersion">Supabase JS</strong></div>
             <div class="setting-row"><div><strong>Interface</strong><small>Identidade visual do protótipo aprovado.</small></div><strong>GLL 2.0</strong></div>
           </section>
+          <section id="designSystemAccessCard" class="section-band design-system-access-card hidden">
+            <span class="settings-icon" aria-hidden="true">◫</span>
+            <div>
+              <h2>Design System</h2>
+              <p>Consulte foundations, componentes reutilizáveis e padrões oficiais da interface.</p>
+            </div>
+            <button id="openDesignSystemButton" class="primary-action" type="button">Abrir catálogo</button>
+          </section>
           <section class="section-band danger-zone">
             <h2>Base de demonstração</h2>
             <p>Restaure todos os registros locais para os valores iniciais. Esta ação não está disponível nos ambientes conectados ao Supabase.</p>
             <button id="resetDataButton" class="danger-action" type="button">Restaurar base</button>
           </section>
         </div>
+      </section>
+
+      <section id="designSystemPage" class="users-page design-system-page hidden" aria-labelledby="designSystemTitle">
+        <div class="page-heading">
+          <div>
+            <span class="eyebrow">SISTEMA</span>
+            <h1 id="designSystemTitle">Design System</h1>
+            <p>Catálogo oficial da identidade visual e dos componentes reutilizáveis do GLL.</p>
+          </div>
+          <button id="backToSettingsButton" class="quiet-action" type="button">← Voltar para Configurações</button>
+        </div>
+        <div id="designSystemCatalog"></div>
       </section>
       </div>
     </main>
@@ -1023,6 +1045,7 @@
 
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
     <script src="./env.js"></script>
+    <script src="./design-system/components.js"></script>
     <script type="module" src="./app.js"></script>
   </body>
 </html>

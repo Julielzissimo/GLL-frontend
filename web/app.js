@@ -69,6 +69,7 @@ const PAGE_ROUTE_NAMES = {
   suppliers: "fornecedores",
   users: "usuarios",
   settings: "configuracoes",
+  designSystem: "configuracoes/design-system",
 };
 const ROUTE_PAGE_NAMES = Object.fromEntries(Object.entries(PAGE_ROUTE_NAMES).map(([page, route]) => [route, page]));
 
@@ -159,6 +160,9 @@ const refs = {
   currentBidAgency: $("currentBidAgency"),
   usersPage: $("usersPage"),
   settingsPage: $("settingsPage"),
+  designSystemPage: $("designSystemPage"),
+  designSystemAccessCard: $("designSystemAccessCard"),
+  designSystemCatalog: $("designSystemCatalog"),
   suppliersPage: $("suppliersPage"),
   suppliersList: $("suppliersList"),
   supplierTagFilter: $("supplierTagFilter"),
@@ -1771,6 +1775,8 @@ function bindEvents() {
   document.querySelectorAll("[data-navigation-page]").forEach((button) => {
     button.addEventListener("click", () => setPage(button.dataset.navigationPage));
   });
+  $("openDesignSystemButton").addEventListener("click", () => setPage("designSystem"));
+  $("backToSettingsButton").addEventListener("click", () => setPage("settings"));
   document.querySelectorAll("[data-open-new]").forEach((button) => {
     button.addEventListener("click", () => clearBidForm({ openEditor: true }));
   });
@@ -2071,6 +2077,13 @@ function isCurrentUserAdmin() {
   return appState.currentUserRole === USER_ROLES.ADMIN;
 }
 
+function resolveAuthorizedPage(page) {
+  if (page === "suppliers" && GLL_CONFIG.suppliersEnabled === false) return "home";
+  if (page === "users" && !isCurrentUserAdmin()) return "home";
+  if (page === "designSystem" && !isCurrentUserAdmin()) return "settings";
+  return page;
+}
+
 function creatorName(record) {
   const storedName = String(record?.created_by_name || "").trim();
   if (storedName) return storedName;
@@ -2095,6 +2108,8 @@ function updateAccessInterface() {
   refs.navUsersButton.classList.toggle("hidden", !showUserManagement);
   refs.navUsersButton.disabled = !showUserManagement;
   refs.navUsersButton.setAttribute("aria-hidden", String(!showUserManagement));
+  refs.designSystemAccessCard.classList.toggle("hidden", !showUserManagement);
+  refs.designSystemAccessCard.setAttribute("aria-hidden", String(!showUserManagement));
   refs.usersOrganizationLabel.textContent = `${appState.currentOrganizationName || "Organização"} · usuários vinculados no Supabase.`;
 }
 
@@ -2305,8 +2320,7 @@ function applyNavigationRoute(options = {}) {
 
 function setPage(page, options = {}) {
   const detailPages = ["items", "documents", "failures"];
-  if (page === "suppliers" && GLL_CONFIG.suppliersEnabled === false) page = "home";
-  if (page === "users" && !isCurrentUserAdmin()) page = "home";
+  page = resolveAuthorizedPage(page);
   if (detailPages.includes(page) && !appState.currentBidId) {
     page = "home";
   }
@@ -2317,6 +2331,7 @@ function setPage(page, options = {}) {
   placeQuotationEditor(page);
   const showUsers = page === "users";
   const showSettings = page === "settings";
+  const showDesignSystem = page === "designSystem";
   const showSuppliers = page === "suppliers";
   $("suppliersPage").classList.toggle("hidden", !showSuppliers);
   const showQuotations = page === "quotations";
@@ -2324,9 +2339,10 @@ function setPage(page, options = {}) {
   const showCatalog = page === "bids";
   const showEditor = page === "edit";
   const showDetail = detailPages.includes(page);
-  refs.bidsPage.classList.toggle("hidden", showUsers || showSettings || showQuotations || showSuppliers);
+  refs.bidsPage.classList.toggle("hidden", showUsers || showSettings || showDesignSystem || showQuotations || showSuppliers);
   refs.usersPage.classList.toggle("hidden", !showUsers);
   refs.settingsPage.classList.toggle("hidden", !showSettings);
+  refs.designSystemPage.classList.toggle("hidden", !showDesignSystem);
   refs.quotationsPage.classList.toggle("hidden", !showQuotations);
   refs.homePage.classList.toggle("hidden", !showHome);
   refs.bidCatalogPage.classList.toggle("hidden", !showCatalog);
@@ -2337,13 +2353,13 @@ function setPage(page, options = {}) {
   refs.itemsPanel.classList.toggle("hidden", page !== "items");
   refs.documentsPanel.classList.toggle("hidden", page !== "documents");
   refs.failuresPanel.classList.toggle("hidden", page !== "failures");
-  refs.appView.classList.toggle("users-active", showUsers || showSettings || showQuotations || showSuppliers);
+  refs.appView.classList.toggle("users-active", showUsers || showSettings || showDesignSystem || showQuotations || showSuppliers);
   refs.itemsTabButton.classList.toggle("active", page === "items");
   refs.documentsTabButton.classList.toggle("active", page === "documents");
   refs.failuresTabButton.classList.toggle("active", page === "failures");
   refs.failuresTabButton.classList.toggle("hidden", !shouldShowFailureHistory());
-  const primaryPage = showSuppliers ? "suppliers" : showUsers ? "users" : showSettings ? "settings" : showQuotations ? "quotations" : showHome ? "home" : "bids";
-  const pageLabels = { suppliers: "Fornecedores", home: "Visão geral", bids: "Licitações", quotations: "Orçamento", users: "Usuários", settings: "Configurações" };
+  const primaryPage = showSuppliers ? "suppliers" : showUsers ? "users" : showSettings || showDesignSystem ? "settings" : showQuotations ? "quotations" : showHome ? "home" : "bids";
+  const pageLabels = { suppliers: "Fornecedores", home: "Visão geral", bids: "Licitações", quotations: "Orçamento", users: "Usuários", settings: showDesignSystem ? "Design System" : "Configurações" };
   refs.breadcrumbLabel.textContent = pageLabels[primaryPage];
   document.querySelectorAll("[data-navigation-page]").forEach((button) => {
     button.classList.toggle("active", button.dataset.navigationPage === primaryPage);
@@ -2356,6 +2372,7 @@ function setPage(page, options = {}) {
   if (showQuotations) renderQuotations();
   if (page === "items") renderBidQuotationWorkspace();
   if (showSuppliers) renderSuppliers();
+  if (showDesignSystem) window.GLLDesignSystem?.mountCatalog(refs.designSystemCatalog);
   writeNavigationRoute(page, options.history || "push");
 }
 
