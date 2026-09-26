@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="Registro central de débito técnico do GLL, incluindo campos ocultos, compatibilidades legadas, estruturas descontinuadas, riscos e ações de quitação.">
   <meta name="robots" content="noindex, nofollow">
-  <meta name="source-sha256" content="6a502067ac508ab31a35825408d5a63315dc97f2b5519f767699165388b26751">
+  <meta name="source-sha256" content="02a3ee5c1f9f23de64737d2bdb198d32d6bde7599e14325cb97e23009dfa8e08">
   <title>Débito Técnico — GLL</title>
   <style>
     :root{color-scheme:light;--ink:#1c3044;--muted:#526476;--blue:#1558a0;--line:#d8e1ea;--soft:#eef4fa}
@@ -35,21 +35,21 @@
 <a href="#estruturas-e-informacoes-descontinuadas">5. Estruturas e informações descontinuadas</a>
 <a href="#demais-debitos-por-dominio">6. Demais débitos por domínio</a>
 <a href="#ordem-recomendada-de-quitacao">7. Ordem recomendada de quitação</a>
-<a href="#criterio-para-encerrar-um-debito">8. Critério para encerrar um débito</a>
+<a href="#criterio-para-retirar-um-debito-do-registro-ativo">8. Critério para retirar um débito do registro ativo</a>
 <a href="#base-e-limites-do-levantamento">9. Base e limites do levantamento</a></nav></details>
     <article><h1 id="debito-tecnico-gll">Débito Técnico — GLL</h1>
-<p><strong>Revisão:</strong> 1.5 · <strong>Data de referência:</strong> 26/09/2026 · <strong>Estado:</strong> diagnóstico de <code>main</code> e <code>homolog</code>.</p>
-<p>Este documento centraliza o débito técnico conhecido do GLL. Ele é a fonte oficial para limitações de arquitetura, segurança, dados, testes, operação e manutenção, incluindo campos não exibidos e estruturas descontinuadas que continuam armazenadas.</p>
+<p><strong>Revisão:</strong> 1.6 · <strong>Data de referência:</strong> 26/09/2026 · <strong>Estado:</strong> débitos ativos de <code>main</code> e <code>homolog</code>.</p>
+<p>Este documento centraliza somente o débito técnico que ainda existe no GLL. Débitos resolvidos são retirados deste registro e transferidos para o Histórico de Melhorias e Débitos (documento interno).</p>
 <p>O Plano de Melhorias (documento interno) apresenta prioridade, consequência e benefício em visão executiva. A especificação técnica descreve o comportamento promovido para produção. Este arquivo não altera o funcionamento do sistema nem autoriza a exclusão de dados.</p>
 <h2 id="como-este-registro-deve-ser-usado">1. Como este registro deve ser usado</h2>
 <ul>
 <li>Registrar aqui todo novo débito técnico identificado.</li>
 <li>Relacionar o débito à melhoria <code>IMP</code> correspondente quando existir.</li>
 <li>Não remover campo, tabela, arquivo ou dado antes de medir uso, dependências e existência de conteúdo em cada ambiente.</li>
-<li>Para quitar um débito, exigir migração ou recuperação, teste, publicação e validação em homologação.</li>
+<li>Para quitar um débito, exigir migração ou recuperação, teste, publicação e validação em homologação; depois, retirá-lo deste arquivo e registrá-lo no histórico.</li>
 <li>Atualizar a especificação técnica somente quando a correção for promovida para produção.</li>
 </ul>
-<p><strong>Estados:</strong> Aberto; Parcial; A verificar no ambiente; Quitado com teste de manutenção.</p>
+<p><strong>Estados:</strong> Aberto; Parcial; A verificar no ambiente.</p>
 <p><strong>Criticidade:</strong> Crítica — risco imediato de perda ou alteração; Alta — segurança ou continuidade; Média — qualidade, custo ou crescimento; Baixa — manutenção preventiva.</p>
 <h2 id="resumo-executivo">2. Resumo executivo</h2>
 <div class="table-scroll" tabindex="0" role="region" aria-label="Tabela com rolagem horizontal"><table>
@@ -64,13 +64,6 @@
 </thead>
 <tbody>
 <tr>
-<td>DT-001</td>
-<td>Campos ocultos de frete são sobrescritos no salvamento</td>
-<td>Crítica</td>
-<td>Quitado com teste de manutenção</td>
-<td>IMP-003</td>
-</tr>
-<tr>
 <td>DT-002</td>
 <td>Campos legados duplicam ou ocultam informações</td>
 <td>Média</td>
@@ -82,14 +75,14 @@
 <td>Tabelas, stores e arquivos descontinuados permanecem armazenados</td>
 <td>Média</td>
 <td>Aberto</td>
-<td>IMP-002, IMP-029, IMP-030</td>
+<td>IMP-002, IMP-030</td>
 </tr>
 <tr>
 <td>DT-004</td>
 <td>Exclusão lógica não possui lixeira, restauração ou retenção definida</td>
 <td>Alta</td>
 <td>Parcial</td>
-<td>IMP-014, IMP-023, IMP-030</td>
+<td>IMP-014, IMP-030</td>
 </tr>
 <tr>
 <td>DT-005</td>
@@ -97,13 +90,6 @@
 <td>Média</td>
 <td>Parcial</td>
 <td>IMP-010, IMP-015, IMP-021, IMP-030</td>
-</tr>
-<tr>
-<td>DT-006</td>
-<td>Linha de base e migrações precisam permanecer reproduzíveis</td>
-<td>Alta</td>
-<td>Quitado com teste de manutenção</td>
-<td>IMP-012</td>
 </tr>
 <tr>
 <td>DT-007</td>
@@ -141,13 +127,6 @@
 <td>IMP-001, IMP-005, IMP-017</td>
 </tr>
 <tr>
-<td>DT-012</td>
-<td>Operações entre edital e orçamento precisam permanecer atômicas</td>
-<td>Alta</td>
-<td>Quitado com teste de manutenção</td>
-<td>IMP-023</td>
-</tr>
-<tr>
 <td>DT-013</td>
 <td>Parte das regras existe somente na interface</td>
 <td>Alta</td>
@@ -160,13 +139,6 @@
 <td>Alta</td>
 <td>Parcial</td>
 <td>IMP-027</td>
-</tr>
-<tr>
-<td>DT-015</td>
-<td>Publicação do backend precisa manter configuração protegida e evidência por ambiente</td>
-<td>Alta</td>
-<td>Quitado com teste de manutenção</td>
-<td>IMP-029</td>
 </tr>
 <tr>
 <td>DT-016</td>
@@ -216,20 +188,6 @@
 <td>Média</td>
 <td>Parcial; a verificar no ambiente</td>
 <td>IMP-010</td>
-</tr>
-<tr>
-<td>DT-023</td>
-<td>Impedir seed automático em base remota vazia</td>
-<td>Baixa</td>
-<td>Quitado com teste de manutenção</td>
-<td>IMP-018</td>
-</tr>
-<tr>
-<td>DT-024</td>
-<td>Promoções podem omitir commits correlatos entre frontend e backend</td>
-<td>Alta</td>
-<td>Quitado com teste de manutenção</td>
-<td>IMP-031</td>
 </tr>
 </tbody>
 </table></div>
@@ -419,20 +377,6 @@
 <td>Validar lista, interromper espelhamento e remover.</td>
 </tr>
 <tr>
-<td><code>items.freight_included</code></td>
-<td>Indicador antigo de frete</td>
-<td>Removido na IMP-003</td>
-<td>Nenhum</td>
-<td>Resolvido.</td>
-</tr>
-<tr>
-<td><code>items.unit_freight</code></td>
-<td>Frete unitário antigo</td>
-<td>Removido na IMP-003</td>
-<td>Nenhum</td>
-<td>Resolvido.</td>
-</tr>
-<tr>
 <td><code>edital_file_blob</code> no IndexedDB</td>
 <td>Arquivo armazenado dentro do registro local</td>
 <td>Fallback para bases locais antigas</td>
@@ -441,7 +385,7 @@
 </tr>
 </tbody>
 </table></div>
-<p>O histórico do schema e do código confirma o tratamento anterior desses campos. A migração da IMP-003 remove os dois campos de frete; os demais campos legados ainda devem ser medidos apenas por contagens e classificações administrativas, sem publicar valores operacionais ou pessoais.</p>
+<p>Os campos legados ainda ativos devem ser medidos apenas por contagens e classificações administrativas, sem publicar valores operacionais ou pessoais.</p>
 <h2 id="estruturas-e-informacoes-descontinuadas">5. Estruturas e informações descontinuadas</h2>
 <div class="table-scroll" tabindex="0" role="region" aria-label="Tabela com rolagem horizontal"><table>
 <thead>
@@ -508,7 +452,6 @@
 </ul>
 <h3 id="banco-migracoes-e-recuperacao">6.2 Banco, migrações e recuperação</h3>
 <ul>
-<li><strong>DT-006:</strong> manter a linha de base, os checksums e o ensaio automatizado de instalação limpa, atualização antiga, repetição e recuperação de falha.</li>
 <li><strong>DT-008:</strong> provar backup e restauração de banco, relações e Storage.</li>
 <li><strong>DT-013:</strong> levar ao banco regras de domínio ainda existentes apenas na interface.</li>
 <li><strong>Risco de não quitar:</strong> instalação, recuperação ou integração pode produzir dados inválidos ou ambiente diferente da produção.</li>
@@ -518,7 +461,6 @@
 <ul>
 <li><strong>DT-009:</strong> validar com dados reais as regras já aplicadas para centavos, arredondamento, datas e fusos, incluindo registros convertidos e casos-limite.</li>
 <li><strong>DT-010:</strong> impedir sobrescrita por versão antiga.</li>
-<li><strong>DT-012:</strong> manter os testes das operações atômicas de vínculo, troca, sincronização e exclusão entre edital e orçamento.</li>
 <li><strong>DT-014:</strong> reconciliar banco e anexos após falha.</li>
 <li><strong>Risco de não quitar:</strong> perda silenciosa, valores divergentes ou sucesso parcial.</li>
 <li><strong>Benefício:</strong> dados permanecem confiáveis mesmo com duas pessoas ou falha de rede.</li>
@@ -526,8 +468,6 @@
 <h3 id="qualidade-e-operacao">6.4 Qualidade e operação</h3>
 <ul>
 <li><strong>DT-007:</strong> manter as barreiras do frontend e do backend e ampliar a cobertura de schema, RLS e integrações reais.</li>
-<li><strong>DT-015:</strong> manter os segredos protegidos por ambiente, a execução do workflow canônico e a preservação de sua evidência.</li>
-<li><strong>DT-024:</strong> manter o manifesto espelhado, a conferência automática entre repositórios, o teste negativo que rejeita commit obrigatório fora da branch publicada e a sincronização final de produção para homologação.</li>
 <li><strong>DT-016:</strong> paginar e atualizar dados de forma incremental.</li>
 <li><strong>DT-017:</strong> centralizar erros, métricas e alertas sem dados sensíveis.</li>
 <li><strong>DT-018:</strong> validar fluxos com teclado, leitor de tela, zoom e celular.</li>
@@ -539,7 +479,6 @@
 <li><strong>DT-019:</strong> deixar explícitos os limites do modo local e limpar legado do IndexedDB.</li>
 <li><strong>DT-020:</strong> integrar fornecedor/produto estruturado aos itens preservando histórico textual.</li>
 <li><strong>DT-022:</strong> manter a migração aplicada e validar com usuários e perfis reais as transições com autor, data e motivo.</li>
-<li><strong>DT-023:</strong> manter na suíte obrigatória o teste já existente de que login remoto não cria demonstração em base vazia.</li>
 <li><strong>Risco de não quitar:</strong> comportamento ambíguo, duplicidade e decisões sem histórico.</li>
 <li><strong>Benefício:</strong> evolução do produto com menor retrabalho e maior rastreabilidade.</li>
 </ul>
@@ -580,25 +519,25 @@
 </tr>
 </tbody>
 </table></div>
-<p>DT-001, DT-006, DT-012, DT-015, DT-023 e DT-024 permanecem sob teste de manutenção e devem ser reabertos se houver regressão.</p>
-<h2 id="criterio-para-encerrar-um-debito">8. Critério para encerrar um débito</h2>
-<p>Um débito só pode ser marcado como quitado quando:</p>
+<h2 id="criterio-para-retirar-um-debito-do-registro-ativo">8. Critério para retirar um débito do registro ativo</h2>
+<p>Um débito só pode ser retirado deste arquivo quando:</p>
 <ol>
 <li>dependências e dados existentes forem medidos por ambiente;</li>
 <li>decisão de manter, exibir, migrar ou remover estiver registrada;</li>
 <li>houver backup, exportação ou reversão proporcional ao risco;</li>
 <li>migração e código forem testados, incluindo registros antigos;</li>
 <li>a alteração estiver publicada e validada na web de homologação;</li>
-<li>o Plano de Melhorias apontar o novo estado;</li>
+<li>a melhoria correspondente também for retirada do Plano de Melhorias;</li>
 <li>na promoção, a especificação técnica for atualizada no mesmo fluxo;</li>
-<li>produção for sincronizada de volta para homologação conforme as regras do projeto.</li>
+<li>produção for sincronizada de volta para homologação conforme as regras do projeto;</li>
+<li>solução, data, evidências e testes de regressão forem registrados no Histórico de Melhorias e Débitos.</li>
 </ol>
 <p>Para mudanças que envolvam mais de um repositório, o encerramento também exige um manifesto único com os commits esperados de frontend e backend e uma verificação automática de que cada commit está contido nas branches publicadas. A existência do código em uma branch de implementação não constitui entrega.</p>
 <h2 id="base-e-limites-do-levantamento">9. Base e limites do levantamento</h2>
 <p>Base funcional comprometida analisada, anterior aos commits exclusivamente documentais desta revisão: frontend <code>a9b28a6</code> em <code>main</code> e <code>b34344a</code> em <code>homolog</code>; backend <code>8564777</code> em <code>main</code> e <code>5a4e98f</code> em <code>homolog</code>. <code>main</code> está contida em <code>homolog</code> nos dois repositórios. Foram inspecionados schema, migrações, adaptadores, interface, testes, documentação e as execuções recentes dos workflows. Alterações locais ainda não comprometidas nos dois repositórios foram preservadas e não foram tratadas como estado publicado.</p>
 <p>Não foram consultados ou reproduzidos valores operacionais. O frontend de homologação foi publicado com sucesso no commit <code>b34344a</code>, com 40 testes e confirmação do commit na web. O workflow cruzado confirmou manifestos, commits e migrações no backend <code>5a4e98f</code>; o workflow protegido comprovou 31 migrações locais e remotas, ausência de pendências e disponibilidade do serviço. Essa evidência confirma a implantação técnica, mas não substitui a validação funcional de dados convertidos e transições com usuários reais. Backup gerenciado, configurações de autenticação, conteúdo efetivo dos campos legados e stores existentes nos navegadores continuam <strong>a verificar no ambiente</strong>.</p>
 </article>
-    <footer>Cópia de leitura gerada a partir de DEBITO_TECNICO_GLL.md. O conteúdo centraliza os débitos técnicos conhecidos do GLL.</footer>
+    <footer>Cópia de leitura gerada a partir de DEBITO_TECNICO_GLL.md. O conteúdo apresenta somente os débitos técnicos ativos do GLL.</footer>
   </main>
 </body>
 </html>

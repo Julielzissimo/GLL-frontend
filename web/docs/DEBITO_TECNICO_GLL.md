@@ -1,8 +1,8 @@
 # Débito Técnico — GLL
 
-**Revisão:** 1.5 · **Data de referência:** 26/09/2026 · **Estado:** diagnóstico de `main` e `homolog`.
+**Revisão:** 1.6 · **Data de referência:** 26/09/2026 · **Estado:** débitos ativos de `main` e `homolog`.
 
-Este documento centraliza o débito técnico conhecido do GLL. Ele é a fonte oficial para limitações de arquitetura, segurança, dados, testes, operação e manutenção, incluindo campos não exibidos e estruturas descontinuadas que continuam armazenadas.
+Este documento centraliza somente o débito técnico que ainda existe no GLL. Débitos resolvidos são retirados deste registro e transferidos para o Histórico de Melhorias e Débitos (documento interno).
 
 O Plano de Melhorias (documento interno) apresenta prioridade, consequência e benefício em visão executiva. A especificação técnica descreve o comportamento promovido para produção. Este arquivo não altera o funcionamento do sistema nem autoriza a exclusão de dados.
 
@@ -11,10 +11,10 @@ O Plano de Melhorias (documento interno) apresenta prioridade, consequência e b
 - Registrar aqui todo novo débito técnico identificado.
 - Relacionar o débito à melhoria `IMP` correspondente quando existir.
 - Não remover campo, tabela, arquivo ou dado antes de medir uso, dependências e existência de conteúdo em cada ambiente.
-- Para quitar um débito, exigir migração ou recuperação, teste, publicação e validação em homologação.
+- Para quitar um débito, exigir migração ou recuperação, teste, publicação e validação em homologação; depois, retirá-lo deste arquivo e registrá-lo no histórico.
 - Atualizar a especificação técnica somente quando a correção for promovida para produção.
 
-**Estados:** Aberto; Parcial; A verificar no ambiente; Quitado com teste de manutenção.
+**Estados:** Aberto; Parcial; A verificar no ambiente.
 
 **Criticidade:** Crítica — risco imediato de perda ou alteração; Alta — segurança ou continuidade; Média — qualidade, custo ou crescimento; Baixa — manutenção preventiva.
 
@@ -22,21 +22,17 @@ O Plano de Melhorias (documento interno) apresenta prioridade, consequência e b
 
 | ID | Débito técnico | Criticidade | Estado | Melhoria relacionada |
 |---|---|---|---|---|
-| DT-001 | Campos ocultos de frete são sobrescritos no salvamento | Crítica | Quitado com teste de manutenção | IMP-003 |
 | DT-002 | Campos legados duplicam ou ocultam informações | Média | Aberto | IMP-002, IMP-030 |
-| DT-003 | Tabelas, stores e arquivos descontinuados permanecem armazenados | Média | Aberto | IMP-002, IMP-029, IMP-030 |
-| DT-004 | Exclusão lógica não possui lixeira, restauração ou retenção definida | Alta | Parcial | IMP-014, IMP-023, IMP-030 |
+| DT-003 | Tabelas, stores e arquivos descontinuados permanecem armazenados | Média | Aberto | IMP-002, IMP-030 |
+| DT-004 | Exclusão lógica não possui lixeira, restauração ou retenção definida | Alta | Parcial | IMP-014, IMP-030 |
 | DT-005 | Parte dos metadados úteis de auditoria não é exibida ou historizada | Média | Parcial | IMP-010, IMP-015, IMP-021, IMP-030 |
-| DT-006 | Linha de base e migrações precisam permanecer reproduzíveis | Alta | Quitado com teste de manutenção | IMP-012 |
 | DT-007 | Barreiras automáticas existem, mas integrações reais ainda têm cobertura insuficiente | Alta | Parcial | IMP-013 |
 | DT-008 | Backup e restauração completos não foram comprovados | Alta | A verificar | IMP-014 |
 | DT-009 | Migração de datas e valores foi aplicada, mas a conversão real e os casos-limite ainda não foram validados funcionalmente | Alta | Parcial; a verificar no ambiente | IMP-015 |
 | DT-010 | Gravações concorrentes podem sobrescrever alterações | Alta | Aberto | IMP-016 |
 | DT-011 | Configurações reais de autenticação ainda não foram auditadas por completo | Alta | A verificar | IMP-001, IMP-005, IMP-017 |
-| DT-012 | Operações entre edital e orçamento precisam permanecer atômicas | Alta | Quitado com teste de manutenção | IMP-023 |
 | DT-013 | Parte das regras existe somente na interface | Alta | Parcial | IMP-024 |
 | DT-014 | Banco e armazenamento de anexos podem divergir após falha | Alta | Parcial | IMP-027 |
-| DT-015 | Publicação do backend precisa manter configuração protegida e evidência por ambiente | Alta | Quitado com teste de manutenção | IMP-029 |
 | DT-016 | Listagens carregam conjuntos completos de dados | Média | Aberto | IMP-020 |
 | DT-017 | Falhas não possuem observabilidade e alerta centralizados | Média | Aberto | IMP-021 |
 | DT-018 | Acessibilidade ainda não foi validada de ponta a ponta | Média | Parcial | IMP-022 |
@@ -44,8 +40,6 @@ O Plano de Melhorias (documento interno) apresenta prioridade, consequência e b
 | DT-020 | Fornecedores estruturados não estão integrados aos itens | Média | Parcial em homologação | IMP-028 |
 | DT-021 | Autorização por perfil precisa de matriz de testes reais | Média | Parcial avançado | IMP-011 |
 | DT-022 | Trilha de status foi aplicada remotamente, mas falta validação funcional com perfis reais | Média | Parcial; a verificar no ambiente | IMP-010 |
-| DT-023 | Impedir seed automático em base remota vazia | Baixa | Quitado com teste de manutenção | IMP-018 |
-| DT-024 | Promoções podem omitir commits correlatos entre frontend e backend | Alta | Quitado com teste de manutenção | IMP-031 |
 
 ## 3. Inventário de campos e informações não exibidas
 
@@ -88,11 +82,9 @@ Um campo oculto pode ser necessário. Esta seção distingue metadados técnicos
 | `bids.edital_file_size` | Tamanho do único anexo antigo | Fallback de compatibilidade | Duplicidade de metadados | Migrar e validar limites/exibição. |
 | `items.description` | Texto técnico e recipiente de compatibilidade em versões antigas | Espelha `technical_registration_text` e é usado como fallback | Duas fontes podem divergir | Migrar todos os registros e adotar um campo canônico. |
 | `items.supplier_link` | Um fornecedor por item | Espelha o primeiro valor de `supplier_links` | Pode divergir da lista moderna | Validar lista, interromper espelhamento e remover. |
-| `items.freight_included` | Indicador antigo de frete | Removido na IMP-003 | Nenhum | Resolvido. |
-| `items.unit_freight` | Frete unitário antigo | Removido na IMP-003 | Nenhum | Resolvido. |
 | `edital_file_blob` no IndexedDB | Arquivo armazenado dentro do registro local | Fallback para bases locais antigas | Dados grandes e invisíveis no navegador | Migrar ao abrir/exportar e testar base antiga antes de retirar. |
 
-O histórico do schema e do código confirma o tratamento anterior desses campos. A migração da IMP-003 remove os dois campos de frete; os demais campos legados ainda devem ser medidos apenas por contagens e classificações administrativas, sem publicar valores operacionais ou pessoais.
+Os campos legados ainda ativos devem ser medidos apenas por contagens e classificações administrativas, sem publicar valores operacionais ou pessoais.
 
 ## 5. Estruturas e informações descontinuadas
 
@@ -116,7 +108,6 @@ O histórico do schema e do código confirma o tratamento anterior desses campos
 
 ### 6.2 Banco, migrações e recuperação
 
-- **DT-006:** manter a linha de base, os checksums e o ensaio automatizado de instalação limpa, atualização antiga, repetição e recuperação de falha.
 - **DT-008:** provar backup e restauração de banco, relações e Storage.
 - **DT-013:** levar ao banco regras de domínio ainda existentes apenas na interface.
 - **Risco de não quitar:** instalação, recuperação ou integração pode produzir dados inválidos ou ambiente diferente da produção.
@@ -126,7 +117,6 @@ O histórico do schema e do código confirma o tratamento anterior desses campos
 
 - **DT-009:** validar com dados reais as regras já aplicadas para centavos, arredondamento, datas e fusos, incluindo registros convertidos e casos-limite.
 - **DT-010:** impedir sobrescrita por versão antiga.
-- **DT-012:** manter os testes das operações atômicas de vínculo, troca, sincronização e exclusão entre edital e orçamento.
 - **DT-014:** reconciliar banco e anexos após falha.
 - **Risco de não quitar:** perda silenciosa, valores divergentes ou sucesso parcial.
 - **Benefício:** dados permanecem confiáveis mesmo com duas pessoas ou falha de rede.
@@ -134,8 +124,6 @@ O histórico do schema e do código confirma o tratamento anterior desses campos
 ### 6.4 Qualidade e operação
 
 - **DT-007:** manter as barreiras do frontend e do backend e ampliar a cobertura de schema, RLS e integrações reais.
-- **DT-015:** manter os segredos protegidos por ambiente, a execução do workflow canônico e a preservação de sua evidência.
-- **DT-024:** manter o manifesto espelhado, a conferência automática entre repositórios, o teste negativo que rejeita commit obrigatório fora da branch publicada e a sincronização final de produção para homologação.
 - **DT-016:** paginar e atualizar dados de forma incremental.
 - **DT-017:** centralizar erros, métricas e alertas sem dados sensíveis.
 - **DT-018:** validar fluxos com teclado, leitor de tela, zoom e celular.
@@ -147,7 +135,6 @@ O histórico do schema e do código confirma o tratamento anterior desses campos
 - **DT-019:** deixar explícitos os limites do modo local e limpar legado do IndexedDB.
 - **DT-020:** integrar fornecedor/produto estruturado aos itens preservando histórico textual.
 - **DT-022:** manter a migração aplicada e validar com usuários e perfis reais as transições com autor, data e motivo.
-- **DT-023:** manter na suíte obrigatória o teste já existente de que login remoto não cria demonstração em base vazia.
 - **Risco de não quitar:** comportamento ambíguo, duplicidade e decisões sem histórico.
 - **Benefício:** evolução do produto com menor retrabalho e maior rastreabilidade.
 
@@ -161,20 +148,19 @@ O histórico do schema e do código confirma o tratamento anterior desses campos
 | 4 — Governar legado | DT-002, DT-003, DT-004, DT-005, DT-019 | Cada item possui retenção, migração, consulta ou descarte aprovado. |
 | 5 — Sustentar crescimento | DT-007, DT-016, DT-017, DT-018, DT-020 | Publicação protegida, operação observável e experiência validada. |
 
-DT-001, DT-006, DT-012, DT-015, DT-023 e DT-024 permanecem sob teste de manutenção e devem ser reabertos se houver regressão.
+## 8. Critério para retirar um débito do registro ativo
 
-## 8. Critério para encerrar um débito
-
-Um débito só pode ser marcado como quitado quando:
+Um débito só pode ser retirado deste arquivo quando:
 
 1. dependências e dados existentes forem medidos por ambiente;
 2. decisão de manter, exibir, migrar ou remover estiver registrada;
 3. houver backup, exportação ou reversão proporcional ao risco;
 4. migração e código forem testados, incluindo registros antigos;
 5. a alteração estiver publicada e validada na web de homologação;
-6. o Plano de Melhorias apontar o novo estado;
+6. a melhoria correspondente também for retirada do Plano de Melhorias;
 7. na promoção, a especificação técnica for atualizada no mesmo fluxo;
-8. produção for sincronizada de volta para homologação conforme as regras do projeto.
+8. produção for sincronizada de volta para homologação conforme as regras do projeto;
+9. solução, data, evidências e testes de regressão forem registrados no Histórico de Melhorias e Débitos.
 
 Para mudanças que envolvam mais de um repositório, o encerramento também exige um manifesto único com os commits esperados de frontend e backend e uma verificação automática de que cada commit está contido nas branches publicadas. A existência do código em uma branch de implementação não constitui entrega.
 
