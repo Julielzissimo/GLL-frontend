@@ -1,5 +1,5 @@
 const catalog = () => window.GLLDesignSystem;
-const frame = (content) => `<main class="ds-doc-section" style="max-width: 1200px">${content}</main>`;
+const frame = (content) => `<main class="ds-doc-section ds-story-frame">${content}</main>`;
 
 export default {
   title: "Foundations",
@@ -9,7 +9,7 @@ export default {
 export const Colors = {
   render: () => {
     const { TOKENS } = catalog();
-    return frame(`<div class="ds-section-heading"><h1>Cores</h1><p>Tokens semânticos oficiais do GLL.</p></div><div class="ds-color-grid">${TOKENS.colors.map(([name, variable, usage]) => `<article class="ds-color-card"><span style="--swatch: var(${variable})"></span><strong>${name}</strong><code>${variable}</code><small>${getComputedStyle(document.documentElement).getPropertyValue(variable).trim()}</small><p>${usage}</p></article>`).join("")}</div>`);
+    return frame(`<div class="ds-section-heading"><h1>Cores</h1><p>Tokens semânticos oficiais do GLL.</p></div><div class="ds-color-grid">${TOKENS.colors.map(([name, variable, usage]) => `<article class="ds-color-card"><span data-color="${name}" aria-hidden="true"></span><strong>${name}</strong><code>${variable}</code><small>${getComputedStyle(document.documentElement).getPropertyValue(variable).trim()}</small><p>${usage}</p></article>`).join("")}</div>`);
   },
 };
 
@@ -18,15 +18,15 @@ export const Typography = {
 };
 
 export const Spacing = {
-  render: () => frame(`<div class="ds-section-heading"><h1>Espaçamento</h1><p>Escala base de 4 px.</p></div><div class="ds-scale-list">${catalog().TOKENS.spacing.map((name) => `<div class="ds-scale-row"><code>--space-${name}</code><span style="width: var(--space-${name})"></span><small>${getComputedStyle(document.documentElement).getPropertyValue(`--space-${name}`).trim()}</small></div>`).join("")}</div>`),
+  render: () => frame(`<div class="ds-section-heading"><h1>Espaçamento</h1><p>Escala base de 4 px.</p></div><div class="ds-scale-list">${catalog().TOKENS.spacing.map((name) => `<div class="ds-scale-row"><code>--space-${name}</code><span data-space="${name}" aria-hidden="true"></span><small>${getComputedStyle(document.documentElement).getPropertyValue(`--space-${name}`).trim()}</small></div>`).join("")}</div>`),
 };
 
 export const Radius = {
-  render: () => frame(`<div class="ds-section-heading"><h1>Border radius</h1></div><div class="ds-sample-grid">${catalog().TOKENS.radius.map((name) => `<div class="ds-radius-sample" style="border-radius: var(--radius-${name})"><code>${name}</code></div>`).join("")}</div>`),
+  render: () => frame(`<div class="ds-section-heading"><h1>Border radius</h1></div><div class="ds-sample-grid">${catalog().TOKENS.radius.map((name) => `<div class="ds-radius-sample" data-radius="${name}"><code>${name}</code></div>`).join("")}</div>`),
 };
 
 export const Shadows = {
-  render: () => frame(`<div class="ds-section-heading"><h1>Sombras</h1></div><div class="ds-sample-grid">${catalog().TOKENS.shadows.map((name) => `<div class="ds-shadow-sample" style="box-shadow: var(--shadow-${name})"><code>shadow-${name}</code></div>`).join("")}</div>`),
+  render: () => frame(`<div class="ds-section-heading"><h1>Sombras</h1></div><div class="ds-sample-grid">${catalog().TOKENS.shadows.map((name) => `<div class="ds-shadow-sample" data-shadow="${name}"><code>shadow-${name}</code></div>`).join("")}</div>`),
 };
 
 export const Icons = {

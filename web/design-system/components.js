@@ -124,10 +124,10 @@
   }
 
   function foundationsMarkup() {
-    const colors = TOKENS.colors.map(([name, variable, usage]) => `<article class="ds-color-card"><span style="--swatch: var(${variable})"></span><strong>${name}</strong><code>${variable}</code><small>${escapeHtml(tokenValue(variable))}</small><p>${escapeHtml(usage)}</p></article>`).join("");
-    const spacing = TOKENS.spacing.map((name) => `<div class="ds-scale-row"><code>--space-${name}</code><span style="width: var(--space-${name})"></span><small>${escapeHtml(tokenValue(`--space-${name}`))}</small></div>`).join("");
-    const radius = TOKENS.radius.map((name) => `<div class="ds-radius-sample" style="border-radius: var(--radius-${name})"><code>${name}</code></div>`).join("");
-    const shadows = TOKENS.shadows.map((name) => `<div class="ds-shadow-sample" style="box-shadow: var(--shadow-${name})"><code>shadow-${name}</code></div>`).join("");
+    const colors = TOKENS.colors.map(([name, variable, usage]) => `<article class="ds-color-card"><span data-color="${name}" aria-hidden="true"></span><strong>${name}</strong><code>${variable}</code><small>${escapeHtml(tokenValue(variable))}</small><p>${escapeHtml(usage)}</p></article>`).join("");
+    const spacing = TOKENS.spacing.map((name) => `<div class="ds-scale-row"><code>--space-${name}</code><span data-space="${name}" aria-hidden="true"></span><small>${escapeHtml(tokenValue(`--space-${name}`))}</small></div>`).join("");
+    const radius = TOKENS.radius.map((name) => `<div class="ds-radius-sample" data-radius="${name}"><code>${name}</code></div>`).join("");
+    const shadows = TOKENS.shadows.map((name) => `<div class="ds-shadow-sample" data-shadow="${name}"><code>shadow-${name}</code></div>`).join("");
     const icons = Object.entries(ICONS).map(([name, glyph]) => `<div class="ds-icon-sample"><span aria-hidden="true">${glyph}</span><code>${name}</code></div>`).join("");
     return `
       <section class="ds-doc-section" id="ds-colors"><div class="ds-section-heading"><span class="eyebrow">FOUNDATIONS</span><h2>Cores</h2><p>Paleta semântica oficial extraída da interface GLL 2.0.</p></div><div class="ds-color-grid">${colors}</div></section>

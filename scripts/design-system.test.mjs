@@ -34,6 +34,19 @@ test("the catalog uses the application component source", () => {
   assert.ok(Object.keys(ds.ICONS).length >= 10);
 });
 
+test("foundation samples comply with the app content security policy", () => {
+  const context = vm.createContext({
+    window: {},
+    document: { documentElement: {} },
+    getComputedStyle: () => ({ getPropertyValue: () => "token-value" }),
+  });
+  vm.runInContext(componentsSource, context);
+  const foundations = context.window.GLLDesignSystem.foundationsMarkup();
+  assert.doesNotMatch(foundations, /style=/);
+  assert.match(foundations, /data-color="primary"/);
+  assert.match(foundations, /data-color="danger"/);
+});
+
 test("the internal catalog is wired to the administrator-only route", () => {
   assert.match(html, /id="designSystemAccessCard"[^>]*hidden/);
   assert.match(html, /id="designSystemPage"[^>]*hidden/);
