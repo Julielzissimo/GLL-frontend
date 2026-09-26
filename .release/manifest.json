@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "release_id": "2026-09-26-design-system",
+  "release_id": "2026-09-26-design-system-color-swatches",
   "environment": "homolog",
   "target_branch": "homolog",
   "items": [
@@ -45,6 +45,14 @@
       "backend_commits": [],
       "frontend_commits": [
         "6a2ed4537dadd706c473d472f1ae3492a76f30f4"
+      ],
+      "migrations": []
+    },
+    {
+      "id": "DESIGN-SYSTEM-002",
+      "backend_commits": [],
+      "frontend_commits": [
+        "3a438586585f0741a01ba186d6e1d554ab04da9a"
       ],
       "migrations": []
     }
