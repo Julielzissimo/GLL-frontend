@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
   "release_id": "2026-09-26-integridade-promocao",
-  "environment": "production",
-  "target_branch": "main",
+  "environment": "homolog",
+  "target_branch": "homolog",
   "items": [
     {
       "id": "IMP-003",
