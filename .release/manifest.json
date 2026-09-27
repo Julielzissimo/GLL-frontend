@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "release_id": "2026-09-26-design-system-color-swatches",
+  "release_id": "2026-09-27-gerador-declaracoes",
   "environment": "homolog",
   "target_branch": "homolog",
   "items": [
@@ -41,20 +41,16 @@
       ]
     },
     {
-      "id": "DESIGN-SYSTEM-001",
-      "backend_commits": [],
-      "frontend_commits": [
-        "6a2ed4537dadd706c473d472f1ae3492a76f30f4"
+      "id": "DECLARACOES-001",
+      "backend_commits": [
+        "b0a23e3c0388b44415bb05e3cc9a598126212ab4"
       ],
-      "migrations": []
-    },
-    {
-      "id": "DESIGN-SYSTEM-002",
-      "backend_commits": [],
       "frontend_commits": [
-        "3a438586585f0741a01ba186d6e1d554ab04da9a"
+        "811de884f85c53b61e410ab45de63a1b1e44dd66"
       ],
-      "migrations": []
+      "migrations": [
+        "supabase/migrations/20260927100000_add_declaration_generator.sql"
+      ]
     }
   ]
 }
