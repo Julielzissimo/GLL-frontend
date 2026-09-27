@@ -2474,10 +2474,48 @@ textarea:focus {
 
 .filter-form {
   display: grid;
-  grid-template-columns: minmax(220px, 2fr) minmax(170px, 1fr) minmax(170px, 1fr) auto auto;
+  grid-template-columns: minmax(220px, 2fr) minmax(170px, 1fr) minmax(170px, 1fr) minmax(230px, 1.2fr) auto auto;
   gap: 14px;
   align-items: end;
   margin-bottom: 18px;
+}
+
+.checkbox-field {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 40px;
+  cursor: pointer;
+}
+
+.checkbox-field > input[type="checkbox"] {
+  width: 20px;
+  height: 20px;
+  flex: 0 0 20px;
+  margin: 0;
+  padding: 0;
+  accent-color: var(--primary);
+  cursor: pointer;
+}
+
+.checkbox-field > span {
+  display: grid;
+  gap: 2px;
+  color: var(--text);
+}
+
+.checkbox-field small {
+  color: var(--muted);
+  font-weight: 400;
+  line-height: 1.35;
+}
+
+.filter-checkbox-field {
+  align-self: end;
+}
+
+.bid-guarantee-deposit-field {
+  align-self: center;
 }
 
 .table-panel {

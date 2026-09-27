@@ -213,6 +213,7 @@ const refs = {
   filterAgency: $("filterAgency"),
   filterDate: $("filterDate"),
   filterStatus: $("filterStatus"),
+  filterGuaranteeDeposit: $("filterGuaranteeDeposit"),
   clearFiltersButton: $("clearFiltersButton"),
   bidList: $("bidList"),
   bidForm: $("bidForm"),
@@ -231,6 +232,7 @@ const refs = {
   editalAttachmentList: $("editalAttachmentList"),
   bidType: $("bidType"),
   bidStatus: $("bidStatus"),
+  hasGuaranteeDeposit: $("hasGuaranteeDeposit"),
   bidStatusReasonField: $("bidStatusReasonField"),
   bidStatusReason: $("bidStatusReason"),
   bidStatusHistory: $("bidStatusHistory"),
@@ -2527,11 +2529,13 @@ function renderBids() {
   const agencyFilter = refs.filterAgency.value.trim().toLowerCase();
   const dateFilter = refs.filterDate.value;
   const statusFilter = refs.filterStatus.value;
+  const guaranteeDepositFilter = refs.filterGuaranteeDeposit.checked;
   const rows = appState.bids.filter((bid) => {
     const matchesAgency = !agencyFilter || String(bid.buyer_agency || "").toLowerCase().includes(agencyFilter);
     const matchesDate = !dateFilter || toDateInputValue(bid.session_datetime) === dateFilter;
     const matchesStatus = statusFilter === "Todos" || bid.status === statusFilter;
-    return matchesAgency && matchesDate && matchesStatus;
+    const matchesGuaranteeDeposit = !guaranteeDepositFilter || bid.has_guarantee_deposit;
+    return matchesAgency && matchesDate && matchesStatus && matchesGuaranteeDeposit;
   });
 
   if (!rows.length) {
@@ -2570,6 +2574,7 @@ function clearFilters() {
   refs.filterAgency.value = "";
   refs.filterDate.value = "";
   refs.filterStatus.value = "Todos";
+  refs.filterGuaranteeDeposit.checked = false;
   renderBids();
 }
 
@@ -2683,6 +2688,7 @@ function loadBid(bidId, options = {}) {
   refs.publicSessionLink.value = bid.public_session_link || "";
   refs.bidType.value = bid.bid_type || BID_TYPE_OPTIONS[0];
   refs.bidStatus.value = bid.status || STATUS_OPTIONS[0];
+  refs.hasGuaranteeDeposit.checked = Boolean(bid.has_guarantee_deposit);
   refs.bidStatusReason.value = "";
   updateBidStatusControls();
   renderBidQuotationSelection();
@@ -3003,6 +3009,7 @@ function collectBidData() {
     bid_type: refs.bidType.value,
     public_session_link: normalizedPublicSessionLink,
     proposal_deadline: fromDateTimeInputValue(refs.proposalDeadline.value),
+    has_guarantee_deposit: refs.hasGuaranteeDeposit.checked,
     status: refs.bidStatus.value,
     quotation_id: appState.selectedBidQuotationId || null,
   };
@@ -4832,6 +4839,7 @@ function normalizeBidRecord(record) {
     public_session_link: record.public_session_link || "",
     bid_type: record.bid_type || BID_TYPE_OPTIONS[0],
     proposal_deadline: record.proposal_deadline || "",
+    has_guarantee_deposit: Boolean(record.has_guarantee_deposit),
     status: normalizeBidStatus(record.status),
     edital_file_path: record.edital_file_path || "",
     edital_file_name: record.edital_file_name || "",
