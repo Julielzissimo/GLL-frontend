@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
 import {
   DECLARATION_VARIABLES,
   formatDeclarationDate,
@@ -36,4 +37,12 @@ test("sugestões são hospedadas no diálogo ativo para permanecerem visíveis",
   const page = { id: "declarationsPage" };
   assert.equal(resolveVariableSuggestionHost({ closest: () => dialog }, page), dialog);
   assert.equal(resolveVariableSuggestionHost({ closest: () => null }, page), page);
+});
+
+test("pré-visualização do PDF ocupa a área disponível no modal", async () => {
+  const html = await readFile(new URL("../web/index.html", import.meta.url), "utf8");
+  assert.match(
+    html,
+    /<iframe id="declarationPreviewFrame" class="declaration-preview-frame"/,
+  );
 });
