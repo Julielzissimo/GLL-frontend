@@ -132,6 +132,10 @@
                 <label>Órgão comprador<input id="filterAgency" type="search" placeholder="Pesquisar órgão..." /></label>
                 <label>Data da sessão<input id="filterDate" type="date" /></label>
                 <label>Status<select id="filterStatus"></select></label>
+                <label class="checkbox-field filter-checkbox-field">
+                  <input id="filterGuaranteeDeposit" type="checkbox" />
+                  <span>Possui depósito de garantia?<small>Mostrar somente licitações confirmadas.</small></span>
+                </label>
                 <button class="primary-action" type="submit">Filtrar</button>
                 <button id="clearFiltersButton" class="quiet-action" type="button">Limpar filtros</button>
               </form>
@@ -202,6 +206,10 @@
               <label>
                 Status
                 <select id="bidStatus"></select>
+              </label>
+              <label class="checkbox-field bid-guarantee-deposit-field">
+                <input id="hasGuaranteeDeposit" type="checkbox" />
+                <span>Possui depósito de garantia?<small>Confirma que houve depósito em dinheiro como garantia para participar da licitação.</small></span>
               </label>
               <label id="bidStatusReasonField" class="wide full hidden">
                 Motivo da alteração de status *
