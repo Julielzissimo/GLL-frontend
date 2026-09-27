@@ -4,6 +4,7 @@ import { readFile } from "node:fs/promises";
 import {
   DECLARATION_VARIABLES,
   formatDeclarationDate,
+  formatDeclarationFooter,
   resolveDeclarationVariables,
   resolveVariableSuggestionHost,
   sanitizePdfFileName,
@@ -25,6 +26,14 @@ test("variáveis conhecidas são substituídas e valores ausentes são informado
 
 test("data é formatada em português sem deslocamento de fuso", () => {
   assert.equal(formatDeclarationDate("2026-09-26"), "26 de setembro de 2026");
+});
+
+test("rodapé do PDF identifica contato e e-mail em linhas separadas", () => {
+  assert.deepEqual(
+    formatDeclarationFooter("27 998877432123", "fulano@gmail.com"),
+    ["Contato: 27 998877432123", "E-mail: fulano@gmail.com"],
+  );
+  assert.deepEqual(formatDeclarationFooter("", "fulano@gmail.com"), ["E-mail: fulano@gmail.com"]);
 });
 
 test("catálogo público contém todas as variáveis essenciais", () => {

@@ -40,6 +40,13 @@ export function formatDeclarationDate(value) {
     .format(new Date(`${String(year).padStart(4, "0")}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}T12:00:00-03:00`));
 }
 
+export function formatDeclarationFooter(phone, email) {
+  return [
+    String(phone || "").trim() && `Contato: ${String(phone).trim()}`,
+    String(email || "").trim() && `E-mail: ${String(email).trim()}`,
+  ].filter(Boolean);
+}
+
 export function resolveDeclarationVariables(text, values) {
   const missing = [];
   const output = String(text || "").replace(/{{\s*([a-z0-9_]+)\s*}}/gi, (token, rawKey) => {
@@ -635,7 +642,9 @@ export function createDeclarationsFeature({ getClient, getContext, getBids, navi
       doc.setDrawColor(205, 210, 218); doc.line(marginX, 31, pageWidth - marginX, 31);
       doc.line(marginX, pageHeight - 19, pageWidth - marginX, pageHeight - 19);
       doc.setFont("helvetica", "normal"); doc.setFontSize(8); doc.setTextColor(92, 100, 112);
-      doc.text([composition.phone, composition.email].filter(Boolean).join("  •  "), marginX, pageHeight - 12);
+      formatDeclarationFooter(composition.phone, composition.email).forEach((line, index) => {
+        doc.text(line, marginX, pageHeight - 13 + (index * 4));
+      });
       doc.text(`${page}/${pageCount}`, pageWidth - marginX, pageHeight - 12, { align: "right" });
     }
     return doc.output("blob");
