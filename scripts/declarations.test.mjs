@@ -4,6 +4,7 @@ import {
   DECLARATION_VARIABLES,
   formatDeclarationDate,
   resolveDeclarationVariables,
+  resolveVariableSuggestionHost,
   sanitizePdfFileName,
 } from "../web/declarations.js";
 
@@ -28,4 +29,11 @@ test("data é formatada em português sem deslocamento de fuso", () => {
 test("catálogo público contém todas as variáveis essenciais", () => {
   const keys = new Set(DECLARATION_VARIABLES.map((item) => item.key));
   for (const key of ["razao_social", "cpf_representante", "numero_processo", "data"]) assert.ok(keys.has(key));
+});
+
+test("sugestões são hospedadas no diálogo ativo para permanecerem visíveis", () => {
+  const dialog = { id: "declarationTemplateModal" };
+  const page = { id: "declarationsPage" };
+  assert.equal(resolveVariableSuggestionHost({ closest: () => dialog }, page), dialog);
+  assert.equal(resolveVariableSuggestionHost({ closest: () => null }, page), page);
 });
