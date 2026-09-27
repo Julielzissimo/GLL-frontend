@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
 import {
   DECLARATION_VARIABLES,
   formatDeclarationDate,
@@ -28,4 +29,12 @@ test("data é formatada em português sem deslocamento de fuso", () => {
 test("catálogo público contém todas as variáveis essenciais", () => {
   const keys = new Set(DECLARATION_VARIABLES.map((item) => item.key));
   for (const key of ["razao_social", "cpf_representante", "numero_processo", "data"]) assert.ok(keys.has(key));
+});
+
+test("pré-visualização do PDF ocupa a área disponível no modal", async () => {
+  const html = await readFile(new URL("../web/index.html", import.meta.url), "utf8");
+  assert.match(
+    html,
+    /<iframe id="declarationPreviewFrame" class="declaration-preview-frame"/,
+  );
 });
