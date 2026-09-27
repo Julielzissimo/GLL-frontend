@@ -51,6 +51,10 @@ export function resolveDeclarationVariables(text, values) {
   return { output, missing: [...new Set(missing)] };
 }
 
+export function resolveVariableSuggestionHost(textarea, fallbackHost) {
+  return textarea?.closest?.("dialog") || fallbackHost;
+}
+
 function todayInSaoPaulo() {
   return new Intl.DateTimeFormat("en-CA", {
     year: "numeric", month: "2-digit", day: "2-digit", timeZone: "America/Sao_Paulo",
@@ -174,7 +178,7 @@ export function createDeclarationsFeature({ getClient, getContext, getBids, navi
     "deleteDeclarationTemplateButton", "closeDeclarationTemplateModalButton", "cancelDeclarationTemplateButton",
     "declarationPreviewModal", "declarationPreviewFrame", "closeDeclarationPreviewButton", "closeDeclarationPreviewFooterButton",
     "generateDeclarationFromPreviewButton", "declarationValidationModal", "declarationMissingVariables", "closeDeclarationValidationButton",
-    "declarationVariableSuggestions", "goToDeclarationLibraryButton",
+    "declarationVariableSuggestions", "goToDeclarationLibraryButton", "declarationsPage",
   ];
   for (const id of ids) refs[id] = $(id);
 
@@ -736,11 +740,28 @@ export function createDeclarationsFeature({ getClient, getContext, getBids, navi
     const query = match[1].toLowerCase();
     const options = DECLARATION_VARIABLES.filter((variable) => variable.key.includes(query) || variable.label.toLocaleLowerCase("pt-BR").includes(query)).slice(0, 8);
     if (!options.length) { hideVariableSuggestions(); return; }
+    const host = resolveVariableSuggestionHost(textarea, refs.declarationsPage);
+    if (refs.declarationVariableSuggestions.parentElement !== host) {
+      refs.declarationVariableSuggestions.parentElement?.classList.remove("variable-suggestions-open");
+      host.appendChild(refs.declarationVariableSuggestions);
+    }
+    host.classList.toggle("variable-suggestions-open", host instanceof HTMLDialogElement);
     refs.declarationVariableSuggestions.innerHTML = options.map((variable) => `<button type="button" role="option" data-variable="${variable.key}"><code>{{${variable.key}}}</code><span>${escapeHtml(variable.label)}</span></button>`).join("");
     refs.declarationVariableSuggestions.classList.remove("hidden");
     const rect = textarea.getBoundingClientRect();
-    refs.declarationVariableSuggestions.style.left = `${Math.min(rect.left, window.innerWidth - 330)}px`;
-    refs.declarationVariableSuggestions.style.top = `${Math.min(rect.bottom + 6, window.innerHeight - 280)}px`;
+    const availableBelow = window.innerHeight - rect.bottom - 18;
+    const availableAbove = rect.top - 18;
+    const useBelow = availableBelow >= 120 || availableBelow >= availableAbove;
+    const availableHeight = useBelow ? availableBelow : availableAbove;
+    refs.declarationVariableSuggestions.style.maxHeight = `${Math.min(260, Math.max(120, availableHeight))}px`;
+    const suggestionsRect = refs.declarationVariableSuggestions.getBoundingClientRect();
+    const viewportRect = { top: 0, right: window.innerWidth, bottom: window.innerHeight, left: 0 };
+    const left = Math.max(viewportRect.left + 12, Math.min(rect.left, viewportRect.right - suggestionsRect.width - 12));
+    const top = useBelow
+      ? rect.bottom + 6
+      : Math.max(viewportRect.top + 12, rect.top - suggestionsRect.height - 6);
+    refs.declarationVariableSuggestions.style.left = `${left}px`;
+    refs.declarationVariableSuggestions.style.top = `${top}px`;
     refs.declarationVariableSuggestions.dataset.target = textarea.id;
     refs.declarationVariableSuggestions.dataset.start = String(textarea.selectionStart - match[0].length);
   }
@@ -758,6 +779,8 @@ export function createDeclarationsFeature({ getClient, getContext, getBids, navi
 
   function hideVariableSuggestions() {
     refs.declarationVariableSuggestions.classList.add("hidden");
+    refs.declarationVariableSuggestions.parentElement?.classList.remove("variable-suggestions-open");
+    refs.declarationVariableSuggestions.style.maxHeight = "";
     refs.declarationVariableSuggestions.innerHTML = "";
     delete refs.declarationVariableSuggestions.dataset.target;
   }

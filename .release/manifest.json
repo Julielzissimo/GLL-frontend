@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "release_id": "2026-09-27-gerador-declaracoes",
+  "release_id": "2026-09-27-corrigir-autocomplete-declaracoes",
   "environment": "homolog",
   "target_branch": "homolog",
   "items": [
@@ -46,7 +46,8 @@
         "b0a23e3c0388b44415bb05e3cc9a598126212ab4"
       ],
       "frontend_commits": [
-        "811de884f85c53b61e410ab45de63a1b1e44dd66"
+        "811de884f85c53b61e410ab45de63a1b1e44dd66",
+        "d794b630e1591d369589dfe21bb489f280127707"
       ],
       "migrations": [
         "supabase/migrations/20260927100000_add_declaration_generator.sql"
