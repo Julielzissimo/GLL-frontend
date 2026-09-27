@@ -363,8 +363,24 @@ export function createDeclarationsFeature({ getClient, getContext, getBids, navi
     refs.declarationTemplatePicker.innerHTML = available.length ? available.map((template) => `
       <label class="declaration-pick-card ${state.selectedIds.includes(template.id) ? "selected" : ""}">
         <input type="checkbox" value="${escapeHtml(template.id)}" ${state.selectedIds.includes(template.id) ? "checked" : ""} />
-        <span><strong>${escapeHtml(template.title)}</strong><small>${template.bid_id ? "Exclusiva deste edital" : "Biblioteca da organização"}</small><em>${escapeHtml(plainPreview(template.content, 150))}</em></span>
+        <span class="declaration-pick-content"><strong>${escapeHtml(template.title)}</strong><small>${template.bid_id ? "Exclusiva deste edital" : "Biblioteca da organização"}</small><span class="declaration-pick-preview-wrap" data-full-text="${escapeHtml(template.content)}"><em class="declaration-pick-preview">${escapeHtml(template.content)}</em></span></span>
       </label>`).join("") : `<div class="empty-state compact-empty">Nenhuma declaração disponível. Cadastre textos na Biblioteca.</div>`;
+    requestAnimationFrame(() => {
+      refs.declarationTemplatePicker.querySelectorAll(".declaration-pick-preview-wrap").forEach((wrapper) => {
+        const preview = wrapper.querySelector(".declaration-pick-preview");
+        const truncated = preview.scrollHeight > preview.clientHeight + 1;
+        wrapper.classList.toggle("has-tooltip", truncated);
+        if (truncated) {
+          wrapper.dataset.tooltip = wrapper.dataset.fullText;
+          preview.tabIndex = 0;
+          preview.setAttribute("aria-label", `Conteúdo completo: ${wrapper.dataset.fullText}`);
+        } else {
+          delete wrapper.dataset.tooltip;
+          preview.removeAttribute("tabindex");
+          preview.removeAttribute("aria-label");
+        }
+      });
+    });
   }
 
   function handlePickerChange(event) {
@@ -805,6 +821,7 @@ export function createDeclarationsFeature({ getClient, getContext, getBids, navi
     for (const panel of Object.values(mapping)) panel.classList.add("hidden");
     (mapping[page] || mapping.declarations).classList.remove("hidden");
     document.querySelectorAll("[data-declaration-page]").forEach((button) => button.classList.toggle("active", button.dataset.declarationPage === page));
+    if (page === "declarations") renderPicker();
     if (page === "declarationLibrary") renderLibrary();
     if (page === "declarationHistory") renderHistory();
   }

@@ -63,3 +63,16 @@ test("configurações preservam o espaçamento visual entre cabeçalho e seçõe
     /#declarationSettingsForm\s*{\s*display:\s*grid;\s*gap:\s*inherit;\s*}/,
   );
 });
+
+test("cartões de seleção limitam o conteúdo, exibem tooltip e dimensionam o checkbox", async () => {
+  const [source, styles] = await Promise.all([
+    readFile(new URL("../web/declarations.js", import.meta.url), "utf8"),
+    readFile(new URL("../web/styles.css", import.meta.url), "utf8"),
+  ]);
+  assert.match(source, /declaration-pick-preview-wrap/);
+  assert.match(source, /preview\.scrollHeight > preview\.clientHeight \+ 1/);
+  assert.match(source, /if \(page === "declarations"\) renderPicker\(\)/);
+  assert.match(styles, /-webkit-line-clamp:\s*2/);
+  assert.match(styles, /\.declaration-pick-card > input\[type="checkbox"\][\s\S]*?width:\s*18px/);
+  assert.match(styles, /content:\s*attr\(data-tooltip\)/);
+});
