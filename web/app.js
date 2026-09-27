@@ -57,6 +57,11 @@ const GLL_CONFIG = {
   ...DEFAULT_GLL_CONFIG,
   ...(window.GLL_CONFIG || {}),
 };
+const createDeclarationsFeature = window.GLLDeclarations?.createDeclarationsFeature || (() => ({
+  showPage: async () => undefined,
+  reset: () => undefined,
+  refresh: async () => undefined,
+}));
 
 const PAGE_ROUTE_NAMES = {
   home: "visao-geral",
@@ -67,6 +72,10 @@ const PAGE_ROUTE_NAMES = {
   failures: "falhas",
   quotations: "orcamentos",
   suppliers: "fornecedores",
+  declarations: "declaracoes",
+  declarationLibrary: "declaracoes/biblioteca",
+  declarationSettings: "declaracoes/configuracoes",
+  declarationHistory: "declaracoes/historico",
   users: "usuarios",
   settings: "configuracoes",
   designSystem: "configuracoes/design-system",
@@ -79,8 +88,10 @@ const appState = {
   currentUserEmail: null,
   currentUserAuthId: null,
   currentUserRole: null,
+  currentUserName: null,
   currentOrganizationId: null,
   currentOrganizationName: null,
+  currentOrganizationCnpj: null,
   currentBidId: null,
   originalBidId: null,
   selectedBidQuotationId: null,
@@ -133,6 +144,7 @@ const refs = {
   navBidsButton: $("navBidsButton"),
   navQuotationsButton: $("navQuotationsButton"),
   navSuppliersButton: $("navSuppliersButton"),
+  navDeclarationsButton: $("navDeclarationsButton"),
   navUsersButton: $("navUsersButton"),
   navSettingsButton: $("navSettingsButton"),
   menuToggleButton: $("menuToggleButton"),
@@ -164,6 +176,7 @@ const refs = {
   designSystemAccessCard: $("designSystemAccessCard"),
   designSystemCatalog: $("designSystemCatalog"),
   suppliersPage: $("suppliersPage"),
+  declarationsPage: $("declarationsPage"),
   suppliersList: $("suppliersList"),
   supplierTagFilter: $("supplierTagFilter"),
   supplierSort: $("supplierSort"),
@@ -1553,6 +1566,21 @@ class SupabaseStore {
 }
 
 const store = createStore();
+const declarationsFeature = createDeclarationsFeature({
+  getClient: () => (store.requiresAuthenticationBeforeData ? store.client : null),
+  getContext: () => ({
+    organizationId: appState.currentOrganizationId || DEFAULT_ADMIN.organization_id,
+    organizationName: appState.currentOrganizationName || DEFAULT_ADMIN.organization.name,
+    organizationCnpj: appState.currentOrganizationCnpj || DEFAULT_ADMIN.organization.cnpj,
+    userAuthId: appState.currentUserAuthId || DEFAULT_ADMIN.auth_user_id,
+    userEmail: appState.currentUserEmail || DEFAULT_ADMIN.email,
+    userName: appState.currentUserName || DEFAULT_ADMIN.name,
+  }),
+  getBids: () => appState.bids,
+  navigate: (page) => setPage(page),
+  toast: (message) => showToast(message),
+  runBusy: (operation, message) => withBlockingLoading(operation, message)(),
+});
 
 const SESSION_ACTIVITY_EVENTS = ["pointerdown", "keydown", "input"];
 const SESSION_POLICY_CHECK_INTERVAL_MS = 60 * 1000;
@@ -1980,8 +2008,10 @@ async function enterAuthenticatedView(user) {
   appState.currentUserEmail = user.email;
   appState.currentUserAuthId = user.auth_user_id || user.email;
   appState.currentUserRole = normalizeUserRole(user.role);
+  appState.currentUserName = user.name || user.email;
   appState.currentOrganizationId = user.organization_id || user.organization?.id || null;
   appState.currentOrganizationName = user.organization?.name || "LSMS Suprimentos";
+  appState.currentOrganizationCnpj = user.organization?.cnpj || "";
   try {
     updateAccessInterface();
     await reloadData();
@@ -2023,11 +2053,14 @@ function resetAuthenticatedView() {
   appState.currentUserEmail = null;
   appState.currentUserAuthId = null;
   appState.currentUserRole = null;
+  appState.currentUserName = null;
   appState.currentOrganizationId = null;
   appState.currentOrganizationName = null;
+  appState.currentOrganizationCnpj = null;
   refs.appView.classList.add("hidden");
   refs.loginView.classList.remove("hidden");
   refs.loginPassword.value = "";
+  declarationsFeature.reset();
   refs.appView.classList.remove("mobile-nav-open");
   updateMainNavigationState();
   for (const key of DATA_KEYS) appState[key] = [];
@@ -2320,6 +2353,7 @@ function applyNavigationRoute(options = {}) {
 
 function setPage(page, options = {}) {
   const detailPages = ["items", "documents", "failures"];
+  const declarationPages = ["declarations", "declarationLibrary", "declarationSettings", "declarationHistory"];
   page = resolveAuthorizedPage(page);
   if (detailPages.includes(page) && !appState.currentBidId) {
     page = "home";
@@ -2333,13 +2367,15 @@ function setPage(page, options = {}) {
   const showSettings = page === "settings";
   const showDesignSystem = page === "designSystem";
   const showSuppliers = page === "suppliers";
+  const showDeclarations = declarationPages.includes(page);
   $("suppliersPage").classList.toggle("hidden", !showSuppliers);
+  refs.declarationsPage.classList.toggle("hidden", !showDeclarations);
   const showQuotations = page === "quotations";
   const showHome = page === "home";
   const showCatalog = page === "bids";
   const showEditor = page === "edit";
   const showDetail = detailPages.includes(page);
-  refs.bidsPage.classList.toggle("hidden", showUsers || showSettings || showDesignSystem || showQuotations || showSuppliers);
+  refs.bidsPage.classList.toggle("hidden", showUsers || showSettings || showDesignSystem || showQuotations || showSuppliers || showDeclarations);
   refs.usersPage.classList.toggle("hidden", !showUsers);
   refs.settingsPage.classList.toggle("hidden", !showSettings);
   refs.designSystemPage.classList.toggle("hidden", !showDesignSystem);
@@ -2353,13 +2389,13 @@ function setPage(page, options = {}) {
   refs.itemsPanel.classList.toggle("hidden", page !== "items");
   refs.documentsPanel.classList.toggle("hidden", page !== "documents");
   refs.failuresPanel.classList.toggle("hidden", page !== "failures");
-  refs.appView.classList.toggle("users-active", showUsers || showSettings || showDesignSystem || showQuotations || showSuppliers);
+  refs.appView.classList.toggle("users-active", showUsers || showSettings || showDesignSystem || showQuotations || showSuppliers || showDeclarations);
   refs.itemsTabButton.classList.toggle("active", page === "items");
   refs.documentsTabButton.classList.toggle("active", page === "documents");
   refs.failuresTabButton.classList.toggle("active", page === "failures");
   refs.failuresTabButton.classList.toggle("hidden", !shouldShowFailureHistory());
-  const primaryPage = showSuppliers ? "suppliers" : showUsers ? "users" : showSettings || showDesignSystem ? "settings" : showQuotations ? "quotations" : showHome ? "home" : "bids";
-  const pageLabels = { suppliers: "Fornecedores", home: "Visão geral", bids: "Licitações", quotations: "Orçamento", users: "Usuários", settings: showDesignSystem ? "Design System" : "Configurações" };
+  const primaryPage = showDeclarations ? "declarations" : showSuppliers ? "suppliers" : showUsers ? "users" : showSettings || showDesignSystem ? "settings" : showQuotations ? "quotations" : showHome ? "home" : "bids";
+  const pageLabels = { declarations: "Declarações", suppliers: "Fornecedores", home: "Visão geral", bids: "Licitações", quotations: "Orçamento", users: "Usuários", settings: showDesignSystem ? "Design System" : "Configurações" };
   refs.breadcrumbLabel.textContent = pageLabels[primaryPage];
   document.querySelectorAll("[data-navigation-page]").forEach((button) => {
     button.classList.toggle("active", button.dataset.navigationPage === primaryPage);
@@ -2372,6 +2408,7 @@ function setPage(page, options = {}) {
   if (showQuotations) renderQuotations();
   if (page === "items") renderBidQuotationWorkspace();
   if (showSuppliers) renderSuppliers();
+  if (showDeclarations) void declarationsFeature.showPage(page).catch((error) => showToast(error.message));
   if (showDesignSystem) window.GLLDesignSystem?.mountCatalog(refs.designSystemCatalog);
   writeNavigationRoute(page, options.history || "push");
 }
