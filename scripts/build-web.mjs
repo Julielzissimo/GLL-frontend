@@ -74,7 +74,11 @@ await writeFile(
 
 const assetVersion = createHash("sha256")
   .update(await readFile(resolve(sourceDir, "app.js")))
+  .update(await readFile(resolve(sourceDir, "declarations.js")))
   .update(await readFile(resolve(sourceDir, "styles.css")))
+  .update(await readFile(resolve(sourceDir, "design-system", "tokens.css")))
+  .update(await readFile(resolve(sourceDir, "design-system", "design-system.css")))
+  .update(await readFile(resolve(sourceDir, "design-system", "components.js")))
   .digest("hex")
   .slice(0, 12);
 const outputIndexPath = resolve(outputDir, "index.html");
@@ -82,7 +86,11 @@ const outputIndex = await readFile(outputIndexPath, "utf8");
 await writeFile(
   outputIndexPath,
   outputIndex
+    .replace('./design-system/tokens.css', `./design-system/tokens.css?v=${assetVersion}`)
     .replace('./styles.css', `./styles.css?v=${assetVersion}`)
+    .replace('./design-system/design-system.css', `./design-system/design-system.css?v=${assetVersion}`)
+    .replace('./design-system/components.js', `./design-system/components.js?v=${assetVersion}`)
+    .replace('./declarations.js', `./declarations.js?v=${assetVersion}`)
     .replace('./app.js', `./app.js?v=${assetVersion}`),
   "utf8",
 );

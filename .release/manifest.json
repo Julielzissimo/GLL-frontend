@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
-  "release_id": "2026-09-26-integridade-promocao",
-  "environment": "production",
-  "target_branch": "main",
+  "release_id": "2026-09-27-corrigir-cartoes-declaracoes",
+  "environment": "homolog",
+  "target_branch": "homolog",
   "items": [
     {
       "id": "IMP-003",
@@ -38,6 +38,20 @@
       ],
       "migrations": [
         "supabase/migrations/20260923193000_standardize_dates_and_money.sql"
+      ]
+    },
+    {
+      "id": "DECLARACOES-001",
+      "backend_commits": [
+        "b0a23e3c0388b44415bb05e3cc9a598126212ab4"
+      ],
+      "frontend_commits": [
+        "811de884f85c53b61e410ab45de63a1b1e44dd66",
+        "d794b630e1591d369589dfe21bb489f280127707",
+        "3510459293b61836e513b16bcd729f907a6dce13"
+      ],
+      "migrations": [
+        "supabase/migrations/20260927100000_add_declaration_generator.sql"
       ]
     }
   ]

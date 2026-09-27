@@ -1,0 +1,88 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
+import {
+  buildPdfStoragePath,
+  DECLARATION_VARIABLES,
+  formatDeclarationDate,
+  formatDeclarationFooter,
+  resolveDeclarationVariables,
+  resolveVariableSuggestionHost,
+  sanitizePdfFileName,
+} from "../web/declarations.js";
+
+test("nome do PDF preserva espaços e acentos e remove somente caracteres incompatíveis", () => {
+  assert.equal(sanitizePdfFileName("Declaração de Habilitação"), "Declaração de Habilitação.pdf");
+  assert.equal(sanitizePdfFileName('Declaração: Edital 12/2026?'), "Declaração- Edital 12-2026-.pdf");
+});
+
+test("chave do PDF no Storage usa somente identificadores seguros", () => {
+  const path = buildPdfStoragePath(
+    "00000000-0000-4000-8000-000000000001",
+    "4dde2ed2-947d-4d38-ba1f-712ea49450b7",
+  );
+  assert.equal(path, "00000000-0000-4000-8000-000000000001/4dde2ed2-947d-4d38-ba1f-712ea49450b7.pdf");
+  assert.doesNotMatch(path, /DECLARAÇÃO UNIFICADA/);
+});
+
+test("variáveis conhecidas são substituídas e valores ausentes são informados", () => {
+  const result = resolveDeclarationVariables(
+    "A {{razao_social}} participa do edital {{ numero_edital }} de {{orgao}}.",
+    { razao_social: "Empresa Ágil", numero_edital: "42/2026", orgao: "" },
+  );
+  assert.equal(result.output, "A Empresa Ágil participa do edital 42/2026 de {{orgao}}.");
+  assert.deepEqual(result.missing, ["orgao"]);
+});
+
+test("data é formatada em português sem deslocamento de fuso", () => {
+  assert.equal(formatDeclarationDate("2026-09-26"), "26 de setembro de 2026");
+});
+
+test("rodapé do PDF identifica contato e e-mail em linhas separadas", () => {
+  assert.deepEqual(
+    formatDeclarationFooter("27 998877432123", "fulano@gmail.com"),
+    ["Contato: 27 998877432123", "E-mail: fulano@gmail.com"],
+  );
+  assert.deepEqual(formatDeclarationFooter("", "fulano@gmail.com"), ["E-mail: fulano@gmail.com"]);
+});
+
+test("catálogo público contém todas as variáveis essenciais", () => {
+  const keys = new Set(DECLARATION_VARIABLES.map((item) => item.key));
+  for (const key of ["razao_social", "cpf_representante", "numero_processo", "data"]) assert.ok(keys.has(key));
+});
+
+test("sugestões são hospedadas no diálogo ativo para permanecerem visíveis", () => {
+  const dialog = { id: "declarationTemplateModal" };
+  const page = { id: "declarationsPage" };
+  assert.equal(resolveVariableSuggestionHost({ closest: () => dialog }, page), dialog);
+  assert.equal(resolveVariableSuggestionHost({ closest: () => null }, page), page);
+});
+
+test("pré-visualização do PDF ocupa a área disponível no modal", async () => {
+  const html = await readFile(new URL("../web/index.html", import.meta.url), "utf8");
+  assert.match(
+    html,
+    /<iframe id="declarationPreviewFrame" class="declaration-preview-frame"/,
+  );
+});
+
+test("configurações preservam o espaçamento visual entre cabeçalho e seções", async () => {
+  const styles = await readFile(new URL("../web/styles.css", import.meta.url), "utf8");
+  assert.match(
+    styles,
+    /#declarationSettingsForm\s*{\s*display:\s*grid;\s*gap:\s*inherit;\s*}/,
+  );
+});
+
+test("cartões de seleção limitam o conteúdo, exibem tooltip e dimensionam o checkbox", async () => {
+  const [source, styles] = await Promise.all([
+    readFile(new URL("../web/declarations.js", import.meta.url), "utf8"),
+    readFile(new URL("../web/styles.css", import.meta.url), "utf8"),
+  ]);
+  assert.match(source, /declaration-pick-preview-wrap/);
+  assert.match(source, /preview\.scrollHeight > preview\.clientHeight \+ 1/);
+  assert.match(source, /if \(page === "declarations"\) renderPicker\(\)/);
+  assert.match(styles, /-webkit-line-clamp:\s*2/);
+  assert.match(styles, /\.declaration-pick-card > input\[type="checkbox"\][\s\S]*?width:\s*18px/);
+  assert.match(styles, /content:\s*attr\(data-tooltip\)/);
+});

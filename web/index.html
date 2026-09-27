@@ -3,10 +3,12 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net; connect-src 'self' https://*.supabase.co wss://*.supabase.co; img-src 'self' data: blob:; style-src 'self'; font-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'; upgrade-insecure-requests" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net; connect-src 'self' https://*.supabase.co wss://*.supabase.co; img-src 'self' data: blob:; frame-src 'self' blob:; style-src 'self'; font-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'; upgrade-insecure-requests" />
     <title>GLL Web</title>
     <link rel="icon" type="image/svg+xml" href="./assets/favicon.svg" />
+    <link rel="stylesheet" href="./design-system/tokens.css" />
     <link rel="stylesheet" href="./styles.css" />
+    <link rel="stylesheet" href="./design-system/design-system.css" />
   </head>
   <body>
     <main id="loginView" class="login-view">
@@ -50,6 +52,7 @@
           <button id="navBidsButton" class="nav-link" type="button" data-navigation-page="bids"><span aria-hidden="true">▤</span>Licitações</button>
           <button id="navQuotationsButton" class="nav-link" type="button" data-navigation-page="quotations"><span aria-hidden="true">▧</span>Orçamento</button>
           <button id="navSuppliersButton" class="nav-link" type="button" data-navigation-page="suppliers"><span aria-hidden="true">▦</span>Fornecedores</button>
+          <button id="navDeclarationsButton" class="nav-link" type="button" data-navigation-page="declarations"><span aria-hidden="true">▥</span>Declarações</button>
           <button id="navUsersButton" class="nav-link" type="button" data-navigation-page="users"><span aria-hidden="true">♙</span>Usuários</button>
           <button id="navSettingsButton" class="nav-link" type="button" data-navigation-page="settings"><span aria-hidden="true">⚙</span>Configurações</button>
         </nav>
@@ -982,6 +985,119 @@
         </dialog>
       </section>
 
+      <section id="declarationsPage" class="users-page declarations-page hidden" aria-labelledby="declarationsTitle">
+        <div class="page-heading declarations-heading">
+          <div><span class="eyebrow">DOCUMENTOS</span><h1 id="declarationsTitle">Declarações</h1><p>Componha declarações no papel timbrado da organização e gere PDFs reutilizáveis.</p></div>
+        </div>
+        <nav class="declarations-tabs" aria-label="Áreas de Declarações">
+          <button type="button" data-declaration-page="declarations">Gerar declaração</button>
+          <button type="button" data-declaration-page="declarationLibrary">Biblioteca</button>
+          <button type="button" data-declaration-page="declarationSettings">Configurações</button>
+          <button type="button" data-declaration-page="declarationHistory">Histórico</button>
+        </nav>
+
+        <div id="declarationLoading" class="section-band declaration-loading" role="status">Carregando dados da organização…</div>
+
+        <section id="declarationGeneratorPanel" class="declaration-panel hidden">
+          <form id="declarationGeneratorForm" class="declaration-generator-layout">
+            <div class="declaration-editor-column">
+              <section class="section-band declaration-form-section">
+                <div class="section-title"><div><span class="step-badge">1</span><div><h2>Identificação do documento</h2><p>O título também será usado no nome do arquivo PDF.</p></div></div></div>
+                <div class="form-grid">
+                  <label class="full-field">Título do documento *<input id="declarationDocumentTitle" value="DECLARAÇÃO UNIFICADA" maxlength="180" required /></label>
+                  <label class="full-field">Vincular edital<select id="declarationBid"><option value="">Declaração avulsa (sem edital)</option></select></label>
+                  <label>Órgão<input id="declarationAgency" maxlength="240" data-variable-name="orgao" /></label>
+                  <label>Município/UF<input id="declarationMunicipality" maxlength="180" data-variable-name="municipio_uf" /></label>
+                  <label>Número do edital<input id="declarationEditalNumber" maxlength="120" data-variable-name="numero_edital" /></label>
+                  <label>Número do processo<input id="declarationProcessNumber" maxlength="120" data-variable-name="numero_processo" /></label>
+                  <label>Data<input id="declarationDate" type="date" data-variable-name="data" /></label>
+                </div>
+              </section>
+
+              <section class="section-band declaration-form-section">
+                <div class="section-title"><div><span class="step-badge">2</span><div><h2>Introdução</h2><p>A alteração abaixo vale somente para este documento.</p></div></div></div>
+                <label class="variable-editor full-field">Introdução do documento<textarea id="declarationIntroduction" rows="6" data-variable-editor></textarea><span class="variable-help">Digite <code>{{</code> para inserir uma variável.</span></label>
+              </section>
+
+              <section class="section-band declaration-form-section">
+                <div class="section-title declaration-section-action"><div><span class="step-badge">3</span><div><h2>Selecionar declarações</h2><p>As declarações específicas aparecem ao selecionar o respectivo edital.</p></div></div><button id="goToDeclarationLibraryButton" class="quiet-action" type="button">Abrir biblioteca</button></div>
+                <div id="declarationTemplatePicker" class="declaration-template-picker"></div>
+              </section>
+
+              <section class="section-band declaration-form-section">
+                <div class="section-title"><div><span class="step-badge">4</span><div><h2>Ordem no documento</h2><p>Arraste os blocos ou use as setas. A numeração é automática.</p></div></div></div>
+                <ol id="declarationSelectedOrder" class="declaration-order-list"></ol>
+              </section>
+
+              <section class="section-band declaration-form-section">
+                <div class="section-title"><div><span class="step-badge">5</span><div><h2>Texto manual</h2><p>Inclua conteúdo exclusivo deste documento, se necessário.</p></div></div></div>
+                <label class="variable-editor full-field">Conteúdo adicional<textarea id="declarationManualText" rows="6" data-variable-editor></textarea><span class="variable-help">As mesmas variáveis da biblioteca podem ser usadas aqui.</span></label>
+                <label class="check-line declaration-save-library" for="declarationSaveManual"><input id="declarationSaveManual" type="checkbox" /><span>Salvar este texto na biblioteca</span></label>
+                <label id="declarationManualTitleField" class="full-field hidden">Título para a biblioteca *<input id="declarationManualTitle" maxlength="180" /></label>
+              </section>
+            </div>
+
+            <aside class="declaration-summary-column">
+              <section class="section-band declaration-summary-card">
+                <span class="eyebrow">RESUMO</span>
+                <h2>Documento pronto para conferência</h2>
+                <dl><div><dt>Declarações</dt><dd id="declarationSelectedCount">0</dd></div><div><dt>Edital</dt><dd id="declarationSummaryBid">Avulsa</dd></div><div><dt>Saída</dt><dd>PDF A4</dd></div></dl>
+                <p id="declarationGeneratorStatus" class="form-error" role="alert"></p>
+                <button id="previewDeclarationButton" class="quiet-action full-action" type="button">Pré-visualizar</button>
+                <button id="generateDeclarationButton" class="primary-action full-action" type="submit">Gerar PDF</button>
+              </section>
+            </aside>
+          </form>
+        </section>
+
+        <section id="declarationLibraryPanel" class="declaration-panel hidden">
+          <div class="declaration-panel-heading"><div><h2>Biblioteca de Declarações</h2><p>Textos compartilhados com todos os membros da organização.</p></div><button id="newDeclarationTemplateButton" class="primary-action" type="button">＋ Nova declaração</button></div>
+          <div class="section-band declaration-library-tools"><label>Buscar<input id="declarationTemplateSearch" type="search" placeholder="Título ou conteúdo" /></label><label>Escopo<select id="declarationTemplateScopeFilter"><option value="">Todos</option><option value="organization">Organização</option><option value="bid">Edital específico</option></select></label></div>
+          <div id="declarationTemplateList" class="declaration-library-list"></div>
+        </section>
+
+        <section id="declarationSettingsPanel" class="declaration-panel hidden">
+          <form id="declarationSettingsForm">
+            <div class="declaration-panel-heading"><div><h2>Configurações dos documentos</h2><p>Dados e identidade visual compartilhados pela organização.</p></div><button class="primary-action" type="submit">Salvar configurações</button></div>
+            <section class="section-band declaration-form-section"><h3>Dados da empresa</h3><div id="declarationCompanyFields" class="form-grid declaration-variable-grid">
+              <label>Razão social <code>{{razao_social}}</code><input id="declarationLegalName" maxlength="240" /></label>
+              <label>CNPJ <code>{{cnpj}}</code><input id="declarationCnpj" maxlength="30" /></label>
+              <label class="full-field">Endereço <code>{{endereco}}</code><input id="declarationAddress" maxlength="320" /></label>
+              <label>Cidade da empresa <code>{{cidade_empresa}}</code><input id="declarationCompanyCity" maxlength="160" /></label>
+              <label>UF da empresa <code>{{uf_empresa}}</code><input id="declarationCompanyState" maxlength="2" /></label>
+              <label>Representante legal <code>{{representante}}</code><input id="declarationRepresentative" maxlength="240" /></label>
+              <label>CPF do representante <code>{{cpf_representante}}</code><input id="declarationRepresentativeCpf" maxlength="30" /></label>
+              <label>Enquadramento <code>{{enquadramento_empresa}}</code><input id="declarationClassification" maxlength="120" /></label>
+              <label>Telefone <code>{{telefone}}</code><input id="declarationPhone" maxlength="60" /></label>
+              <label>E-mail <code>{{email}}</code><input id="declarationEmail" type="email" maxlength="240" /></label>
+              <label>Cidade da assinatura<input id="declarationSignatureCity" maxlength="160" /></label>
+              <label>UF da assinatura<input id="declarationSignatureState" maxlength="2" /></label>
+            </div></section>
+            <section class="section-band declaration-form-section"><h3>Introdução padrão</h3><label class="variable-editor full-field">Texto<textarea id="declarationDefaultIntroduction" rows="7" data-variable-editor></textarea><span class="variable-help">Digite <code>{{</code> para pesquisar variáveis.</span></label></section>
+            <section class="section-band declaration-form-section"><h3>Identidade visual</h3><div class="declaration-assets-grid">
+              <label class="declaration-upload-card"><span>Logo</span><input id="declarationLogo" type="file" accept="image/png,image/jpeg,image/webp" /><small>PNG, JPG ou WebP, até 5 MB.</small><img id="declarationLogoPreview" class="hidden" alt="Pré-visualização da logo" /></label>
+              <label class="declaration-upload-card"><span>Marca-d'água</span><input id="declarationWatermark" type="file" accept="image/png,image/jpeg,image/webp" /><small>PNG, JPG ou WebP, até 5 MB.</small><img id="declarationWatermarkPreview" class="hidden" alt="Pré-visualização da marca-d'água" /></label>
+            </div><p id="declarationSettingsStatus" class="form-error" role="status"></p></section>
+          </form>
+        </section>
+
+        <section id="declarationHistoryPanel" class="declaration-panel hidden">
+          <div class="declaration-panel-heading"><div><h2>Histórico</h2><p>PDFs armazenados permanecem exatamente como foram gerados.</p></div><button id="refreshDeclarationHistoryButton" class="quiet-action" type="button">↻ Atualizar</button></div>
+          <section class="section-band table-panel"><div class="table-wrap"><table><thead><tr><th>Título</th><th>Edital</th><th>Órgão</th><th>Gerado em</th><th>Usuário</th><th>PDF</th></tr></thead><tbody id="declarationHistoryList"></tbody></table></div></section>
+        </section>
+
+        <dialog id="declarationTemplateModal" class="quotation-item-modal" aria-labelledby="declarationTemplateModalTitle">
+          <div class="quotation-item-modal-shell"><div class="quotation-item-modal-header"><div><span class="eyebrow">BIBLIOTECA</span><h2 id="declarationTemplateModalTitle">Nova declaração</h2></div><button id="closeDeclarationTemplateModalButton" class="quotation-item-modal-close" type="button" aria-label="Fechar">×</button></div>
+            <form id="declarationTemplateForm" class="quotation-item-modal-form"><input id="declarationTemplateId" type="hidden" /><div class="form-grid"><label class="full-field">Título *<input id="declarationTemplateTitle" maxlength="180" required /></label><label class="full-field">Escopo<select id="declarationTemplateScope"><option value="organization">Organização</option><option value="bid">Edital específico</option></select></label><label id="declarationTemplateBidField" class="full-field hidden">Edital *<select id="declarationTemplateBid"></select></label><label class="variable-editor full-field">Conteúdo *<textarea id="declarationTemplateContent" rows="10" required data-variable-editor></textarea><span class="variable-help">Digite <code>{{</code> para inserir uma variável.</span></label></div><p id="declarationTemplateError" class="form-error" role="alert"></p><div class="button-row end"><button id="deleteDeclarationTemplateButton" class="danger-action hidden" type="button">Excluir</button><button id="cancelDeclarationTemplateButton" class="quiet-action" type="button">Cancelar</button><button class="primary-action" type="submit">Salvar declaração</button></div></form>
+          </div>
+        </dialog>
+
+        <dialog id="declarationPreviewModal" class="declaration-preview-modal" aria-labelledby="declarationPreviewTitle"><div class="declaration-preview-shell"><div class="quotation-item-modal-header"><div><span class="eyebrow">PRÉ-VISUALIZAÇÃO A4</span><h2 id="declarationPreviewTitle">Conferir documento</h2></div><button id="closeDeclarationPreviewButton" class="quotation-item-modal-close" type="button" aria-label="Fechar">×</button></div><iframe id="declarationPreviewFrame" class="declaration-preview-frame" title="Pré-visualização do PDF"></iframe><div class="button-row end"><button id="closeDeclarationPreviewFooterButton" class="quiet-action" type="button">Voltar à edição</button><button id="generateDeclarationFromPreviewButton" class="primary-action" type="button">Gerar PDF</button></div></div></dialog>
+
+        <dialog id="declarationValidationModal" class="quotation-item-discard-modal" aria-labelledby="declarationValidationTitle"><div class="quotation-item-discard-content"><h2 id="declarationValidationTitle">Não foi possível gerar a declaração</h2><p>Existem informações utilizadas no documento que ainda não foram preenchidas:</p><ul id="declarationMissingVariables"></ul><p>Preencha as informações indicadas antes de gerar o PDF.</p><div class="button-row end"><button id="closeDeclarationValidationButton" class="primary-action" type="button">Entendi</button></div></div></dialog>
+        <div id="declarationVariableSuggestions" class="declaration-variable-suggestions hidden" role="listbox"></div>
+      </section>
+
       <section id="settingsPage" class="users-page settings-page hidden">
         <div class="page-heading">
           <div><span class="eyebrow">SISTEMA</span><h1>Configurações</h1><p>Preferências do ambiente e manutenção da base demonstrativa.</p></div>
@@ -994,12 +1110,32 @@
             <div class="setting-row"><div><strong>Cliente de autenticação</strong><small>Versão fixada para atualizações reproduzíveis.</small></div><strong id="authClientVersion">Supabase JS</strong></div>
             <div class="setting-row"><div><strong>Interface</strong><small>Identidade visual do protótipo aprovado.</small></div><strong>GLL 2.0</strong></div>
           </section>
+          <section id="designSystemAccessCard" class="section-band design-system-access-card hidden">
+            <span class="settings-icon" aria-hidden="true">◫</span>
+            <div>
+              <h2>Design System</h2>
+              <p>Consulte foundations, componentes reutilizáveis e padrões oficiais da interface.</p>
+            </div>
+            <button id="openDesignSystemButton" class="primary-action" type="button">Abrir catálogo</button>
+          </section>
           <section class="section-band danger-zone">
             <h2>Base de demonstração</h2>
             <p>Restaure todos os registros locais para os valores iniciais. Esta ação não está disponível nos ambientes conectados ao Supabase.</p>
             <button id="resetDataButton" class="danger-action" type="button">Restaurar base</button>
           </section>
         </div>
+      </section>
+
+      <section id="designSystemPage" class="users-page design-system-page hidden" aria-labelledby="designSystemTitle">
+        <div class="page-heading">
+          <div>
+            <span class="eyebrow">SISTEMA</span>
+            <h1 id="designSystemTitle">Design System</h1>
+            <p>Catálogo oficial da identidade visual e dos componentes reutilizáveis do GLL.</p>
+          </div>
+          <button id="backToSettingsButton" class="quiet-action" type="button">← Voltar para Configurações</button>
+        </div>
+        <div id="designSystemCatalog"></div>
       </section>
       </div>
     </main>
@@ -1015,6 +1151,17 @@
       </div>
     </dialog>
 
+    <dialog id="deleteBidAttachmentModal" class="quotation-item-discard-modal" aria-labelledby="deleteBidAttachmentModalTitle" aria-describedby="deleteBidAttachmentModalDescription">
+      <div class="quotation-item-discard-content">
+        <h2 id="deleteBidAttachmentModalTitle">Remover arquivo?</h2>
+        <p id="deleteBidAttachmentModalDescription">Deseja remover este arquivo do edital? Esta ação não poderá ser desfeita.</p>
+        <div class="button-row end">
+          <button id="cancelDeleteBidAttachmentButton" class="quiet-action" type="button" autofocus>Cancelar</button>
+          <button id="confirmDeleteBidAttachmentButton" class="danger-action" type="button">Remover arquivo</button>
+        </div>
+      </div>
+    </dialog>
+
     <dialog id="blockingLoadingModal" class="blocking-loading-modal" aria-labelledby="blockingLoadingMessage" aria-describedby="blockingLoadingDescription" aria-modal="true" tabindex="-1">
       <div class="blocking-loading-spinner" aria-hidden="true"></div>
       <h2 id="blockingLoadingMessage" role="status" aria-live="polite">Processando…</h2>
@@ -1023,6 +1170,8 @@
 
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
     <script src="./env.js"></script>
+    <script src="./design-system/components.js"></script>
+    <script type="module" src="./declarations.js"></script>
     <script type="module" src="./app.js"></script>
   </body>
 </html>

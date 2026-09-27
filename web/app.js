@@ -57,6 +57,11 @@ const GLL_CONFIG = {
   ...DEFAULT_GLL_CONFIG,
   ...(window.GLL_CONFIG || {}),
 };
+const createDeclarationsFeature = window.GLLDeclarations?.createDeclarationsFeature || (() => ({
+  showPage: async () => undefined,
+  reset: () => undefined,
+  refresh: async () => undefined,
+}));
 
 const PAGE_ROUTE_NAMES = {
   home: "visao-geral",
@@ -67,8 +72,13 @@ const PAGE_ROUTE_NAMES = {
   failures: "falhas",
   quotations: "orcamentos",
   suppliers: "fornecedores",
+  declarations: "declaracoes",
+  declarationLibrary: "declaracoes/biblioteca",
+  declarationSettings: "declaracoes/configuracoes",
+  declarationHistory: "declaracoes/historico",
   users: "usuarios",
   settings: "configuracoes",
+  designSystem: "configuracoes/design-system",
 };
 const ROUTE_PAGE_NAMES = Object.fromEntries(Object.entries(PAGE_ROUTE_NAMES).map(([page, route]) => [route, page]));
 
@@ -78,8 +88,10 @@ const appState = {
   currentUserEmail: null,
   currentUserAuthId: null,
   currentUserRole: null,
+  currentUserName: null,
   currentOrganizationId: null,
   currentOrganizationName: null,
+  currentOrganizationCnpj: null,
   currentBidId: null,
   originalBidId: null,
   selectedBidQuotationId: null,
@@ -132,6 +144,7 @@ const refs = {
   navBidsButton: $("navBidsButton"),
   navQuotationsButton: $("navQuotationsButton"),
   navSuppliersButton: $("navSuppliersButton"),
+  navDeclarationsButton: $("navDeclarationsButton"),
   navUsersButton: $("navUsersButton"),
   navSettingsButton: $("navSettingsButton"),
   menuToggleButton: $("menuToggleButton"),
@@ -159,7 +172,11 @@ const refs = {
   currentBidAgency: $("currentBidAgency"),
   usersPage: $("usersPage"),
   settingsPage: $("settingsPage"),
+  designSystemPage: $("designSystemPage"),
+  designSystemAccessCard: $("designSystemAccessCard"),
+  designSystemCatalog: $("designSystemCatalog"),
   suppliersPage: $("suppliersPage"),
+  declarationsPage: $("declarationsPage"),
   suppliersList: $("suppliersList"),
   supplierTagFilter: $("supplierTagFilter"),
   supplierSort: $("supplierSort"),
@@ -1549,6 +1566,21 @@ class SupabaseStore {
 }
 
 const store = createStore();
+const declarationsFeature = createDeclarationsFeature({
+  getClient: () => (store.requiresAuthenticationBeforeData ? store.client : null),
+  getContext: () => ({
+    organizationId: appState.currentOrganizationId || DEFAULT_ADMIN.organization_id,
+    organizationName: appState.currentOrganizationName || DEFAULT_ADMIN.organization.name,
+    organizationCnpj: appState.currentOrganizationCnpj || DEFAULT_ADMIN.organization.cnpj,
+    userAuthId: appState.currentUserAuthId || DEFAULT_ADMIN.auth_user_id,
+    userEmail: appState.currentUserEmail || DEFAULT_ADMIN.email,
+    userName: appState.currentUserName || DEFAULT_ADMIN.name,
+  }),
+  getBids: () => appState.bids,
+  navigate: (page) => setPage(page),
+  toast: (message) => showToast(message),
+  runBusy: (operation, message) => withBlockingLoading(operation, message)(),
+});
 
 const SESSION_ACTIVITY_EVENTS = ["pointerdown", "keydown", "input"];
 const SESSION_POLICY_CHECK_INTERVAL_MS = 60 * 1000;
@@ -1771,6 +1803,8 @@ function bindEvents() {
   document.querySelectorAll("[data-navigation-page]").forEach((button) => {
     button.addEventListener("click", () => setPage(button.dataset.navigationPage));
   });
+  $("openDesignSystemButton").addEventListener("click", () => setPage("designSystem"));
+  $("backToSettingsButton").addEventListener("click", () => setPage("settings"));
   document.querySelectorAll("[data-open-new]").forEach((button) => {
     button.addEventListener("click", () => clearBidForm({ openEditor: true }));
   });
@@ -1817,7 +1851,12 @@ function bindEvents() {
   refs.createBidQuotationButton.addEventListener("click", withBlockingLoading(startBidQuotationCreation, "Criando orçamento…"));
   refs.changeBidQuotationButton.addEventListener("click", openBidQuotationModal);
   refs.editalAttachmentList.addEventListener("click", (event) => {
-    if (!event.target.closest("[data-attachment-action]")) return;
+    const button = event.target.closest("[data-attachment-action]");
+    if (!button) return;
+    if (button.dataset.attachmentAction === "delete") {
+      requestDeleteBidAttachment(button);
+      return;
+    }
     withBlockingLoading(handleBidAttachmentAction, "Processando arquivo…")(event);
   });
   refs.clearBidButton.addEventListener("click", () => clearBidForm({ openEditor: true }));
@@ -1829,6 +1868,14 @@ function bindEvents() {
     const bidId = modal.dataset.bidId;
     modal.close();
     withBlockingLoading(() => deleteCurrentBid(bidId), "Excluindo edital…")();
+  });
+  $("cancelDeleteBidAttachmentButton").addEventListener("click", () => $("deleteBidAttachmentModal").close());
+  $("confirmDeleteBidAttachmentButton").addEventListener("click", () => {
+    const modal = $("deleteBidAttachmentModal");
+    if (!modal.open) return;
+    const { bidId, attachmentPath } = modal.dataset;
+    modal.close();
+    withBlockingLoading(() => deleteBidAttachment(bidId, attachmentPath), "Removendo arquivo…")();
   });
   refs.itemForm.addEventListener("submit", withBlockingLoading(saveItem, "Salvando item…"));
   refs.addSupplierLinkButton.addEventListener("click", addSupplierLink);
@@ -1974,8 +2021,10 @@ async function enterAuthenticatedView(user) {
   appState.currentUserEmail = user.email;
   appState.currentUserAuthId = user.auth_user_id || user.email;
   appState.currentUserRole = normalizeUserRole(user.role);
+  appState.currentUserName = user.name || user.email;
   appState.currentOrganizationId = user.organization_id || user.organization?.id || null;
   appState.currentOrganizationName = user.organization?.name || "LSMS Suprimentos";
+  appState.currentOrganizationCnpj = user.organization?.cnpj || "";
   try {
     updateAccessInterface();
     await reloadData();
@@ -2017,11 +2066,14 @@ function resetAuthenticatedView() {
   appState.currentUserEmail = null;
   appState.currentUserAuthId = null;
   appState.currentUserRole = null;
+  appState.currentUserName = null;
   appState.currentOrganizationId = null;
   appState.currentOrganizationName = null;
+  appState.currentOrganizationCnpj = null;
   refs.appView.classList.add("hidden");
   refs.loginView.classList.remove("hidden");
   refs.loginPassword.value = "";
+  declarationsFeature.reset();
   refs.appView.classList.remove("mobile-nav-open");
   updateMainNavigationState();
   for (const key of DATA_KEYS) appState[key] = [];
@@ -2071,6 +2123,13 @@ function isCurrentUserAdmin() {
   return appState.currentUserRole === USER_ROLES.ADMIN;
 }
 
+function resolveAuthorizedPage(page) {
+  if (page === "suppliers" && GLL_CONFIG.suppliersEnabled === false) return "home";
+  if (page === "users" && !isCurrentUserAdmin()) return "home";
+  if (page === "designSystem" && !isCurrentUserAdmin()) return "settings";
+  return page;
+}
+
 function creatorName(record) {
   const storedName = String(record?.created_by_name || "").trim();
   if (storedName) return storedName;
@@ -2095,6 +2154,8 @@ function updateAccessInterface() {
   refs.navUsersButton.classList.toggle("hidden", !showUserManagement);
   refs.navUsersButton.disabled = !showUserManagement;
   refs.navUsersButton.setAttribute("aria-hidden", String(!showUserManagement));
+  refs.designSystemAccessCard.classList.toggle("hidden", !showUserManagement);
+  refs.designSystemAccessCard.setAttribute("aria-hidden", String(!showUserManagement));
   refs.usersOrganizationLabel.textContent = `${appState.currentOrganizationName || "Organização"} · usuários vinculados no Supabase.`;
 }
 
@@ -2305,8 +2366,8 @@ function applyNavigationRoute(options = {}) {
 
 function setPage(page, options = {}) {
   const detailPages = ["items", "documents", "failures"];
-  if (page === "suppliers" && GLL_CONFIG.suppliersEnabled === false) page = "home";
-  if (page === "users" && !isCurrentUserAdmin()) page = "home";
+  const declarationPages = ["declarations", "declarationLibrary", "declarationSettings", "declarationHistory"];
+  page = resolveAuthorizedPage(page);
   if (detailPages.includes(page) && !appState.currentBidId) {
     page = "home";
   }
@@ -2317,16 +2378,20 @@ function setPage(page, options = {}) {
   placeQuotationEditor(page);
   const showUsers = page === "users";
   const showSettings = page === "settings";
+  const showDesignSystem = page === "designSystem";
   const showSuppliers = page === "suppliers";
+  const showDeclarations = declarationPages.includes(page);
   $("suppliersPage").classList.toggle("hidden", !showSuppliers);
+  refs.declarationsPage.classList.toggle("hidden", !showDeclarations);
   const showQuotations = page === "quotations";
   const showHome = page === "home";
   const showCatalog = page === "bids";
   const showEditor = page === "edit";
   const showDetail = detailPages.includes(page);
-  refs.bidsPage.classList.toggle("hidden", showUsers || showSettings || showQuotations || showSuppliers);
+  refs.bidsPage.classList.toggle("hidden", showUsers || showSettings || showDesignSystem || showQuotations || showSuppliers || showDeclarations);
   refs.usersPage.classList.toggle("hidden", !showUsers);
   refs.settingsPage.classList.toggle("hidden", !showSettings);
+  refs.designSystemPage.classList.toggle("hidden", !showDesignSystem);
   refs.quotationsPage.classList.toggle("hidden", !showQuotations);
   refs.homePage.classList.toggle("hidden", !showHome);
   refs.bidCatalogPage.classList.toggle("hidden", !showCatalog);
@@ -2337,13 +2402,13 @@ function setPage(page, options = {}) {
   refs.itemsPanel.classList.toggle("hidden", page !== "items");
   refs.documentsPanel.classList.toggle("hidden", page !== "documents");
   refs.failuresPanel.classList.toggle("hidden", page !== "failures");
-  refs.appView.classList.toggle("users-active", showUsers || showSettings || showQuotations || showSuppliers);
+  refs.appView.classList.toggle("users-active", showUsers || showSettings || showDesignSystem || showQuotations || showSuppliers || showDeclarations);
   refs.itemsTabButton.classList.toggle("active", page === "items");
   refs.documentsTabButton.classList.toggle("active", page === "documents");
   refs.failuresTabButton.classList.toggle("active", page === "failures");
   refs.failuresTabButton.classList.toggle("hidden", !shouldShowFailureHistory());
-  const primaryPage = showSuppliers ? "suppliers" : showUsers ? "users" : showSettings ? "settings" : showQuotations ? "quotations" : showHome ? "home" : "bids";
-  const pageLabels = { suppliers: "Fornecedores", home: "Visão geral", bids: "Licitações", quotations: "Orçamento", users: "Usuários", settings: "Configurações" };
+  const primaryPage = showDeclarations ? "declarations" : showSuppliers ? "suppliers" : showUsers ? "users" : showSettings || showDesignSystem ? "settings" : showQuotations ? "quotations" : showHome ? "home" : "bids";
+  const pageLabels = { declarations: "Declarações", suppliers: "Fornecedores", home: "Visão geral", bids: "Licitações", quotations: "Orçamento", users: "Usuários", settings: showDesignSystem ? "Design System" : "Configurações" };
   refs.breadcrumbLabel.textContent = pageLabels[primaryPage];
   document.querySelectorAll("[data-navigation-page]").forEach((button) => {
     button.classList.toggle("active", button.dataset.navigationPage === primaryPage);
@@ -2356,6 +2421,8 @@ function setPage(page, options = {}) {
   if (showQuotations) renderQuotations();
   if (page === "items") renderBidQuotationWorkspace();
   if (showSuppliers) renderSuppliers();
+  if (showDeclarations) void declarationsFeature.showPage(page).catch((error) => showToast(error.message));
+  if (showDesignSystem) window.GLLDesignSystem?.mountCatalog(refs.designSystemCatalog);
   writeNavigationRoute(page, options.history || "push");
 }
 
@@ -2805,16 +2872,6 @@ async function handleBidAttachmentAction(event) {
     refs.bidFormError.textContent = "Arquivo do edital não encontrado.";
     return;
   }
-  if (button.dataset.attachmentAction === "delete") {
-    if (guardCurrentBidReadOnly()) return;
-    if (!window.confirm(`Remover o arquivo ${attachment.name}?`)) return;
-    await store.deleteBidAttachment(bid.id, attachment.path);
-    await reloadData();
-    loadBid(bid.id);
-    showToast("Arquivo removido.");
-    return;
-  }
-
   button.disabled = true;
   try {
     const blob = await store.downloadBidAttachment(attachment);
@@ -2832,6 +2889,30 @@ async function handleBidAttachmentAction(event) {
   } finally {
     button.disabled = false;
   }
+}
+
+function requestDeleteBidAttachment(button) {
+  refs.bidFormError.textContent = "";
+  if (guardCurrentBidReadOnly()) return;
+  const bid = appState.bids.find((row) => row.id === appState.currentBidId);
+  const attachment = normalizeBidAttachments(bid)[Number(button.dataset.attachmentIndex)];
+  if (!attachment) {
+    refs.bidFormError.textContent = "Arquivo do edital não encontrado.";
+    return;
+  }
+  const modal = $("deleteBidAttachmentModal");
+  modal.dataset.bidId = bid.id;
+  modal.dataset.attachmentPath = attachment.path;
+  $("deleteBidAttachmentModalDescription").textContent = `Deseja remover o arquivo “${attachment.name}” do edital? Esta ação não poderá ser desfeita.`;
+  modal.showModal();
+}
+
+async function deleteBidAttachment(bidId, attachmentPath) {
+  if (!bidId || !attachmentPath) return;
+  await store.deleteBidAttachment(bidId, attachmentPath);
+  await reloadData();
+  loadBid(bidId);
+  showToast("Arquivo removido.");
 }
 
 function downloadCurrentBidItemsCsv() {
