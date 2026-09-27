@@ -38,6 +38,7 @@
 .declarations-tabs button.active { background: #202630; color: #fff; }
 .declaration-panel { display: grid; gap: 18px; }
 .declaration-panel.hidden { display: none; }
+#declarationSettingsForm { display: grid; gap: inherit; }
 .declaration-loading { text-align: center; color: #667085; }
 
 .declaration-generator-layout {
