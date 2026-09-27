@@ -1851,7 +1851,12 @@ function bindEvents() {
   refs.createBidQuotationButton.addEventListener("click", withBlockingLoading(startBidQuotationCreation, "Criando orçamento…"));
   refs.changeBidQuotationButton.addEventListener("click", openBidQuotationModal);
   refs.editalAttachmentList.addEventListener("click", (event) => {
-    if (!event.target.closest("[data-attachment-action]")) return;
+    const button = event.target.closest("[data-attachment-action]");
+    if (!button) return;
+    if (button.dataset.attachmentAction === "delete") {
+      requestDeleteBidAttachment(button);
+      return;
+    }
     withBlockingLoading(handleBidAttachmentAction, "Processando arquivo…")(event);
   });
   refs.clearBidButton.addEventListener("click", () => clearBidForm({ openEditor: true }));
@@ -1863,6 +1868,14 @@ function bindEvents() {
     const bidId = modal.dataset.bidId;
     modal.close();
     withBlockingLoading(() => deleteCurrentBid(bidId), "Excluindo edital…")();
+  });
+  $("cancelDeleteBidAttachmentButton").addEventListener("click", () => $("deleteBidAttachmentModal").close());
+  $("confirmDeleteBidAttachmentButton").addEventListener("click", () => {
+    const modal = $("deleteBidAttachmentModal");
+    if (!modal.open) return;
+    const { bidId, attachmentPath } = modal.dataset;
+    modal.close();
+    withBlockingLoading(() => deleteBidAttachment(bidId, attachmentPath), "Removendo arquivo…")();
   });
   refs.itemForm.addEventListener("submit", withBlockingLoading(saveItem, "Salvando item…"));
   refs.addSupplierLinkButton.addEventListener("click", addSupplierLink);
@@ -2859,16 +2872,6 @@ async function handleBidAttachmentAction(event) {
     refs.bidFormError.textContent = "Arquivo do edital não encontrado.";
     return;
   }
-  if (button.dataset.attachmentAction === "delete") {
-    if (guardCurrentBidReadOnly()) return;
-    if (!window.confirm(`Remover o arquivo ${attachment.name}?`)) return;
-    await store.deleteBidAttachment(bid.id, attachment.path);
-    await reloadData();
-    loadBid(bid.id);
-    showToast("Arquivo removido.");
-    return;
-  }
-
   button.disabled = true;
   try {
     const blob = await store.downloadBidAttachment(attachment);
@@ -2886,6 +2889,30 @@ async function handleBidAttachmentAction(event) {
   } finally {
     button.disabled = false;
   }
+}
+
+function requestDeleteBidAttachment(button) {
+  refs.bidFormError.textContent = "";
+  if (guardCurrentBidReadOnly()) return;
+  const bid = appState.bids.find((row) => row.id === appState.currentBidId);
+  const attachment = normalizeBidAttachments(bid)[Number(button.dataset.attachmentIndex)];
+  if (!attachment) {
+    refs.bidFormError.textContent = "Arquivo do edital não encontrado.";
+    return;
+  }
+  const modal = $("deleteBidAttachmentModal");
+  modal.dataset.bidId = bid.id;
+  modal.dataset.attachmentPath = attachment.path;
+  $("deleteBidAttachmentModalDescription").textContent = `Deseja remover o arquivo “${attachment.name}” do edital? Esta ação não poderá ser desfeita.`;
+  modal.showModal();
+}
+
+async function deleteBidAttachment(bidId, attachmentPath) {
+  if (!bidId || !attachmentPath) return;
+  await store.deleteBidAttachment(bidId, attachmentPath);
+  await reloadData();
+  loadBid(bidId);
+  showToast("Arquivo removido.");
 }
 
 function downloadCurrentBidItemsCsv() {

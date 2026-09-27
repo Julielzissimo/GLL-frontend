@@ -1151,6 +1151,17 @@
       </div>
     </dialog>
 
+    <dialog id="deleteBidAttachmentModal" class="quotation-item-discard-modal" aria-labelledby="deleteBidAttachmentModalTitle" aria-describedby="deleteBidAttachmentModalDescription">
+      <div class="quotation-item-discard-content">
+        <h2 id="deleteBidAttachmentModalTitle">Remover arquivo?</h2>
+        <p id="deleteBidAttachmentModalDescription">Deseja remover este arquivo do edital? Esta ação não poderá ser desfeita.</p>
+        <div class="button-row end">
+          <button id="cancelDeleteBidAttachmentButton" class="quiet-action" type="button" autofocus>Cancelar</button>
+          <button id="confirmDeleteBidAttachmentButton" class="danger-action" type="button">Remover arquivo</button>
+        </div>
+      </div>
+    </dialog>
+
     <dialog id="blockingLoadingModal" class="blocking-loading-modal" aria-labelledby="blockingLoadingMessage" aria-describedby="blockingLoadingDescription" aria-modal="true" tabindex="-1">
       <div class="blocking-loading-spinner" aria-hidden="true"></div>
       <h2 id="blockingLoadingMessage" role="status" aria-live="polite">Processando…</h2>
