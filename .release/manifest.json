@@ -53,6 +53,18 @@
       "migrations": [
         "supabase/migrations/20260927100000_add_declaration_generator.sql"
       ]
+    },
+    {
+      "id": "GARANTIA-001",
+      "backend_commits": [
+        "c61c2465db4537be72ea2bde555ec065131962a1"
+      ],
+      "frontend_commits": [
+        "28dacc7389fd968f68084662fb5bfd2182f3ae75"
+      ],
+      "migrations": [
+        "supabase/migrations/20260927180000_add_bid_guarantee_deposit.sql"
+      ]
     }
   ]
 }
