@@ -38,3 +38,11 @@ test("pré-visualização do PDF ocupa a área disponível no modal", async () =
     /<iframe id="declarationPreviewFrame" class="declaration-preview-frame"/,
   );
 });
+
+test("configurações preservam o espaçamento visual entre cabeçalho e seções", async () => {
+  const styles = await readFile(new URL("../web/styles.css", import.meta.url), "utf8");
+  assert.match(
+    styles,
+    /#declarationSettingsForm\s*{\s*display:\s*grid;\s*gap:\s*inherit;\s*}/,
+  );
+});
