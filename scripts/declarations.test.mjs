@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import {
+  buildPdfStoragePath,
   DECLARATION_VARIABLES,
   formatDeclarationDate,
   formatDeclarationFooter,
@@ -13,6 +14,15 @@ import {
 test("nome do PDF preserva espaços e acentos e remove somente caracteres incompatíveis", () => {
   assert.equal(sanitizePdfFileName("Declaração de Habilitação"), "Declaração de Habilitação.pdf");
   assert.equal(sanitizePdfFileName('Declaração: Edital 12/2026?'), "Declaração- Edital 12-2026-.pdf");
+});
+
+test("chave do PDF no Storage usa somente identificadores seguros", () => {
+  const path = buildPdfStoragePath(
+    "00000000-0000-4000-8000-000000000001",
+    "4dde2ed2-947d-4d38-ba1f-712ea49450b7",
+  );
+  assert.equal(path, "00000000-0000-4000-8000-000000000001/4dde2ed2-947d-4d38-ba1f-712ea49450b7.pdf");
+  assert.doesNotMatch(path, /DECLARAÇÃO UNIFICADA/);
 });
 
 test("variáveis conhecidas são substituídas e valores ausentes são informados", () => {

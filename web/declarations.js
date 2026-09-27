@@ -32,6 +32,10 @@ export function sanitizePdfFileName(title) {
   return `${safe || "DECLARAÇÃO"}.pdf`;
 }
 
+export function buildPdfStoragePath(organizationId, documentId) {
+  return `${organizationId}/${documentId}.pdf`;
+}
+
 export function formatDeclarationDate(value) {
   if (!value) return "";
   const [year, month, day] = String(value).split("-").map(Number);
@@ -708,7 +712,7 @@ export function createDeclarationsFeature({ getClient, getContext, getBids, navi
     const context = currentContext();
     const supabase = client();
     if (supabase) {
-      const filePath = `${context.organizationId}/${crypto.randomUUID()}/${composition.fileName}`;
+      const filePath = buildPdfStoragePath(context.organizationId, crypto.randomUUID());
       assertResult(await supabase.storage.from(PDF_BUCKET).upload(filePath, blob, { contentType: "application/pdf", upsert: false }));
       const historyRecord = {
         organization_id: context.organizationId, bid_id: composition.bidId, title: composition.title,
