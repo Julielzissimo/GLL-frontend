@@ -75,6 +75,7 @@ await writeFile(
 const assetVersion = createHash("sha256")
   .update(await readFile(resolve(sourceDir, "app.js")))
   .update(await readFile(resolve(sourceDir, "declarations.js")))
+  .update(await readFile(resolve(sourceDir, "company-data.js")))
   .update(await readFile(resolve(sourceDir, "styles.css")))
   .update(await readFile(resolve(sourceDir, "design-system", "tokens.css")))
   .update(await readFile(resolve(sourceDir, "design-system", "design-system.css")))
@@ -91,6 +92,7 @@ await writeFile(
     .replace('./design-system/design-system.css', `./design-system/design-system.css?v=${assetVersion}`)
     .replace('./design-system/components.js', `./design-system/components.js?v=${assetVersion}`)
     .replace('./declarations.js', `./declarations.js?v=${assetVersion}`)
+    .replace('./company-data.js', `./company-data.js?v=${assetVersion}`)
     .replace('./app.js', `./app.js?v=${assetVersion}`),
   "utf8",
 );

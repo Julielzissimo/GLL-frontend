@@ -62,6 +62,11 @@ const createDeclarationsFeature = window.GLLDeclarations?.createDeclarationsFeat
   reset: () => undefined,
   refresh: async () => undefined,
 }));
+const createCompanyDataFeature = window.GLLCompanyData?.createCompanyDataFeature || (() => ({
+  showPage: async () => undefined,
+  reset: () => undefined,
+  refresh: async () => undefined,
+}));
 
 const PAGE_ROUTE_NAMES = {
   home: "visao-geral",
@@ -78,6 +83,7 @@ const PAGE_ROUTE_NAMES = {
   declarationHistory: "declaracoes/historico",
   users: "usuarios",
   settings: "configuracoes",
+  companyData: "configuracoes/dados-da-empresa",
   designSystem: "configuracoes/design-system",
 };
 const ROUTE_PAGE_NAMES = Object.fromEntries(Object.entries(PAGE_ROUTE_NAMES).map(([page, route]) => [route, page]));
@@ -172,6 +178,7 @@ const refs = {
   currentBidAgency: $("currentBidAgency"),
   usersPage: $("usersPage"),
   settingsPage: $("settingsPage"),
+  companyDataPage: $("companyDataPage"),
   designSystemPage: $("designSystemPage"),
   designSystemAccessCard: $("designSystemAccessCard"),
   designSystemCatalog: $("designSystemCatalog"),
@@ -1583,6 +1590,23 @@ const declarationsFeature = createDeclarationsFeature({
   toast: (message) => showToast(message),
   runBusy: (operation, message) => withBlockingLoading(operation, message)(),
 });
+const companyDataFeature = createCompanyDataFeature({
+  getClient: () => (store.requiresAuthenticationBeforeData ? store.client : null),
+  getContext: () => ({
+    organizationId: appState.currentOrganizationId || DEFAULT_ADMIN.organization_id,
+    organizationName: appState.currentOrganizationName || DEFAULT_ADMIN.organization.name,
+    organizationCnpj: appState.currentOrganizationCnpj || DEFAULT_ADMIN.organization.cnpj,
+  }),
+  isAdmin: () => isCurrentUserAdmin(),
+  onOrganizationUpdate: (organization) => {
+    appState.currentOrganizationName = organization.name;
+    appState.currentOrganizationCnpj = organization.cnpj;
+    refs.usersOrganizationLabel.textContent = `${organization.name} · usuários vinculados no Supabase.`;
+    void declarationsFeature.refresh().catch((error) => showToast(error.message));
+  },
+  toast: (message) => showToast(message),
+  runBusy: (operation, message) => withBlockingLoading(operation, message)(),
+});
 
 const SESSION_ACTIVITY_EVENTS = ["pointerdown", "keydown", "input"];
 const SESSION_POLICY_CHECK_INTERVAL_MS = 60 * 1000;
@@ -1806,7 +1830,9 @@ function bindEvents() {
     button.addEventListener("click", () => setPage(button.dataset.navigationPage));
   });
   $("openDesignSystemButton").addEventListener("click", () => setPage("designSystem"));
+  $("openCompanyDataButton").addEventListener("click", () => setPage("companyData"));
   $("backToSettingsButton").addEventListener("click", () => setPage("settings"));
+  $("backToSettingsFromCompanyDataButton").addEventListener("click", () => setPage("settings"));
   document.querySelectorAll("[data-open-new]").forEach((button) => {
     button.addEventListener("click", () => clearBidForm({ openEditor: true }));
   });
@@ -2076,6 +2102,7 @@ function resetAuthenticatedView() {
   refs.loginView.classList.remove("hidden");
   refs.loginPassword.value = "";
   declarationsFeature.reset();
+  companyDataFeature.reset();
   refs.appView.classList.remove("mobile-nav-open");
   updateMainNavigationState();
   for (const key of DATA_KEYS) appState[key] = [];
@@ -2380,6 +2407,7 @@ function setPage(page, options = {}) {
   placeQuotationEditor(page);
   const showUsers = page === "users";
   const showSettings = page === "settings";
+  const showCompanyData = page === "companyData";
   const showDesignSystem = page === "designSystem";
   const showSuppliers = page === "suppliers";
   const showDeclarations = declarationPages.includes(page);
@@ -2390,9 +2418,10 @@ function setPage(page, options = {}) {
   const showCatalog = page === "bids";
   const showEditor = page === "edit";
   const showDetail = detailPages.includes(page);
-  refs.bidsPage.classList.toggle("hidden", showUsers || showSettings || showDesignSystem || showQuotations || showSuppliers || showDeclarations);
+  refs.bidsPage.classList.toggle("hidden", showUsers || showSettings || showCompanyData || showDesignSystem || showQuotations || showSuppliers || showDeclarations);
   refs.usersPage.classList.toggle("hidden", !showUsers);
   refs.settingsPage.classList.toggle("hidden", !showSettings);
+  refs.companyDataPage.classList.toggle("hidden", !showCompanyData);
   refs.designSystemPage.classList.toggle("hidden", !showDesignSystem);
   refs.quotationsPage.classList.toggle("hidden", !showQuotations);
   refs.homePage.classList.toggle("hidden", !showHome);
@@ -2404,13 +2433,13 @@ function setPage(page, options = {}) {
   refs.itemsPanel.classList.toggle("hidden", page !== "items");
   refs.documentsPanel.classList.toggle("hidden", page !== "documents");
   refs.failuresPanel.classList.toggle("hidden", page !== "failures");
-  refs.appView.classList.toggle("users-active", showUsers || showSettings || showDesignSystem || showQuotations || showSuppliers || showDeclarations);
+  refs.appView.classList.toggle("users-active", showUsers || showSettings || showCompanyData || showDesignSystem || showQuotations || showSuppliers || showDeclarations);
   refs.itemsTabButton.classList.toggle("active", page === "items");
   refs.documentsTabButton.classList.toggle("active", page === "documents");
   refs.failuresTabButton.classList.toggle("active", page === "failures");
   refs.failuresTabButton.classList.toggle("hidden", !shouldShowFailureHistory());
-  const primaryPage = showDeclarations ? "declarations" : showSuppliers ? "suppliers" : showUsers ? "users" : showSettings || showDesignSystem ? "settings" : showQuotations ? "quotations" : showHome ? "home" : "bids";
-  const pageLabels = { declarations: "Declarações", suppliers: "Fornecedores", home: "Visão geral", bids: "Licitações", quotations: "Orçamento", users: "Usuários", settings: showDesignSystem ? "Design System" : "Configurações" };
+  const primaryPage = showDeclarations ? "declarations" : showSuppliers ? "suppliers" : showUsers ? "users" : showSettings || showCompanyData || showDesignSystem ? "settings" : showQuotations ? "quotations" : showHome ? "home" : "bids";
+  const pageLabels = { declarations: "Declarações", suppliers: "Fornecedores", home: "Visão geral", bids: "Licitações", quotations: "Orçamento", users: "Usuários", settings: showCompanyData ? "Dados da Empresa" : showDesignSystem ? "Design System" : "Configurações" };
   refs.breadcrumbLabel.textContent = pageLabels[primaryPage];
   document.querySelectorAll("[data-navigation-page]").forEach((button) => {
     button.classList.toggle("active", button.dataset.navigationPage === primaryPage);
@@ -2424,6 +2453,7 @@ function setPage(page, options = {}) {
   if (page === "items") renderBidQuotationWorkspace();
   if (showSuppliers) renderSuppliers();
   if (showDeclarations) void declarationsFeature.showPage(page).catch((error) => showToast(error.message));
+  if (showCompanyData) void companyDataFeature.showPage().catch((error) => showToast(error.message));
   if (showDesignSystem) window.GLLDesignSystem?.mountCatalog(refs.designSystemCatalog);
   writeNavigationRoute(page, options.history || "push");
 }

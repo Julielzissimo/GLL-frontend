@@ -2948,6 +2948,119 @@ tr.item-won td {
   gap: 20px;
 }
 
+.settings-access-card {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 18px;
+}
+
+.settings-access-card h2,
+.settings-access-card p {
+  margin: 0;
+}
+
+.settings-access-card p {
+  margin-top: 5px;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.company-data-icon {
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  border-radius: 12px;
+  background: var(--info-bg);
+  color: var(--primary);
+  font-size: 23px;
+}
+
+.company-data-form,
+.company-data-section,
+.legal-representatives-list {
+  display: grid;
+  gap: 20px;
+}
+
+.company-data-loading {
+  color: var(--muted);
+  text-align: center;
+}
+
+.company-data-section-heading,
+.legal-representative-card-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.company-data-section-heading h2,
+.company-data-section-heading p {
+  margin: 0;
+}
+
+.company-data-section-heading p {
+  margin-top: 4px;
+  color: var(--muted);
+}
+
+.company-data-organization-grid {
+  grid-template-columns: minmax(0, 1.7fr) minmax(240px, 0.8fr);
+}
+
+.legal-representative-card {
+  min-width: 0;
+  margin: 0;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 18px;
+  background: var(--panel-alt, #f8fafc);
+}
+
+.legal-representative-card legend {
+  padding: 0 8px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+
+.legal-representative-primary {
+  display: inline-flex;
+  align-items: center;
+  flex-direction: row;
+  gap: 8px;
+  font-weight: 700;
+}
+
+.legal-representative-primary input {
+  width: 18px;
+  height: 18px;
+  margin: 0;
+}
+
+.legal-representative-grid {
+  grid-template-columns: minmax(0, 1.4fr) minmax(200px, .7fr);
+  margin-top: 18px;
+}
+
+.company-data-read-only {
+  border-color: #c8d9ed;
+  background: #f3f8fe;
+  color: #285078;
+}
+
+.company-data-status {
+  min-height: 22px;
+  margin: 0;
+  color: var(--success);
+  text-align: right;
+}
+
 .setting-row {
   display: flex;
   align-items: center;
@@ -4185,6 +4298,11 @@ tr.item-won td {
   .settings-grid {
     grid-template-columns: 1fr;
   }
+
+  .company-data-organization-grid,
+  .legal-representative-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (max-width: 620px) {
@@ -4297,6 +4415,20 @@ tr.item-won td {
   .metrics-row,
   .settings-grid {
     grid-template-columns: 1fr;
+  }
+
+  .settings-access-card {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .settings-access-card > button {
+    grid-column: 1 / -1;
+  }
+
+  .company-data-section-heading,
+  .legal-representative-card-heading {
+    align-items: stretch;
+    flex-direction: column;
   }
 
   .quotation-header-grid,

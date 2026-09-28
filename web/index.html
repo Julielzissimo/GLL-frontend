@@ -1111,6 +1111,14 @@
           <div><span class="eyebrow">SISTEMA</span><h1>Configurações</h1><p>Preferências do ambiente e manutenção da base demonstrativa.</p></div>
         </div>
         <div class="settings-grid">
+          <section class="section-band settings-access-card company-data-access-card">
+            <span class="company-data-icon" aria-hidden="true">▣</span>
+            <div>
+              <h2>Dados da Empresa</h2>
+              <p>Mantenha o CNPJ e os representantes legais da organização em um cadastro central.</p>
+            </div>
+            <button id="openCompanyDataButton" class="primary-action" type="button">Abrir cadastro</button>
+          </section>
           <section class="section-band">
             <h2>Ambiente</h2>
             <div class="setting-row"><div><strong>Modo de persistência</strong><small>Os dados utilizam a configuração ativa deste ambiente.</small></div><span class="status-pill">IndexedDB / Supabase</span></div>
@@ -1132,6 +1140,47 @@
             <button id="resetDataButton" class="danger-action" type="button">Restaurar base</button>
           </section>
         </div>
+      </section>
+
+      <section id="companyDataPage" class="users-page company-data-page hidden" aria-labelledby="companyDataTitle">
+        <div class="page-heading">
+          <div>
+            <span class="eyebrow">CONFIGURAÇÕES</span>
+            <h1 id="companyDataTitle">Dados da Empresa</h1>
+            <p>Informações institucionais compartilhadas pelos recursos do GLL.</p>
+          </div>
+          <button id="backToSettingsFromCompanyDataButton" class="quiet-action" type="button">← Voltar para Configurações</button>
+        </div>
+
+        <div id="companyDataLoading" class="section-band company-data-loading" role="status">Carregando dados da empresa…</div>
+
+        <form id="companyDataForm" class="company-data-form hidden">
+          <section class="section-band company-data-section">
+            <div class="company-data-section-heading">
+              <div><h2>Organização</h2><p>Estes dados identificam a empresa em todo o sistema.</p></div>
+            </div>
+            <div class="form-grid company-data-organization-grid">
+              <label>Razão social *<input id="companyLegalName" maxlength="240" autocomplete="organization" required /></label>
+              <label>CNPJ *<input id="companyCnpj" maxlength="18" inputmode="numeric" autocomplete="off" placeholder="00.000.000/0000-00" required /></label>
+            </div>
+          </section>
+
+          <section class="section-band company-data-section">
+            <div class="company-data-section-heading">
+              <div><h2>Representantes legais</h2><p>Cadastre uma ou mais pessoas autorizadas a representar a empresa.</p></div>
+              <button id="addLegalRepresentativeButton" class="quiet-action" type="button">＋ Adicionar representante</button>
+            </div>
+            <div id="legalRepresentativesList" class="legal-representatives-list"></div>
+          </section>
+
+          <div id="companyDataReadOnlyNotice" class="section-band company-data-read-only hidden" role="status">
+            Somente administradores podem alterar estes dados. Você pode consultá-los normalmente.
+          </div>
+          <p id="companyDataStatus" class="form-error company-data-status" role="status" aria-live="polite"></p>
+          <div id="companyDataActions" class="button-row end">
+            <button class="primary-action" type="submit">Salvar dados da empresa</button>
+          </div>
+        </form>
       </section>
 
       <section id="designSystemPage" class="users-page design-system-page hidden" aria-labelledby="designSystemTitle">
@@ -1180,6 +1229,7 @@
     <script src="./env.js"></script>
     <script src="./design-system/components.js"></script>
     <script type="module" src="./declarations.js"></script>
+    <script type="module" src="./company-data.js"></script>
     <script type="module" src="./app.js"></script>
   </body>
 </html>
