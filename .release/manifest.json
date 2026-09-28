@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "release_id": "2026-09-28-hotfix-orcamento-vinculado",
+  "release_id": "2026-09-28-hotfix-orcamento-71-2026",
   "environment": "production",
   "target_branch": "main",
   "items": [
@@ -76,6 +76,16 @@
       ],
       "migrations": [
         "supabase/migrations/20260928190000_grant_linked_quotation_access.sql"
+      ]
+    },
+    {
+      "id": "HOTFIX-ORCAMENTO-71-2026-001",
+      "backend_commits": [
+        "7971c1cb778686cb0e825a4801eb2c0439c9673e"
+      ],
+      "frontend_commits": [],
+      "migrations": [
+        "supabase/migrations/20260928223000_repair_bid_71_quotation_and_admin_access.sql"
       ]
     }
   ]
