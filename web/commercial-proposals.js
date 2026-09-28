@@ -799,6 +799,35 @@ export function createCommercialProposalsFeature({ getClient, getContext, toast,
       writeLines(resolved, contentWidth, { lineHeight: 4.7 });
       y += 3;
     };
+    const drawInlineTextSection = (title, content) => {
+      const resolvedTitle = resolveVariables(title, values).trim();
+      const resolvedContent = resolveVariables(content, values).trim();
+      if (!resolvedTitle && !resolvedContent) return;
+
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(11);
+      const label = resolvedTitle ? `${resolvedTitle.toUpperCase()}:` : "";
+      const labelWidth = label ? doc.getTextWidth(label) : 0;
+      const valueX = margin + labelWidth + (label ? 1.5 : 0);
+      const valueWidth = Math.max(3, pageWidth - margin - valueX);
+
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(9.5);
+      const lines = resolvedContent ? doc.splitTextToSize(resolvedContent, valueWidth) : [];
+      ensure(Math.max(1, lines.length) * 4.7 + 3);
+
+      if (label) {
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(11);
+        doc.text(label, margin, y);
+      }
+      if (lines.length) {
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(9.5);
+        doc.text(lines, valueX, y);
+      }
+      y += Math.max(1, lines.length) * 4.7 + 3;
+    };
 
     drawWatermarkBackground();
     doc.setFont("helvetica", "bold");
@@ -911,9 +940,9 @@ export function createCommercialProposalsFeature({ getClient, getContext, toast,
     const enabledSections = state.editor.sections.filter((entry) => entry.enabled).sort((a, b) => a.position - b.position);
     for (const section of enabledSections.filter((entry) => entry.type !== "signature")) {
       if (section.type === "items_table") drawItemsTable();
-      else if (section.type === "delivery_term") drawTextSection(section.title || "Prazo de entrega", proposal.delivery_term);
-      else if (section.type === "proposal_validity") drawTextSection(section.title || "Validade da proposta", proposal.proposal_validity);
-      else if (section.type === "payment_terms") drawTextSection(section.title || "Condições de pagamento", proposal.payment_terms);
+      else if (section.type === "delivery_term") drawInlineTextSection(section.title || "Prazo de entrega", proposal.delivery_term);
+      else if (section.type === "proposal_validity") drawInlineTextSection(section.title || "Validade da proposta", proposal.proposal_validity);
+      else if (section.type === "payment_terms") drawInlineTextSection(section.title || "Condições de pagamento", proposal.payment_terms);
       else drawTextSection(section.title, section.content);
     }
     if (enabledSections.some((entry) => entry.type === "signature")) drawSignature();
