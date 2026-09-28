@@ -89,6 +89,14 @@
       "migrations": [
         "supabase/migrations/20260928120000_add_commercial_proposals.sql"
       ]
+    },
+    {
+      "id": "NAVEGACAO-GERACAO-DOCUMENTOS-001",
+      "backend_commits": [],
+      "frontend_commits": [
+        "b1573563cdba12abaa9f0859ec22e73f15c397e6"
+      ],
+      "migrations": []
     }
   ]
 }
