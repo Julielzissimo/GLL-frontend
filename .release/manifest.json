@@ -94,7 +94,8 @@
       "id": "NAVEGACAO-GERACAO-DOCUMENTOS-001",
       "backend_commits": [],
       "frontend_commits": [
-        "b1573563cdba12abaa9f0859ec22e73f15c397e6"
+        "b1573563cdba12abaa9f0859ec22e73f15c397e6",
+        "8e95ced67b83823bd65d2388ab3932361bbe8440"
       ],
       "migrations": []
     }
