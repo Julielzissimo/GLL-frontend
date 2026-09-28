@@ -110,6 +110,16 @@
       "migrations": [
         "supabase/migrations/20260928190000_grant_linked_quotation_access.sql"
       ]
+    },
+    {
+      "id": "HOTFIX-ORCAMENTO-71-2026-001",
+      "backend_commits": [
+        "4db43cc59dbfceffc7d32169d6b089ad05edbc5e"
+      ],
+      "frontend_commits": [],
+      "migrations": [
+        "supabase/migrations/20260928223000_repair_bid_71_quotation_and_admin_access.sql"
+      ]
     }
   ]
 }
