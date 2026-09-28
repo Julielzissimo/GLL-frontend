@@ -138,6 +138,16 @@
         "2e80bc4f0a42a7bf38f2564576463fcce7d4a49d"
       ],
       "migrations": []
+    },
+    {
+      "id": "CORRECAO-ORCAMENTOS-LEGADOS-SEM-VINCULO-001",
+      "backend_commits": [
+        "16f5b04fcdc5f3cc4ad08654fcfc612abd026ba2"
+      ],
+      "frontend_commits": [],
+      "migrations": [
+        "supabase/migrations/20260928233000_repair_all_legacy_bid_quotations.sql"
+      ]
     }
   ]
 }
