@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "release_id": "2026-09-27-dados-empresa",
+  "release_id": "2026-09-28-propostas-comerciais",
   "environment": "homolog",
   "target_branch": "homolog",
   "items": [
@@ -76,6 +76,18 @@
       ],
       "migrations": [
         "supabase/migrations/20260927220000_add_company_data.sql"
+      ]
+    },
+    {
+      "id": "PROPOSTAS-COMERCIAIS-001",
+      "backend_commits": [
+        "a80464f9273ab67baad18b63860222a6988e5de5"
+      ],
+      "frontend_commits": [
+        "a5a99ac6b71b84c0a320eaa5d12f9440b8e97696"
+      ],
+      "migrations": [
+        "supabase/migrations/20260928120000_add_commercial_proposals.sql"
       ]
     }
   ]
