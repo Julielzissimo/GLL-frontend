@@ -70,6 +70,7 @@ const createCompanyDataFeature = window.GLLCompanyData?.createCompanyDataFeature
 const createCommercialProposalsFeature = window.GLLCommercialProposals?.createCommercialProposalsFeature || (() => ({
   showPage: async () => undefined,
   reset: () => undefined,
+  requestDiscardChanges: (action) => { action(); return true; },
 }));
 
 const PAGE_ROUTE_NAMES = {
@@ -2422,6 +2423,17 @@ function setPage(page, options = {}) {
   }
   if (page === "failures" && !shouldShowFailureHistory()) {
     page = appState.currentBidId ? "items" : "home";
+  }
+  if (appState.activePage === "commercialProposals" && page !== "commercialProposals" && !options.skipCommercialProposalDiscardCheck) {
+    const targetPage = page;
+    commercialProposalsFeature.requestDiscardChanges(
+      () => setPage(targetPage, {
+        ...options,
+        skipCommercialProposalDiscardCheck: true,
+      }),
+      options.history === "none" ? () => writeNavigationRoute(appState.activePage, "replace") : undefined,
+    );
+    return;
   }
   appState.activePage = page;
   placeQuotationEditor(page);

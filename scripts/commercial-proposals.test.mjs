@@ -30,8 +30,9 @@ test("integra a página independente, navegação e build versionado", async () 
 });
 
 test("mantém os ajustes de interface e organização do construtor de propostas", async () => {
-  const [feature, styles] = await Promise.all([
+  const [feature, app, styles] = await Promise.all([
     readFile(new URL("../web/commercial-proposals.js", import.meta.url), "utf8"),
+    readFile(new URL("../web/app.js", import.meta.url), "utf8"),
     readFile(new URL("../web/styles.css", import.meta.url), "utf8"),
   ]);
 
@@ -46,6 +47,11 @@ test("mantém os ajustes de interface e organização do construtor de propostas
   assert.match(feature, /drawInlineTextSection\(section\.title \|\| "Prazo de entrega", proposal\.delivery_term\)/);
   assert.match(feature, /drawInlineTextSection\(section\.title \|\| "Validade da proposta", proposal\.proposal_validity\)/);
   assert.match(feature, /drawInlineTextSection\(section\.title \|\| "Condições de pagamento", proposal\.payment_terms\)/);
+  assert.match(feature, /id="commercialProposalDiscardDialog"/);
+  assert.match(feature, />Continuar editando<\/button>/);
+  assert.match(feature, />Descartar alterações<\/button>/);
+  assert.doesNotMatch(feature, /confirm\("Há alterações não salvas/);
+  assert.match(app, /commercialProposalsFeature\.requestDiscardChanges/);
   assert.match(styles, /\.commercial-proposal-create-modal/);
   assert.match(styles, /#commercialProposalPreviewFrame[^}]+min-height: 0/s);
 });

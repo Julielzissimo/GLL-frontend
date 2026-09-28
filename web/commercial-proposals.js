@@ -137,6 +137,7 @@ export function createCommercialProposalsFeature({ getClient, getContext, toast,
     collapsedItems: new Set(),
     permanentFields: new Set(),
   };
+  let pendingDiscardRequest = null;
 
   function client() {
     const value = getClient();
@@ -450,7 +451,43 @@ export function createCommercialProposalsFeature({ getClient, getContext, toast,
           <div class="button-row end"><button class="quiet-action" value="cancel">Cancelar</button><button class="primary-action" type="submit" value="default">Adicionar</button></div>
         </form>
       </dialog>
+      <dialog id="commercialProposalDiscardDialog" class="quotation-item-discard-modal" aria-labelledby="commercialProposalDiscardTitle" aria-describedby="commercialProposalDiscardDescription">
+        <div class="quotation-item-discard-content">
+          <h2 id="commercialProposalDiscardTitle">Descartar alterações?</h2>
+          <p id="commercialProposalDiscardDescription">Há alterações não salvas nesta proposta. Se você sair agora, elas serão perdidas.</p>
+          <div class="button-row end">
+            <button class="quiet-action" type="button" data-proposal-action="keep-editing">Continuar editando</button>
+            <button class="danger-action" type="button" data-proposal-action="discard-changes">Descartar alterações</button>
+          </div>
+        </div>
+      </dialog>
     `;
+  }
+
+  function requestDiscardChanges(action, onCancel) {
+    if (!state.editor || !state.dirty) {
+      action();
+      return true;
+    }
+    pendingDiscardRequest = { action, onCancel };
+    const dialog = root.querySelector("#commercialProposalDiscardDialog");
+    if (dialog && !dialog.open) dialog.showModal();
+    return false;
+  }
+
+  function keepEditing() {
+    const request = pendingDiscardRequest;
+    pendingDiscardRequest = null;
+    root.querySelector("#commercialProposalDiscardDialog")?.close();
+    request?.onCancel?.();
+  }
+
+  function discardChanges() {
+    const request = pendingDiscardRequest;
+    pendingDiscardRequest = null;
+    root.querySelector("#commercialProposalDiscardDialog")?.close();
+    state.dirty = false;
+    request?.action?.();
   }
 
   async function openEditor(id) {
@@ -1143,10 +1180,13 @@ export function createCommercialProposalsFeature({ getClient, getContext, toast,
     if (!action) return;
     if (action === "new") return root.querySelector("#newCommercialProposalDialog").showModal();
     if (action === "back") {
-      if (state.dirty && !confirm("Há alterações não salvas. Deseja voltar mesmo assim?")) return;
-      state.editor = null;
-      return void runBusy(async () => { await loadList(); renderList(); }, "Atualizando propostas…").catch((error) => toast(error.message));
+      return void requestDiscardChanges(() => {
+        state.editor = null;
+        runBusy(async () => { await loadList(); renderList(); }, "Atualizando propostas…").catch((error) => toast(error.message));
+      });
     }
+    if (action === "keep-editing") return keepEditing();
+    if (action === "discard-changes") return discardChanges();
     if (action === "save") return void runBusy(() => saveProposal(false), "Salvando rascunho…").catch((error) => toast(error.message));
     if (action === "finalize") return void runBusy(() => saveProposal(true), "Finalizando proposta…").catch((error) => toast(error.message));
     if (action === "preview") return void runBusy(previewPdf, "Preparando pré-visualização…").catch((error) => toast(error.message));
@@ -1163,6 +1203,12 @@ export function createCommercialProposalsFeature({ getClient, getContext, toast,
       markDirty(); renderEditor();
     }
   });
+
+  root.addEventListener("cancel", (event) => {
+    if (event.target.id !== "commercialProposalDiscardDialog") return;
+    event.preventDefault();
+    keepEditing();
+  }, true);
 
   root.addEventListener("dragstart", (event) => {
     const record = event.target.closest("[data-drag-kind]");
@@ -1192,6 +1238,7 @@ export function createCommercialProposalsFeature({ getClient, getContext, toast,
 
   function reset() {
     if (state.previewUrl) URL.revokeObjectURL(state.previewUrl);
+    pendingDiscardRequest = null;
     Object.assign(state, {
       loaded: false, list: [], bids: [], editor: null, dirty: false, previewUrl: "", dragged: null,
       activeEditorTab: "proposal", collapsedItems: new Set(), permanentFields: new Set(),
@@ -1199,7 +1246,7 @@ export function createCommercialProposalsFeature({ getClient, getContext, toast,
     root.innerHTML = "";
   }
 
-  return { showPage, reset };
+  return { showPage, reset, requestDiscardChanges };
 }
 
 if (typeof window !== "undefined") {
