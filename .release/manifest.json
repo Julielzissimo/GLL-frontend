@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "release_id": "2026-09-27-garantia-deposito",
+  "release_id": "2026-09-28-hotfix-orcamento-vinculado",
   "environment": "production",
   "target_branch": "main",
   "items": [
@@ -64,6 +64,18 @@
       ],
       "migrations": [
         "supabase/migrations/20260927180000_add_bid_guarantee_deposit.sql"
+      ]
+    },
+    {
+      "id": "CORRECAO-ORCAMENTO-VINCULADO-001",
+      "backend_commits": [
+        "ad9143d23a46dfc409dfd062e927a5f36976a4b6"
+      ],
+      "frontend_commits": [
+        "28dacc7389fd968f68084662fb5bfd2182f3ae75"
+      ],
+      "migrations": [
+        "supabase/migrations/20260928190000_grant_linked_quotation_access.sql"
       ]
     }
   ]
