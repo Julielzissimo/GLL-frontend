@@ -40,6 +40,11 @@ export function commercialProposalFileName(editalNumber) {
   return `Proposta Final - ${safe || "edital"}.pdf`;
 }
 
+export function commercialProposalSignaturePlacement(currentY, pageHeight = 297, bottom = 24, height = 42) {
+  const y = pageHeight - bottom - height;
+  return { addPage: currentY > y, y };
+}
+
 const ONES = ["", "um", "dois", "três", "quatro", "cinco", "seis", "sete", "oito", "nove"];
 const TEENS = ["dez", "onze", "doze", "treze", "quatorze", "quinze", "dezesseis", "dezessete", "dezoito", "dezenove"];
 const TENS = ["", "", "vinte", "trinta", "quarenta", "cinquenta", "sessenta", "setenta", "oitenta", "noventa"];
@@ -941,7 +946,9 @@ export function createCommercialProposalsFeature({ getClient, getContext, toast,
       y += 4;
     };
     const drawSignature = () => {
-      ensure(42);
+      const placement = commercialProposalSignaturePlacement(y, pageHeight, bottom);
+      if (placement.addPage) addPage();
+      y = placement.y;
       const signature = proposal.visual_config?.signature || {};
       const location = [
         signature.city !== false ? settings.signature_city || settings.company_city : "",
@@ -967,14 +974,15 @@ export function createCommercialProposalsFeature({ getClient, getContext, toast,
       y += 6;
     };
 
-    for (const section of state.editor.sections.filter((entry) => entry.enabled).sort((a, b) => a.position - b.position)) {
+    const enabledSections = state.editor.sections.filter((entry) => entry.enabled).sort((a, b) => a.position - b.position);
+    for (const section of enabledSections.filter((entry) => entry.type !== "signature")) {
       if (section.type === "items_table") drawItemsTable();
       else if (section.type === "delivery_term") drawInlineTextSection(section.title || "Prazo de entrega", proposal.delivery_term);
       else if (section.type === "proposal_validity") drawInlineTextSection(section.title || "Validade da proposta", proposal.proposal_validity);
       else if (section.type === "payment_terms") drawInlineTextSection(section.title || "Condições de pagamento", proposal.payment_terms);
-      else if (section.type === "signature") drawSignature();
       else drawTextSection(section.title, section.content);
     }
+    if (enabledSections.some((entry) => entry.type === "signature")) drawSignature();
 
     const pageCount = doc.getNumberOfPages();
     for (let page = 1; page <= pageCount; page += 1) {
