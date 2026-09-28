@@ -33,6 +33,10 @@ test("integra a página independente, navegação e build versionado", async () 
   assert.match(html, /commercial-proposals\.js/);
   assert.match(app, /commercialProposals: "propostas-comerciais"/);
   assert.match(build, /commercial-proposals\.js/);
+  assert.match(build, /production:[\s\S]+commercialProposalsEnabled: false/);
+  assert.match(build, /homolog:[\s\S]+commercialProposalsEnabled: true/);
+  assert.match(app, /page === "commercialProposals" && GLL_CONFIG\.commercialProposalsEnabled === false/);
+  assert.match(app, /navCommercialProposalsButton\.disabled = !commercialProposalsEnabled/);
 });
 
 test("mantém os ajustes de interface e organização do construtor de propostas", async () => {

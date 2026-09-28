@@ -52,6 +52,7 @@ const DEFAULT_GLL_CONFIG = {
   sessionIdleTimeoutMinutes: 30,
   sessionMaxLifetimeHours: 8,
   suppliersEnabled: true,
+  commercialProposalsEnabled: true,
 };
 const GLL_CONFIG = {
   ...DEFAULT_GLL_CONFIG,
@@ -1772,6 +1773,11 @@ function applyEnvironmentConfig() {
   refs.navSuppliersButton.classList.toggle("nav-link-disabled", !suppliersEnabled);
   refs.navSuppliersButton.setAttribute("aria-disabled", String(!suppliersEnabled));
   refs.navSuppliersButton.title = suppliersEnabled ? "" : "Fornecedores temporariamente indisponível";
+  const commercialProposalsEnabled = GLL_CONFIG.commercialProposalsEnabled !== false;
+  refs.navCommercialProposalsButton.disabled = !commercialProposalsEnabled;
+  refs.navCommercialProposalsButton.classList.toggle("nav-link-disabled", !commercialProposalsEnabled);
+  refs.navCommercialProposalsButton.setAttribute("aria-disabled", String(!commercialProposalsEnabled));
+  refs.navCommercialProposalsButton.title = commercialProposalsEnabled ? "" : "Propostas Comerciais temporariamente indisponível";
 }
 
 function populateOptions() {
@@ -2196,6 +2202,7 @@ function isCurrentUserAdmin() {
 
 function resolveAuthorizedPage(page) {
   if (page === "suppliers" && GLL_CONFIG.suppliersEnabled === false) return "home";
+  if (page === "commercialProposals" && GLL_CONFIG.commercialProposalsEnabled === false) return "home";
   if (page === "users" && !isCurrentUserAdmin()) return "home";
   if (page === "designSystem" && !isCurrentUserAdmin()) return "settings";
   return page;

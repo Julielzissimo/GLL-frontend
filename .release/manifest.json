@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "release_id": "2026-09-28-plano-testes-homologacao",
+  "release_id": "2026-09-28-sincronizacao-pos-promocao",
   "environment": "homolog",
   "target_branch": "homolog",
   "items": [

@@ -16,6 +16,7 @@ const TARGETS = {
     sessionIdleTimeoutMinutes: 120,
     sessionMaxLifetimeHours: 8,
     suppliersEnabled: true,
+    commercialProposalsEnabled: true,
   },
   production: {
     outputDir: "prod",
@@ -29,6 +30,7 @@ const TARGETS = {
     sessionIdleTimeoutMinutes: 120,
     sessionMaxLifetimeHours: 8,
     suppliersEnabled: false,
+    commercialProposalsEnabled: false,
   },
   prod: null,
 };
@@ -64,6 +66,7 @@ const runtimeConfig = {
   sessionIdleTimeoutMinutes: Number(process.env.GLL_SESSION_IDLE_TIMEOUT_MINUTES || target.sessionIdleTimeoutMinutes),
   sessionMaxLifetimeHours: Number(process.env.GLL_SESSION_MAX_LIFETIME_HOURS || target.sessionMaxLifetimeHours),
   suppliersEnabled: target.suppliersEnabled,
+  commercialProposalsEnabled: target.commercialProposalsEnabled,
 };
 
 await writeFile(
