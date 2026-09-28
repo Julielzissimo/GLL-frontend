@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "release_id": "2026-09-28-propostas-comerciais",
+  "release_id": "2026-09-28-acesso-orcamento-vinculado",
   "environment": "homolog",
   "target_branch": "homolog",
   "items": [
@@ -98,6 +98,18 @@
         "8e95ced67b83823bd65d2388ab3932361bbe8440"
       ],
       "migrations": []
+    },
+    {
+      "id": "CORRECAO-ORCAMENTO-VINCULADO-001",
+      "backend_commits": [
+        "0b78934874d978cd92427c2251155cca827768f9"
+      ],
+      "frontend_commits": [
+        "2c23799f3f572281f34d4884d46ce32ae0a5a447"
+      ],
+      "migrations": [
+        "supabase/migrations/20260928190000_grant_linked_quotation_access.sql"
+      ]
     }
   ]
 }
