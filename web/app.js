@@ -2178,10 +2178,12 @@ function toggleDocumentsNavigation() {
 function updateDocumentsNavigation() {
   const isDocumentsPage = ["commercialProposals", "declarations", "declarationLibrary", "declarationSettings", "declarationHistory"]
     .includes(appState.activePage);
-  const isExpanded = appState.documentsNavigationExpanded || isDocumentsPage;
+  const isExpanded = appState.documentsNavigationExpanded;
   refs.navDocumentsButton.setAttribute("aria-expanded", String(isExpanded));
   refs.navDocumentsButton.classList.toggle("active", isDocumentsPage);
-  refs.documentsNavigationItems.hidden = !isExpanded;
+  refs.documentsNavigationItems.classList.toggle("is-expanded", isExpanded);
+  refs.documentsNavigationItems.setAttribute("aria-hidden", String(!isExpanded));
+  refs.documentsNavigationItems.inert = !isExpanded;
 }
 
 function normalizeUserRole(role) {
@@ -2455,6 +2457,9 @@ function setPage(page, options = {}) {
     return;
   }
   appState.activePage = page;
+  if (["commercialProposals", ...declarationPages].includes(page)) {
+    appState.documentsNavigationExpanded = true;
+  }
   placeQuotationEditor(page);
   const showUsers = page === "users";
   const showSettings = page === "settings";

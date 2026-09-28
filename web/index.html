@@ -53,11 +53,16 @@
           <button id="navQuotationsButton" class="nav-link" type="button" data-navigation-page="quotations"><span aria-hidden="true">▧</span>Orçamento</button>
           <div id="documentsNavigationGroup" class="nav-group">
             <button id="navDocumentsButton" class="nav-link nav-group-toggle" type="button" aria-expanded="false" aria-controls="documentsNavigationItems">
-              <span aria-hidden="true">▤</span><span class="nav-group-label">Geração de Documentos</span><span class="nav-group-chevron" aria-hidden="true">⌄</span>
+              <span aria-hidden="true">▤</span><span class="nav-group-label">Geração de Documentos</span>
+              <svg class="nav-group-chevron" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="m9 18 6-6-6-6"></path>
+              </svg>
             </button>
-            <div id="documentsNavigationItems" class="nav-submenu" hidden>
-              <button id="navCommercialProposalsButton" class="nav-link nav-sublink" type="button" data-navigation-page="commercialProposals"><span aria-hidden="true">▤</span>Propostas Comerciais</button>
-              <button id="navDeclarationsButton" class="nav-link nav-sublink" type="button" data-navigation-page="declarations"><span aria-hidden="true">▥</span>Declarações</button>
+            <div id="documentsNavigationItems" class="nav-submenu" aria-hidden="true" inert>
+              <div class="nav-submenu-inner">
+                <button id="navCommercialProposalsButton" class="nav-link nav-sublink" type="button" data-navigation-page="commercialProposals"><span class="nav-sublink-icon" aria-hidden="true">▤</span>Propostas Comerciais</button>
+                <button id="navDeclarationsButton" class="nav-link nav-sublink" type="button" data-navigation-page="declarations"><span class="nav-sublink-icon" aria-hidden="true">▥</span>Declarações</button>
+              </div>
             </div>
           </div>
           <button id="navSuppliersButton" class="nav-link" type="button" data-navigation-page="suppliers"><span aria-hidden="true">▦</span>Fornecedores</button>
