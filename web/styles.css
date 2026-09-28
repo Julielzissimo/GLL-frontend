@@ -2050,6 +2050,73 @@ textarea:focus {
   gap: 5px;
 }
 
+.nav-group {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.nav-group-toggle {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  white-space: normal;
+}
+
+.nav-group-chevron {
+  margin-left: auto;
+  width: 16px;
+  height: 16px;
+  flex: 0 0 16px;
+  transition: transform 180ms ease;
+}
+
+.nav-group-toggle[aria-expanded="true"] .nav-group-chevron {
+  transform: rotate(-90deg);
+}
+
+.nav-submenu {
+  display: grid;
+  grid-template-rows: 0fr;
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    grid-template-rows 180ms ease,
+    opacity 140ms ease,
+    visibility 0s linear 180ms;
+}
+
+.nav-submenu.is-expanded {
+  grid-template-rows: 1fr;
+  opacity: 1;
+  visibility: visible;
+  transition:
+    grid-template-rows 180ms ease,
+    opacity 160ms ease 30ms,
+    visibility 0s linear 0s;
+}
+
+.nav-submenu-inner {
+  display: grid;
+  min-height: 0;
+  margin-left: 25px;
+  padding-left: 14px;
+  overflow: hidden;
+  border-left: 1px solid #334566;
+}
+
+.nav-sublink {
+  min-height: 36px;
+  border-radius: 7px;
+  padding: 8px 10px;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.nav-sublink-icon {
+  display: none !important;
+}
+
 .nav-link {
   display: flex;
   align-items: center;
@@ -2069,6 +2136,21 @@ textarea:focus {
   width: 22px;
   place-items: center;
   font-size: 17px;
+}
+
+.nav-link .nav-group-label {
+  display: block;
+  width: auto;
+  min-width: 0;
+  flex: 1;
+  overflow-wrap: anywhere;
+  font-size: inherit;
+  line-height: 1.25;
+}
+
+.nav-link .nav-group-chevron {
+  width: 16px;
+  flex: 0 0 16px;
 }
 
 .nav-link:hover,
@@ -2946,6 +3028,119 @@ tr.item-won td {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 20px;
+}
+
+.settings-access-card {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 18px;
+}
+
+.settings-access-card h2,
+.settings-access-card p {
+  margin: 0;
+}
+
+.settings-access-card p {
+  margin-top: 5px;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.company-data-icon {
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  border-radius: 12px;
+  background: var(--info-bg);
+  color: var(--primary);
+  font-size: 23px;
+}
+
+.company-data-form,
+.company-data-section,
+.legal-representatives-list {
+  display: grid;
+  gap: 20px;
+}
+
+.company-data-loading {
+  color: var(--muted);
+  text-align: center;
+}
+
+.company-data-section-heading,
+.legal-representative-card-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.company-data-section-heading h2,
+.company-data-section-heading p {
+  margin: 0;
+}
+
+.company-data-section-heading p {
+  margin-top: 4px;
+  color: var(--muted);
+}
+
+.company-data-organization-grid {
+  grid-template-columns: minmax(0, 1.7fr) minmax(240px, 0.8fr);
+}
+
+.legal-representative-card {
+  min-width: 0;
+  margin: 0;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 18px;
+  background: var(--panel-alt, #f8fafc);
+}
+
+.legal-representative-card legend {
+  padding: 0 8px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+
+.legal-representative-primary {
+  display: inline-flex;
+  align-items: center;
+  flex-direction: row;
+  gap: 8px;
+  font-weight: 700;
+}
+
+.legal-representative-primary input {
+  width: 18px;
+  height: 18px;
+  margin: 0;
+}
+
+.legal-representative-grid {
+  grid-template-columns: minmax(0, 1.4fr) minmax(200px, .7fr);
+  margin-top: 18px;
+}
+
+.company-data-read-only {
+  border-color: #c8d9ed;
+  background: #f3f8fe;
+  color: #285078;
+}
+
+.company-data-status {
+  min-height: 22px;
+  margin: 0;
+  color: var(--success);
+  text-align: right;
 }
 
 .setting-row {
@@ -4013,6 +4208,15 @@ tr.item-won td {
   table-layout: fixed;
 }
 
+.quotation-items-table.shows-item-won {
+  min-width: 1452px;
+}
+
+.quotation-items-table .item-won-header,
+.quotation-items-table .item-won-cell {
+  width: 120px;
+}
+
 .quotation-items-table thead th {
   position: sticky;
   top: 0;
@@ -4168,9 +4372,23 @@ tr.item-won td {
     font-size: 0;
   }
 
+  .nav-submenu-inner {
+    margin-left: 0;
+    padding-left: 0;
+    border-left: 0;
+  }
+
+  .nav-group-chevron {
+    display: none !important;
+  }
+
   .nav-link span {
     width: 100%;
     font-size: 18px;
+  }
+
+  .nav-sublink-icon {
+    display: inline-grid !important;
   }
 
   .sidebar-footer > div {
@@ -4183,6 +4401,11 @@ tr.item-won td {
   }
 
   .settings-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .company-data-organization-grid,
+  .legal-representative-grid {
     grid-template-columns: 1fr;
   }
 }
@@ -4238,7 +4461,7 @@ tr.item-won td {
   .app-sidebar {
     position: fixed;
     inset: 0 auto 0 0;
-    width: 250px;
+    width: min(300px, 88vw);
     padding: 22px 16px;
     transform: translateX(-100%);
     transition: transform 180ms ease;
@@ -4254,9 +4477,23 @@ tr.item-won td {
     font-size: inherit;
   }
 
+  .nav-submenu-inner {
+    margin-left: 25px;
+    padding-left: 14px;
+    border-left: 1px solid #334566;
+  }
+
+  .nav-group-chevron {
+    display: inline-grid !important;
+  }
+
   .nav-link span {
     width: 22px;
     font-size: 17px;
+  }
+
+  .nav-sublink-icon {
+    display: none !important;
   }
 
   .sidebar-footer > div {
@@ -4297,6 +4534,20 @@ tr.item-won td {
   .metrics-row,
   .settings-grid {
     grid-template-columns: 1fr;
+  }
+
+  .settings-access-card {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .settings-access-card > button {
+    grid-column: 1 / -1;
+  }
+
+  .company-data-section-heading,
+  .legal-representative-card-heading {
+    align-items: stretch;
+    flex-direction: column;
   }
 
   .quotation-header-grid,
@@ -4819,4 +5070,502 @@ html.is-loading { overflow: hidden; }
   .supplier-profile { flex-wrap: wrap; }
   .supplier-profile-copy { min-width: calc(100% - 90px); }
   .supplier-edit-action { width: 100%; }
+}
+
+/* Propostas Comerciais */
+.commercial-proposals-page {
+  padding: var(--space-xl);
+}
+
+.commercial-proposals-page #commercialProposalsRoot {
+  display: grid;
+  gap: var(--space-xl);
+}
+
+.commercial-proposal-list-panel,
+.commercial-builder-section {
+  min-width: 0;
+}
+
+.commercial-proposal-list {
+  min-width: 1040px;
+}
+
+.commercial-proposal-row-actions,
+.commercial-proposal-toolbar,
+.commercial-visual-options {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  flex-wrap: wrap;
+}
+
+.proposal-status-draft {
+  color: var(--color-warning);
+  background: var(--color-warning-surface);
+}
+
+.proposal-status-finalized {
+  color: var(--color-success);
+  background: var(--color-success-surface);
+}
+
+.commercial-proposal-editor-heading {
+  align-items: flex-start;
+}
+
+.commercial-proposal-editor-heading .eyebrow {
+  display: block;
+  margin-top: var(--space-md);
+}
+
+.commercial-proposal-tabs {
+  width: fit-content;
+  max-width: 100%;
+}
+
+.commercial-proposal-workspace {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 310px;
+  gap: var(--space-xl);
+  align-items: start;
+}
+
+.commercial-proposal-editor-column,
+.commercial-proposal-tab-panel {
+  display: grid;
+  min-width: 0;
+  gap: var(--space-lg);
+}
+
+.commercial-proposal-summary-column {
+  position: sticky;
+  top: 84px;
+}
+
+.commercial-proposal-summary-card .commercial-proposal-total-words {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-xs);
+  line-height: 1.45;
+}
+
+.commercial-builder-section {
+  display: grid;
+  gap: var(--space-lg);
+}
+
+.commercial-builder-section .section-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-lg);
+}
+
+.commercial-builder-section h2,
+.commercial-builder-section h3,
+.commercial-builder-section p {
+  margin-top: 0;
+}
+
+.commercial-proposal-general-grid,
+.commercial-section-fields {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.full-span {
+  grid-column: 1 / -1;
+}
+
+.commercial-proposal-items,
+.commercial-column-list,
+.commercial-section-list {
+  display: grid;
+  gap: var(--space-md);
+}
+
+.commercial-proposal-item,
+.commercial-column-row,
+.commercial-section-row {
+  border: var(--border-default);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+}
+
+.commercial-proposal-item {
+  padding: var(--space-lg);
+  display: grid;
+  gap: var(--space-md);
+}
+
+.commercial-proposal-item.selected {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 1px var(--color-primary);
+}
+
+.commercial-proposal-item-head,
+.commercial-section-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+}
+
+.commercial-proposal-item-head .checkbox-line,
+.commercial-section-head .checkbox-line,
+.commercial-column-row .checkbox-line,
+.commercial-visual-options .checkbox-line,
+.commercial-signature-options .checkbox-line {
+  display: inline-flex;
+  width: auto;
+  align-items: center;
+  gap: var(--space-sm);
+  margin: 0;
+}
+
+.commercial-proposal-item-head input[type="checkbox"],
+.commercial-section-head input[type="checkbox"],
+.commercial-column-row input[type="checkbox"],
+.commercial-visual-options input[type="checkbox"],
+.commercial-signature-options input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 18px;
+  margin: 0;
+  padding: 0;
+  accent-color: var(--color-primary);
+}
+
+.commercial-proposal-item-head .table-secondary,
+.commercial-section-head .table-secondary {
+  margin-left: auto;
+}
+
+.drag-handle {
+  color: var(--color-text-secondary);
+  cursor: grab;
+  font-size: var(--font-size-xl);
+  user-select: none;
+}
+
+.commercial-proposal-item-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--space-md);
+}
+
+.commercial-proposal-item-grid .wide {
+  grid-column: span 2;
+}
+
+.commercial-proposal-item.is-collapsed {
+  gap: 0;
+}
+
+.commercial-proposal-item.is-collapsed .commercial-proposal-item-grid {
+  display: none;
+}
+
+.commercial-item-collapse {
+  display: inline-grid;
+  width: 34px;
+  min-width: 34px;
+  min-height: 34px;
+  padding: 0;
+  place-items: center;
+  border-color: var(--color-border, var(--border));
+  background: var(--color-surface);
+}
+
+.commercial-item-collapse span {
+  width: 8px;
+  height: 8px;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  transform: rotate(45deg) translate(-2px, -2px);
+  transition: transform 160ms ease;
+}
+
+.commercial-proposal-item.is-collapsed .commercial-item-collapse span {
+  transform: rotate(-45deg);
+}
+
+.proposal-permanent-option {
+  position: relative;
+  display: flex;
+  width: fit-content;
+  max-width: 100%;
+  gap: var(--space-sm);
+  align-items: center;
+  margin-top: var(--space-xs);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-regular);
+  cursor: pointer;
+}
+
+.proposal-permanent-option input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 18px;
+  margin: 0;
+  padding: 0;
+  accent-color: var(--color-primary);
+}
+
+.proposal-permanent-option:hover::after,
+.proposal-permanent-option:focus-visible::after,
+.proposal-permanent-option:focus-within::after {
+  position: absolute;
+  z-index: var(--z-tooltip, 1100);
+  bottom: calc(100% + 8px);
+  left: 0;
+  width: min(340px, calc(100vw - 64px));
+  padding: 9px 11px;
+  border-radius: var(--radius-sm);
+  background: #202630;
+  box-shadow: 0 12px 32px rgb(17 24 39 / 24%);
+  color: #fff;
+  content: attr(data-tooltip);
+  font-size: var(--font-size-xs);
+  line-height: 1.4;
+  pointer-events: none;
+}
+
+.proposal-switch {
+  display: inline-flex;
+  width: fit-content;
+  align-items: center;
+  gap: var(--space-sm);
+  cursor: pointer;
+}
+
+.proposal-switch > input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  opacity: 0;
+}
+
+.proposal-switch-control {
+  position: relative;
+  width: 42px;
+  height: 24px;
+  flex: 0 0 42px;
+  border-radius: 999px;
+  background: #c8ced8;
+  transition: background 160ms ease;
+}
+
+.proposal-switch-control::after {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 4px rgb(15 23 42 / 25%);
+  content: "";
+  transition: transform 160ms ease;
+}
+
+.proposal-switch > input:checked + .proposal-switch-control {
+  background: var(--color-primary);
+}
+
+.proposal-switch > input:checked + .proposal-switch-control::after {
+  transform: translateX(18px);
+}
+
+.proposal-switch > input:focus-visible + .proposal-switch-control {
+  outline: 3px solid rgb(80 101 200 / 24%);
+  outline-offset: 2px;
+}
+
+.commercial-column-row {
+  display: grid;
+  grid-template-columns: auto auto minmax(180px, 1fr) minmax(180px, 1fr) auto auto auto;
+  align-items: center;
+  gap: var(--space-md);
+  padding: var(--space-md);
+}
+
+.commercial-column-row label {
+  margin: 0;
+}
+
+.commercial-width-output {
+  color: var(--color-text-secondary);
+  font-weight: var(--font-weight-regular);
+}
+
+.commercial-section-row {
+  padding: var(--space-md);
+  display: grid;
+  gap: var(--space-md);
+}
+
+.commercial-visual-options {
+  align-items: flex-end;
+}
+
+.commercial-visual-options .full-span {
+  flex: 1 1 100%;
+}
+
+.commercial-signature-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-md);
+  padding: var(--space-lg);
+  border: var(--border-default);
+  border-radius: var(--radius-md);
+}
+
+.commercial-signature-options legend {
+  padding: 0 var(--space-sm);
+  font-weight: var(--font-weight-medium);
+}
+
+.commercial-history-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-xl);
+}
+
+.history-row {
+  width: 100%;
+  display: grid;
+  gap: var(--space-xs);
+  padding: var(--space-md);
+  margin-bottom: var(--space-sm);
+  border: var(--border-default);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-subtle);
+  color: var(--color-text-primary);
+  text-align: left;
+}
+
+button.history-row {
+  cursor: pointer;
+}
+
+button.history-row:hover {
+  border-color: var(--color-primary);
+}
+
+.commercial-proposal-dialog-form {
+  width: 100%;
+  display: grid;
+  gap: var(--space-lg);
+  padding: var(--space-xl);
+}
+
+.commercial-proposal-create-modal {
+  width: min(640px, calc(100vw - 32px));
+  max-height: calc(100vh - 32px);
+  overflow: auto;
+}
+
+#commercialProposalPreviewFrame {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  border: 0;
+  background: var(--color-surface-subtle);
+}
+
+#commercialProposalPreviewDialog .declaration-preview-shell {
+  min-height: 0;
+  overflow: hidden;
+}
+
+#commercialProposalPreviewDialog .quotation-item-modal-header {
+  position: static;
+  align-items: center;
+  padding: 0 4px;
+  border: 0;
+  background: transparent;
+}
+
+#commercialProposalPreviewDialog .quotation-item-modal-close {
+  margin-left: auto;
+}
+
+#commercialProposalPreviewDialog .button-row {
+  position: static;
+  z-index: 1;
+  background: transparent;
+}
+
+@media (max-width: 1100px) {
+  .commercial-proposal-workspace {
+    grid-template-columns: 1fr;
+  }
+
+  .commercial-proposal-summary-column {
+    position: static;
+    grid-row: 1;
+  }
+
+  .commercial-proposal-summary-card {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .commercial-proposal-summary-card .eyebrow,
+  .commercial-proposal-summary-card h2,
+  .commercial-proposal-summary-card dl,
+  .commercial-proposal-summary-card .commercial-proposal-total-words {
+    grid-column: 1 / -1;
+  }
+
+  .commercial-proposal-item-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .commercial-column-row {
+    grid-template-columns: auto auto 1fr 1fr;
+  }
+
+  .commercial-column-row .status-pill,
+  .commercial-column-row .danger-action,
+  .commercial-column-row > .table-secondary {
+    grid-column: span 1;
+  }
+}
+
+@media (max-width: 720px) {
+  .commercial-proposals-page {
+    padding: var(--space-md);
+  }
+
+  .commercial-proposal-summary,
+  .commercial-history-grid,
+  .commercial-proposal-general-grid,
+  .commercial-section-fields,
+  .commercial-proposal-item-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .commercial-proposal-summary-card {
+    grid-template-columns: 1fr;
+  }
+
+  .commercial-proposal-summary-card .full-action {
+    grid-column: 1;
+  }
+
+  .commercial-proposal-item-grid .wide,
+  .full-span {
+    grid-column: auto;
+  }
+
+  .commercial-column-row {
+    grid-template-columns: auto 1fr;
+  }
+
+  .commercial-column-row label {
+    grid-column: 1 / -1;
+  }
 }

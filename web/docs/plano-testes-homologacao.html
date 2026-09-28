@@ -1,0 +1,1208 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Plano de testes do GLL para selecionar a regressão proporcional às funcionalidades afetadas em cada implantação de homologação.">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="source-sha256" content="cc2a452fab01a8fb9c5ce9f001ec02331447f7dff521f15556e0d04553f4647c">
+  <title>Plano de Testes de Homologação — GLL</title>
+  <style>
+    :root{color-scheme:light;--ink:#1c3044;--muted:#526476;--blue:#1558a0;--line:#d8e1ea;--soft:#eef4fa}
+    *{box-sizing:border-box}html{scroll-padding-top:1rem}body{margin:0;background:#f5f7fa;color:var(--ink);font:16px/1.65 system-ui,-apple-system,"Segoe UI",sans-serif}
+    a{color:var(--blue);text-underline-offset:3px}a:hover{text-decoration-thickness:2px}a:focus-visible,.table-scroll:focus-visible{outline:3px solid #c26900;outline-offset:4px}
+    .topbar{display:flex;justify-content:space-between;gap:1rem;flex-wrap:wrap;max-width:1280px;margin:auto;padding:1.2rem 1.5rem;font-weight:600}
+    main{max-width:1280px;margin:0 auto 3rem;padding:clamp(1.2rem,4vw,3.4rem);background:white;border:1px solid var(--line);border-radius:14px}
+    .eyebrow{margin:0 0 1rem;color:var(--muted);font-size:.8rem;font-weight:700;letter-spacing:.13em;text-transform:uppercase}
+    h1{font-size:clamp(1.8rem,4vw,2.6rem);line-height:1.18;letter-spacing:-.025em;margin:.3rem 0 1.4rem}h2{font-size:1.6rem;line-height:1.3;margin:3rem 0 1.25rem;border-top:1px solid var(--line);padding-top:1.6rem}h3{font-size:1.18rem;line-height:1.4;margin:2rem 0 .8rem;color:#144b80}
+    p{margin:.8rem 0 1rem}li{margin:.4rem 0}strong{font-weight:650}code{font-family:ui-monospace,Consolas,monospace;font-size:.88em;background:var(--soft);padding:.1rem .3rem;border-radius:4px;overflow-wrap:anywhere}pre{overflow:auto;background:#172636;color:white;padding:1rem;border-radius:8px}
+    details{background:var(--soft);border:1px solid var(--line);padding:.85rem 1.1rem;border-radius:8px;margin-bottom:2rem}summary{font-weight:650;cursor:pointer}nav{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:.45rem 1rem;padding-top:1rem}nav a{text-decoration:none}
+    .table-scroll{overflow-x:auto;margin:1.2rem 0 1.5rem;border:1px solid var(--line);border-radius:8px}table{border-collapse:collapse;width:100%;min-width:760px;font-size:.9rem;line-height:1.5}th,td{text-align:left;vertical-align:top;padding:.8rem .9rem;border-bottom:1px solid var(--line)}th{background:var(--soft);font-weight:650}tr:last-child td{border-bottom:0}tbody tr:nth-child(even){background:#fafbfd}
+    footer{border-top:1px solid var(--line);margin-top:2.5rem;padding-top:1rem;color:var(--muted);font-size:.85rem}article a{overflow-wrap:anywhere}
+    @media(max-width:650px){body{font-size:15px}.topbar{padding:1rem}main{border-radius:0;border-left:0;border-right:0;margin-bottom:0}h2{font-size:1.35rem}}
+    @media print{body{background:white;font-size:9pt}.topbar,details{display:none}main{border:0;margin:0;padding:0;max-width:none}h2,h3{break-after:avoid}h2{margin-top:1.5rem}.table-scroll{overflow:visible}table{min-width:0;font-size:7.5pt}tr{break-inside:avoid}a{color:inherit}}
+  </style>
+</head>
+<body>
+  <a class="topbar" href="#conteudo">Ir para o conteúdo</a>
+  <header class="topbar"><a href="../">← Voltar ao GLL</a><a href="./PLANO_DE_TESTES_HOMOLOGACAO.md" download>Baixar Markdown</a></header>
+  <main id="conteudo">
+    <p class="eyebrow">GLL · Qualidade</p>
+    <details><summary>Navegar pelo plano</summary><nav aria-label="Seções do plano"><a href="#como-usar-este-plano-em-cada-implantacao">1. Como usar este plano em cada implantação</a>
+<a href="#criticidade-e-profundidade">2. Criticidade e profundidade</a>
+<a href="#pre-condicoes-dados-e-evidencias">3. Pré-condições, dados e evidências</a>
+<a href="#matriz-de-impacto-funcional">4. Matriz de impacto funcional</a>
+<a href="#suite-obrigatoria-de-fumaca">5. Suíte obrigatória de fumaça</a>
+<a href="#autenticacao-navegacao-e-painel">6. Autenticação, navegação e painel</a>
+<a href="#licitacoes-status-e-anexos">7. Licitações, status e anexos</a>
+<a href="#orcamentos-itens-calculos-e-csv">8. Orçamentos, itens, cálculos e CSV</a>
+<a href="#checklist-falhas-fornecedores-e-usuarios">9. Checklist, falhas, fornecedores e usuários</a>
+<a href="#dados-da-empresa">10. Dados da empresa</a>
+<a href="#declaracoes">11. Declarações</a>
+<a href="#propostas-comerciais">12. Propostas comerciais</a>
+<a href="#sincronizacao-acesso-e-banco">13. Sincronização, acesso e banco</a>
+<a href="#experiencia-acessibilidade-e-compatibilidade">14. Experiência, acessibilidade e compatibilidade</a>
+<a href="#publicacao-e-criterios-de-saida">15. Publicação e critérios de saída</a>
+<a href="#modelo-de-relatorio-da-rodada">16. Modelo de relatório da rodada</a>
+<a href="#rastreabilidade-da-cobertura">17. Rastreabilidade da cobertura</a></nav></details>
+    <article><h1 id="plano-de-testes-de-homologacao-gll">Plano de Testes de Homologação — GLL</h1>
+<div class="table-scroll" tabindex="0" role="region" aria-label="Tabela com rolagem horizontal"><table>
+<thead>
+<tr>
+<th>Campo</th>
+<th>Valor</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Versão</td>
+<td>1.0</td>
+</tr>
+<tr>
+<td>Data-base</td>
+<td>28/09/2026</td>
+</tr>
+<tr>
+<td>Ambiente-alvo</td>
+<td><code>homolog</code></td>
+</tr>
+<tr>
+<td>Aplicação</td>
+<td>Gerenciador de Licitações Locais (GLL)</td>
+</tr>
+<tr>
+<td>Objetivo</td>
+<td>Selecionar e executar somente a regressão proporcional às funcionalidades afetadas por cada implantação, sem perder a cobertura dos fluxos críticos.</td>
+</tr>
+</tbody>
+</table></div>
+<h2 id="como-usar-este-plano-em-cada-implantacao">1. Como usar este plano em cada implantação</h2>
+<ol>
+<li>Registre no relatório da rodada o commit do frontend, o commit do backend, as migrações e os arquivos alterados.</li>
+<li>Marque os domínios afetados na matriz da seção 4. Considere impacto direto, dependências, dados compartilhados, permissões, cálculos e saídas em PDF/CSV.</li>
+<li>Execute sempre a suíte <code>CORE</code>. Execute também todos os casos dos domínios marcados e os casos indicados na coluna <strong>Regressão associada</strong>.</li>
+<li>Para mudanças de banco, execute <code>DB</code>, <code>ACL</code> e os domínios que leem ou gravam as tabelas/funções afetadas. Para mudanças em componentes ou estilos compartilhados, execute <code>NAV</code>, <code>UX</code> e todos os módulos consumidores.</li>
+<li>Registre resultado, evidência e defeito por ID de caso. Um caso é <code>Aprovado</code>, <code>Reprovado</code>, <code>Bloqueado</code> ou <code>Não aplicável</code>, sempre com justificativa nos dois últimos estados.</li>
+<li>Não promova para produção enquanto houver falha P0/P1, migração não comprovada, divergência de manifesto ou caso selecionado sem resultado.</li>
+</ol>
+<h3 id="selecao-rapida-por-tipo-de-alteracao">1.1 Seleção rápida por tipo de alteração</h3>
+<div class="table-scroll" tabindex="0" role="region" aria-label="Tabela com rolagem horizontal"><table>
+<thead>
+<tr>
+<th>Alteração</th>
+<th>Suítes mínimas</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Texto, rótulo ou ajuda isolada</td>
+<td><code>CORE</code> + domínio da tela + <code>UX-01</code> a <code>UX-04</code></td>
+</tr>
+<tr>
+<td>CSS, Design System ou componente compartilhado</td>
+<td><code>CORE</code>, <code>NAV</code>, <code>UX</code> + telas consumidoras</td>
+</tr>
+<tr>
+<td>Navegação, URL ou menu</td>
+<td><code>CORE</code>, <code>NAV</code> + domínios alcançados pela rota</td>
+</tr>
+<tr>
+<td>Autenticação, sessão, perfil ou RLS</td>
+<td><code>CORE</code>, <code>AUT</code>, <code>ACL</code>, <code>SYNC</code>, <code>DB</code> + todos os domínios cujas políticas mudaram</td>
+</tr>
+<tr>
+<td>Licitação ou seus dependentes</td>
+<td><code>CORE</code>, <code>BID</code>, <code>STA</code>, <code>ATT</code>, <code>QTD</code>, <code>CAL</code>, <code>CHK</code>, <code>FAL</code>, <code>CSV</code>, <code>ACL</code>, <code>SYNC</code></td>
+</tr>
+<tr>
+<td>Orçamento ou item</td>
+<td><code>CORE</code>, <code>QTD</code>, <code>CAL</code>, <code>CSV</code>, <code>BID</code>, <code>PROP</code>, <code>ACL</code>, <code>SYNC</code></td>
+</tr>
+<tr>
+<td>Cálculo, precisão ou formatação numérica</td>
+<td><code>CORE</code>, <code>CAL</code>, <code>QTD</code>, <code>BID</code>, <code>PROP</code></td>
+</tr>
+<tr>
+<td>Fornecedor</td>
+<td><code>CORE</code>, <code>SUP</code>, <code>ACL</code>, <code>SYNC</code></td>
+</tr>
+<tr>
+<td>Dados da empresa ou representante</td>
+<td><code>CORE</code>, <code>EMP</code>, <code>DEC</code>, <code>PROP</code>, <code>ACL</code>, <code>SYNC</code></td>
+</tr>
+<tr>
+<td>Declaração ou ativo visual</td>
+<td><code>CORE</code>, <code>DEC</code>, <code>EMP</code>, <code>ACL</code>, <code>UX</code></td>
+</tr>
+<tr>
+<td>Proposta comercial</td>
+<td><code>CORE</code>, <code>PROP</code>, <code>QTD</code>, <code>CAL</code>, <code>EMP</code>, <code>ACL</code>, <code>SYNC</code>, <code>UX</code></td>
+</tr>
+<tr>
+<td>Migração, trigger, RPC, Storage ou schema</td>
+<td><code>CORE</code>, <code>DB</code>, <code>ACL</code> + todos os domínios consumidores</td>
+</tr>
+<tr>
+<td>Build, workflow ou publicação</td>
+<td><code>CORE</code>, <code>REL</code> + fumaça dos domínios incluídos na entrega</td>
+</tr>
+</tbody>
+</table></div>
+<h2 id="criticidade-e-profundidade">2. Criticidade e profundidade</h2>
+<div class="table-scroll" tabindex="0" role="region" aria-label="Tabela com rolagem horizontal"><table>
+<thead>
+<tr>
+<th>Prioridade</th>
+<th>Definição</th>
+<th>Exemplos</th>
+<th>Tratamento</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>P0</td>
+<td>Indisponibilidade, exposição entre organizações, perda/corrupção de dados ou implantação incorreta.</td>
+<td>Login impossível, RLS vazando dados, migração parcial.</td>
+<td>Interromper a rodada e bloquear promoção.</td>
+</tr>
+<tr>
+<td>P1</td>
+<td>Fluxo principal ou cálculo financeiro incorreto, sem alternativa segura.</td>
+<td>Total, lucro ou PDF errado; salvamento falha.</td>
+<td>Bloquear promoção.</td>
+</tr>
+<tr>
+<td>P2</td>
+<td>Função secundária degradada com alternativa.</td>
+<td>Filtro, tooltip ou ordenação incorreta.</td>
+<td>Corrigir ou obter aceite formal do risco.</td>
+</tr>
+<tr>
+<td>P3</td>
+<td>Problema cosmético sem perda funcional ou de acessibilidade.</td>
+<td>Espaçamento isolado.</td>
+<td>Registrar e priorizar.</td>
+</tr>
+</tbody>
+</table></div>
+<p>Para alteração de baixo risco, execute o caminho feliz e uma validação negativa de cada caso selecionado. Para banco, cálculos, permissões, sincronização e documentos, inclua limites, erro, concorrência e persistência após recarregar.</p>
+<h2 id="pre-condicoes-dados-e-evidencias">3. Pré-condições, dados e evidências</h2>
+<h3 id="perfis-e-massa-controlada">3.1 Perfis e massa controlada</h3>
+<ul>
+<li><code>ADM-A</code>: administrador da organização A.</li>
+<li><code>ANA-A1</code> e <code>ANA-A2</code>: analistas da organização A, com atribuições diferentes.</li>
+<li><code>ADM-B</code>: administrador de uma organização B, usado exclusivamente para testes de isolamento.</li>
+<li>Um edital ativo sem orçamento; um edital com orçamento e três itens; um edital <code>Faturado</code>; um edital <code>Desclassificado</code>; um edital excluído logicamente.</li>
+<li>Itens com valores de limite, casas decimais, fornecedores, especificações técnicas e combinação de vencidos/não vencidos.</li>
+<li>Arquivos de teste permitidos e rejeitados, sem dados reais ou pessoais.</li>
+<li>Dados de empresa e representantes fictícios, com CNPJ/CPF matematicamente válidos.</li>
+</ul>
+<p>Todo dado de teste deve ter prefixo identificável, por exemplo <code>HML-AAAAMMDD-</code>, e ser removido ou excluído logicamente ao final quando isso não prejudicar a evidência.</p>
+<h3 id="evidencia-minima-por-caso">3.2 Evidência mínima por caso</h3>
+<ul>
+<li>ID, data/hora, executor, navegador e perfil usado;</li>
+<li>commits publicados e URL de homologação;</li>
+<li>dados de entrada sem segredo ou dado pessoal;</li>
+<li>resultado esperado e observado;</li>
+<li>captura de tela ou arquivo gerado quando houver interface/PDF/CSV;</li>
+<li>consulta ou resposta sanitizada quando houver banco/RPC/RLS;</li>
+<li>ID do defeito e severidade quando reprovado.</li>
+</ul>
+<h2 id="matriz-de-impacto-funcional">4. Matriz de impacto funcional</h2>
+<div class="table-scroll" tabindex="0" role="region" aria-label="Tabela com rolagem horizontal"><table>
+<thead>
+<tr>
+<th>Domínio</th>
+<th>Escopo</th>
+<th>Dependências principais</th>
+<th>Regressão associada</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>CORE</code></td>
+<td>Disponibilidade, login, leitura e salvamento básico</td>
+<td>Publicação, Auth, Supabase</td>
+<td>Sempre</td>
+</tr>
+<tr>
+<td><code>AUT</code></td>
+<td>Login, logout, restauração e expiração</td>
+<td>Auth, armazenamento de sessão</td>
+<td><code>ACL</code>, <code>SYNC</code></td>
+</tr>
+<tr>
+<td><code>NAV</code></td>
+<td>Menu, rotas, histórico e responsividade</td>
+<td><code>index.html</code>, estado de navegação</td>
+<td><code>UX</code></td>
+</tr>
+<tr>
+<td><code>DSH</code></td>
+<td>Painel, contadores e próximas sessões</td>
+<td>Licitações, documentos</td>
+<td><code>BID</code>, <code>STA</code>, <code>CAL</code></td>
+</tr>
+<tr>
+<td><code>BID</code></td>
+<td>CRUD, filtros, garantia, exclusão lógica</td>
+<td>Itens, orçamentos, usuários</td>
+<td><code>STA</code>, <code>QTD</code>, <code>ACL</code>, <code>SYNC</code></td>
+</tr>
+<tr>
+<td><code>STA</code></td>
+<td>Ciclo de vida, bloqueio e auditoria</td>
+<td>Licitação, histórico</td>
+<td><code>BID</code>, <code>CAL</code>, <code>ACL</code></td>
+</tr>
+<tr>
+<td><code>ATT</code></td>
+<td>Quatro anexos privados do edital</td>
+<td>Storage, licitação</td>
+<td><code>ACL</code>, <code>DB</code></td>
+</tr>
+<tr>
+<td><code>QTD</code></td>
+<td>Orçamentos, vínculo e itens compartilhados</td>
+<td>Licitação, propostas</td>
+<td><code>BID</code>, <code>CAL</code>, <code>PROP</code>, <code>SYNC</code></td>
+</tr>
+<tr>
+<td><code>CAL</code></td>
+<td>Dinheiro, quantidade, margem, lucro e totais</td>
+<td>Itens, propostas</td>
+<td><code>BID</code>, <code>QTD</code>, <code>PROP</code></td>
+</tr>
+<tr>
+<td><code>CSV</code></td>
+<td>Exportação de itens</td>
+<td>Licitação, orçamento</td>
+<td><code>BID</code>, <code>QTD</code>, <code>SEC</code></td>
+</tr>
+<tr>
+<td><code>CHK</code></td>
+<td>Checklist documental</td>
+<td>Licitação</td>
+<td><code>DSH</code>, <code>STA</code></td>
+</tr>
+<tr>
+<td><code>FAL</code></td>
+<td>Histórico de falhas</td>
+<td>Status <code>Desclassificado</code></td>
+<td><code>STA</code></td>
+</tr>
+<tr>
+<td><code>SUP</code></td>
+<td>Fornecedores e produtos</td>
+<td>Feature flag, organização</td>
+<td><code>ACL</code>, <code>SYNC</code></td>
+</tr>
+<tr>
+<td><code>USR</code></td>
+<td>Usuários e atribuições</td>
+<td>Perfis, RLS</td>
+<td><code>ACL</code>, <code>BID</code>, <code>QTD</code></td>
+</tr>
+<tr>
+<td><code>EMP</code></td>
+<td>Empresa e representantes</td>
+<td>Declarações, propostas</td>
+<td><code>DEC</code>, <code>PROP</code>, <code>ACL</code></td>
+</tr>
+<tr>
+<td><code>DEC</code></td>
+<td>Biblioteca e geração de declarações</td>
+<td>Empresa, Storage, PDF</td>
+<td><code>EMP</code>, <code>ACL</code>, <code>UX</code></td>
+</tr>
+<tr>
+<td><code>PROP</code></td>
+<td>Propostas comerciais e PDF</td>
+<td>Edital, orçamento, empresa</td>
+<td><code>QTD</code>, <code>CAL</code>, <code>EMP</code>, <code>ACL</code></td>
+</tr>
+<tr>
+<td><code>SYNC</code></td>
+<td>Atualização entre clientes e recuperação de rede</td>
+<td>Todos os agregados remotos</td>
+<td>Domínio alterado</td>
+</tr>
+<tr>
+<td><code>ACL</code></td>
+<td>Perfis, organização e RLS</td>
+<td>Todas as tabelas/RPCs/Storage</td>
+<td>Domínio alterado</td>
+</tr>
+<tr>
+<td><code>DB</code></td>
+<td>Migrações, schema, integridade e rollback</td>
+<td>Supabase</td>
+<td><code>ACL</code>, domínio alterado</td>
+</tr>
+<tr>
+<td><code>UX</code></td>
+<td>Acessibilidade, responsividade e feedback</td>
+<td>Design System</td>
+<td>Telas alteradas</td>
+</tr>
+<tr>
+<td><code>REL</code></td>
+<td>Manifesto, testes, build e Pages</td>
+<td>Frontend e backend</td>
+<td><code>CORE</code></td>
+</tr>
+</tbody>
+</table></div>
+<h2 id="suite-obrigatoria-de-fumaca">5. Suíte obrigatória de fumaça</h2>
+<div class="table-scroll" tabindex="0" role="region" aria-label="Tabela com rolagem horizontal"><table>
+<thead>
+<tr>
+<th>ID</th>
+<th style="text-align: center;">P</th>
+<th>Procedimento</th>
+<th>Resultado esperado</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>CORE-01</td>
+<td style="text-align: center;">P0</td>
+<td>Abrir a URL de homologação em sessão anônima.</td>
+<td>HTTPS responde, identifica Homologação e exibe login sem dado protegido.</td>
+</tr>
+<tr>
+<td>CORE-02</td>
+<td style="text-align: center;">P0</td>
+<td>Entrar como <code>ADM-A</code> e recarregar a página.</td>
+<td>Autentica, carrega o perfil/organização corretos e restaura a sessão.</td>
+</tr>
+<tr>
+<td>CORE-03</td>
+<td style="text-align: center;">P1</td>
+<td>Abrir Visão geral, Licitações, Orçamento, Geração de Documentos, Fornecedores e Configurações.</td>
+<td>Nenhuma tela quebra; carregamentos terminam e erros não aparecem no console.</td>
+</tr>
+<tr>
+<td>CORE-04</td>
+<td style="text-align: center;">P1</td>
+<td>Criar ou editar um registro do domínio alterado, salvar e recarregar.</td>
+<td>Confirmação visível e dados persistidos sem duplicidade.</td>
+</tr>
+<tr>
+<td>CORE-05</td>
+<td style="text-align: center;">P0</td>
+<td>Sair e tentar voltar pela URL/histórico.</td>
+<td>Sessão e dados em memória são limpos; tela protegida não reaparece.</td>
+</tr>
+<tr>
+<td>CORE-06</td>
+<td style="text-align: center;">P0</td>
+<td>Consultar <code>deployment.json</code> de homologação.</td>
+<td>O commit publicado é exatamente o commit esperado da branch <code>homolog</code>.</td>
+</tr>
+</tbody>
+</table></div>
+<h2 id="autenticacao-navegacao-e-painel">6. Autenticação, navegação e painel</h2>
+<div class="table-scroll" tabindex="0" role="region" aria-label="Tabela com rolagem horizontal"><table>
+<thead>
+<tr>
+<th>ID</th>
+<th style="text-align: center;">P</th>
+<th>Procedimento</th>
+<th>Resultado esperado</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>AUT-01</td>
+<td style="text-align: center;">P1</td>
+<td>Tentar login vazio, e-mail inválido, senha errada e credencial válida.</td>
+<td>Campos obrigatórios e erro seguro; somente a credencial válida entra.</td>
+</tr>
+<tr>
+<td>AUT-02</td>
+<td style="text-align: center;">P0</td>
+<td>Remover o usuário de <code>app_users</code> durante uma sessão.</td>
+<td>O próximo ciclo de sincronização encerra a visualização autenticada.</td>
+</tr>
+<tr>
+<td>AUT-03</td>
+<td style="text-align: center;">P0</td>
+<td>Simular 120 minutos de inatividade e oito horas de duração absoluta.</td>
+<td>Cada limite exige nova autenticação antes de ler tabelas protegidas.</td>
+</tr>
+<tr>
+<td>AUT-04</td>
+<td style="text-align: center;">P1</td>
+<td>Interromper a rede e restaurá-la.</td>
+<td>Falha transitória preserva sessão/dados; nova tentativa aplica snapshot completo.</td>
+</tr>
+<tr>
+<td>NAV-01</td>
+<td style="text-align: center;">P2</td>
+<td>Recolher/expandir o menu no desktop e abrir em tela estreita.</td>
+<td>Estado e <code>aria-expanded</code> são coerentes; menu estreito é sobreposto e fechável.</td>
+</tr>
+<tr>
+<td>NAV-02</td>
+<td style="text-align: center;">P1</td>
+<td>Navegar para página e registro, recarregar e usar Voltar/Avançar.</td>
+<td>URL legível restaura o mesmo contexto e preserva parâmetros externos.</td>
+</tr>
+<tr>
+<td>NAV-03</td>
+<td style="text-align: center;">P2</td>
+<td>Expandir Geração de Documentos e alternar Propostas/Declarações.</td>
+<td>Submenu, foco, destaque e largura funcionam sem sobreposição.</td>
+</tr>
+<tr>
+<td>NAV-04</td>
+<td style="text-align: center;">P1</td>
+<td>Entrar como analista e tentar rotas administrativas pela interface e URL.</td>
+<td>Usuários e Design System ficam indisponíveis; não há acesso indireto.</td>
+</tr>
+<tr>
+<td>DSH-01</td>
+<td style="text-align: center;">P1</td>
+<td>Comparar total e contadores por status com a lista de editais ativos.</td>
+<td>Contagens ignoram excluídos e correspondem aos filtros.</td>
+</tr>
+<tr>
+<td>DSH-02</td>
+<td style="text-align: center;">P2</td>
+<td>Conferir próximas sessões e pendências documentais.</td>
+<td>Ordenação/data em São Paulo e pendências conferem com os registros.</td>
+</tr>
+</tbody>
+</table></div>
+<h2 id="licitacoes-status-e-anexos">7. Licitações, status e anexos</h2>
+<div class="table-scroll" tabindex="0" role="region" aria-label="Tabela com rolagem horizontal"><table>
+<thead>
+<tr>
+<th>ID</th>
+<th style="text-align: center;">P</th>
+<th>Procedimento</th>
+<th>Resultado esperado</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>BID-01</td>
+<td style="text-align: center;">P1</td>
+<td>Criar edital com número, órgão e sessão; omitir cada obrigatório.</td>
+<td>Registro recebe UUID interno imutável; ausências são rejeitadas.</td>
+</tr>
+<tr>
+<td>BID-02</td>
+<td style="text-align: center;">P1</td>
+<td>Criar dois editais com o mesmo número.</td>
+<td>Ambos são aceitos, possuem IDs distintos e podem ser abertos separadamente.</td>
+</tr>
+<tr>
+<td>BID-03</td>
+<td style="text-align: center;">P1</td>
+<td>Editar modalidade, entrega, prazo opcional, link de sessão e garantia.</td>
+<td>Dados persistem; prazo pode ficar vazio; link aceita apenas HTTP/HTTPS normalizado.</td>
+</tr>
+<tr>
+<td>BID-04</td>
+<td style="text-align: center;">P2</td>
+<td>Combinar filtros de órgão, data, status e depósito confirmado.</td>
+<td>Interseção correta, estado vazio correto e limpeza restaura a lista.</td>
+</tr>
+<tr>
+<td>BID-05</td>
+<td style="text-align: center;">P1</td>
+<td>Excluir após confirmar e cancelar em uma segunda tentativa.</td>
+<td>Confirmação controla a ação; excluído some, mas dados/dependentes permanecem no banco.</td>
+</tr>
+<tr>
+<td>BID-06</td>
+<td style="text-align: center;">P1</td>
+<td>Conferir criador ativo e registro cujo criador saiu de <code>app_users</code>.</td>
+<td>Nome preservado tem prioridade; fallback é <code>Usuário Removido</code>/<code>UR</code>.</td>
+</tr>
+<tr>
+<td>BID-07</td>
+<td style="text-align: center;">P1</td>
+<td>Abrir, remover e tentar salvar link de sessão inválido.</td>
+<td>Abre em nova aba com proteção; remoção persiste; esquema inválido é rejeitado.</td>
+</tr>
+<tr>
+<td>STA-01</td>
+<td style="text-align: center;">P1</td>
+<td>Percorrer cada transição permitida da matriz vigente.</td>
+<td>Todas salvam somente com motivo e geram uma entrada de histórico.</td>
+</tr>
+<tr>
+<td>STA-02</td>
+<td style="text-align: center;">P0</td>
+<td>Tentar transição proibida, motivo vazio e <code>UPDATE</code> direto no status.</td>
+<td>Interface, adaptador e banco rejeitam sem alteração parcial.</td>
+</tr>
+<tr>
+<td>STA-03</td>
+<td style="text-align: center;">P1</td>
+<td>Conferir histórico depois de mudança.</td>
+<td>Estado anterior/novo, motivo, nome/e-mail, data/hora e ordem decrescente corretos.</td>
+</tr>
+<tr>
+<td>STA-04</td>
+<td style="text-align: center;">P0</td>
+<td>Entrar em <code>Faturado</code> e tentar alterar/excluir edital, item, documento e falha.</td>
+<td>Tudo fica somente leitura no frontend e banco; somente retorno para <code>Aprovada</code> é permitido.</td>
+</tr>
+<tr>
+<td>STA-05</td>
+<td style="text-align: center;">P1</td>
+<td>Conferir <code>Descartada</code>, <code>Aprovada</code>, <code>Faturado</code> e <code>Disputada</code>.</td>
+<td>Indicadores usam somente itens vencidos; nos demais status usam todos os itens.</td>
+</tr>
+<tr>
+<td>ATT-01</td>
+<td style="text-align: center;">P1</td>
+<td>Anexar quatro arquivos permitidos e tentar o quinto.</td>
+<td>Quatro uploads privados persistem; quinto é rejeitado.</td>
+</tr>
+<tr>
+<td>ATT-02</td>
+<td style="text-align: center;">P1</td>
+<td>Testar 20 MB, acima de 20 MB, download e remoção individual.</td>
+<td>Limite é por arquivo; download é íntegro; modal próprio confirma remoção.</td>
+</tr>
+<tr>
+<td>ATT-03</td>
+<td style="text-align: center;">P1</td>
+<td>Acessar anexo como usuário sem direito e validar anexo legado.</td>
+<td>Acesso indevido falha; legado continua disponível sem reaparecer após remoção.</td>
+</tr>
+</tbody>
+</table></div>
+<h2 id="orcamentos-itens-calculos-e-csv">8. Orçamentos, itens, cálculos e CSV</h2>
+<div class="table-scroll" tabindex="0" role="region" aria-label="Tabela com rolagem horizontal"><table>
+<thead>
+<tr>
+<th>ID</th>
+<th style="text-align: center;">P</th>
+<th>Procedimento</th>
+<th>Resultado esperado</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>QTD-01</td>
+<td style="text-align: center;">P1</td>
+<td>Criar, editar, pesquisar, selecionar, recolher/expandir e excluir orçamento.</td>
+<td>CRUD persiste; ID/edital/órgão filtram; exclusão é lógica.</td>
+</tr>
+<tr>
+<td>QTD-02</td>
+<td style="text-align: center;">P1</td>
+<td>No edital sem vínculo, localizar/vincular existente e criar novo.</td>
+<td>Lista mostra apenas elegíveis; criação herda número/órgão e abre o primeiro item.</td>
+</tr>
+<tr>
+<td>QTD-03</td>
+<td style="text-align: center;">P0</td>
+<td>Tentar vincular um orçamento a dois editais ativos, a outra organização ou excluído.</td>
+<td>Banco rejeita todos; nenhum vínculo parcial.</td>
+</tr>
+<tr>
+<td>QTD-04</td>
+<td style="text-align: center;">P1</td>
+<td>Trocar/limpar vínculo e abrir a aba Orçamento no edital.</td>
+<td>Resumo e editor correspondem ao novo vínculo; acesso concedido pelo edital funciona.</td>
+</tr>
+<tr>
+<td>QTD-05</td>
+<td style="text-align: center;">P0</td>
+<td>Criar/editar/excluir item no orçamento vinculado e depois pelo edital.</td>
+<td>Sincronização bidirecional é atômica, sem duplicidade e preserva IDs relacionados.</td>
+</tr>
+<tr>
+<td>QTD-06</td>
+<td style="text-align: center;">P1</td>
+<td>Salvar número repetido no mesmo orçamento e número igual em outro.</td>
+<td>Repetição no mesmo é rejeitada; em outro é aceita.</td>
+</tr>
+<tr>
+<td>QTD-07</td>
+<td style="text-align: center;">P1</td>
+<td>Preencher quantidade, unidade, custo, valor final, lance mínimo, marca/modelo, texto e fornecedores.</td>
+<td>Valores persistem com precisão correta; negativos são rejeitados; lista aceita nomes/URLs.</td>
+</tr>
+<tr>
+<td>QTD-08</td>
+<td style="text-align: center;">P1</td>
+<td>Adicionar especificações completas, parciais e linha vazia.</td>
+<td>Completas/parciais persistem; somente linha totalmente vazia é descartada.</td>
+</tr>
+<tr>
+<td>QTD-09</td>
+<td style="text-align: center;">P2</td>
+<td>Fechar modal com e sem alterações e testar texto longo/tela estreita.</td>
+<td>Confirma descarte apenas quando sujo; modal rola internamente e tabela rola sem alargar a página.</td>
+</tr>
+<tr>
+<td>QTD-10</td>
+<td style="text-align: center;">P1</td>
+<td>Marcar vários itens vencidos nos status aplicáveis e recarregar.</td>
+<td>Cada checkbox persiste imediatamente; linha destaca; em <code>Faturado</code> fica visível e bloqueado.</td>
+</tr>
+<tr>
+<td>CAL-01</td>
+<td style="text-align: center;">P1</td>
+<td>Usar valor final <code>150,00</code>, custo <code>100,00</code>, quantidade <code>3</code>.</td>
+<td>Lucro do item = <code>(150 - 100) × 3</code> = <code>R$ 150,00</code>.</td>
+</tr>
+<tr>
+<td>CAL-02</td>
+<td style="text-align: center;">P1</td>
+<td>Usar valor final <code>150,00</code> e custo <code>100,00</code>.</td>
+<td>Margem efetiva = <code>(150 - 100) / 150 × 100</code> = <code>33,3333%</code>.</td>
+</tr>
+<tr>
+<td>CAL-03</td>
+<td style="text-align: center;">P1</td>
+<td>Usar custo <code>100,00</code> e margem desejada <code>20%</code>; depois <code>100%</code>.</td>
+<td>Valor com margem = <code>100 / (1 - 0,20)</code> = <code>R$ 125,00</code>; 100% ou mais não gera preço.</td>
+</tr>
+<tr>
+<td>CAL-04</td>
+<td style="text-align: center;">P1</td>
+<td>Usar unitário <code>19,99</code> e quantidade <code>1,2345</code>.</td>
+<td>Total da linha arredondado a duas casas = <code>R$ 24,68</code>.</td>
+</tr>
+<tr>
+<td>CAL-05</td>
+<td style="text-align: center;">P1</td>
+<td>Somar linhas com frações de centavo e conferir cabeçalho.</td>
+<td>Cada linha e acumulado seguem arredondamento monetário consistente, sem erro binário visível.</td>
+</tr>
+<tr>
+<td>CAL-06</td>
+<td style="text-align: center;">P1</td>
+<td>Testar zero, vazio, separador brasileiro, quatro casas de quantidade/margem e quinta casa.</td>
+<td>Vazio segue regra do campo; zero é preservado; precisão excedente é rejeitada/arredondada de modo consistente.</td>
+</tr>
+<tr>
+<td>CAL-07</td>
+<td style="text-align: center;">P1</td>
+<td>Alterar custo/margem simulada sem confirmar valor final.</td>
+<td>Calculadora não altera o valor final nem o faturamento.</td>
+</tr>
+<tr>
+<td>CAL-08</td>
+<td style="text-align: center;">P1</td>
+<td>Conferir total, lucro total e margem consolidada com valores negativos de lucro.</td>
+<td>Totais batem com as linhas incluídas; margem consolidada usa lucro total/faturamento total e aceita prejuízo.</td>
+</tr>
+<tr>
+<td>CSV-01</td>
+<td style="text-align: center;">P1</td>
+<td>Baixar itens de edital e de orçamento com/sem itens.</td>
+<td>Ordem numérica, nomes sanitizados e cabeçalho mesmo sem linhas.</td>
+</tr>
+<tr>
+<td>CSV-02</td>
+<td style="text-align: center;">P0</td>
+<td>Incluir acentos, aspas, <code>;</code>, quebras e células iniciadas por <code>=</code>, <code>+</code>, <code>-</code>, <code>@</code>.</td>
+<td>UTF-8 BOM, delimitador <code>;</code>, escape correto e apóstrofo neutralizam injeção de planilha.</td>
+</tr>
+<tr>
+<td>CSV-03</td>
+<td style="text-align: center;">P1</td>
+<td>Conferir colunas e fornecedores múltiplos.</td>
+<td>Campos previstos, marca/modelo separados, fallback técnico e fornecedores unidos por <code>|</code>.</td>
+</tr>
+</tbody>
+</table></div>
+<h2 id="checklist-falhas-fornecedores-e-usuarios">9. Checklist, falhas, fornecedores e usuários</h2>
+<div class="table-scroll" tabindex="0" role="region" aria-label="Tabela com rolagem horizontal"><table>
+<thead>
+<tr>
+<th>ID</th>
+<th style="text-align: center;">P</th>
+<th>Procedimento</th>
+<th>Resultado esperado</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>CHK-01</td>
+<td style="text-align: center;">P1</td>
+<td>Criar, editar, marcar posse e excluir documento.</td>
+<td>Tipo obrigatório; persistência correta; ausentes destacados e refletidos no painel.</td>
+</tr>
+<tr>
+<td>FAL-01</td>
+<td style="text-align: center;">P1</td>
+<td>Acessar histórico fora e dentro de <code>Desclassificado</code>.</td>
+<td>Aba/salvamento somente no status correto; tipo e descrição obrigatórios.</td>
+</tr>
+<tr>
+<td>FAL-02</td>
+<td style="text-align: center;">P2</td>
+<td>Registrar plano de ação e conferir data.</td>
+<td>Texto opcional e timestamp automático persistem.</td>
+</tr>
+<tr>
+<td>SUP-01</td>
+<td style="text-align: center;">P1</td>
+<td>Criar, editar, pesquisar por nome/produto/tag, filtrar e ordenar fornecedores.</td>
+<td>Busca ignora acentos; tags não duplicam; contagem e ordenação conferem.</td>
+</tr>
+<tr>
+<td>SUP-02</td>
+<td style="text-align: center;">P1</td>
+<td>Manter produtos e excluir fornecedor.</td>
+<td>Produtos persistem e são removidos em cascata com o fornecedor.</td>
+</tr>
+<tr>
+<td>SUP-03</td>
+<td style="text-align: center;">P1</td>
+<td>Conferir feature flag em homologação e produção.</td>
+<td>Fluxo habilitado apenas em homologação enquanto essa regra estiver vigente.</td>
+</tr>
+<tr>
+<td>USR-01</td>
+<td style="text-align: center;">P1</td>
+<td>Como administrador, listar, pesquisar e filtrar perfis.</td>
+<td>Apenas usuários da organização e totais corretos.</td>
+</tr>
+<tr>
+<td>USR-02</td>
+<td style="text-align: center;">P0</td>
+<td>Atribuir editais/orçamentos a analista da mesma organização e tentar outro perfil/organização.</td>
+<td>Primeiro caso persiste; demais são rejeitados.</td>
+</tr>
+<tr>
+<td>USR-03</td>
+<td style="text-align: center;">P0</td>
+<td>Entrar como cada analista após atribuir/remover acesso.</td>
+<td>Vê próprios/atribuídos e orçamento ligado a edital acessível; remoção revoga acesso.</td>
+</tr>
+</tbody>
+</table></div>
+<h2 id="dados-da-empresa">10. Dados da empresa</h2>
+<div class="table-scroll" tabindex="0" role="region" aria-label="Tabela com rolagem horizontal"><table>
+<thead>
+<tr>
+<th>ID</th>
+<th style="text-align: center;">P</th>
+<th>Procedimento</th>
+<th>Resultado esperado</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>EMP-01</td>
+<td style="text-align: center;">P1</td>
+<td>Abrir Configurações &gt; Dados da Empresa como administrador e analista.</td>
+<td>Administrador edita; analista visualiza sem ações de gravação.</td>
+</tr>
+<tr>
+<td>EMP-02</td>
+<td style="text-align: center;">P1</td>
+<td>Salvar razão social e CNPJ válido; testar vazio, tamanho e dígitos verificadores inválidos.</td>
+<td>Formata sem perder dígitos; somente CNPJ válido persiste.</td>
+</tr>
+<tr>
+<td>EMP-03</td>
+<td style="text-align: center;">P1</td>
+<td>Adicionar, ordenar e remover representantes com nome, CPF, cargo e principal.</td>
+<td>Lista persiste na ordem; CPF válido/sem duplicidade; no máximo um principal.</td>
+</tr>
+<tr>
+<td>EMP-04</td>
+<td style="text-align: center;">P1</td>
+<td>Salvar representantes sem marcar principal.</td>
+<td>Primeiro representante se torna principal; declarações recebem seus dados.</td>
+</tr>
+<tr>
+<td>EMP-05</td>
+<td style="text-align: center;">P0</td>
+<td>Forçar falha durante o salvamento transacional.</td>
+<td>Empresa, representantes e configuração de declaração permanecem no estado anterior.</td>
+</tr>
+<tr>
+<td>EMP-06</td>
+<td style="text-align: center;">P0</td>
+<td>Tentar ler/alterar dados da organização B.</td>
+<td>RLS isola leitura e escrita; nenhuma informação cruza organizações.</td>
+</tr>
+</tbody>
+</table></div>
+<h2 id="declaracoes">11. Declarações</h2>
+<div class="table-scroll" tabindex="0" role="region" aria-label="Tabela com rolagem horizontal"><table>
+<thead>
+<tr>
+<th>ID</th>
+<th style="text-align: center;">P</th>
+<th>Procedimento</th>
+<th>Resultado esperado</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>DEC-01</td>
+<td style="text-align: center;">P1</td>
+<td>Salvar configuração, introdução, logo e marca-d'água.</td>
+<td>Dados persistem por organização; aceita PNG/JPEG/WebP até 5 MB e rejeita demais.</td>
+</tr>
+<tr>
+<td>DEC-02</td>
+<td style="text-align: center;">P1</td>
+<td>Criar/editar/excluir modelo geral e específico de edital; pesquisar/filtrar.</td>
+<td>Biblioteca compartilhada persiste; modelo específico aparece somente no edital correspondente.</td>
+</tr>
+<tr>
+<td>DEC-03</td>
+<td style="text-align: center;">P2</td>
+<td>Digitar <code>{{</code>, escolher variáveis e testar todas as variáveis catalogadas.</td>
+<td>Sugestões aparecem no diálogo ativo e inserem chaves corretas.</td>
+</tr>
+<tr>
+<td>DEC-04</td>
+<td style="text-align: center;">P1</td>
+<td>Compor declaração avulsa e vinculada, reordenar blocos e adicionar texto manual.</td>
+<td>Ordem, numeração, dados do edital e texto manual aparecem no snapshot/PDF.</td>
+</tr>
+<tr>
+<td>DEC-05</td>
+<td style="text-align: center;">P1</td>
+<td>Deixar variável usada sem valor e tentar visualizar/gerar.</td>
+<td>Modal lista cada dado ausente uma vez e impede geração.</td>
+</tr>
+<tr>
+<td>DEC-06</td>
+<td style="text-align: center;">P1</td>
+<td>Visualizar PDF A4 com várias páginas e identidade visual.</td>
+<td>Texto não corta/sobrepõe, acentos corretos, paginação e ativos com proporção adequada.</td>
+</tr>
+<tr>
+<td>DEC-07</td>
+<td style="text-align: center;">P0</td>
+<td>Gerar definitivamente e abrir pelo histórico.</td>
+<td>PDF privado e snapshot imutável; autor/data em São Paulo; URL assinada temporária abre o arquivo.</td>
+</tr>
+<tr>
+<td>DEC-08</td>
+<td style="text-align: center;">P0</td>
+<td>Tentar acessar modelo, ativo ou PDF da organização B.</td>
+<td>RLS/Storage negam acesso.</td>
+</tr>
+</tbody>
+</table></div>
+<h2 id="propostas-comerciais">12. Propostas comerciais</h2>
+<div class="table-scroll" tabindex="0" role="region" aria-label="Tabela com rolagem horizontal"><table>
+<thead>
+<tr>
+<th>ID</th>
+<th style="text-align: center;">P</th>
+<th>Procedimento</th>
+<th>Resultado esperado</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>PROP-01</td>
+<td style="text-align: center;">P1</td>
+<td>Criar proposta para edital ativo com orçamento e tentar edital sem orçamento/excluído.</td>
+<td>Elegíveis aparecem; proposta é única por edital/organização; inválidos são rejeitados.</td>
+</tr>
+<tr>
+<td>PROP-02</td>
+<td style="text-align: center;">P1</td>
+<td>Conferir inicialização.</td>
+<td>Itens do orçamento, representante principal, prazo de entrega, colunas e seções padrão são carregados.</td>
+</tr>
+<tr>
+<td>PROP-03</td>
+<td style="text-align: center;">P1</td>
+<td>Selecionar itens, editar somente overrides e salvar rascunho.</td>
+<td>Mudança vale apenas na proposta; quantidade não negativa com quatro casas; status <code>Rascunho</code>.</td>
+</tr>
+<tr>
+<td>PROP-04</td>
+<td style="text-align: center;">P0</td>
+<td>Confirmar alteração permanente de valor final.</td>
+<td>Atualiza orçamento e item do edital, recalcula margem/total, volta a rascunho e cria histórico com ator.</td>
+</tr>
+<tr>
+<td>PROP-05</td>
+<td style="text-align: center;">P1</td>
+<td>Confirmar mudanças permanentes nos campos permitidos e tentar campo proibido.</td>
+<td>Descrição, marca, modelo, fabricante, unidade e quantidade sincronizam; demais são rejeitados.</td>
+</tr>
+<tr>
+<td>PROP-06</td>
+<td style="text-align: center;">P1</td>
+<td>Selecionar quantidade <code>3</code> e valor final <code>150,00</code>.</td>
+<td>Total de linha <code>R$ 450,00</code>; total da proposta soma somente itens selecionados e linhas arredondadas.</td>
+</tr>
+<tr>
+<td>PROP-07</td>
+<td style="text-align: center;">P1</td>
+<td>Conferir extenso para <code>R$ 100,00</code>, <code>R$ 1,01</code>, zero e centavos.</td>
+<td><code>cem reais</code>, singular/plural e centavos correspondem ao valor numérico arredondado.</td>
+</tr>
+<tr>
+<td>PROP-08</td>
+<td style="text-align: center;">P2</td>
+<td>Ativar, renomear, redimensionar e reordenar colunas; criar/reutilizar/remover personalizada.</td>
+<td>PDF/preview respeita configuração; largura aceita 5% a 100%; valores ficam na coluna correta.</td>
+</tr>
+<tr>
+<td>PROP-09</td>
+<td style="text-align: center;">P2</td>
+<td>Ativar/reordenar seções, inserir bloco, usar variáveis e salvar seção reutilizável padrão.</td>
+<td>Conteúdo e ordem persistem; nova proposta recebe padrões.</td>
+</tr>
+<tr>
+<td>PROP-10</td>
+<td style="text-align: center;">P1</td>
+<td>Configurar data, representante, entrega, validade, pagamento, logo, marca-d'água, rodapé e assinatura.</td>
+<td>Preview e PDF refletem opções e dados atuais sem inserir automaticamente informação não selecionada.</td>
+</tr>
+<tr>
+<td>PROP-11</td>
+<td style="text-align: center;">P1</td>
+<td>Finalizar sem item ou sem coluna; depois cumprir ambos.</td>
+<td>Incompleta é rejeitada; válida fica <code>Finalizada</code>, com data e versão incrementada.</td>
+</tr>
+<tr>
+<td>PROP-12</td>
+<td style="text-align: center;">P1</td>
+<td>Alterar proposta finalizada.</td>
+<td>Retorna a <code>Rascunho</code>, limpa finalização e exige nova conferência.</td>
+</tr>
+<tr>
+<td>PROP-13</td>
+<td style="text-align: center;">P1</td>
+<td>Sair/trocar com alteração não salva e escolher continuar/descartar.</td>
+<td>Modal próprio preserva ou descarta conforme escolha, sem ação acidental.</td>
+</tr>
+<tr>
+<td>PROP-14</td>
+<td style="text-align: center;">P1</td>
+<td>Gerar PDF curto e multipágina.</td>
+<td>Nome <code>Proposta Final - {edital}.pdf</code> é seguro; tabela não corta; assinatura fica no fim da última página sem sobrepor.</td>
+</tr>
+<tr>
+<td>PROP-15</td>
+<td style="text-align: center;">P0</td>
+<td>Gerar duas versões e abrir histórico.</td>
+<td>Cada PDF/snapshot é imutável, privado e baixável; total, itens, status, autor e data corretos.</td>
+</tr>
+<tr>
+<td>PROP-16</td>
+<td style="text-align: center;">P0</td>
+<td>Acessar proposta/PDF da organização B ou item alheio ao orçamento.</td>
+<td>RPC, RLS, triggers e Storage rejeitam.</td>
+</tr>
+</tbody>
+</table></div>
+<h2 id="sincronizacao-acesso-e-banco">13. Sincronização, acesso e banco</h2>
+<div class="table-scroll" tabindex="0" role="region" aria-label="Tabela com rolagem horizontal"><table>
+<thead>
+<tr>
+<th>ID</th>
+<th style="text-align: center;">P</th>
+<th>Procedimento</th>
+<th>Resultado esperado</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>SYNC-01</td>
+<td style="text-align: center;">P1</td>
+<td>Abrir duas sessões e alterar edital, orçamento, item, fornecedor e exclusão.</td>
+<td>Segunda sessão atualiza por realtime/polling sem recarregar manualmente.</td>
+</tr>
+<tr>
+<td>SYNC-02</td>
+<td style="text-align: center;">P1</td>
+<td>Manter formulário sujo enquanto outra sessão altera/exclui o registro.</td>
+<td>Rascunho local não é sobrescrito; aviso persistente informa conflito.</td>
+</tr>
+<tr>
+<td>SYNC-03</td>
+<td style="text-align: center;">P1</td>
+<td>Omitir notificação realtime e aguardar polling; ocultar aba; salvar durante refresh.</td>
+<td>Polling recupera; pausa em aba oculta e durante salvamento; retoma com snapshot coerente.</td>
+</tr>
+<tr>
+<td>SYNC-04</td>
+<td style="text-align: center;">P0</td>
+<td>Encerrar sessão ou iniciar refresh novo antes de resposta antiga.</td>
+<td>Resposta atrasada não repopula dados; requisição mais nova vence.</td>
+</tr>
+<tr>
+<td>ACL-01</td>
+<td style="text-align: center;">P0</td>
+<td>Para cada tabela/RPC/Storage alterado, testar anônimo, analista autorizado, não autorizado, admin A e admin B.</td>
+<td>Matriz de permissão corresponde ao perfil e isola organizações.</td>
+</tr>
+<tr>
+<td>ACL-02</td>
+<td style="text-align: center;">P0</td>
+<td>Tentar trocar <code>organization_id</code>, criador e atribuição por chamada direta.</td>
+<td>Organização/criador imutáveis; atribuição limitada a analista da mesma organização.</td>
+</tr>
+<tr>
+<td>ACL-03</td>
+<td style="text-align: center;">P0</td>
+<td>Tentar executar funções internas de consistência diretamente.</td>
+<td><code>anon</code> e <code>authenticated</code> não possuem execução; somente RPCs públicas previstas funcionam.</td>
+</tr>
+<tr>
+<td>DB-01</td>
+<td style="text-align: center;">P0</td>
+<td>Rodar verificador de checksums/migrações.</td>
+<td>Histórico imutável, manifesto coerente e nenhuma migração alterada retroativamente.</td>
+</tr>
+<tr>
+<td>DB-02</td>
+<td style="text-align: center;">P0</td>
+<td>Executar <code>db push --dry-run</code> em homologação e revisar plano.</td>
+<td>Somente migrações esperadas aparecem, no ambiente correto e sem comando destrutivo inesperado.</td>
+</tr>
+<tr>
+<td>DB-03</td>
+<td style="text-align: center;">P0</td>
+<td>Aplicar em base com dados legados e em base vazia descartável.</td>
+<td>Dados são preservados e schema final é equivalente.</td>
+</tr>
+<tr>
+<td>DB-04</td>
+<td style="text-align: center;">P0</td>
+<td>Reaplicar e simular falha transacional.</td>
+<td>Reaplicação não tem pendência; falha não deixa objetos/dados parciais e permite recuperação.</td>
+</tr>
+<tr>
+<td>DB-05</td>
+<td style="text-align: center;">P1</td>
+<td>Conferir constraints, cascatas, unicidade, triggers e precisão do domínio alterado.</td>
+<td>Banco rejeita invariantes inválidas mesmo sem frontend.</td>
+</tr>
+</tbody>
+</table></div>
+<h2 id="experiencia-acessibilidade-e-compatibilidade">14. Experiência, acessibilidade e compatibilidade</h2>
+<div class="table-scroll" tabindex="0" role="region" aria-label="Tabela com rolagem horizontal"><table>
+<thead>
+<tr>
+<th>ID</th>
+<th style="text-align: center;">P</th>
+<th>Procedimento</th>
+<th>Resultado esperado</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>UX-01</td>
+<td style="text-align: center;">P1</td>
+<td>Executar fluxo somente por teclado, inclusive modais e menu.</td>
+<td>Ordem lógica, foco visível, foco preso no modal e retorno ao acionador.</td>
+</tr>
+<tr>
+<td>UX-02</td>
+<td style="text-align: center;">P1</td>
+<td>Inspecionar nomes acessíveis, rótulos, mensagens e contraste.</td>
+<td>Controles têm nome/estado; erros usam texto e região viva; contraste AA.</td>
+</tr>
+<tr>
+<td>UX-03</td>
+<td style="text-align: center;">P2</td>
+<td>Testar 320 px, tablet e desktop com zoom de 200%.</td>
+<td>Sem perda de conteúdo/ação; rolagem horizontal fica limitada a tabelas.</td>
+</tr>
+<tr>
+<td>UX-04</td>
+<td style="text-align: center;">P1</td>
+<td>Testar carregamento, sucesso, erro, vazio, confirmação e duplo clique.</td>
+<td>Feedback bloqueia duplicidade, explica próximo passo e não deixa estado indefinido.</td>
+</tr>
+<tr>
+<td>UX-05</td>
+<td style="text-align: center;">P2</td>
+<td>Validar versões atuais de Chrome e Edge.</td>
+<td>Fluxos selecionados e downloads funcionam de modo equivalente.</td>
+</tr>
+<tr>
+<td>UX-06</td>
+<td style="text-align: center;">P1</td>
+<td>Compilar Storybook e inspecionar componentes alterados, sem publicá-lo.</td>
+<td>Catálogo compila; tokens/componentes são reutilizados; artefato Pages não contém Storybook.</td>
+</tr>
+</tbody>
+</table></div>
+<h2 id="publicacao-e-criterios-de-saida">15. Publicação e critérios de saída</h2>
+<div class="table-scroll" tabindex="0" role="region" aria-label="Tabela com rolagem horizontal"><table>
+<thead>
+<tr>
+<th>ID</th>
+<th style="text-align: center;">P</th>
+<th>Procedimento</th>
+<th>Resultado esperado</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>REL-01</td>
+<td style="text-align: center;">P0</td>
+<td>Comparar <code>.release/manifest.json</code> do frontend e backend.</td>
+<td>Arquivos idênticos; branch <code>homolog</code>; commits/migrações existem e pertencem à branch.</td>
+</tr>
+<tr>
+<td>REL-02</td>
+<td style="text-align: center;">P1</td>
+<td>Executar testes automatizados, build de homologação e Storybook.</td>
+<td><code>npm test</code>, <code>npm run build:homolog</code> e <code>npm run build-storybook</code> concluem sem falha.</td>
+</tr>
+<tr>
+<td>REL-03</td>
+<td style="text-align: center;">P0</td>
+<td>Validar workflows da entrega.</td>
+<td>Integridade, migração quando aplicável e Pages concluem com evidências.</td>
+</tr>
+<tr>
+<td>REL-04</td>
+<td style="text-align: center;">P0</td>
+<td>Comparar commit remoto, workflow e <code>deployment.json</code>; abrir a URL final.</td>
+<td>Os três apontam para a entrega esperada e a aplicação está operacional.</td>
+</tr>
+<tr>
+<td>REL-05</td>
+<td style="text-align: center;">P1</td>
+<td>Arquivar relatório da rodada com casos selecionados e resultados.</td>
+<td>Escopo, aprovações, falhas, evidências e risco residual ficam rastreáveis.</td>
+</tr>
+</tbody>
+</table></div>
+<p>A rodada é aprovada quando: todos os casos selecionados foram executados; não há defeito P0/P1 aberto; P2/P3 possuem decisão registrada; testes/build/workflows passaram; migrações e RLS foram comprovadas quando aplicáveis; e o commit correto foi observado na URL de homologação.</p>
+<h2 id="modelo-de-relatorio-da-rodada">16. Modelo de relatório da rodada</h2>
+<pre><code class="language-text">Entrega:
+Data/hora:
+Responsável:
+Frontend commit:
+Backend commit:
+Migrações:
+Domínios afetados:
+Justificativa da seleção:
+Casos CORE executados:
+Casos de regressão executados:
+Resultados (aprovado/reprovado/bloqueado/N/A):
+Defeitos e severidade:
+Evidências/URLs:
+Risco residual:
+Decisão: aprovar | rejeitar | repetir
+Aprovador:
+</code></pre>
+<h2 id="rastreabilidade-da-cobertura">17. Rastreabilidade da cobertura</h2>
+<p>Este plano foi derivado do comportamento observável na branch <code>homolog</code>, incluindo <code>web/index.html</code>, <code>web/app.js</code>, <code>web/declarations.js</code>, <code>web/company-data.js</code>, <code>web/commercial-proposals.js</code>, testes automatizados, workflows, schema e migrações. Ele é deliberadamente independente da especificação de produção: funcionalidades exclusivas de homologação podem ser testadas aqui sem antecipar sua incorporação em <code>docs/especificacao-tecnica/ESPECIFICACAO_TECNICA_GLL.md</code>.</p>
+</article>
+    <footer>Cópia de leitura gerada a partir de PLANO_DE_TESTES_HOMOLOGACAO.md. SHA-256 da fonte: <code>cc2a452fab01a8fb9c5ce9f001ec02331447f7dff521f15556e0d04553f4647c</code>.</footer>
+  </main>
+</body>
+</html>

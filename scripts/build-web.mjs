@@ -16,6 +16,7 @@ const TARGETS = {
     sessionIdleTimeoutMinutes: 120,
     sessionMaxLifetimeHours: 8,
     suppliersEnabled: true,
+    commercialProposalsEnabled: true,
   },
   production: {
     outputDir: "prod",
@@ -29,6 +30,7 @@ const TARGETS = {
     sessionIdleTimeoutMinutes: 120,
     sessionMaxLifetimeHours: 8,
     suppliersEnabled: false,
+    commercialProposalsEnabled: false,
   },
   prod: null,
 };
@@ -64,6 +66,7 @@ const runtimeConfig = {
   sessionIdleTimeoutMinutes: Number(process.env.GLL_SESSION_IDLE_TIMEOUT_MINUTES || target.sessionIdleTimeoutMinutes),
   sessionMaxLifetimeHours: Number(process.env.GLL_SESSION_MAX_LIFETIME_HOURS || target.sessionMaxLifetimeHours),
   suppliersEnabled: target.suppliersEnabled,
+  commercialProposalsEnabled: target.commercialProposalsEnabled,
 };
 
 await writeFile(
@@ -75,6 +78,8 @@ await writeFile(
 const assetVersion = createHash("sha256")
   .update(await readFile(resolve(sourceDir, "app.js")))
   .update(await readFile(resolve(sourceDir, "declarations.js")))
+  .update(await readFile(resolve(sourceDir, "company-data.js")))
+  .update(await readFile(resolve(sourceDir, "commercial-proposals.js")))
   .update(await readFile(resolve(sourceDir, "styles.css")))
   .update(await readFile(resolve(sourceDir, "design-system", "tokens.css")))
   .update(await readFile(resolve(sourceDir, "design-system", "design-system.css")))
@@ -91,6 +96,8 @@ await writeFile(
     .replace('./design-system/design-system.css', `./design-system/design-system.css?v=${assetVersion}`)
     .replace('./design-system/components.js', `./design-system/components.js?v=${assetVersion}`)
     .replace('./declarations.js', `./declarations.js?v=${assetVersion}`)
+    .replace('./company-data.js', `./company-data.js?v=${assetVersion}`)
+    .replace('./commercial-proposals.js', `./commercial-proposals.js?v=${assetVersion}`)
     .replace('./app.js', `./app.js?v=${assetVersion}`),
   "utf8",
 );

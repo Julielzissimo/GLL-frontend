@@ -52,6 +52,7 @@ const DEFAULT_GLL_CONFIG = {
   sessionIdleTimeoutMinutes: 30,
   sessionMaxLifetimeHours: 8,
   suppliersEnabled: true,
+  commercialProposalsEnabled: true,
 };
 const GLL_CONFIG = {
   ...DEFAULT_GLL_CONFIG,
@@ -62,6 +63,16 @@ const createDeclarationsFeature = window.GLLDeclarations?.createDeclarationsFeat
   reset: () => undefined,
   refresh: async () => undefined,
 }));
+const createCompanyDataFeature = window.GLLCompanyData?.createCompanyDataFeature || (() => ({
+  showPage: async () => undefined,
+  reset: () => undefined,
+  refresh: async () => undefined,
+}));
+const createCommercialProposalsFeature = window.GLLCommercialProposals?.createCommercialProposalsFeature || (() => ({
+  showPage: async () => undefined,
+  reset: () => undefined,
+  requestDiscardChanges: (action) => { action(); return true; },
+}));
 
 const PAGE_ROUTE_NAMES = {
   home: "visao-geral",
@@ -71,6 +82,7 @@ const PAGE_ROUTE_NAMES = {
   documents: "documentos",
   failures: "falhas",
   quotations: "orcamentos",
+  commercialProposals: "propostas-comerciais",
   suppliers: "fornecedores",
   declarations: "declaracoes",
   declarationLibrary: "declaracoes/biblioteca",
@@ -78,6 +90,7 @@ const PAGE_ROUTE_NAMES = {
   declarationHistory: "declaracoes/historico",
   users: "usuarios",
   settings: "configuracoes",
+  companyData: "configuracoes/dados-da-empresa",
   designSystem: "configuracoes/design-system",
 };
 const ROUTE_PAGE_NAMES = Object.fromEntries(Object.entries(PAGE_ROUTE_NAMES).map(([page, route]) => [route, page]));
@@ -111,6 +124,7 @@ const appState = {
   currentSupplierProductId: null,
   sidebarCollapsed: false,
   appNavigationCollapsed: false,
+  documentsNavigationExpanded: false,
   bids: [],
   items: [],
   documents: [],
@@ -143,6 +157,9 @@ const refs = {
   navHomeButton: $("navHomeButton"),
   navBidsButton: $("navBidsButton"),
   navQuotationsButton: $("navQuotationsButton"),
+  navDocumentsButton: $("navDocumentsButton"),
+  documentsNavigationItems: $("documentsNavigationItems"),
+  navCommercialProposalsButton: $("navCommercialProposalsButton"),
   navSuppliersButton: $("navSuppliersButton"),
   navDeclarationsButton: $("navDeclarationsButton"),
   navUsersButton: $("navUsersButton"),
@@ -172,11 +189,13 @@ const refs = {
   currentBidAgency: $("currentBidAgency"),
   usersPage: $("usersPage"),
   settingsPage: $("settingsPage"),
+  companyDataPage: $("companyDataPage"),
   designSystemPage: $("designSystemPage"),
   designSystemAccessCard: $("designSystemAccessCard"),
   designSystemCatalog: $("designSystemCatalog"),
   suppliersPage: $("suppliersPage"),
   declarationsPage: $("declarationsPage"),
+  commercialProposalsPage: $("commercialProposalsPage"),
   suppliersList: $("suppliersList"),
   supplierTagFilter: $("supplierTagFilter"),
   supplierSort: $("supplierSort"),
@@ -369,6 +388,7 @@ const refs = {
   deleteQuotationItemButton: $("deleteQuotationItemButton"),
   clearQuotationItemButton: $("clearQuotationItemButton"),
   quotationItemsTableBody: $("quotationItemsTableBody"),
+  quotationItemWonHeader: $("quotationItemWonHeader"),
   userCountLabel: $("userCountLabel"),
   usersTotalLabel: $("usersTotalLabel"),
   userSearchInput: $("userSearchInput"),
@@ -1583,6 +1603,35 @@ const declarationsFeature = createDeclarationsFeature({
   toast: (message) => showToast(message),
   runBusy: (operation, message) => withBlockingLoading(operation, message)(),
 });
+const companyDataFeature = createCompanyDataFeature({
+  getClient: () => (store.requiresAuthenticationBeforeData ? store.client : null),
+  getContext: () => ({
+    organizationId: appState.currentOrganizationId || DEFAULT_ADMIN.organization_id,
+    organizationName: appState.currentOrganizationName || DEFAULT_ADMIN.organization.name,
+    organizationCnpj: appState.currentOrganizationCnpj || DEFAULT_ADMIN.organization.cnpj,
+  }),
+  isAdmin: () => isCurrentUserAdmin(),
+  onOrganizationUpdate: (organization) => {
+    appState.currentOrganizationName = organization.name;
+    appState.currentOrganizationCnpj = organization.cnpj;
+    refs.usersOrganizationLabel.textContent = `${organization.name} · usuários vinculados no Supabase.`;
+    void declarationsFeature.refresh().catch((error) => showToast(error.message));
+  },
+  toast: (message) => showToast(message),
+  runBusy: (operation, message) => withBlockingLoading(operation, message)(),
+});
+const commercialProposalsFeature = createCommercialProposalsFeature({
+  getClient: () => (store.requiresAuthenticationBeforeData ? store.client : null),
+  getContext: () => ({
+    organizationId: appState.currentOrganizationId || DEFAULT_ADMIN.organization_id,
+    organizationName: appState.currentOrganizationName || DEFAULT_ADMIN.organization.name,
+    organizationCnpj: appState.currentOrganizationCnpj || DEFAULT_ADMIN.organization.cnpj,
+    userAuthId: appState.currentUserAuthId || DEFAULT_ADMIN.auth_user_id,
+    userName: appState.currentUserName || DEFAULT_ADMIN.name,
+  }),
+  toast: (message) => showToast(message),
+  runBusy: (operation, message) => withBlockingLoading(operation, message)(),
+});
 
 const SESSION_ACTIVITY_EVENTS = ["pointerdown", "keydown", "input"];
 const SESSION_POLICY_CHECK_INTERVAL_MS = 60 * 1000;
@@ -1724,6 +1773,11 @@ function applyEnvironmentConfig() {
   refs.navSuppliersButton.classList.toggle("nav-link-disabled", !suppliersEnabled);
   refs.navSuppliersButton.setAttribute("aria-disabled", String(!suppliersEnabled));
   refs.navSuppliersButton.title = suppliersEnabled ? "" : "Fornecedores temporariamente indisponível";
+  const commercialProposalsEnabled = GLL_CONFIG.commercialProposalsEnabled !== false;
+  refs.navCommercialProposalsButton.disabled = !commercialProposalsEnabled;
+  refs.navCommercialProposalsButton.classList.toggle("nav-link-disabled", !commercialProposalsEnabled);
+  refs.navCommercialProposalsButton.setAttribute("aria-disabled", String(!commercialProposalsEnabled));
+  refs.navCommercialProposalsButton.title = commercialProposalsEnabled ? "" : "Propostas Comerciais temporariamente indisponível";
 }
 
 function populateOptions() {
@@ -1805,8 +1859,11 @@ function bindEvents() {
   document.querySelectorAll("[data-navigation-page]").forEach((button) => {
     button.addEventListener("click", () => setPage(button.dataset.navigationPage));
   });
+  refs.navDocumentsButton.addEventListener("click", toggleDocumentsNavigation);
   $("openDesignSystemButton").addEventListener("click", () => setPage("designSystem"));
+  $("openCompanyDataButton").addEventListener("click", () => setPage("companyData"));
   $("backToSettingsButton").addEventListener("click", () => setPage("settings"));
+  $("backToSettingsFromCompanyDataButton").addEventListener("click", () => setPage("settings"));
   document.querySelectorAll("[data-open-new]").forEach((button) => {
     button.addEventListener("click", () => clearBidForm({ openEditor: true }));
   });
@@ -2076,6 +2133,8 @@ function resetAuthenticatedView() {
   refs.loginView.classList.remove("hidden");
   refs.loginPassword.value = "";
   declarationsFeature.reset();
+  commercialProposalsFeature.reset();
+  companyDataFeature.reset();
   refs.appView.classList.remove("mobile-nav-open");
   updateMainNavigationState();
   for (const key of DATA_KEYS) appState[key] = [];
@@ -2117,6 +2176,22 @@ function updateMainNavigationState() {
   refs.appSidebar.inert = !isExpanded;
 }
 
+function toggleDocumentsNavigation() {
+  appState.documentsNavigationExpanded = !appState.documentsNavigationExpanded;
+  updateDocumentsNavigation();
+}
+
+function updateDocumentsNavigation() {
+  const isDocumentsPage = ["commercialProposals", "declarations", "declarationLibrary", "declarationSettings", "declarationHistory"]
+    .includes(appState.activePage);
+  const isExpanded = appState.documentsNavigationExpanded;
+  refs.navDocumentsButton.setAttribute("aria-expanded", String(isExpanded));
+  refs.navDocumentsButton.classList.toggle("active", isDocumentsPage);
+  refs.documentsNavigationItems.classList.toggle("is-expanded", isExpanded);
+  refs.documentsNavigationItems.setAttribute("aria-hidden", String(!isExpanded));
+  refs.documentsNavigationItems.inert = !isExpanded;
+}
+
 function normalizeUserRole(role) {
   return role === USER_ROLES.ANALYST ? USER_ROLES.ANALYST : USER_ROLES.ADMIN;
 }
@@ -2127,6 +2202,7 @@ function isCurrentUserAdmin() {
 
 function resolveAuthorizedPage(page) {
   if (page === "suppliers" && GLL_CONFIG.suppliersEnabled === false) return "home";
+  if (page === "commercialProposals" && GLL_CONFIG.commercialProposalsEnabled === false) return "home";
   if (page === "users" && !isCurrentUserAdmin()) return "home";
   if (page === "designSystem" && !isCurrentUserAdmin()) return "settings";
   return page;
@@ -2376,23 +2452,41 @@ function setPage(page, options = {}) {
   if (page === "failures" && !shouldShowFailureHistory()) {
     page = appState.currentBidId ? "items" : "home";
   }
+  if (appState.activePage === "commercialProposals" && page !== "commercialProposals" && !options.skipCommercialProposalDiscardCheck) {
+    const targetPage = page;
+    commercialProposalsFeature.requestDiscardChanges(
+      () => setPage(targetPage, {
+        ...options,
+        skipCommercialProposalDiscardCheck: true,
+      }),
+      options.history === "none" ? () => writeNavigationRoute(appState.activePage, "replace") : undefined,
+    );
+    return;
+  }
   appState.activePage = page;
+  if (["commercialProposals", ...declarationPages].includes(page)) {
+    appState.documentsNavigationExpanded = true;
+  }
   placeQuotationEditor(page);
   const showUsers = page === "users";
   const showSettings = page === "settings";
+  const showCompanyData = page === "companyData";
   const showDesignSystem = page === "designSystem";
   const showSuppliers = page === "suppliers";
   const showDeclarations = declarationPages.includes(page);
+  const showCommercialProposals = page === "commercialProposals";
   $("suppliersPage").classList.toggle("hidden", !showSuppliers);
   refs.declarationsPage.classList.toggle("hidden", !showDeclarations);
+  refs.commercialProposalsPage.classList.toggle("hidden", !showCommercialProposals);
   const showQuotations = page === "quotations";
   const showHome = page === "home";
   const showCatalog = page === "bids";
   const showEditor = page === "edit";
   const showDetail = detailPages.includes(page);
-  refs.bidsPage.classList.toggle("hidden", showUsers || showSettings || showDesignSystem || showQuotations || showSuppliers || showDeclarations);
+  refs.bidsPage.classList.toggle("hidden", showUsers || showSettings || showCompanyData || showDesignSystem || showQuotations || showSuppliers || showDeclarations || showCommercialProposals);
   refs.usersPage.classList.toggle("hidden", !showUsers);
   refs.settingsPage.classList.toggle("hidden", !showSettings);
+  refs.companyDataPage.classList.toggle("hidden", !showCompanyData);
   refs.designSystemPage.classList.toggle("hidden", !showDesignSystem);
   refs.quotationsPage.classList.toggle("hidden", !showQuotations);
   refs.homePage.classList.toggle("hidden", !showHome);
@@ -2404,17 +2498,18 @@ function setPage(page, options = {}) {
   refs.itemsPanel.classList.toggle("hidden", page !== "items");
   refs.documentsPanel.classList.toggle("hidden", page !== "documents");
   refs.failuresPanel.classList.toggle("hidden", page !== "failures");
-  refs.appView.classList.toggle("users-active", showUsers || showSettings || showDesignSystem || showQuotations || showSuppliers || showDeclarations);
+  refs.appView.classList.toggle("users-active", showUsers || showSettings || showCompanyData || showDesignSystem || showQuotations || showSuppliers || showDeclarations || showCommercialProposals);
   refs.itemsTabButton.classList.toggle("active", page === "items");
   refs.documentsTabButton.classList.toggle("active", page === "documents");
   refs.failuresTabButton.classList.toggle("active", page === "failures");
   refs.failuresTabButton.classList.toggle("hidden", !shouldShowFailureHistory());
-  const primaryPage = showDeclarations ? "declarations" : showSuppliers ? "suppliers" : showUsers ? "users" : showSettings || showDesignSystem ? "settings" : showQuotations ? "quotations" : showHome ? "home" : "bids";
-  const pageLabels = { declarations: "Declarações", suppliers: "Fornecedores", home: "Visão geral", bids: "Licitações", quotations: "Orçamento", users: "Usuários", settings: showDesignSystem ? "Design System" : "Configurações" };
+  const primaryPage = showCommercialProposals ? "commercialProposals" : showDeclarations ? "declarations" : showSuppliers ? "suppliers" : showUsers ? "users" : showSettings || showCompanyData || showDesignSystem ? "settings" : showQuotations ? "quotations" : showHome ? "home" : "bids";
+  const pageLabels = { commercialProposals: "Propostas Comerciais", declarations: "Declarações", suppliers: "Fornecedores", home: "Visão geral", bids: "Licitações", quotations: "Orçamento", users: "Usuários", settings: showCompanyData ? "Dados da Empresa" : showDesignSystem ? "Design System" : "Configurações" };
   refs.breadcrumbLabel.textContent = pageLabels[primaryPage];
   document.querySelectorAll("[data-navigation-page]").forEach((button) => {
     button.classList.toggle("active", button.dataset.navigationPage === primaryPage);
   });
+  updateDocumentsNavigation();
   refs.appView.classList.remove("mobile-nav-open");
   updateMainNavigationState();
   updateBidWorkspaceHeader();
@@ -2424,6 +2519,8 @@ function setPage(page, options = {}) {
   if (page === "items") renderBidQuotationWorkspace();
   if (showSuppliers) renderSuppliers();
   if (showDeclarations) void declarationsFeature.showPage(page).catch((error) => showToast(error.message));
+  if (showCommercialProposals) void commercialProposalsFeature.showPage().catch((error) => showToast(error.message));
+  if (showCompanyData) void companyDataFeature.showPage().catch((error) => showToast(error.message));
   if (showDesignSystem) window.GLLDesignSystem?.mountCatalog(refs.designSystemCatalog);
   writeNavigationRoute(page, options.history || "push");
 }
@@ -3175,10 +3272,10 @@ function renderItems(items) {
   });
 }
 
-async function setItemWon(itemId, isWon, checkbox) {
-  if (guardCurrentBidReadOnly(refs.itemFormError)) return;
+async function setItemWon(itemId, isWon, checkbox, errorElement = refs.itemFormError) {
+  if (guardCurrentBidReadOnly(errorElement)) return;
   checkbox.disabled = true;
-  refs.itemFormError.textContent = "";
+  errorElement.textContent = "";
   try {
     await store.setItemWon(itemId, isWon);
     await reloadData();
@@ -3186,7 +3283,7 @@ async function setItemWon(itemId, isWon, checkbox) {
   } catch (error) {
     checkbox.checked = !isWon;
     checkbox.disabled = false;
-    refs.itemFormError.textContent = error.message;
+    errorElement.textContent = error.message;
   }
 }
 
@@ -4118,6 +4215,9 @@ async function deleteCurrentQuotation() {
 
 function renderQuotationItems() {
   const quotation = currentQuotation();
+  const showWonItems = appState.activePage === "items" && shouldUseWonItems();
+  refs.quotationItemWonHeader.classList.toggle("hidden", !showWonItems);
+  refs.quotationItemWonHeader.closest(".quotation-items-table")?.classList.toggle("shows-item-won", showWonItems);
   refs.quotationItemsSection.classList.toggle("hidden", !quotation);
   refs.downloadQuotationItemsButton.disabled = !quotation;
   if (!quotation) {
@@ -4130,7 +4230,7 @@ function renderQuotationItems() {
   refs.quotationItemsStatus.textContent = `${items.length} ${items.length === 1 ? "item cadastrado" : "itens cadastrados"}`;
   refs.quotationGrandTotal.textContent = `Total: ${money(grandTotal)}`;
   if (!items.length) {
-    refs.quotationItemsTableBody.innerHTML = `<tr><td colspan="10"><div class="empty-state compact-empty">Nenhum item cadastrado neste orçamento.</div></td></tr>`;
+    refs.quotationItemsTableBody.innerHTML = `<tr><td colspan="${showWonItems ? 11 : 10}"><div class="empty-state compact-empty">Nenhum item cadastrado neste orçamento.</div></td></tr>`;
     return;
   }
   refs.quotationItemsTableBody.innerHTML = items
@@ -4138,8 +4238,14 @@ function renderQuotationItems() {
       const selected = Number(item.id) === Number(appState.currentQuotationItemId) ? " selected" : "";
       const description = item.description || "";
       const descriptionTooltip = description ? ` title="${escapeHtml(description)}"` : "";
+      const bidItem = bidItemForQuotationItem(item, appState.currentBidId);
+      const won = Boolean(Number(bidItem?.is_won));
+      const wonClass = showWonItems && won ? " item-won" : "";
+      const wonCell = showWonItems
+        ? `<td class="item-won-cell"><input class="item-won-checkbox" type="checkbox" data-quotation-item-won="${bidItem?.id || ""}" aria-label="Marcar item ${item.item_number} como vencido" ${won ? "checked" : ""} ${!bidItem || isCurrentBidReadOnly() ? "disabled" : ""} /></td>`
+        : "";
       return `
-        <tr class="selectable${selected}" tabindex="0" data-quotation-item-id="${item.id}">
+        <tr class="selectable${selected}${wonClass}" tabindex="0" data-quotation-item-id="${item.id}">
           <td><strong>${escapeHtml(formatNumber(item.item_number))}</strong></td>
           <td class="numeric">${money(item.minimum_bid)}</td>
           <td><strong class="table-item-description"${descriptionTooltip}>${escapeHtml(description || "—")}</strong>${item.model ? `<small class="table-secondary">Modelo: ${escapeHtml(item.model)}</small>` : ""}</td>
@@ -4150,6 +4256,7 @@ function renderQuotationItems() {
           <td class="numeric">${escapeHtml(formatNumber(item.quantity))}</td>
           <td class="numeric"><strong>${money(item.total)}</strong></td>
           <td class="numeric"><strong>${money(calculateItemProfit(item.final_bid, item.supplier_cost, item.quantity))}</strong></td>
+          ${wonCell}
         </tr>`;
     })
     .join("");
@@ -4164,6 +4271,23 @@ function renderQuotationItems() {
       }
     });
   });
+  refs.quotationItemsTableBody.querySelectorAll("[data-quotation-item-won]").forEach((checkbox) => {
+    checkbox.addEventListener("click", (event) => event.stopPropagation());
+    checkbox.addEventListener("keydown", (event) => event.stopPropagation());
+    checkbox.addEventListener("change", withBlockingLoading(
+      () => setItemWon(Number(checkbox.dataset.quotationItemWon), checkbox.checked, checkbox, refs.quotationFormError),
+      "Atualizando item…"
+    ));
+  });
+}
+
+function bidItemForQuotationItem(quotationItem, bidId) {
+  return appState.items.find(
+    (item) => String(item.bid_id) === String(bidId) && (
+      Number(item.quotation_item_id) === Number(quotationItem.id) ||
+      (!item.quotation_item_id && Number(item.item_number) === Number(quotationItem.item_number))
+    )
+  );
 }
 
 function openQuotationItemModal() {

@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "release_id": "2026-09-28-hotfix-orcamento-71-2026",
+  "release_id": "2026-09-28-promocao-dados-empresa-propostas-bloqueadas",
   "environment": "production",
   "target_branch": "main",
   "items": [
@@ -67,12 +67,45 @@
       ]
     },
     {
-      "id": "CORRECAO-ORCAMENTO-VINCULADO-001",
+      "id": "DADOS-EMPRESA-001",
       "backend_commits": [
-        "ad9143d23a46dfc409dfd062e927a5f36976a4b6"
+        "8ec8b3e8e315654eaf0d722993d3efd93d7c67fb"
       ],
       "frontend_commits": [
-        "28dacc7389fd968f68084662fb5bfd2182f3ae75"
+        "08a51297f3b7175334a8972df81dc27a49ac0ee1"
+      ],
+      "migrations": [
+        "supabase/migrations/20260927220000_add_company_data.sql"
+      ]
+    },
+    {
+      "id": "PROPOSTAS-COMERCIAIS-001",
+      "backend_commits": [
+        "a80464f9273ab67baad18b63860222a6988e5de5"
+      ],
+      "frontend_commits": [
+        "a5a99ac6b71b84c0a320eaa5d12f9440b8e97696"
+      ],
+      "migrations": [
+        "supabase/migrations/20260928120000_add_commercial_proposals.sql"
+      ]
+    },
+    {
+      "id": "NAVEGACAO-GERACAO-DOCUMENTOS-001",
+      "backend_commits": [],
+      "frontend_commits": [
+        "b1573563cdba12abaa9f0859ec22e73f15c397e6",
+        "8e95ced67b83823bd65d2388ab3932361bbe8440"
+      ],
+      "migrations": []
+    },
+    {
+      "id": "CORRECAO-ORCAMENTO-VINCULADO-001",
+      "backend_commits": [
+        "0b78934874d978cd92427c2251155cca827768f9"
+      ],
+      "frontend_commits": [
+        "2c23799f3f572281f34d4884d46ce32ae0a5a447"
       ],
       "migrations": [
         "supabase/migrations/20260928190000_grant_linked_quotation_access.sql"
@@ -81,12 +114,30 @@
     {
       "id": "HOTFIX-ORCAMENTO-71-2026-001",
       "backend_commits": [
-        "7971c1cb778686cb0e825a4801eb2c0439c9673e"
+        "4db43cc59dbfceffc7d32169d6b089ad05edbc5e"
       ],
       "frontend_commits": [],
       "migrations": [
         "supabase/migrations/20260928223000_repair_bid_71_quotation_and_admin_access.sql"
       ]
+    },
+    {
+      "id": "CORRECAO-ITEM-VENCIDO-ORCAMENTO-001",
+      "backend_commits": [],
+      "frontend_commits": [
+        "d22393c693a9b52fefb11f4a5ee7f23487bcc411"
+      ],
+      "migrations": []
+    },
+    {
+      "id": "PLANO-TESTES-HOMOLOGACAO-001",
+      "backend_commits": [
+        "2d9f4b0b00c0a7c95c485a82ee5d4ed38b094d93"
+      ],
+      "frontend_commits": [
+        "2e80bc4f0a42a7bf38f2564576463fcce7d4a49d"
+      ],
+      "migrations": []
     }
   ]
 }
