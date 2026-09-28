@@ -123,6 +123,7 @@ const appState = {
   currentSupplierProductId: null,
   sidebarCollapsed: false,
   appNavigationCollapsed: false,
+  documentsNavigationExpanded: false,
   bids: [],
   items: [],
   documents: [],
@@ -155,6 +156,8 @@ const refs = {
   navHomeButton: $("navHomeButton"),
   navBidsButton: $("navBidsButton"),
   navQuotationsButton: $("navQuotationsButton"),
+  navDocumentsButton: $("navDocumentsButton"),
+  documentsNavigationItems: $("documentsNavigationItems"),
   navCommercialProposalsButton: $("navCommercialProposalsButton"),
   navSuppliersButton: $("navSuppliersButton"),
   navDeclarationsButton: $("navDeclarationsButton"),
@@ -1849,6 +1852,7 @@ function bindEvents() {
   document.querySelectorAll("[data-navigation-page]").forEach((button) => {
     button.addEventListener("click", () => setPage(button.dataset.navigationPage));
   });
+  refs.navDocumentsButton.addEventListener("click", toggleDocumentsNavigation);
   $("openDesignSystemButton").addEventListener("click", () => setPage("designSystem"));
   $("openCompanyDataButton").addEventListener("click", () => setPage("companyData"));
   $("backToSettingsButton").addEventListener("click", () => setPage("settings"));
@@ -2165,6 +2169,20 @@ function updateMainNavigationState() {
   refs.appSidebar.inert = !isExpanded;
 }
 
+function toggleDocumentsNavigation() {
+  appState.documentsNavigationExpanded = !appState.documentsNavigationExpanded;
+  updateDocumentsNavigation();
+}
+
+function updateDocumentsNavigation() {
+  const isDocumentsPage = ["commercialProposals", "declarations", "declarationLibrary", "declarationSettings", "declarationHistory"]
+    .includes(appState.activePage);
+  const isExpanded = appState.documentsNavigationExpanded || isDocumentsPage;
+  refs.navDocumentsButton.setAttribute("aria-expanded", String(isExpanded));
+  refs.navDocumentsButton.classList.toggle("active", isDocumentsPage);
+  refs.documentsNavigationItems.hidden = !isExpanded;
+}
+
 function normalizeUserRole(role) {
   return role === USER_ROLES.ANALYST ? USER_ROLES.ANALYST : USER_ROLES.ADMIN;
 }
@@ -2478,6 +2496,7 @@ function setPage(page, options = {}) {
   document.querySelectorAll("[data-navigation-page]").forEach((button) => {
     button.classList.toggle("active", button.dataset.navigationPage === primaryPage);
   });
+  updateDocumentsNavigation();
   refs.appView.classList.remove("mobile-nav-open");
   updateMainNavigationState();
   updateBidWorkspaceHeader();

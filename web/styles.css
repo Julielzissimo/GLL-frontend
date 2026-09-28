@@ -2050,6 +2050,40 @@ textarea:focus {
   gap: 5px;
 }
 
+.nav-group {
+  display: grid;
+  gap: 4px;
+}
+
+.nav-group-toggle {
+  width: 100%;
+}
+
+.nav-group-chevron {
+  margin-left: auto;
+  transition: transform 160ms ease;
+}
+
+.nav-group-toggle[aria-expanded="true"] .nav-group-chevron {
+  transform: rotate(180deg);
+}
+
+.nav-submenu {
+  display: grid;
+  gap: 3px;
+  padding-left: 18px;
+}
+
+.nav-submenu[hidden] {
+  display: none;
+}
+
+.nav-sublink {
+  min-height: 40px;
+  padding-block: 9px;
+  font-size: 0.9rem;
+}
+
 .nav-link {
   display: flex;
   align-items: center;
@@ -4281,6 +4315,14 @@ tr.item-won td {
     font-size: 0;
   }
 
+  .nav-submenu {
+    padding-left: 0;
+  }
+
+  .nav-group-chevron {
+    display: none !important;
+  }
+
   .nav-link span {
     width: 100%;
     font-size: 18px;
@@ -4370,6 +4412,14 @@ tr.item-won td {
   .app-logo strong,
   .nav-link {
     font-size: inherit;
+  }
+
+  .nav-submenu {
+    padding-left: 18px;
+  }
+
+  .nav-group-chevron {
+    display: inline-grid !important;
   }
 
   .nav-link span {

@@ -51,9 +51,16 @@
           <button id="navHomeButton" class="nav-link active" type="button" data-navigation-page="home"><span aria-hidden="true">⌂</span>Visão geral</button>
           <button id="navBidsButton" class="nav-link" type="button" data-navigation-page="bids"><span aria-hidden="true">▤</span>Licitações</button>
           <button id="navQuotationsButton" class="nav-link" type="button" data-navigation-page="quotations"><span aria-hidden="true">▧</span>Orçamento</button>
-          <button id="navCommercialProposalsButton" class="nav-link" type="button" data-navigation-page="commercialProposals"><span aria-hidden="true">▤</span>Propostas Comerciais</button>
+          <div id="documentsNavigationGroup" class="nav-group">
+            <button id="navDocumentsButton" class="nav-link nav-group-toggle" type="button" aria-expanded="false" aria-controls="documentsNavigationItems">
+              <span aria-hidden="true">▤</span>Geração de Documentos<span class="nav-group-chevron" aria-hidden="true">⌄</span>
+            </button>
+            <div id="documentsNavigationItems" class="nav-submenu" hidden>
+              <button id="navCommercialProposalsButton" class="nav-link nav-sublink" type="button" data-navigation-page="commercialProposals"><span aria-hidden="true">▤</span>Propostas Comerciais</button>
+              <button id="navDeclarationsButton" class="nav-link nav-sublink" type="button" data-navigation-page="declarations"><span aria-hidden="true">▥</span>Declarações</button>
+            </div>
+          </div>
           <button id="navSuppliersButton" class="nav-link" type="button" data-navigation-page="suppliers"><span aria-hidden="true">▦</span>Fornecedores</button>
-          <button id="navDeclarationsButton" class="nav-link" type="button" data-navigation-page="declarations"><span aria-hidden="true">▥</span>Declarações</button>
           <button id="navUsersButton" class="nav-link" type="button" data-navigation-page="users"><span aria-hidden="true">♙</span>Usuários</button>
           <button id="navSettingsButton" class="nav-link" type="button" data-navigation-page="settings"><span aria-hidden="true">⚙</span>Configurações</button>
         </nav>
