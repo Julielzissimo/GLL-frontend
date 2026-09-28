@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "release_id": "2026-09-27-garantia-deposito",
+  "release_id": "2026-09-27-dados-empresa",
   "environment": "homolog",
   "target_branch": "homolog",
   "items": [
@@ -64,6 +64,18 @@
       ],
       "migrations": [
         "supabase/migrations/20260927180000_add_bid_guarantee_deposit.sql"
+      ]
+    },
+    {
+      "id": "DADOS-EMPRESA-001",
+      "backend_commits": [
+        "8ec8b3e8e315654eaf0d722993d3efd93d7c67fb"
+      ],
+      "frontend_commits": [
+        "08a51297f3b7175334a8972df81dc27a49ac0ee1"
+      ],
+      "migrations": [
+        "supabase/migrations/20260927220000_add_company_data.sql"
       ]
     }
   ]
