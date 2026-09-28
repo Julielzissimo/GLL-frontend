@@ -43,6 +43,9 @@ test("mantém os ajustes de interface e organização do construtor de propostas
   assert.match(feature, /Salvar esta informação permanentemente/);
   assert.match(feature, /data-toggle-item=/);
   assert.match(feature, /drawWatermarkBackground\(\)/);
+  assert.match(feature, /drawInlineTextSection\(section\.title \|\| "Prazo de entrega", proposal\.delivery_term\)/);
+  assert.match(feature, /drawInlineTextSection\(section\.title \|\| "Validade da proposta", proposal\.proposal_validity\)/);
+  assert.match(feature, /drawInlineTextSection\(section\.title \|\| "Condições de pagamento", proposal\.payment_terms\)/);
   assert.match(styles, /\.commercial-proposal-create-modal/);
   assert.match(styles, /#commercialProposalPreviewFrame[^}]+min-height: 0/s);
 });
