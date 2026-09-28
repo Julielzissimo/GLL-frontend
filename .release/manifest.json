@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "release_id": "2026-09-28-hotfix-orcamento-71-2026",
+  "release_id": "2026-09-28-restaurar-item-vencido-orcamento",
   "environment": "homolog",
   "target_branch": "homolog",
   "items": [
@@ -120,6 +120,14 @@
       "migrations": [
         "supabase/migrations/20260928223000_repair_bid_71_quotation_and_admin_access.sql"
       ]
+    },
+    {
+      "id": "CORRECAO-ITEM-VENCIDO-ORCAMENTO-001",
+      "backend_commits": [],
+      "frontend_commits": [
+        "d22393c693a9b52fefb11f4a5ee7f23487bcc411"
+      ],
+      "migrations": []
     }
   ]
 }
