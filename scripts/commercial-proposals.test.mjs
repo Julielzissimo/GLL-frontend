@@ -28,3 +28,21 @@ test("integra a página independente, navegação e build versionado", async () 
   assert.match(app, /commercialProposals: "propostas-comerciais"/);
   assert.match(build, /commercial-proposals\.js/);
 });
+
+test("mantém os ajustes de interface e organização do construtor de propostas", async () => {
+  const [feature, styles] = await Promise.all([
+    readFile(new URL("../web/commercial-proposals.js", import.meta.url), "utf8"),
+    readFile(new URL("../web/styles.css", import.meta.url), "utf8"),
+  ]);
+
+  assert.match(feature, />Criar proposta<\/button>/);
+  assert.match(feature, />Configuração<\/button>/);
+  assert.match(feature, /<span class="eyebrow">RESUMO<\/span>/);
+  assert.match(feature, /Marca \/ Fabricante/);
+  assert.doesNotMatch(feature, /\["manufacturer", "Fabricante", "input"\]/);
+  assert.match(feature, /Salvar esta informação permanentemente/);
+  assert.match(feature, /data-toggle-item=/);
+  assert.match(feature, /drawWatermarkBackground\(\)/);
+  assert.match(styles, /\.commercial-proposal-create-modal/);
+  assert.match(styles, /#commercialProposalPreviewFrame[^}]+min-height: 0/s);
+});
