@@ -51,6 +51,7 @@
           <button id="navHomeButton" class="nav-link active" type="button" data-navigation-page="home"><span aria-hidden="true">⌂</span>Visão geral</button>
           <button id="navBidsButton" class="nav-link" type="button" data-navigation-page="bids"><span aria-hidden="true">▤</span>Licitações</button>
           <button id="navQuotationsButton" class="nav-link" type="button" data-navigation-page="quotations"><span aria-hidden="true">▧</span>Orçamento</button>
+          <button id="navCommercialProposalsButton" class="nav-link" type="button" data-navigation-page="commercialProposals"><span aria-hidden="true">▤</span>Propostas Comerciais</button>
           <button id="navSuppliersButton" class="nav-link" type="button" data-navigation-page="suppliers"><span aria-hidden="true">▦</span>Fornecedores</button>
           <button id="navDeclarationsButton" class="nav-link" type="button" data-navigation-page="declarations"><span aria-hidden="true">▥</span>Declarações</button>
           <button id="navUsersButton" class="nav-link" type="button" data-navigation-page="users"><span aria-hidden="true">♙</span>Usuários</button>
@@ -1194,6 +1195,10 @@
         </div>
         <div id="designSystemCatalog"></div>
       </section>
+
+      <section id="commercialProposalsPage" class="users-page commercial-proposals-page hidden" aria-labelledby="commercialProposalsTitle">
+        <div id="commercialProposalsRoot"></div>
+      </section>
       </div>
     </main>
 
@@ -1230,6 +1235,7 @@
     <script src="./design-system/components.js"></script>
     <script type="module" src="./declarations.js"></script>
     <script type="module" src="./company-data.js"></script>
+    <script type="module" src="./commercial-proposals.js"></script>
     <script type="module" src="./app.js"></script>
   </body>
 </html>

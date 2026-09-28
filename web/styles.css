@@ -4952,3 +4952,291 @@ html.is-loading { overflow: hidden; }
   .supplier-profile-copy { min-width: calc(100% - 90px); }
   .supplier-edit-action { width: 100%; }
 }
+
+/* Propostas Comerciais */
+.commercial-proposals-page {
+  padding: var(--space-xl);
+}
+
+.commercial-proposals-page #commercialProposalsRoot {
+  display: grid;
+  gap: var(--space-xl);
+}
+
+.commercial-proposal-list-panel,
+.commercial-builder-section {
+  min-width: 0;
+}
+
+.commercial-proposal-list {
+  min-width: 1040px;
+}
+
+.commercial-proposal-row-actions,
+.commercial-proposal-toolbar,
+.commercial-visual-options {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  flex-wrap: wrap;
+}
+
+.proposal-status-draft {
+  color: var(--color-warning);
+  background: var(--color-warning-surface);
+}
+
+.proposal-status-finalized {
+  color: var(--color-success);
+  background: var(--color-success-surface);
+}
+
+.commercial-proposal-editor-heading {
+  align-items: flex-start;
+}
+
+.commercial-proposal-editor-heading .eyebrow {
+  display: block;
+  margin-top: var(--space-md);
+}
+
+.commercial-proposal-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-md);
+}
+
+.commercial-proposal-summary article {
+  display: grid;
+  gap: var(--space-xs);
+}
+
+.commercial-proposal-summary span {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+}
+
+.commercial-proposal-summary strong {
+  font-size: var(--font-size-lg);
+}
+
+.commercial-builder-section {
+  display: grid;
+  gap: var(--space-lg);
+}
+
+.commercial-builder-section .section-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-lg);
+}
+
+.commercial-builder-section h2,
+.commercial-builder-section h3,
+.commercial-builder-section p {
+  margin-top: 0;
+}
+
+.commercial-proposal-general-grid,
+.commercial-section-fields {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.full-span {
+  grid-column: 1 / -1;
+}
+
+.commercial-proposal-items,
+.commercial-column-list,
+.commercial-section-list {
+  display: grid;
+  gap: var(--space-md);
+}
+
+.commercial-proposal-item,
+.commercial-column-row,
+.commercial-section-row {
+  border: var(--border-default);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+}
+
+.commercial-proposal-item {
+  padding: var(--space-lg);
+  display: grid;
+  gap: var(--space-md);
+}
+
+.commercial-proposal-item.selected {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 1px var(--color-primary);
+}
+
+.commercial-proposal-item-head,
+.commercial-section-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+}
+
+.commercial-proposal-item-head .table-secondary,
+.commercial-section-head .table-secondary {
+  margin-left: auto;
+}
+
+.drag-handle {
+  color: var(--color-text-secondary);
+  cursor: grab;
+  font-size: var(--font-size-xl);
+  user-select: none;
+}
+
+.commercial-proposal-item-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--space-md);
+}
+
+.commercial-proposal-item-grid .wide {
+  grid-column: span 2;
+}
+
+.proposal-permanent-option {
+  display: flex;
+  gap: var(--space-xs);
+  align-items: flex-start;
+  margin-top: var(--space-xs);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-regular);
+}
+
+.commercial-column-row {
+  display: grid;
+  grid-template-columns: auto auto minmax(180px, 1fr) minmax(180px, 1fr) auto auto auto;
+  align-items: center;
+  gap: var(--space-md);
+  padding: var(--space-md);
+}
+
+.commercial-column-row label {
+  margin: 0;
+}
+
+.commercial-width-output {
+  color: var(--color-text-secondary);
+  font-weight: var(--font-weight-regular);
+}
+
+.commercial-section-row {
+  padding: var(--space-md);
+  display: grid;
+  gap: var(--space-md);
+}
+
+.commercial-visual-options {
+  align-items: flex-end;
+}
+
+.commercial-visual-options .full-span {
+  flex: 1 1 100%;
+}
+
+.commercial-signature-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-md);
+  padding: var(--space-lg);
+  border: var(--border-default);
+  border-radius: var(--radius-md);
+}
+
+.commercial-signature-options legend {
+  padding: 0 var(--space-sm);
+  font-weight: var(--font-weight-medium);
+}
+
+.commercial-history-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-xl);
+}
+
+.history-row {
+  width: 100%;
+  display: grid;
+  gap: var(--space-xs);
+  padding: var(--space-md);
+  margin-bottom: var(--space-sm);
+  border: var(--border-default);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-subtle);
+  color: var(--color-text-primary);
+  text-align: left;
+}
+
+button.history-row {
+  cursor: pointer;
+}
+
+button.history-row:hover {
+  border-color: var(--color-primary);
+}
+
+.commercial-proposal-dialog-form {
+  width: min(560px, calc(100vw - 40px));
+  display: grid;
+  gap: var(--space-lg);
+  padding: var(--space-xl);
+}
+
+#commercialProposalPreviewFrame {
+  width: 100%;
+  min-height: min(72vh, 820px);
+  border: 0;
+  background: var(--color-surface-subtle);
+}
+
+@media (max-width: 1100px) {
+  .commercial-proposal-item-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .commercial-column-row {
+    grid-template-columns: auto auto 1fr 1fr;
+  }
+
+  .commercial-column-row .status-pill,
+  .commercial-column-row .danger-action,
+  .commercial-column-row > .table-secondary {
+    grid-column: span 1;
+  }
+}
+
+@media (max-width: 720px) {
+  .commercial-proposals-page {
+    padding: var(--space-md);
+  }
+
+  .commercial-proposal-summary,
+  .commercial-history-grid,
+  .commercial-proposal-general-grid,
+  .commercial-section-fields,
+  .commercial-proposal-item-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .commercial-proposal-item-grid .wide,
+  .full-span {
+    grid-column: auto;
+  }
+
+  .commercial-column-row {
+    grid-template-columns: auto 1fr;
+  }
+
+  .commercial-column-row label {
+    grid-column: 1 / -1;
+  }
+}

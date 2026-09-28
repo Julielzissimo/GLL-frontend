@@ -67,6 +67,10 @@ const createCompanyDataFeature = window.GLLCompanyData?.createCompanyDataFeature
   reset: () => undefined,
   refresh: async () => undefined,
 }));
+const createCommercialProposalsFeature = window.GLLCommercialProposals?.createCommercialProposalsFeature || (() => ({
+  showPage: async () => undefined,
+  reset: () => undefined,
+}));
 
 const PAGE_ROUTE_NAMES = {
   home: "visao-geral",
@@ -76,6 +80,7 @@ const PAGE_ROUTE_NAMES = {
   documents: "documentos",
   failures: "falhas",
   quotations: "orcamentos",
+  commercialProposals: "propostas-comerciais",
   suppliers: "fornecedores",
   declarations: "declaracoes",
   declarationLibrary: "declaracoes/biblioteca",
@@ -149,6 +154,7 @@ const refs = {
   navHomeButton: $("navHomeButton"),
   navBidsButton: $("navBidsButton"),
   navQuotationsButton: $("navQuotationsButton"),
+  navCommercialProposalsButton: $("navCommercialProposalsButton"),
   navSuppliersButton: $("navSuppliersButton"),
   navDeclarationsButton: $("navDeclarationsButton"),
   navUsersButton: $("navUsersButton"),
@@ -184,6 +190,7 @@ const refs = {
   designSystemCatalog: $("designSystemCatalog"),
   suppliersPage: $("suppliersPage"),
   declarationsPage: $("declarationsPage"),
+  commercialProposalsPage: $("commercialProposalsPage"),
   suppliersList: $("suppliersList"),
   supplierTagFilter: $("supplierTagFilter"),
   supplierSort: $("supplierSort"),
@@ -1607,6 +1614,18 @@ const companyDataFeature = createCompanyDataFeature({
   toast: (message) => showToast(message),
   runBusy: (operation, message) => withBlockingLoading(operation, message)(),
 });
+const commercialProposalsFeature = createCommercialProposalsFeature({
+  getClient: () => (store.requiresAuthenticationBeforeData ? store.client : null),
+  getContext: () => ({
+    organizationId: appState.currentOrganizationId || DEFAULT_ADMIN.organization_id,
+    organizationName: appState.currentOrganizationName || DEFAULT_ADMIN.organization.name,
+    organizationCnpj: appState.currentOrganizationCnpj || DEFAULT_ADMIN.organization.cnpj,
+    userAuthId: appState.currentUserAuthId || DEFAULT_ADMIN.auth_user_id,
+    userName: appState.currentUserName || DEFAULT_ADMIN.name,
+  }),
+  toast: (message) => showToast(message),
+  runBusy: (operation, message) => withBlockingLoading(operation, message)(),
+});
 
 const SESSION_ACTIVITY_EVENTS = ["pointerdown", "keydown", "input"];
 const SESSION_POLICY_CHECK_INTERVAL_MS = 60 * 1000;
@@ -2102,6 +2121,7 @@ function resetAuthenticatedView() {
   refs.loginView.classList.remove("hidden");
   refs.loginPassword.value = "";
   declarationsFeature.reset();
+  commercialProposalsFeature.reset();
   companyDataFeature.reset();
   refs.appView.classList.remove("mobile-nav-open");
   updateMainNavigationState();
@@ -2411,14 +2431,16 @@ function setPage(page, options = {}) {
   const showDesignSystem = page === "designSystem";
   const showSuppliers = page === "suppliers";
   const showDeclarations = declarationPages.includes(page);
+  const showCommercialProposals = page === "commercialProposals";
   $("suppliersPage").classList.toggle("hidden", !showSuppliers);
   refs.declarationsPage.classList.toggle("hidden", !showDeclarations);
+  refs.commercialProposalsPage.classList.toggle("hidden", !showCommercialProposals);
   const showQuotations = page === "quotations";
   const showHome = page === "home";
   const showCatalog = page === "bids";
   const showEditor = page === "edit";
   const showDetail = detailPages.includes(page);
-  refs.bidsPage.classList.toggle("hidden", showUsers || showSettings || showCompanyData || showDesignSystem || showQuotations || showSuppliers || showDeclarations);
+  refs.bidsPage.classList.toggle("hidden", showUsers || showSettings || showCompanyData || showDesignSystem || showQuotations || showSuppliers || showDeclarations || showCommercialProposals);
   refs.usersPage.classList.toggle("hidden", !showUsers);
   refs.settingsPage.classList.toggle("hidden", !showSettings);
   refs.companyDataPage.classList.toggle("hidden", !showCompanyData);
@@ -2433,13 +2455,13 @@ function setPage(page, options = {}) {
   refs.itemsPanel.classList.toggle("hidden", page !== "items");
   refs.documentsPanel.classList.toggle("hidden", page !== "documents");
   refs.failuresPanel.classList.toggle("hidden", page !== "failures");
-  refs.appView.classList.toggle("users-active", showUsers || showSettings || showCompanyData || showDesignSystem || showQuotations || showSuppliers || showDeclarations);
+  refs.appView.classList.toggle("users-active", showUsers || showSettings || showCompanyData || showDesignSystem || showQuotations || showSuppliers || showDeclarations || showCommercialProposals);
   refs.itemsTabButton.classList.toggle("active", page === "items");
   refs.documentsTabButton.classList.toggle("active", page === "documents");
   refs.failuresTabButton.classList.toggle("active", page === "failures");
   refs.failuresTabButton.classList.toggle("hidden", !shouldShowFailureHistory());
-  const primaryPage = showDeclarations ? "declarations" : showSuppliers ? "suppliers" : showUsers ? "users" : showSettings || showCompanyData || showDesignSystem ? "settings" : showQuotations ? "quotations" : showHome ? "home" : "bids";
-  const pageLabels = { declarations: "Declarações", suppliers: "Fornecedores", home: "Visão geral", bids: "Licitações", quotations: "Orçamento", users: "Usuários", settings: showCompanyData ? "Dados da Empresa" : showDesignSystem ? "Design System" : "Configurações" };
+  const primaryPage = showCommercialProposals ? "commercialProposals" : showDeclarations ? "declarations" : showSuppliers ? "suppliers" : showUsers ? "users" : showSettings || showCompanyData || showDesignSystem ? "settings" : showQuotations ? "quotations" : showHome ? "home" : "bids";
+  const pageLabels = { commercialProposals: "Propostas Comerciais", declarations: "Declarações", suppliers: "Fornecedores", home: "Visão geral", bids: "Licitações", quotations: "Orçamento", users: "Usuários", settings: showCompanyData ? "Dados da Empresa" : showDesignSystem ? "Design System" : "Configurações" };
   refs.breadcrumbLabel.textContent = pageLabels[primaryPage];
   document.querySelectorAll("[data-navigation-page]").forEach((button) => {
     button.classList.toggle("active", button.dataset.navigationPage === primaryPage);
@@ -2453,6 +2475,7 @@ function setPage(page, options = {}) {
   if (page === "items") renderBidQuotationWorkspace();
   if (showSuppliers) renderSuppliers();
   if (showDeclarations) void declarationsFeature.showPage(page).catch((error) => showToast(error.message));
+  if (showCommercialProposals) void commercialProposalsFeature.showPage().catch((error) => showToast(error.message));
   if (showCompanyData) void companyDataFeature.showPage().catch((error) => showToast(error.message));
   if (showDesignSystem) window.GLLDesignSystem?.mountCatalog(refs.designSystemCatalog);
   writeNavigationRoute(page, options.history || "push");
