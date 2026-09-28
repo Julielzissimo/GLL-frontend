@@ -387,6 +387,7 @@ const refs = {
   deleteQuotationItemButton: $("deleteQuotationItemButton"),
   clearQuotationItemButton: $("clearQuotationItemButton"),
   quotationItemsTableBody: $("quotationItemsTableBody"),
+  quotationItemWonHeader: $("quotationItemWonHeader"),
   userCountLabel: $("userCountLabel"),
   usersTotalLabel: $("usersTotalLabel"),
   userSearchInput: $("userSearchInput"),
@@ -3259,10 +3260,10 @@ function renderItems(items) {
   });
 }
 
-async function setItemWon(itemId, isWon, checkbox) {
-  if (guardCurrentBidReadOnly(refs.itemFormError)) return;
+async function setItemWon(itemId, isWon, checkbox, errorElement = refs.itemFormError) {
+  if (guardCurrentBidReadOnly(errorElement)) return;
   checkbox.disabled = true;
-  refs.itemFormError.textContent = "";
+  errorElement.textContent = "";
   try {
     await store.setItemWon(itemId, isWon);
     await reloadData();
@@ -3270,7 +3271,7 @@ async function setItemWon(itemId, isWon, checkbox) {
   } catch (error) {
     checkbox.checked = !isWon;
     checkbox.disabled = false;
-    refs.itemFormError.textContent = error.message;
+    errorElement.textContent = error.message;
   }
 }
 
@@ -4202,6 +4203,9 @@ async function deleteCurrentQuotation() {
 
 function renderQuotationItems() {
   const quotation = currentQuotation();
+  const showWonItems = appState.activePage === "items" && shouldUseWonItems();
+  refs.quotationItemWonHeader.classList.toggle("hidden", !showWonItems);
+  refs.quotationItemWonHeader.closest(".quotation-items-table")?.classList.toggle("shows-item-won", showWonItems);
   refs.quotationItemsSection.classList.toggle("hidden", !quotation);
   refs.downloadQuotationItemsButton.disabled = !quotation;
   if (!quotation) {
@@ -4214,7 +4218,7 @@ function renderQuotationItems() {
   refs.quotationItemsStatus.textContent = `${items.length} ${items.length === 1 ? "item cadastrado" : "itens cadastrados"}`;
   refs.quotationGrandTotal.textContent = `Total: ${money(grandTotal)}`;
   if (!items.length) {
-    refs.quotationItemsTableBody.innerHTML = `<tr><td colspan="10"><div class="empty-state compact-empty">Nenhum item cadastrado neste orçamento.</div></td></tr>`;
+    refs.quotationItemsTableBody.innerHTML = `<tr><td colspan="${showWonItems ? 11 : 10}"><div class="empty-state compact-empty">Nenhum item cadastrado neste orçamento.</div></td></tr>`;
     return;
   }
   refs.quotationItemsTableBody.innerHTML = items
@@ -4222,8 +4226,14 @@ function renderQuotationItems() {
       const selected = Number(item.id) === Number(appState.currentQuotationItemId) ? " selected" : "";
       const description = item.description || "";
       const descriptionTooltip = description ? ` title="${escapeHtml(description)}"` : "";
+      const bidItem = bidItemForQuotationItem(item, appState.currentBidId);
+      const won = Boolean(Number(bidItem?.is_won));
+      const wonClass = showWonItems && won ? " item-won" : "";
+      const wonCell = showWonItems
+        ? `<td class="item-won-cell"><input class="item-won-checkbox" type="checkbox" data-quotation-item-won="${bidItem?.id || ""}" aria-label="Marcar item ${item.item_number} como vencido" ${won ? "checked" : ""} ${!bidItem || isCurrentBidReadOnly() ? "disabled" : ""} /></td>`
+        : "";
       return `
-        <tr class="selectable${selected}" tabindex="0" data-quotation-item-id="${item.id}">
+        <tr class="selectable${selected}${wonClass}" tabindex="0" data-quotation-item-id="${item.id}">
           <td><strong>${escapeHtml(formatNumber(item.item_number))}</strong></td>
           <td class="numeric">${money(item.minimum_bid)}</td>
           <td><strong class="table-item-description"${descriptionTooltip}>${escapeHtml(description || "—")}</strong>${item.model ? `<small class="table-secondary">Modelo: ${escapeHtml(item.model)}</small>` : ""}</td>
@@ -4234,6 +4244,7 @@ function renderQuotationItems() {
           <td class="numeric">${escapeHtml(formatNumber(item.quantity))}</td>
           <td class="numeric"><strong>${money(item.total)}</strong></td>
           <td class="numeric"><strong>${money(calculateItemProfit(item.final_bid, item.supplier_cost, item.quantity))}</strong></td>
+          ${wonCell}
         </tr>`;
     })
     .join("");
@@ -4248,6 +4259,23 @@ function renderQuotationItems() {
       }
     });
   });
+  refs.quotationItemsTableBody.querySelectorAll("[data-quotation-item-won]").forEach((checkbox) => {
+    checkbox.addEventListener("click", (event) => event.stopPropagation());
+    checkbox.addEventListener("keydown", (event) => event.stopPropagation());
+    checkbox.addEventListener("change", withBlockingLoading(
+      () => setItemWon(Number(checkbox.dataset.quotationItemWon), checkbox.checked, checkbox, refs.quotationFormError),
+      "Atualizando item…"
+    ));
+  });
+}
+
+function bidItemForQuotationItem(quotationItem, bidId) {
+  return appState.items.find(
+    (item) => String(item.bid_id) === String(bidId) && (
+      Number(item.quotation_item_id) === Number(quotationItem.id) ||
+      (!item.quotation_item_id && Number(item.item_number) === Number(quotationItem.item_number))
+    )
+  );
 }
 
 function openQuotationItemModal() {

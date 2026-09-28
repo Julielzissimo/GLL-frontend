@@ -4179,6 +4179,15 @@ tr.item-won td {
   table-layout: fixed;
 }
 
+.quotation-items-table.shows-item-won {
+  min-width: 1452px;
+}
+
+.quotation-items-table .item-won-header,
+.quotation-items-table .item-won-cell {
+  width: 120px;
+}
+
 .quotation-items-table thead th {
   position: sticky;
   top: 0;
