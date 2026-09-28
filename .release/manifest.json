@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "release_id": "2026-09-28-restaurar-item-vencido-orcamento",
+  "release_id": "2026-09-28-plano-testes-homologacao",
   "environment": "homolog",
   "target_branch": "homolog",
   "items": [
@@ -126,6 +126,16 @@
       "backend_commits": [],
       "frontend_commits": [
         "d22393c693a9b52fefb11f4a5ee7f23487bcc411"
+      ],
+      "migrations": []
+    },
+    {
+      "id": "PLANO-TESTES-HOMOLOGACAO-001",
+      "backend_commits": [
+        "2d9f4b0b00c0a7c95c485a82ee5d4ed38b094d93"
+      ],
+      "frontend_commits": [
+        "2e80bc4f0a42a7bf38f2564576463fcce7d4a49d"
       ],
       "migrations": []
     }
