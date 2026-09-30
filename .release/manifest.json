@@ -148,6 +148,14 @@
       "migrations": [
         "supabase/migrations/20260928233000_repair_all_legacy_bid_quotations.sql"
       ]
+    },
+    {
+      "id": "UX-PROPOSTAS-RESPONSIVIDADE-001",
+      "backend_commits": [],
+      "frontend_commits": [
+        "f9f1fa7272f826457ca1e69e35ec1cb67276f19b"
+      ],
+      "migrations": []
     }
   ]
 }
