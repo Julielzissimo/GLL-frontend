@@ -170,7 +170,7 @@ export function createCommercialProposalsFeature({ getClient, getContext, toast,
     const available = state.bids.filter((bid) => !bid.proposal_id && Number(bid.item_count) > 0);
     root.innerHTML = `
       <div class="page-heading">
-        <div><span class="eyebrow">DOCUMENTOS COMERCIAIS</span><h1 id="commercialProposalsTitle">Propostas Comerciais</h1>
+        <div><span class="eyebrow">DOCUMENTOS COMERCIAIS</span><h1 id="commercialProposalsTitle">Proposta Comercial</h1>
         <p>Crie propostas estruturadas a partir dos itens do orçamento de cada edital.</p></div>
         <button class="primary-action" type="button" data-proposal-action="new">＋ Nova Proposta Comercial</button>
       </div>

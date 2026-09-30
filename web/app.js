@@ -1777,7 +1777,7 @@ function applyEnvironmentConfig() {
   refs.navCommercialProposalsButton.disabled = !commercialProposalsEnabled;
   refs.navCommercialProposalsButton.classList.toggle("nav-link-disabled", !commercialProposalsEnabled);
   refs.navCommercialProposalsButton.setAttribute("aria-disabled", String(!commercialProposalsEnabled));
-  refs.navCommercialProposalsButton.title = commercialProposalsEnabled ? "" : "Propostas Comerciais temporariamente indisponível";
+  refs.navCommercialProposalsButton.title = commercialProposalsEnabled ? "" : "Proposta Comercial temporariamente indisponível";
 }
 
 function populateOptions() {
@@ -2182,11 +2182,9 @@ function toggleDocumentsNavigation() {
 }
 
 function updateDocumentsNavigation() {
-  const isDocumentsPage = ["commercialProposals", "declarations", "declarationLibrary", "declarationSettings", "declarationHistory"]
-    .includes(appState.activePage);
   const isExpanded = appState.documentsNavigationExpanded;
   refs.navDocumentsButton.setAttribute("aria-expanded", String(isExpanded));
-  refs.navDocumentsButton.classList.toggle("active", isDocumentsPage);
+  refs.navDocumentsButton.classList.remove("active");
   refs.documentsNavigationItems.classList.toggle("is-expanded", isExpanded);
   refs.documentsNavigationItems.setAttribute("aria-hidden", String(!isExpanded));
   refs.documentsNavigationItems.inert = !isExpanded;
@@ -2504,7 +2502,7 @@ function setPage(page, options = {}) {
   refs.failuresTabButton.classList.toggle("active", page === "failures");
   refs.failuresTabButton.classList.toggle("hidden", !shouldShowFailureHistory());
   const primaryPage = showCommercialProposals ? "commercialProposals" : showDeclarations ? "declarations" : showSuppliers ? "suppliers" : showUsers ? "users" : showSettings || showCompanyData || showDesignSystem ? "settings" : showQuotations ? "quotations" : showHome ? "home" : "bids";
-  const pageLabels = { commercialProposals: "Propostas Comerciais", declarations: "Declarações", suppliers: "Fornecedores", home: "Visão geral", bids: "Licitações", quotations: "Orçamento", users: "Usuários", settings: showCompanyData ? "Dados da Empresa" : showDesignSystem ? "Design System" : "Configurações" };
+  const pageLabels = { commercialProposals: "Proposta Comercial", declarations: "Declarações", suppliers: "Fornecedores", home: "Visão geral", bids: "Licitações", quotations: "Orçamento", users: "Usuários", settings: showCompanyData ? "Dados da Empresa" : showDesignSystem ? "Design System" : "Configurações" };
   refs.breadcrumbLabel.textContent = pageLabels[primaryPage];
   document.querySelectorAll("[data-navigation-page]").forEach((button) => {
     button.classList.toggle("active", button.dataset.navigationPage === primaryPage);
