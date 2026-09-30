@@ -66,4 +66,11 @@ test("mantém os ajustes de interface e organização do construtor de propostas
   assert.match(app, /commercialProposalsFeature\.requestDiscardChanges/);
   assert.match(styles, /\.commercial-proposal-create-modal/);
   assert.match(styles, /#commercialProposalPreviewFrame[^}]+min-height: 0/s);
+  assert.match(feature, /class="drag-handle" draggable="true"/);
+  assert.doesNotMatch(feature, /<article[^>]+draggable="true"[^>]+data-drag-kind/);
+  assert.match(feature, /animateCardReorder/);
+  assert.match(feature, /\["ArrowUp", "ArrowDown"\]/);
+  assert.match(styles, /container-type: inline-size/);
+  assert.match(styles, /@container \(max-width: 1180px\)/);
+  assert.match(styles, /\.commercial-proposal-item-grid textarea[^}]+height: 84px/s);
 });

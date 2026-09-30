@@ -404,7 +404,7 @@ export function createDeclarationsFeature({ getClient, getContext, getBids, navi
   function renderOrder() {
     const selected = selectedTemplates();
     refs.declarationSelectedOrder.innerHTML = selected.length ? selected.map((template, index) => `
-      <li draggable="true" data-template-id="${escapeHtml(template.id)}"><span class="declaration-drag" aria-hidden="true">⠿</span><strong><span>${index + 1}.</span> ${escapeHtml(template.title)}</strong><span class="declaration-order-actions"><button type="button" data-move="up" aria-label="Mover para cima" ${index === 0 ? "disabled" : ""}>↑</button><button type="button" data-move="down" aria-label="Mover para baixo" ${index === selected.length - 1 ? "disabled" : ""}>↓</button></span></li>`).join("") : `<li class="empty-state compact-empty">Selecione uma ou mais declarações acima.</li>`;
+      <li data-template-id="${escapeHtml(template.id)}"><span class="declaration-drag" draggable="true" role="button" tabindex="0" title="Arraste para reorganizar" aria-label="Arraste para reorganizar">⠿</span><strong><span>${index + 1}.</span> ${escapeHtml(template.title)}</strong><span class="declaration-order-actions"><button type="button" data-move="up" aria-label="Mover para cima" ${index === 0 ? "disabled" : ""}>↑</button><button type="button" data-move="down" aria-label="Mover para baixo" ${index === selected.length - 1 ? "disabled" : ""}>↓</button></span></li>`).join("") : `<li class="empty-state compact-empty">Selecione uma ou mais declarações acima.</li>`;
   }
 
   function moveTemplate(id, direction) {
@@ -845,13 +845,51 @@ export function createDeclarationsFeature({ getClient, getContext, getBids, navi
       const button = event.target.closest("[data-move]"); const item = event.target.closest("[data-template-id]");
       if (button && item) moveTemplate(item.dataset.templateId, button.dataset.move);
     });
-    refs.declarationSelectedOrder.addEventListener("dragstart", (event) => { state.draggedId = event.target.closest("[data-template-id]")?.dataset.templateId || null; });
-    refs.declarationSelectedOrder.addEventListener("dragover", (event) => event.preventDefault());
+    refs.declarationSelectedOrder.addEventListener("keydown", (event) => {
+      const handle = event.target.closest(".declaration-drag"); const item = event.target.closest("[data-template-id]");
+      if (!handle || !item || !["ArrowUp", "ArrowDown"].includes(event.key)) return;
+      event.preventDefault(); const id = item.dataset.templateId;
+      moveTemplate(id, event.key === "ArrowUp" ? "up" : "down");
+      refs.declarationSelectedOrder.querySelector(`[data-template-id="${id}"] .declaration-drag`)?.focus();
+    });
+    refs.declarationSelectedOrder.addEventListener("dragstart", (event) => {
+      const handle = event.target.closest(".declaration-drag");
+      const item = event.target.closest("[data-template-id]");
+      if (!handle || !item) { event.preventDefault(); return; }
+      state.draggedId = item.dataset.templateId;
+      event.dataTransfer.effectAllowed = "move";
+      event.dataTransfer.setData("text/plain", state.draggedId);
+      requestAnimationFrame(() => item.classList.add("is-dragging"));
+    });
+    refs.declarationSelectedOrder.addEventListener("dragover", (event) => {
+      const target = event.target.closest("[data-template-id]");
+      const dragged = refs.declarationSelectedOrder.querySelector(`[data-template-id="${state.draggedId}"]`);
+      if (!target || !dragged || target === dragged) return;
+      event.preventDefault();
+      const items = [...refs.declarationSelectedOrder.querySelectorAll("[data-template-id]")];
+      const previousPositions = new Map(items.map((item) => [item.dataset.templateId, item.getBoundingClientRect()]));
+      const bounds = target.getBoundingClientRect();
+      const placeAfter = event.clientY > bounds.top + bounds.height / 2;
+      const alreadyAdjacent = placeAfter ? target.nextElementSibling === dragged : target.previousElementSibling === dragged;
+      if (alreadyAdjacent) return;
+      refs.declarationSelectedOrder.insertBefore(dragged, placeAfter ? target.nextSibling : target);
+      if (!window.matchMedia("(prefers-reduced-motion: reduce)").matches) items.forEach((item) => {
+        if (item === dragged) return;
+        const previous = previousPositions.get(item.dataset.templateId); const current = item.getBoundingClientRect();
+        const deltaY = previous.top - current.top;
+        if (deltaY) item.animate([{ transform: `translateY(${deltaY}px)` }, { transform: "translateY(0)" }], { duration: 180, easing: "cubic-bezier(.2, .8, .2, 1)" });
+      });
+    });
     refs.declarationSelectedOrder.addEventListener("drop", (event) => {
-      event.preventDefault(); const targetId = event.target.closest("[data-template-id]")?.dataset.templateId;
-      if (!state.draggedId || !targetId || targetId === state.draggedId) return;
-      const from = state.selectedIds.indexOf(state.draggedId); const to = state.selectedIds.indexOf(targetId);
-      state.selectedIds.splice(to, 0, state.selectedIds.splice(from, 1)[0]); renderOrder();
+      if (!state.draggedId) return;
+      event.preventDefault();
+      state.selectedIds = [...refs.declarationSelectedOrder.querySelectorAll("[data-template-id]")].map((item) => item.dataset.templateId);
+      state.draggedId = null; renderOrder();
+    });
+    refs.declarationSelectedOrder.addEventListener("dragend", () => {
+      if (!state.draggedId) return;
+      state.selectedIds = [...refs.declarationSelectedOrder.querySelectorAll("[data-template-id]")].map((item) => item.dataset.templateId);
+      state.draggedId = null; renderOrder();
     });
     refs.declarationSaveManual.addEventListener("change", () => {
       refs.declarationManualTitleField.classList.toggle("hidden", !refs.declarationSaveManual.checked);

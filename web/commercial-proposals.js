@@ -256,11 +256,11 @@ export function createCommercialProposalsFeature({ getClient, getContext, toast,
     return state.editor.items.sort((a, b) => a.position - b.position).map((item, index) => {
       const collapsed = state.collapsedItems.has(item.id);
       return `
-      <article class="commercial-proposal-item ${item.selected ? "selected" : ""} ${collapsed ? "is-collapsed" : ""}" draggable="true" data-drag-kind="item" data-drag-id="${item.id}">
+      <article class="commercial-proposal-item ${item.selected ? "selected" : ""} ${collapsed ? "is-collapsed" : ""}" data-drag-kind="item" data-drag-id="${item.id}">
         <div class="commercial-proposal-item-head">
           <label class="checkbox-line proposal-item-selector"><input type="checkbox" data-item-field="selected" data-item-id="${item.id}" ${item.selected ? "checked" : ""} />
             <strong>Item ${escapeHtml(item.item_number)}</strong></label>
-          <span class="drag-handle" title="Arraste para reorganizar" aria-label="Arraste para reorganizar">⠿</span>
+          <span class="drag-handle" draggable="true" role="button" tabindex="0" title="Arraste para reorganizar" aria-label="Arraste para reorganizar">⠿</span>
           <span class="table-secondary">Posição ${index + 1}</span>
           <button class="commercial-item-collapse" type="button" data-toggle-item="${item.id}" aria-expanded="${!collapsed}" aria-label="${collapsed ? "Expandir" : "Recolher"} item ${escapeHtml(item.item_number)}"><span aria-hidden="true"></span></button>
         </div>
@@ -297,8 +297,8 @@ export function createCommercialProposalsFeature({ getClient, getContext, toast,
     return state.editor.columns
       .filter((column) => column.source_field !== "manufacturer")
       .sort((a, b) => a.position - b.position).map((column, index) => `
-      <article class="commercial-column-row" draggable="true" data-drag-kind="column" data-drag-id="${column.id}">
-        <span class="drag-handle" aria-hidden="true">⠿</span>
+      <article class="commercial-column-row" data-drag-kind="column" data-drag-id="${column.id}">
+        <span class="drag-handle" draggable="true" role="button" tabindex="0" title="Arraste para reorganizar" aria-label="Arraste para reorganizar">⠿</span>
         <label class="checkbox-line"><input type="checkbox" data-column-field="enabled" data-column-id="${column.id}" ${column.enabled ? "checked" : ""} /> Exibir</label>
         <label>Título visual<input data-column-field="display_name" data-column-id="${column.id}" value="${escapeHtml(column.display_name)}" /></label>
         <label>Largura <span class="commercial-width-output">${Number(column.width)}%</span>
@@ -322,9 +322,9 @@ export function createCommercialProposalsFeature({ getClient, getContext, toast,
 
   function renderSections() {
     return state.editor.sections.sort((a, b) => a.position - b.position).map((section, index) => `
-      <article class="commercial-section-row" draggable="true" data-drag-kind="section" data-drag-id="${section.id}">
+      <article class="commercial-section-row" data-drag-kind="section" data-drag-id="${section.id}">
         <div class="commercial-section-head">
-          <span class="drag-handle" aria-hidden="true">⠿</span>
+          <span class="drag-handle" draggable="true" role="button" tabindex="0" title="Arraste para reorganizar" aria-label="Arraste para reorganizar">⠿</span>
           <label class="checkbox-line"><input type="checkbox" data-section-field="enabled" data-section-id="${section.id}" ${section.enabled ? "checked" : ""} /> <strong>${sectionLabel(section)}</strong></label>
           <span class="table-secondary">Posição ${index + 1}</span>
           ${section.type === "text_block" || section.type === "configured_section" ? `<button class="danger-action compact-action" type="button" data-remove-section="${section.id}">Remover</button>` : ""}
@@ -655,6 +655,36 @@ export function createCommercialProposalsFeature({ getClient, getContext, toast,
     collection.forEach((entry, position) => { entry.position = position; });
     markDirty();
     renderEditor();
+  }
+
+  function animateCardReorder(container, draggedCard, targetCard, placeAfter) {
+    const cards = [...container.children].filter((card) => card.dataset.dragKind === state.dragged.kind);
+    const previousPositions = new Map(cards.map((card) => [card.dataset.dragId, card.getBoundingClientRect()]));
+    container.insertBefore(draggedCard, placeAfter ? targetCard.nextSibling : targetCard);
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    cards.forEach((card) => {
+      if (card === draggedCard) return;
+      const previous = previousPositions.get(card.dataset.dragId);
+      const current = card.getBoundingClientRect();
+      const deltaX = previous.left - current.left;
+      const deltaY = previous.top - current.top;
+      if (!deltaX && !deltaY) return;
+      card.animate(
+        [{ transform: `translate(${deltaX}px, ${deltaY}px)` }, { transform: "translate(0, 0)" }],
+        { duration: 180, easing: "cubic-bezier(.2, .8, .2, 1)" },
+      );
+    });
+  }
+
+  function commitDraggedOrder() {
+    if (!state.dragged) return;
+    const { kind } = state.dragged;
+    const selector = `[data-drag-kind="${kind}"]`;
+    const orderedIds = [...root.querySelectorAll(selector)].map((card) => card.dataset.dragId);
+    const collection = kind === "item" ? state.editor.items : kind === "column" ? state.editor.columns : state.editor.sections;
+    collection.sort((left, right) => orderedIds.indexOf(left.id) - orderedIds.indexOf(right.id));
+    collection.forEach((entry, position) => { entry.position = position; });
+    markDirty();
   }
 
   async function updateFinalBid(input) {
@@ -1218,21 +1248,59 @@ export function createCommercialProposalsFeature({ getClient, getContext, toast,
     keepEditing();
   }, true);
 
-  root.addEventListener("dragstart", (event) => {
+  root.addEventListener("keydown", (event) => {
+    const handle = event.target.closest(".drag-handle");
     const record = event.target.closest("[data-drag-kind]");
-    if (!record) return;
+    if (!handle || !record || !["ArrowUp", "ArrowDown"].includes(event.key)) return;
+    const cards = [...record.parentElement.querySelectorAll(`:scope > [data-drag-kind="${record.dataset.dragKind}"]`)];
+    const currentIndex = cards.indexOf(record);
+    const targetIndex = currentIndex + (event.key === "ArrowUp" ? -1 : 1);
+    if (targetIndex < 0 || targetIndex >= cards.length) return;
+    event.preventDefault();
+    const movedId = record.dataset.dragId;
+    moveRecord(record.dataset.dragKind, movedId, cards[targetIndex].dataset.dragId);
+    root.querySelector(`[data-drag-kind="${record.dataset.dragKind}"][data-drag-id="${movedId}"] .drag-handle`)?.focus();
+  });
+
+  root.addEventListener("dragstart", (event) => {
+    const handle = event.target.closest(".drag-handle");
+    const record = event.target.closest("[data-drag-kind]");
+    if (!handle || !record) {
+      event.preventDefault();
+      return;
+    }
     state.dragged = { kind: record.dataset.dragKind, id: record.dataset.dragId };
     event.dataTransfer.effectAllowed = "move";
+    event.dataTransfer.setData("text/plain", record.dataset.dragId);
+    requestAnimationFrame(() => record.classList.add("is-dragging"));
   });
   root.addEventListener("dragover", (event) => {
-    if (event.target.closest("[data-drag-kind]")) event.preventDefault();
+    const target = event.target.closest("[data-drag-kind]");
+    if (!target || !state.dragged || target.dataset.dragKind !== state.dragged.kind || target.dataset.dragId === state.dragged.id) return;
+    event.preventDefault();
+    event.dataTransfer.dropEffect = "move";
+    const draggedCard = root.querySelector(`[data-drag-kind="${state.dragged.kind}"][data-drag-id="${state.dragged.id}"]`);
+    if (!draggedCard) return;
+    const bounds = target.getBoundingClientRect();
+    const placeAfter = event.clientY > bounds.top + bounds.height / 2;
+    const alreadyAdjacent = placeAfter ? target.nextElementSibling === draggedCard : target.previousElementSibling === draggedCard;
+    if (!alreadyAdjacent) animateCardReorder(target.parentElement, draggedCard, target, placeAfter);
   });
   root.addEventListener("drop", (event) => {
     const target = event.target.closest("[data-drag-kind]");
     if (!target || !state.dragged || target.dataset.dragKind !== state.dragged.kind) return;
     event.preventDefault();
-    moveRecord(state.dragged.kind, state.dragged.id, target.dataset.dragId);
+    commitDraggedOrder();
+    root.querySelector(".is-dragging")?.classList.remove("is-dragging");
     state.dragged = null;
+    renderEditor();
+  });
+  root.addEventListener("dragend", () => {
+    if (!state.dragged) return;
+    commitDraggedOrder();
+    root.querySelector(".is-dragging")?.classList.remove("is-dragging");
+    state.dragged = null;
+    renderEditor();
   });
 
   async function showPage() {
