@@ -6694,6 +6694,7 @@ button.history-row:hover {
 
 /* Fluxo de Proposta Comercial conforme ao protótipo aprovado. */
 .declarations-tabs.commercial-proposal-tabs { overflow: visible; }
+.declarations-tabs.commercial-proposal-tabs .commercial-step-dot { border: 1px solid var(--color-border); }
 .declarations-tabs.commercial-proposal-tabs .commercial-step {
   padding: 0 var(--space-sm);
   border-radius: 0;
