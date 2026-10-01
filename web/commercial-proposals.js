@@ -1154,7 +1154,7 @@ export function createCommercialProposalsFeature({ getClient, getContext, toast,
       return;
     }
     if (target.matches("[data-final-bid]")) {
-      runBusy(() => updateFinalBid(target), "Atualizando o Valor Final no orçamento…").catch((error) => toast(error.message));
+      runBusy(() => updateFinalBid(target), "Atualizando o Valor Final no orçamento…").catch((error) => toast(error.message, "error"));
     }
     if (target.matches('[data-item-field="selected"], [data-column-field="enabled"], [data-section-field="enabled"]')) {
       renderEditor();
@@ -1180,14 +1180,14 @@ export function createCommercialProposalsFeature({ getClient, getContext, toast,
 
   root.addEventListener("click", (event) => {
     const open = event.target.closest("[data-open-proposal]");
-    if (open) return void runBusy(() => openEditor(open.dataset.openProposal), "Abrindo proposta…").catch((error) => toast(error.message));
+    if (open) return void runBusy(() => openEditor(open.dataset.openProposal), "Abrindo proposta…").catch((error) => toast(error.message, "error"));
     const previewList = event.target.closest("[data-preview-proposal]");
     if (previewList) return void runBusy(async () => {
       await openEditor(previewList.dataset.previewProposal);
       await previewPdf();
-    }, "Preparando pré-visualização…").catch((error) => toast(error.message));
+    }, "Preparando pré-visualização…").catch((error) => toast(error.message, "error"));
     const download = event.target.closest("[data-download-reference]");
-    if (download) return void runBusy(() => downloadReference(download.dataset.downloadReference), "Abrindo PDF…").catch((error) => toast(error.message));
+    if (download) return void runBusy(() => downloadReference(download.dataset.downloadReference), "Abrindo PDF…").catch((error) => toast(error.message, "error"));
 
     const removeColumn = event.target.closest("[data-remove-column]");
     if (removeColumn) {
@@ -1220,15 +1220,15 @@ export function createCommercialProposalsFeature({ getClient, getContext, toast,
     if (action === "back") {
       return void requestDiscardChanges(() => {
         state.editor = null;
-        runBusy(async () => { await loadList(); renderList(); }, "Atualizando propostas…").catch((error) => toast(error.message));
+        runBusy(async () => { await loadList(); renderList(); }, "Atualizando propostas…").catch((error) => toast(error.message, "error"));
       });
     }
     if (action === "keep-editing") return keepEditing();
     if (action === "discard-changes") return discardChanges();
-    if (action === "save") return void runBusy(() => saveProposal(false), "Salvando rascunho…").catch((error) => toast(error.message));
-    if (action === "finalize") return void runBusy(() => saveProposal(true), "Finalizando proposta…").catch((error) => toast(error.message));
-    if (action === "preview") return void runBusy(previewPdf, "Preparando pré-visualização…").catch((error) => toast(error.message));
-    if (action === "download") return void runBusy(generateAndDownload, "Gerando e armazenando PDF…").catch((error) => toast(error.message));
+    if (action === "save") return void runBusy(() => saveProposal(false), "Salvando rascunho…").catch((error) => toast(error.message, "error"));
+    if (action === "finalize") return void runBusy(() => saveProposal(true), "Finalizando proposta…").catch((error) => toast(error.message, "error"));
+    if (action === "preview") return void runBusy(previewPdf, "Preparando pré-visualização…").catch((error) => toast(error.message, "error"));
+    if (action === "download") return void runBusy(generateAndDownload, "Gerando e armazenando PDF…").catch((error) => toast(error.message, "error"));
     if (action === "close-preview") return root.querySelector("#commercialProposalPreviewDialog")?.close();
     if (action === "add-column") return root.querySelector("#commercialCustomColumnDialog").showModal();
     if (action === "add-text") return addTextBlock();

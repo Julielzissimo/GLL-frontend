@@ -243,6 +243,7 @@ const refs = {
   supplierProductFormError: $("supplierProductFormError"),
   deleteSupplierProductButton: $("deleteSupplierProductButton"),
   logoutButton: $("logoutButton"),
+  logoutConfirmModal: $("logoutConfirmModal"),
   resetDataButton: $("resetDataButton"),
   filterForm: $("filterForm"),
   filterAgency: $("filterAgency"),
@@ -420,6 +421,9 @@ const refs = {
   closeUserAssignmentsButton: $("closeUserAssignmentsButton"),
   cancelUserAssignmentsButton: $("cancelUserAssignmentsButton"),
   toast: $("toast"),
+  toastIcon: $("toastIcon"),
+  toastMessage: $("toastMessage"),
+  toastDismissButton: $("toastDismissButton"),
 };
 
 function createStore() {
@@ -1621,7 +1625,7 @@ const declarationsFeature = createDeclarationsFeature({
   }),
   getBids: () => appState.bids,
   navigate: (page) => setPage(page),
-  toast: (message) => showToast(message),
+  toast: (message, tone) => showToast(message, tone),
   runBusy: (operation, message) => withBlockingLoading(operation, message)(),
 });
 const companyDataFeature = createCompanyDataFeature({
@@ -1636,9 +1640,9 @@ const companyDataFeature = createCompanyDataFeature({
     appState.currentOrganizationName = organization.name;
     appState.currentOrganizationCnpj = organization.cnpj;
     refs.usersOrganizationLabel.textContent = `${organization.name} · usuários vinculados no Supabase.`;
-    void declarationsFeature.refresh().catch((error) => showToast(error.message));
+    void declarationsFeature.refresh().catch((error) => showToast(error.message, "error"));
   },
-  toast: (message) => showToast(message),
+  toast: (message, tone) => showToast(message, tone),
   runBusy: (operation, message) => withBlockingLoading(operation, message)(),
 });
 const commercialProposalsFeature = createCommercialProposalsFeature({
@@ -1650,7 +1654,7 @@ const commercialProposalsFeature = createCommercialProposalsFeature({
     userAuthId: appState.currentUserAuthId || DEFAULT_ADMIN.auth_user_id,
     userName: appState.currentUserName || DEFAULT_ADMIN.name,
   }),
-  toast: (message) => showToast(message),
+  toast: (message, tone) => showToast(message, tone),
   runBusy: (operation, message) => withBlockingLoading(operation, message)(),
 });
 
@@ -1829,7 +1833,7 @@ function withBlockingLoading(operation, message) {
       modal.showModal();
       await operation.call(this, event);
     } catch (error) {
-      showToast(error.message || "Não foi possível concluir a operação. Tente novamente.");
+      showToast(error.message || "Não foi possível concluir a operação. Tente novamente.", "error");
     } finally {
       modal.close();
       document.documentElement.classList.remove("is-loading");
@@ -1842,6 +1846,11 @@ function withBlockingLoading(operation, message) {
 }
 
 function bindEvents() {
+  refs.toastDismissButton.innerHTML = GLLDesignSystem.ICONS.close;
+  refs.toastDismissButton.addEventListener("click", () => {
+    clearTimeout(toastTimer);
+    refs.toast.classList.remove("show");
+  });
   $("supplierForm").addEventListener("submit", withBlockingLoading(saveSupplier, "Salvando fornecedor…"));
   $("newSupplierButton").addEventListener("click", () => openSupplierModal());
   $("editSupplierButton").addEventListener("click", () => openSupplierModal(currentSupplier()));
@@ -1901,7 +1910,13 @@ function bindEvents() {
   refs.toggleSidebarButton.addEventListener("focus", previewSidebar);
   refs.toggleSidebarButton.addEventListener("blur", clearSidebarPreview);
   refs.sidebarPanel.addEventListener("click", collapseSidebarFromEmptyArea);
-  refs.logoutButton.addEventListener("click", withBlockingLoading(logout, "Saindo do sistema…"));
+  refs.logoutButton.addEventListener("click", () => refs.logoutConfirmModal.showModal());
+  $("cancelLogoutButton").addEventListener("click", () => refs.logoutConfirmModal.close());
+  $("confirmLogoutButton").addEventListener("click", () => {
+    if (!refs.logoutConfirmModal.open) return;
+    refs.logoutConfirmModal.close();
+    withBlockingLoading(logout, "Saindo do sistema…")();
+  });
   if (!hasSupabaseConfig()) {
     refs.resetDataButton.addEventListener("click", withBlockingLoading(resetSeedData, "Restaurando a base…"));
   }
@@ -2629,9 +2644,9 @@ function setPage(page, options = {}) {
   if (showQuotations) renderQuotations();
   if (page === "items") renderBidQuotationWorkspace();
   if (showSuppliers) renderSuppliers();
-  if (showDeclarations) void declarationsFeature.showPage(page).catch((error) => showToast(error.message));
-  if (showCommercialProposals) void commercialProposalsFeature.showPage().catch((error) => showToast(error.message));
-  if (showCompanyData) void companyDataFeature.showPage().catch((error) => showToast(error.message));
+  if (showDeclarations) void declarationsFeature.showPage(page).catch((error) => showToast(error.message, "error"));
+  if (showCommercialProposals) void commercialProposalsFeature.showPage().catch((error) => showToast(error.message, "error"));
+  if (showCompanyData) void companyDataFeature.showPage().catch((error) => showToast(error.message, "error"));
   if (showDesignSystem) window.GLLDesignSystem?.mountCatalog(refs.designSystemCatalog);
   writeNavigationRoute(page, options.history || "push");
 }
@@ -2761,7 +2776,7 @@ function renderBids() {
           <td>${escapeHtml(bid.buyer_agency || "")}</td>
           <td>${formatDateTime(bid.session_datetime)}</td>
           <td>${escapeHtml(bid.bid_type || "")}</td>
-          <td><span class="status-pill ${statusBadgeClass(bid.status)}">${escapeHtml(statusDisplay(bid.status))}</span></td>
+          <td>${GLLDesignSystem.COMPONENTS.statusBadge({ status: normalizeBidStatus(bid.status), label: statusDisplay(bid.status) })}</td>
           <td class="numeric">${summary.itemCount}</td>
           <td class="numeric"><strong>${money(summary.totalFinal)}</strong></td>
           <td><button class="icon-button row-action" type="button" aria-label="Abrir ${escapeHtml(bidDisplayNumber(bid))}">→</button></td>
@@ -2950,7 +2965,7 @@ function renderHomeSummary() {
         return `<button class="timeline-item" type="button" data-upcoming-bid="${escapeHtml(bid.id)}">
           <span class="date-box"><strong>${dateParts.day}</strong><small>${dateParts.monthShort.toUpperCase()}</small></span>
           <span class="timeline-copy"><span class="bid-title-line"><strong>${escapeHtml(bidDisplayNumber(bid))}</strong><span class="creator-tag compact">${creatorTagMarkup(bid)}</span></span><span>${escapeHtml(bid.buyer_agency || "")}</span><small>${dateParts.time} • ${escapeHtml(bid.bid_type || "")}</small></span>
-          <span class="status-pill ${statusBadgeClass(bid.status)}">${escapeHtml(statusDisplay(bid.status))}</span>
+          ${GLLDesignSystem.COMPONENTS.statusBadge({ status: normalizeBidStatus(bid.status), label: statusDisplay(bid.status) })}
         </button>`;
       }).join("")
     : `<div class="empty-state compact-empty">Nenhuma sessão futura cadastrada.</div>`;
@@ -3291,9 +3306,9 @@ function renderBidStatusHistory() {
       ${entries.length ? entries.map((entry) => `
         <article class="status-history-item">
           <div class="status-history-transition">
-            <span class="status-pill ${statusBadgeClass(entry.from_status)}">${escapeHtml(statusDisplay(entry.from_status))}</span>
+            ${GLLDesignSystem.COMPONENTS.statusBadge({ status: normalizeBidStatus(entry.from_status), label: statusDisplay(entry.from_status) })}
             <span aria-hidden="true">→</span>
-            <span class="status-pill ${statusBadgeClass(entry.to_status)}">${escapeHtml(statusDisplay(entry.to_status))}</span>
+            ${GLLDesignSystem.COMPONENTS.statusBadge({ status: normalizeBidStatus(entry.to_status), label: statusDisplay(entry.to_status) })}
           </div>
           <p>${escapeHtml(entry.reason)}</p>
           <small>${escapeHtml(entry.changed_by_name || entry.changed_by_email || "Usuário")} · ${escapeHtml(formatDateTime(entry.changed_at))}</small>
@@ -5052,18 +5067,6 @@ function statusDisplay(status) {
   return map[normalizedStatus] || String(normalizedStatus || "").toUpperCase();
 }
 
-function statusBadgeClass(status) {
-  const normalizedStatus = normalizeBidStatus(status);
-  return {
-    "Em Analise": "analysis",
-    Descartada: "discarded",
-    Aprovada: "approved",
-    Faturado: "billed",
-    Desclassificado: "rejected",
-    Disputada: "disputed",
-  }[normalizedStatus] || "neutral";
-}
-
 function normalizeBidStatus(status) {
   return status === "Reprovada" ? "Desclassificado" : status || STATUS_OPTIONS[0];
 }
@@ -5705,11 +5708,24 @@ function escapeHtml(value) {
 }
 
 let toastTimer;
-function showToast(message) {
-  refs.toast.textContent = message;
+function inferredToastTone(message) {
+  if (/^(Falha salva|Falha excluída)/i.test(String(message))) return "success";
+  if (/não foi possível|não encontrado|\berro\b|\bfalha\b/i.test(String(message))) return "error";
+  if (/^(Selecione |Este edital está faturado|Link removido|No modo local)/i.test(String(message))) return "warning";
+  return "success";
+}
+
+function showToast(message, tone = inferredToastTone(message)) {
+  const safeTone = ["success", "warning", "error", "info"].includes(tone) ? tone : "info";
+  const iconName = safeTone === "error" ? "error" : safeTone;
+  refs.toastIcon.innerHTML = GLLDesignSystem.ICONS[iconName];
+  refs.toastMessage.textContent = String(message ?? "");
+  refs.toast.dataset.tone = safeTone;
+  refs.toast.setAttribute("role", safeTone === "error" ? "alert" : "status");
+  refs.toast.setAttribute("aria-live", safeTone === "error" ? "assertive" : "polite");
   refs.toast.classList.add("show");
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => refs.toast.classList.remove("show"), 2400);
+  toastTimer = setTimeout(() => refs.toast.classList.remove("show"), 3600);
 }
 
 withBlockingLoading(main, "Verificando sessão…")().catch((error) => {

@@ -16,4 +16,4 @@ export const Ghost = { args: { variant: "ghost" } };
 export const Danger = { args: { label: "Excluir", variant: "danger" } };
 export const Disabled = { args: { disabled: true } };
 export const Loading = { args: { loading: true } };
-export const WithIcon = { args: { label: "Nova licitação", icon: "＋" } };
+export const WithIcon = { args: { label: "Nova licitação", icon: "add" } };

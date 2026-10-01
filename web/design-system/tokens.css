@@ -19,6 +19,15 @@
   --color-danger-surface: #fff0f0;
   --color-info: #3875d7;
   --color-info-surface: #e6efff;
+  --color-complete: #5b2ca0;
+  --color-complete-surface: #f0e9ff;
+  --color-status-neutral: #4f5d70;
+  --color-status-neutral-surface: #eef1f5;
+  --color-status-approved: #147447;
+  --color-status-analysis: #996000;
+  --color-status-disputed: #245caf;
+  --color-status-rejected: #aa3030;
+  --color-status-rejected-surface: #feeaea;
   --color-focus-ring: rgba(36, 88, 211, 0.26);
   --color-overlay: rgba(16, 24, 40, 0.52);
 
@@ -80,6 +89,11 @@
   --control-height-sm: 2rem;
   --control-height-md: 2.5rem;
   --control-height-lg: 3rem;
+  --dialog-width-sm: 30rem;
+  --dialog-width-md: 48rem;
+  --dialog-width-lg: 65rem;
+  --dialog-width-xl: 68.75rem;
+  --dialog-shadow: 0 24px 64px rgba(15, 23, 42, 0.3);
   --sidebar-width: 300px;
 
   /* Scrollbars */
