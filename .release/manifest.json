@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "release_id": "2026-09-30-tipo-edital",
+  "release_id": "2026-09-30-ux-proposta-comercial",
   "environment": "homolog",
   "target_branch": "homolog",
   "items": [
@@ -194,6 +194,18 @@
         "2b8913ccde2e4862a98eee95826791b23bf5cb5f"
       ],
       "migrations": []
+    },
+    {
+      "id": "UX-PROPOSTA-COMERCIAL-001",
+      "backend_commits": [
+        "cc4f3a02ba86475def4d8c6f339990b40f90074e"
+      ],
+      "frontend_commits": [
+        "f94600055a88f05f069aa102928da84b4f4a1012"
+      ],
+      "migrations": [
+        "supabase/migrations/20260930120000_simplify_commercial_proposals.sql"
+      ]
     }
   ]
 }

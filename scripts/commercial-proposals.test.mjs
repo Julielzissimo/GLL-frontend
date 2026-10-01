@@ -47,7 +47,15 @@ test("mantém os ajustes de interface e organização do construtor de propostas
   ]);
 
   assert.match(feature, />Criar proposta<\/button>/);
-  assert.match(feature, />Configuração<\/button>/);
+  assert.match(feature, />2\. Dados comerciais<\/button>/);
+  assert.match(feature, />3\. Conferir proposta<\/button>/);
+  assert.match(feature, /data-update-budget-value=/);
+  assert.match(feature, /override_final_bid/);
+  assert.match(feature, /data-proposal-total/);
+  assert.match(feature, /Título do texto/);
+  assert.doesNotMatch(feature, /DECLARAÇÕES \/ TEXTO ADICIONAL/);
+  assert.match(feature, /const logoData = await assetDataUrl\(settings\.logo_path\)/);
+  assert.match(feature, /const watermarkAsset = await assetDataUrl\(settings\.watermark_path\)/);
   assert.match(feature, /<span class="eyebrow">RESUMO<\/span>/);
   assert.match(feature, /Marca \/ Fabricante/);
   assert.doesNotMatch(feature, /\["manufacturer", "Fabricante", "input"\]/);
@@ -72,5 +80,5 @@ test("mantém os ajustes de interface e organização do construtor de propostas
   assert.match(feature, /\["ArrowUp", "ArrowDown"\]/);
   assert.match(styles, /container-type: inline-size/);
   assert.match(styles, /@container \(max-width: 1180px\)/);
-  assert.match(styles, /\.commercial-proposal-item-grid textarea[^}]+height: 84px/s);
+  assert.match(styles, /\.commercial-proposal-item-grid textarea[^}]+height: 168px/s);
 });

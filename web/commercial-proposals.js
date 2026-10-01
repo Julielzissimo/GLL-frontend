@@ -215,6 +215,11 @@ export function createCommercialProposalsFeature({ getClient, getContext, toast,
     return state.editor.items.filter((item) => item.selected).sort((a, b) => a.position - b.position);
   }
 
+  function primaryTextSection() {
+    return state.editor.sections.find((section) => section.type === "text_block" && section.configuration?.primary_text)
+      || state.editor.sections.find((section) => section.type === "text_block");
+  }
+
   function enabledColumns() {
     return state.editor.columns
       .filter((column) => column.enabled && column.source_field !== "manufacturer")
@@ -237,7 +242,7 @@ export function createCommercialProposalsFeature({ getClient, getContext, toast,
   }
 
   function lineTotal(item) {
-    return Math.round(Number(effectiveItemValue(item, "quantity") || 0) * Number(item.final_bid || 0) * 100) / 100;
+    return Math.round(Number(effectiveItemValue(item, "quantity") || 0) * Number(item.override_final_bid ?? item.final_bid ?? 0) * 100) / 100;
   }
 
   function proposalTotal() {
@@ -274,15 +279,15 @@ export function createCommercialProposalsFeature({ getClient, getContext, toast,
           ].map(([field, label, type]) => `<label class="proposal-item-field ${field === "technical_description" ? "wide" : ""}">
             ${label}
             ${type === "textarea"
-              ? `<textarea rows="2" data-item-field="${field}" data-item-id="${item.id}">${escapeHtml(effectiveItemValue(item, field))}</textarea>`
+              ? `<textarea rows="5" data-item-field="${field}" data-item-id="${item.id}">${escapeHtml(effectiveItemValue(item, field))}</textarea>`
               : `<input type="${type}" ${type === "number" ? 'min="0" step="0.0001"' : ""} data-item-field="${field}" data-item-id="${item.id}" value="${escapeHtml(effectiveItemValue(item, field))}" />`}
             <span class="proposal-permanent-option" tabindex="0" data-tooltip="Ao marcar este checkbox, esta informação também será salva no orçamento vinculado."><input type="checkbox" data-permanent-field="${field}" data-item-id="${item.id}" ${state.permanentFields.has(`${item.id}:${field}`) ? "checked" : ""} /> <span>Salvar esta informação permanentemente</span></span>
           </label>`).join("")}
-          <label>Valor Final
-            <input data-final-bid data-item-id="${item.id}" inputmode="decimal" value="${Number(item.final_bid || 0).toFixed(2).replace(".", ",")}" />
-            <span class="table-secondary">Altera obrigatoriamente o orçamento após confirmação.</span>
+          <label>Valor unitário desta proposta
+            <input data-final-bid data-item-id="${item.id}" inputmode="decimal" value="${Number(item.override_final_bid ?? item.final_bid ?? 0).toFixed(2).replace(".", ",")}" />
+            <span class="proposal-budget-update"><span class="table-secondary">O orçamento não será alterado.</span><button class="quiet-action compact-action" type="button" data-update-budget-value="${item.id}">Atualizar orçamento</button></span>
           </label>
-          <label>Valor Total<input readonly value="${formatCommercialMoney(lineTotal(item))}" /></label>
+          <label>Valor Total<input data-line-total readonly value="${formatCommercialMoney(lineTotal(item))}" /></label>
           ${customColumns.map((column) => {
             const value = state.editor.custom_values.find((entry) => entry.proposal_item_id === item.id && entry.proposal_column_id === column.id)?.value || "";
             return `<label>${escapeHtml(column.display_name)}<input data-custom-value data-item-id="${item.id}" data-column-id="${column.id}" value="${escapeHtml(value)}" /></label>`;
@@ -344,6 +349,8 @@ export function createCommercialProposalsFeature({ getClient, getContext, toast,
   function renderEditor() {
     const { proposal, bid, representatives, generations, price_history: priceHistory } = state.editor;
     const total = proposalTotal();
+    const textSection = primaryTextSection();
+    const nextStepLabel = state.activeEditorTab === "proposal" ? "Continuar" : state.activeEditorTab === "commercial" ? "Conferir proposta" : "Finalizar proposta";
     root.innerHTML = `
       <div class="page-heading commercial-proposal-editor-heading">
         <div><button class="quiet-action compact-action" type="button" data-proposal-action="back">← Todas as propostas</button>
@@ -354,17 +361,18 @@ export function createCommercialProposalsFeature({ getClient, getContext, toast,
         <div class="commercial-proposal-toolbar">
           <span class="status-pill proposal-status-${proposal.status}">${statusLabel(proposal.status)}</span>
           <button class="quiet-action" type="button" data-proposal-action="save">Salvar rascunho</button>
-          <button class="primary-action" type="button" data-proposal-action="finalize">Finalizar proposta</button>
+          <button class="primary-action" type="button" data-proposal-action="next-step">${nextStepLabel} →</button>
         </div>
       </div>
       <nav class="declarations-tabs commercial-proposal-tabs" aria-label="Etapas da proposta">
-        <button class="${state.activeEditorTab === "proposal" ? "active" : ""}" type="button" data-proposal-tab="proposal" aria-selected="${state.activeEditorTab === "proposal"}">Criar proposta</button>
-        <button class="${state.activeEditorTab === "settings" ? "active" : ""}" type="button" data-proposal-tab="settings" aria-selected="${state.activeEditorTab === "settings"}">Configuração</button>
-        <button class="${state.activeEditorTab === "history" ? "active" : ""}" type="button" data-proposal-tab="history" aria-selected="${state.activeEditorTab === "history"}">Histórico</button>
+        <button class="${state.activeEditorTab === "proposal" ? "active" : ""}" type="button" data-proposal-tab="proposal" aria-selected="${state.activeEditorTab === "proposal"}">1. Itens</button>
+        <button class="${state.activeEditorTab === "commercial" ? "active" : ""}" type="button" data-proposal-tab="commercial" aria-selected="${state.activeEditorTab === "commercial"}">2. Dados comerciais</button>
+        <button class="${state.activeEditorTab === "review" ? "active" : ""}" type="button" data-proposal-tab="review" aria-selected="${state.activeEditorTab === "review"}">3. Conferir proposta</button>
+        <details class="commercial-proposal-more"><summary>Mais opções</summary><div><button type="button" data-proposal-tab="settings">Configuração do PDF</button><button type="button" data-proposal-tab="history">Histórico</button></div></details>
       </nav>
       <div class="commercial-proposal-workspace">
         <main class="commercial-proposal-editor-column">
-      <div class="commercial-proposal-tab-panel ${state.activeEditorTab === "proposal" ? "" : "hidden"}" data-proposal-panel="proposal">
+      <div class="commercial-proposal-tab-panel ${state.activeEditorTab === "commercial" ? "" : "hidden"}" data-proposal-panel="commercial">
       <section class="section-band commercial-builder-section">
         <div class="section-heading"><div><h2>Informações da proposta</h2><p>Os dados do edital identificam a proposta, mas não são inseridos automaticamente no documento.</p></div></div>
         <div class="form-grid commercial-proposal-general-grid">
@@ -379,12 +387,24 @@ export function createCommercialProposalsFeature({ getClient, getContext, toast,
         </div>
       </section>
       <section class="section-band commercial-builder-section">
-        <div class="section-heading"><div><h2>Itens da proposta</h2><p>Edite os dados somente nesta proposta ou confirme cada alteração permanente no orçamento.</p></div>
+        <div class="section-heading"><div><h2>Texto adicional</h2><p>Inclua declarações ou informações complementares no documento.</p></div></div>
+        <label>Título do texto<input data-section-field="title" data-section-id="${textSection.id}" placeholder="Ex.: Declaração de cumprimento dos requisitos" value="${escapeHtml(textSection.title || "")}" /></label>
+        <label class="full-span">Texto adicional<textarea rows="5" data-section-field="content" data-section-id="${textSection.id}" placeholder="Digite o texto que será incluído na proposta">${escapeHtml(textSection.content || "")}</textarea></label>
+      </section>
+      </div>
+      <div class="commercial-proposal-tab-panel ${state.activeEditorTab === "proposal" ? "" : "hidden"}" data-proposal-panel="proposal">
+      <section class="section-band commercial-builder-section">
+        <div class="section-heading"><div><h2>Itens da proposta</h2><p>Edite os itens e valores desta proposta; o orçamento só muda se você solicitar.</p></div>
           <div class="button-row"><button class="quiet-action compact-action" type="button" data-proposal-action="select-all">Selecionar todos</button>
           <button class="quiet-action compact-action" type="button" data-proposal-action="clear-selection">Limpar seleção</button></div>
         </div>
         <div class="commercial-proposal-items">${renderItemRows()}</div>
       </section>
+      </div>
+      <div class="commercial-proposal-tab-panel ${state.activeEditorTab === "review" ? "" : "hidden"}" data-proposal-panel="review">
+        <section class="section-band commercial-builder-section"><div class="section-heading"><div><h2>Confira sua proposta</h2><p>Revise o documento antes de gerar o PDF. A logo e a marca-d’água da empresa serão aplicadas automaticamente.</p></div></div>
+          <div class="button-row"><button class="quiet-action" type="button" data-proposal-action="preview">Pré-visualizar PDF</button><button class="primary-action" type="button" data-proposal-action="download">Gerar e baixar PDF</button></div>
+        </section>
       </div>
       <div class="commercial-proposal-tab-panel ${state.activeEditorTab === "settings" ? "" : "hidden"}" data-proposal-panel="settings">
       <section class="section-band commercial-builder-section">
@@ -401,8 +421,7 @@ export function createCommercialProposalsFeature({ getClient, getContext, toast,
       <section class="section-band commercial-builder-section">
         <div class="section-heading"><div><h2>Identidade visual e assinatura</h2><p>Logo e marca-d'água reutilizam os ativos configurados em Declarações.</p></div></div>
         <div class="commercial-visual-options">
-          <label class="checkbox-line"><input type="checkbox" data-visual-field="show_logo" ${proposal.visual_config?.show_logo ? "checked" : ""} /> Exibir logo</label>
-          <label class="checkbox-line"><input type="checkbox" data-visual-field="show_watermark" ${proposal.visual_config?.show_watermark !== false ? "checked" : ""} /> Exibir marca-d'água</label>
+          <span class="table-secondary full-span">Logo e marca-d’água configuradas para a empresa são sempre aplicadas automaticamente.</span>
           <label class="checkbox-line"><input type="checkbox" data-visual-field="footer_all_pages" ${proposal.visual_config?.footer_all_pages !== false ? "checked" : ""} /> Exibir rodapé em todas as páginas</label>
           <label class="full-span">Texto do rodapé<input data-visual-field="footer_text" value="${escapeHtml(proposal.visual_config?.footer_text || "")}" placeholder="Telefone, e-mail, razão social ou outro texto" /></label>
         </div>
@@ -430,7 +449,7 @@ export function createCommercialProposalsFeature({ getClient, getContext, toast,
             <h2>Proposta pronta para conferência</h2>
             <dl>
               <div><dt>Itens selecionados</dt><dd>${selectedItems().length}</dd></div>
-              <div><dt>Valor total</dt><dd>${formatCommercialMoney(total)}</dd></div>
+              <div><dt>Valor total</dt><dd data-proposal-total>${formatCommercialMoney(total)}</dd></div>
               <div><dt>Saída</dt><dd>PDF A4</dd></div>
             </dl>
             <p class="commercial-proposal-total-words">${moneyInWords(total)}</p>
@@ -501,6 +520,16 @@ export function createCommercialProposalsFeature({ getClient, getContext, toast,
       if (column.source_field === "manufacturer") column.enabled = false;
       if (column.source_field === "brand" && /^marca$/i.test(column.display_name || "")) column.display_name = "MARCA / FABRICANTE";
     });
+    if (!state.editor.columns.some((column) => column.enabled)) {
+      state.editor.columns.filter((column) => column.source_field !== "manufacturer").forEach((column) => {
+        if (["item_number", "technical_description", "quantity", "unit", "final_bid", "total"].includes(column.source_field)) column.enabled = true;
+        if (column.source_field === "technical_description") column.width = 42;
+      });
+    }
+    if (!state.editor.sections.some((section) => section.type === "text_block")) {
+      state.editor.sections.unshift({ id: crypto.randomUUID(), proposal_id: id, type: "text_block", title: "", content: "", position: 0, enabled: false, configuration: { primary_text: true } });
+    }
+    state.editor.sections.sort((a, b) => a.position - b.position).forEach((section, index) => { section.position = index; });
     state.dirty = false;
     state.activeEditorTab = "proposal";
     state.collapsedItems = new Set(state.editor.items.filter((item) => item.selected).map((item) => item.id));
@@ -527,6 +556,7 @@ export function createCommercialProposalsFeature({ getClient, getContext, toast,
         override_manufacturer: item.override_manufacturer,
         override_quantity: item.override_quantity,
         override_unit: item.override_unit,
+        override_final_bid: item.override_final_bid,
       })),
       columns: state.editor.columns.map((column, position) => ({
         id: column.id,
@@ -557,7 +587,7 @@ export function createCommercialProposalsFeature({ getClient, getContext, toast,
     for (const item of selectedItems()) {
       const quantity = Number(effectiveItemValue(item, "quantity"));
       if (!Number.isFinite(quantity) || quantity < 0) throw new Error(`Informe uma quantidade válida para o item ${item.item_number}.`);
-      if (!Number.isFinite(Number(item.final_bid)) || Number(item.final_bid) < 0) throw new Error(`Informe um Valor Final válido para o item ${item.item_number}.`);
+      if (!Number.isFinite(Number(item.override_final_bid ?? item.final_bid)) || Number(item.override_final_bid ?? item.final_bid) < 0) throw new Error(`Informe um valor unitário válido para o item ${item.item_number}.`);
     }
   }
 
@@ -691,10 +721,15 @@ export function createCommercialProposalsFeature({ getClient, getContext, toast,
     const item = state.editor.items.find((entry) => entry.id === input.dataset.itemId);
     const value = Number(String(input.value).replace(/\./g, "").replace(",", "."));
     if (!Number.isFinite(value) || value < 0) throw new Error("Informe um Valor Final válido.");
-    if (Number(item.final_bid) === value) return;
+    if (Number(item.final_bid) === value) {
+      item.override_final_bid = null;
+      markDirty();
+      renderEditor();
+      toast("Valor da proposta alinhado ao orçamento.");
+      return;
+    }
     const accepted = confirm("Esta alteração atualizará o Valor Final do item no orçamento vinculado, recalculará seus indicadores financeiros e será registrada no histórico. Deseja continuar?");
     if (!accepted) {
-      input.value = Number(item.final_bid || 0).toFixed(2).replace(".", ",");
       return;
     }
     const result = await rpc("update_commercial_proposal_final_bid", {
@@ -703,6 +738,7 @@ export function createCommercialProposalsFeature({ getClient, getContext, toast,
       p_new_value: value,
     });
     item.final_bid = result.new_value;
+    item.override_final_bid = null;
     item.profit_margin = result.profit_margin;
     item.total = lineTotal(item);
     state.editor.proposal.total_value = result.total_value;
@@ -743,7 +779,7 @@ export function createCommercialProposalsFeature({ getClient, getContext, toast,
         entry.proposal_item_id === item.id && entry.proposal_column_id === column.id)?.value || "";
     }
     if (column.source_field === "total") return formatCommercialMoney(lineTotal(item));
-    if (column.source_field === "final_bid") return formatCommercialMoney(item.final_bid);
+    if (column.source_field === "final_bid") return formatCommercialMoney(item.override_final_bid ?? item.final_bid);
     if (column.source_field === "quantity") {
       return Number(effectiveItemValue(item, "quantity") || 0).toLocaleString("pt-BR", { maximumFractionDigits: 4 });
     }
@@ -819,8 +855,8 @@ export function createCommercialProposalsFeature({ getClient, getContext, toast,
     const proposal = state.editor.proposal;
     const settings = state.editor.declaration_settings || {};
     const representative = state.editor.representatives.find((entry) => entry.id === proposal.representative_id) || {};
-    const logoData = proposal.visual_config?.show_logo ? await assetDataUrl(settings.logo_path) : "";
-    const watermarkAsset = proposal.visual_config?.show_watermark ? await assetDataUrl(settings.watermark_path) : "";
+    const logoData = await assetDataUrl(settings.logo_path);
+    const watermarkAsset = await assetDataUrl(settings.watermark_path);
     const watermarkData = await imageDataUrlWithOpacity(watermarkAsset, 0.08);
 
     const drawWatermarkBackground = () => {
@@ -1073,6 +1109,17 @@ export function createCommercialProposalsFeature({ getClient, getContext, toast,
   root.addEventListener("input", (event) => {
     if (!state.editor) return;
     const target = event.target;
+    if (target.matches("[data-final-bid]")) {
+      const item = state.editor.items.find((entry) => entry.id === target.dataset.itemId);
+      const value = Number(String(target.value).replace(/\./g, "").replace(",", "."));
+      if (!item || !Number.isFinite(value) || value < 0) return;
+      item.override_final_bid = value;
+      markDirty();
+      root.querySelectorAll("[data-proposal-total]").forEach((node) => { node.textContent = formatCommercialMoney(proposalTotal()); });
+      const totalInput = target.closest(".commercial-proposal-item")?.querySelector("[data-line-total]");
+      if (totalInput) totalInput.value = formatCommercialMoney(lineTotal(item));
+      return;
+    }
     if (target.dataset.proposalField) {
       const field = target.dataset.proposalField;
       state.editor.proposal[field] = target.type === "checkbox" ? target.checked : target.value;
@@ -1138,6 +1185,9 @@ export function createCommercialProposalsFeature({ getClient, getContext, toast,
       const section = state.editor.sections.find((entry) => entry.id === target.dataset.sectionId);
       if (!section) return;
       section[target.dataset.sectionField] = target.type === "checkbox" ? target.checked : target.value;
+      if (section.type === "text_block" && section.configuration?.primary_text) {
+        section.enabled = Boolean(section.title?.trim() || section.content?.trim());
+      }
       markDirty();
     }
   });
@@ -1152,9 +1202,6 @@ export function createCommercialProposalsFeature({ getClient, getContext, toast,
         root.querySelector("#commercialCustomColumnReusable").checked = false;
       }
       return;
-    }
-    if (target.matches("[data-final-bid]")) {
-      runBusy(() => updateFinalBid(target), "Atualizando o Valor Final no orçamento…").catch((error) => toast(error.message, "error"));
     }
     if (target.matches('[data-item-field="selected"], [data-column-field="enabled"], [data-section-field="enabled"]')) {
       renderEditor();
@@ -1227,11 +1274,19 @@ export function createCommercialProposalsFeature({ getClient, getContext, toast,
     if (action === "discard-changes") return discardChanges();
     if (action === "save") return void runBusy(() => saveProposal(false), "Salvando rascunho…").catch((error) => toast(error.message, "error"));
     if (action === "finalize") return void runBusy(() => saveProposal(true), "Finalizando proposta…").catch((error) => toast(error.message, "error"));
+    if (action === "next-step") {
+      if (state.activeEditorTab === "proposal") state.activeEditorTab = "commercial";
+      else if (state.activeEditorTab === "commercial") state.activeEditorTab = "review";
+      else return void runBusy(() => saveProposal(true), "Finalizando proposta…").catch((error) => toast(error.message, "error"));
+      renderEditor();
+      return;
+    }
     if (action === "preview") return void runBusy(previewPdf, "Preparando pré-visualização…").catch((error) => toast(error.message, "error"));
     if (action === "download") return void runBusy(generateAndDownload, "Gerando e armazenando PDF…").catch((error) => toast(error.message, "error"));
     if (action === "close-preview") return root.querySelector("#commercialProposalPreviewDialog")?.close();
     if (action === "add-column") return root.querySelector("#commercialCustomColumnDialog").showModal();
     if (action === "add-text") return addTextBlock();
+    if (action === "settings-from-review") { state.activeEditorTab = "settings"; renderEditor(); return; }
     if (action === "select-all" || action === "clear-selection") {
       state.editor.items.forEach((item) => {
         item.selected = action === "select-all";
@@ -1240,6 +1295,15 @@ export function createCommercialProposalsFeature({ getClient, getContext, toast,
       });
       markDirty(); renderEditor();
     }
+  });
+
+  root.addEventListener("click", (event) => {
+    const updateBudgetButton = event.target.closest("[data-update-budget-value]");
+    if (!updateBudgetButton) return;
+    const item = state.editor?.items.find((entry) => entry.id === updateBudgetButton.dataset.updateBudgetValue);
+    const input = root.querySelector(`[data-final-bid][data-item-id="${updateBudgetButton.dataset.updateBudgetValue}"]`);
+    if (!item || !input) return;
+    runBusy(() => updateFinalBid(input), "Atualizando o valor no orçamento…").catch((error) => toast(error.message, "error"));
   });
 
   root.addEventListener("cancel", (event) => {
