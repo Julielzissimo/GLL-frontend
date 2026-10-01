@@ -816,10 +816,8 @@ export function createCommercialProposalsFeature({ getClient, getContext, toast,
 
   async function assetDataUrl(path) {
     if (!path) return "";
-    const signed = assertResult(await client().storage.from("declaration-assets").createSignedUrl(path, 120));
-    const response = await fetch(signed.signedUrl);
-    if (!response.ok) return "";
-    const blob = await response.blob();
+    const { data: blob, error } = await client().storage.from("declaration-assets").download(path);
+    if (error || !blob) return "";
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.onload = () => resolve(reader.result);
@@ -1126,12 +1124,14 @@ export function createCommercialProposalsFeature({ getClient, getContext, toast,
 
   async function downloadReference(reference) {
     if (!reference) return;
-    const signed = assertResult(await client().storage.from(PDF_BUCKET).createSignedUrl(reference, 120));
+    const { data: blob, error } = await client().storage.from(PDF_BUCKET).download(reference);
+    assertResult({ data: blob, error });
+    const url = URL.createObjectURL(blob);
     const anchor = document.createElement("a");
-    anchor.href = signed.signedUrl;
-    anchor.target = "_blank";
-    anchor.rel = "noopener";
+    anchor.href = url;
+    anchor.download = reference.split("/").at(-1) || "proposta-comercial.pdf";
     anchor.click();
+    setTimeout(() => URL.revokeObjectURL(url), 60000);
   }
 
   root.addEventListener("input", (event) => {

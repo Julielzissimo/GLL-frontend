@@ -1004,6 +1004,42 @@
           </div>
         </dialog>
 
+        <dialog id="userAccessDialog" class="user-assignments-modal user-access-dialog" aria-labelledby="userAccessTitle" aria-describedby="userAccessDescription">
+          <form id="userAccessForm">
+            <div class="modal-header">
+              <div>
+                <span class="eyebrow">ACESSO DA CONTA</span>
+                <h2 id="userAccessTitle">Revogar acesso</h2>
+                <p id="userAccessDescription"></p>
+              </div>
+              <button id="closeUserAccessDialogButton" class="icon-button" type="button" aria-label="Fechar"><span data-gll-icon="close" aria-hidden="true"></span></button>
+            </div>
+            <label id="userAccessReasonField">Motivo<textarea id="userAccessReason" name="reason" rows="3" maxlength="1000" required></textarea></label>
+            <div id="userAccessPasswordField" class="user-access-password-fields hidden">
+              <label>Senha provisória<input id="userAccessPassword" name="temporaryPassword" type="password" autocomplete="new-password" minlength="8" maxlength="72" /></label>
+              <label>Confirme a senha provisória<input id="userAccessPasswordConfirm" name="temporaryPasswordConfirm" type="password" autocomplete="new-password" minlength="8" maxlength="72" /></label>
+            </div>
+            <p id="userAccessError" class="form-error" role="alert"></p>
+            <div class="button-row end">
+              <button id="cancelUserAccessButton" class="quiet-action" type="button">Cancelar</button>
+              <button id="submitUserAccessButton" class="danger-action" type="submit">Revogar acesso</button>
+            </div>
+          </form>
+        </dialog>
+
+        <dialog id="userAccessHistoryDialog" class="user-assignments-modal user-access-history-dialog" aria-labelledby="userAccessHistoryTitle">
+          <div>
+            <div class="modal-header">
+              <div>
+                <span class="eyebrow">TRILHA DE AUDITORIA</span>
+                <h2 id="userAccessHistoryTitle">Histórico de acesso</h2>
+              </div>
+              <button id="closeUserAccessHistoryButton" class="icon-button" type="button" aria-label="Fechar"><span data-gll-icon="close" aria-hidden="true"></span></button>
+            </div>
+            <ol id="userAccessHistoryList" class="user-access-history-list" aria-live="polite"></ol>
+          </div>
+        </dialog>
+
         <dialog id="userAssignmentsModal" class="modal-card user-assignments-modal">
           <form id="userAssignmentsForm" method="dialog">
             <div class="modal-header">

@@ -3643,6 +3643,132 @@ tr.item-won td {
   color: var(--muted);
 }
 
+.user-management-actions {
+  display: grid;
+  justify-items: start;
+  gap: var(--space-sm);
+}
+
+.user-management-actions button {
+  white-space: nowrap;
+}
+
+.user-access-status {
+  display: block;
+  margin-top: var(--space-xs);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+}
+
+.user-access-status.active {
+  color: var(--color-success);
+}
+
+.user-access-status.revoked {
+  color: var(--color-danger);
+}
+
+.user-access-status.pending {
+  color: var(--color-warning);
+}
+
+.user-access-dialog {
+  width: min(var(--dialog-width-sm), calc(100vw - 32px));
+}
+
+.user-access-dialog form > label,
+.user-access-password-fields > label {
+  display: grid;
+  gap: var(--space-sm);
+  color: var(--color-text-primary);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+}
+
+.user-access-dialog textarea,
+.user-access-dialog input {
+  width: 100%;
+  min-width: 0;
+  border: var(--border-default);
+  border-radius: var(--radius-sm);
+  padding: var(--space-md);
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+  font: inherit;
+}
+
+.user-access-password-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-lg);
+}
+
+.user-access-history-dialog {
+  width: min(var(--dialog-width-md), calc(100vw - 32px));
+}
+
+.user-access-history-dialog > div {
+  display: grid;
+  gap: var(--space-lg);
+  padding: var(--space-xl);
+}
+
+.user-access-history-dialog .modal-header {
+  padding: 0;
+}
+
+.user-access-history-list {
+  display: grid;
+  gap: var(--space-md);
+  max-height: min(540px, calc(100dvh - 240px));
+  margin: 0;
+  padding: 0 var(--space-xs) 0 0;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.user-access-history-entry,
+.user-access-history-empty {
+  display: grid;
+  gap: var(--space-xs);
+  padding: var(--space-md);
+  border: var(--border-default);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-subtle);
+}
+
+.user-access-history-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-md);
+}
+
+.user-access-history-entry p,
+.user-access-history-entry small {
+  margin: 0;
+  color: var(--color-text-secondary);
+}
+
+.user-access-history-entry p {
+  color: var(--color-text-primary);
+}
+
+.user-access-history-status {
+  color: var(--color-warning);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+}
+
+.user-access-history-status.completed {
+  color: var(--color-success);
+}
+
+.user-access-history-status.failed,
+.user-access-history-error {
+  color: var(--color-danger) !important;
+}
+
 /* Gestão de usuários */
 .users-page {
   background: #f4f6f9;
