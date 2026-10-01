@@ -402,7 +402,7 @@ export function createCommercialProposalsFeature({ getClient, getContext, toast,
         <div class="section-heading"><div><h2>Identidade visual e assinatura</h2><p>Logo e marca-d'água reutilizam os ativos configurados em Declarações.</p></div></div>
         <div class="commercial-visual-options">
           <label class="checkbox-line"><input type="checkbox" data-visual-field="show_logo" ${proposal.visual_config?.show_logo ? "checked" : ""} /> Exibir logo</label>
-          <label class="checkbox-line"><input type="checkbox" data-visual-field="show_watermark" ${proposal.visual_config?.show_watermark ? "checked" : ""} /> Exibir marca-d'água</label>
+          <label class="checkbox-line"><input type="checkbox" data-visual-field="show_watermark" ${proposal.visual_config?.show_watermark !== false ? "checked" : ""} /> Exibir marca-d'água</label>
           <label class="checkbox-line"><input type="checkbox" data-visual-field="footer_all_pages" ${proposal.visual_config?.footer_all_pages !== false ? "checked" : ""} /> Exibir rodapé em todas as páginas</label>
           <label class="full-span">Texto do rodapé<input data-visual-field="footer_text" value="${escapeHtml(proposal.visual_config?.footer_text || "")}" placeholder="Telefone, e-mail, razão social ou outro texto" /></label>
         </div>
