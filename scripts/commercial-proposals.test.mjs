@@ -52,7 +52,8 @@ test("mantém os ajustes de interface e organização do construtor de propostas
   assert.match(feature, /data-update-budget-value=/);
   assert.match(feature, /override_final_bid/);
   assert.match(feature, /data-proposal-total/);
-  assert.match(feature, /Título do texto/);
+  assert.match(feature, /data-section-field="title"/);
+  assert.match(feature, /placeholder="Ex\.: Declaração de cumprimento dos requisitos"/);
   assert.doesNotMatch(feature, /DECLARAÇÕES \/ TEXTO ADICIONAL/);
   assert.match(feature, /const logoData = await assetDataUrl\(settings\.logo_path\)/);
   assert.match(feature, /const watermarkAsset = await assetDataUrl\(settings\.watermark_path\)/);
@@ -81,4 +82,26 @@ test("mantém os ajustes de interface e organização do construtor de propostas
   assert.match(styles, /container-type: inline-size/);
   assert.match(styles, /@container \(max-width: 1180px\)/);
   assert.match(styles, /\.commercial-proposal-item-grid textarea[^}]+height: 168px/s);
+});
+
+test("apresenta a proposta em uma lista clara e em três etapas responsivas", async () => {
+  const [feature, styles] = await Promise.all([
+    readFile(new URL("../web/commercial-proposals.js", import.meta.url), "utf8"),
+    readFile(new URL("../web/styles.css", import.meta.url), "utf8"),
+  ]);
+
+  assert.match(feature, /Resumo das propostas/);
+  assert.match(feature, /data-proposal-list-search/);
+  assert.match(feature, /\["all", "Todas"/);
+  assert.match(feature, /data-list-search-empty/);
+  assert.match(feature, /ETAPA 1 DE 3/);
+  assert.match(feature, /ETAPA 2 DE 3/);
+  assert.match(feature, /ETAPA 3 DE 3/);
+  assert.match(feature, /data-item-quick-total=/);
+  assert.match(feature, /data-item-quick-price=/);
+  assert.match(feature, /commercial-proposal-more/);
+  assert.match(styles, /\.commercial-proposal-overview/);
+  assert.match(styles, /\.commercial-proposal-list-card/);
+  assert.match(styles, /\.commercial-proposal-item-head/);
+  assert.match(styles, /@media \(max-width: 720px\)/);
 });
