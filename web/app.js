@@ -227,6 +227,7 @@ const refs = {
   supplierProductFormError: $("supplierProductFormError"),
   deleteSupplierProductButton: $("deleteSupplierProductButton"),
   logoutButton: $("logoutButton"),
+  logoutConfirmModal: $("logoutConfirmModal"),
   resetDataButton: $("resetDataButton"),
   filterForm: $("filterForm"),
   filterAgency: $("filterAgency"),
@@ -1884,7 +1885,13 @@ function bindEvents() {
   refs.toggleSidebarButton.addEventListener("focus", previewSidebar);
   refs.toggleSidebarButton.addEventListener("blur", clearSidebarPreview);
   refs.sidebarPanel.addEventListener("click", collapseSidebarFromEmptyArea);
-  refs.logoutButton.addEventListener("click", withBlockingLoading(logout, "Saindo do sistema…"));
+  refs.logoutButton.addEventListener("click", () => refs.logoutConfirmModal.showModal());
+  $("cancelLogoutButton").addEventListener("click", () => refs.logoutConfirmModal.close());
+  $("confirmLogoutButton").addEventListener("click", () => {
+    if (!refs.logoutConfirmModal.open) return;
+    refs.logoutConfirmModal.close();
+    withBlockingLoading(logout, "Saindo do sistema…")();
+  });
   if (!hasSupabaseConfig()) {
     refs.resetDataButton.addEventListener("click", withBlockingLoading(resetSeedData, "Restaurando a base…"));
   }
