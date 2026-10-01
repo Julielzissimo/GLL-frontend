@@ -224,6 +224,14 @@
         "3be3fb6f16cc2e30da18aad0cd4e1b9aaa41fdf8"
       ],
       "migrations": []
+    },
+    {
+      "id": "CADASTRO-USUARIOS-MODAL-001",
+      "backend_commits": [],
+      "frontend_commits": [
+        "faf76df4acca1ebba0096eeb93766961643f6b51"
+      ],
+      "migrations": []
     }
   ]
 }

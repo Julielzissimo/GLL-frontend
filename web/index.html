@@ -31,10 +31,16 @@
           E-mail
           <input id="loginEmail" name="email" type="email" autocomplete="username" required />
         </label>
-        <label>
-          Senha
-          <input id="loginPassword" name="password" type="password" autocomplete="current-password" required />
-        </label>
+        <div class="password-field">
+          <label for="loginPassword">Senha</label>
+          <span class="password-input-wrap">
+            <input id="loginPassword" name="password" type="password" autocomplete="current-password" required />
+            <button class="password-visibility-toggle" type="button" data-password-toggle="loginPassword" aria-controls="loginPassword" aria-label="Mostrar senha" aria-pressed="false">
+              <svg class="password-eye-icon password-eye-open" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M2 12s3.5-6.5 10-6.5S22 12 22 12s-3.5 6.5-10 6.5S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg>
+              <svg class="password-eye-icon password-eye-closed" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M2 12s3.5-6.5 10-6.5S22 12 22 12s-3.5 6.5-10 6.5S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/><path d="m4 4 16 16"/></svg>
+            </button>
+          </span>
+        </div>
         <p id="loginError" class="form-error" role="status" aria-live="polite"></p>
         <button class="primary-action full-action" type="submit">Entrar</button>
         <p id="loginHint" class="login-hint hidden">Modo local: demo@gll.local / gll-demo-local</p>
@@ -52,8 +58,26 @@
         <h2>Redefina sua senha</h2>
         <p>A senha provisória não permite acessar os dados do sistema.</p>
         <label>Login<input id="passwordResetEmail" type="email" readonly /></label>
-        <label>Nova senha<input id="newPassword" type="password" autocomplete="new-password" minlength="8" required /></label>
-        <label>Confirme a nova senha<input id="confirmNewPassword" type="password" autocomplete="new-password" minlength="8" required /></label>
+        <div class="password-field">
+          <label for="newPassword">Nova senha</label>
+          <span class="password-input-wrap">
+            <input id="newPassword" type="password" autocomplete="new-password" minlength="8" required />
+            <button class="password-visibility-toggle" type="button" data-password-toggle="newPassword" aria-controls="newPassword" aria-label="Mostrar senha" aria-pressed="false">
+              <svg class="password-eye-icon password-eye-open" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M2 12s3.5-6.5 10-6.5S22 12 22 12s-3.5 6.5-10 6.5S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg>
+              <svg class="password-eye-icon password-eye-closed" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M2 12s3.5-6.5 10-6.5S22 12 22 12s-3.5 6.5-10 6.5S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/><path d="m4 4 16 16"/></svg>
+            </button>
+          </span>
+        </div>
+        <div class="password-field">
+          <label for="confirmNewPassword">Confirme a nova senha</label>
+          <span class="password-input-wrap">
+            <input id="confirmNewPassword" type="password" autocomplete="new-password" minlength="8" required />
+            <button class="password-visibility-toggle" type="button" data-password-toggle="confirmNewPassword" aria-controls="confirmNewPassword" aria-label="Mostrar senha" aria-pressed="false">
+              <svg class="password-eye-icon password-eye-open" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M2 12s3.5-6.5 10-6.5S22 12 22 12s-3.5 6.5-10 6.5S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg>
+              <svg class="password-eye-icon password-eye-closed" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M2 12s3.5-6.5 10-6.5S22 12 22 12s-3.5 6.5-10 6.5S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/><path d="m4 4 16 16"/></svg>
+            </button>
+          </span>
+        </div>
         <p id="passwordResetError" class="form-error" role="alert"></p>
         <button class="primary-action full-action" type="submit">Salvar nova senha</button>
         <button id="passwordResetSignOutButton" class="quiet-action full-action" type="button">Sair</button>
@@ -872,35 +896,6 @@
           </div>
         </section>
 
-        <section id="userCreatePanel" class="section-band users-list-panel user-create-panel">
-          <div class="users-list-toolbar">
-            <div class="users-list-heading">
-              <span class="users-icon-tile" aria-hidden="true">＋</span>
-              <h2>Cadastrar novo usuário</h2>
-            </div>
-          </div>
-          <p class="user-create-description">A pessoa deverá criar uma senha pessoal no primeiro acesso.</p>
-          <form id="userCreateForm" class="user-create-form">
-            <div class="form-grid three">
-              <label>Nome completo<input id="userCreateFullName" name="fullName" autocomplete="name" required /></label>
-              <label>Nome de exibição<input id="userCreateDisplayName" name="displayName" autocomplete="nickname" required /></label>
-              <label>Login (e-mail)<input id="userCreateEmail" name="email" type="email" autocomplete="email" required /></label>
-              <label>Senha provisória<input id="userCreatePassword" name="temporaryPassword" type="password" autocomplete="new-password" minlength="8" required /></label>
-              <label>Confirme a senha provisória<input id="userCreatePasswordConfirm" name="temporaryPasswordConfirm" type="password" autocomplete="new-password" minlength="8" required /></label>
-              <label>Tipo de usuário
-                <select id="userCreateRole" name="role" required>
-                  <option value="Analista">Analista</option>
-                  <option value="Administrador">Administrador</option>
-                </select>
-              </label>
-            </div>
-            <p id="userCreateError" class="form-error" role="alert"></p>
-            <div class="button-row end">
-              <button class="primary-action" type="submit">Cadastrar usuário</button>
-            </div>
-          </form>
-        </section>
-
         <section class="section-band users-list-panel">
           <div class="users-list-toolbar">
             <div class="users-list-heading">
@@ -923,6 +918,7 @@
                 </select>
               </label>
               <span id="userCountLabel" class="users-visible-count">0 usuários</span>
+              <button id="userCreateOpenButton" class="primary-action user-create-trigger hidden" type="button"><span aria-hidden="true">＋</span>Cadastrar usuário</button>
             </div>
           </div>
           <div class="table-wrap users-table-wrap">
@@ -956,6 +952,57 @@
             <p><strong>Analista</strong><span>Acesso aos editais criados por ele ou atribuídos pelo administrador.</span></p>
           </div>
         </section>
+
+        <dialog id="userCreateDialog" class="quotation-item-modal user-create-modal" aria-labelledby="userCreateModalTitle" aria-describedby="userCreateDescription">
+          <div class="quotation-item-modal-shell">
+            <div class="quotation-item-modal-header">
+              <div>
+                <span class="eyebrow">CADASTRO DE USUÁRIO</span>
+                <h2 id="userCreateModalTitle">Cadastrar novo usuário</h2>
+                <p id="userCreateDescription" class="user-create-description">A pessoa deverá criar uma senha pessoal no primeiro acesso.</p>
+              </div>
+              <button id="closeUserCreateDialogButton" class="quotation-item-modal-close" type="button" aria-label="Fechar modal"><span data-gll-icon="close" aria-hidden="true"></span></button>
+            </div>
+            <form id="userCreateForm" class="quotation-item-modal-form user-create-form">
+              <div class="form-grid three">
+                <label>Nome completo<input id="userCreateFullName" name="fullName" autocomplete="name" required /></label>
+                <label>Nome de exibição<input id="userCreateDisplayName" name="displayName" autocomplete="nickname" required /></label>
+                <label>Login (e-mail)<input id="userCreateEmail" name="email" type="email" autocomplete="email" required /></label>
+                <div class="password-field">
+                  <label for="userCreatePassword">Senha provisória</label>
+                  <span class="password-input-wrap">
+                    <input id="userCreatePassword" name="temporaryPassword" type="password" autocomplete="new-password" minlength="8" required />
+                    <button class="password-visibility-toggle" type="button" data-password-toggle="userCreatePassword" aria-controls="userCreatePassword" aria-label="Mostrar senha" aria-pressed="false">
+                      <svg class="password-eye-icon password-eye-open" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M2 12s3.5-6.5 10-6.5S22 12 22 12s-3.5 6.5-10 6.5S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg>
+                      <svg class="password-eye-icon password-eye-closed" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M2 12s3.5-6.5 10-6.5S22 12 22 12s-3.5 6.5-10 6.5S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/><path d="m4 4 16 16"/></svg>
+                    </button>
+                  </span>
+                </div>
+                <div class="password-field">
+                  <label for="userCreatePasswordConfirm">Confirme a senha provisória</label>
+                  <span class="password-input-wrap">
+                    <input id="userCreatePasswordConfirm" name="temporaryPasswordConfirm" type="password" autocomplete="new-password" minlength="8" required />
+                    <button class="password-visibility-toggle" type="button" data-password-toggle="userCreatePasswordConfirm" aria-controls="userCreatePasswordConfirm" aria-label="Mostrar senha" aria-pressed="false">
+                      <svg class="password-eye-icon password-eye-open" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M2 12s3.5-6.5 10-6.5S22 12 22 12s-3.5 6.5-10 6.5S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg>
+                      <svg class="password-eye-icon password-eye-closed" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M2 12s3.5-6.5 10-6.5S22 12 22 12s-3.5 6.5-10 6.5S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/><path d="m4 4 16 16"/></svg>
+                    </button>
+                  </span>
+                </div>
+                <label>Tipo de usuário
+                  <select id="userCreateRole" name="role" required>
+                    <option value="Analista">Analista</option>
+                    <option value="Administrador">Administrador</option>
+                  </select>
+                </label>
+              </div>
+              <p id="userCreateError" class="form-error" role="alert"></p>
+              <div class="button-row end">
+                <button id="cancelUserCreateButton" class="quiet-action" type="button">Cancelar</button>
+                <button class="primary-action" type="submit">Cadastrar usuário</button>
+              </div>
+            </form>
+          </div>
+        </dialog>
 
         <dialog id="userAssignmentsModal" class="modal-card user-assignments-modal">
           <form id="userAssignmentsForm" method="dialog">
