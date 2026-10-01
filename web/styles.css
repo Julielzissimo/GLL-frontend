@@ -6743,3 +6743,39 @@ button.history-row:hover {
   .commercial-proposal-summary-column { position: static; top: auto; }
   .commercial-proposal-editor-column { grid-row: 2; grid-column: 1; }
 }
+
+/* A personalização ocupa a largura inteira e não fica atrás das ações. */
+.commercial-customize-proposal,
+.commercial-proposal-step-actions {
+  grid-column: 1 / -1;
+  width: 100%;
+  min-width: 0;
+}
+
+.commercial-customize-proposal > summary {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.commercial-customize-proposal .commercial-advanced-content,
+.commercial-customize-proposal .commercial-advanced-content > section,
+.commercial-item-editor,
+.commercial-item-editor .proposal-item-field,
+.commercial-item-editor textarea {
+  min-width: 0;
+}
+
+.commercial-item-editor textarea {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+}
+
+.commercial-proposal-step-actions {
+  position: static;
+  z-index: auto;
+  margin-top: var(--space-lg);
+  border-top: var(--border-default);
+  background: transparent;
+  backdrop-filter: none;
+}

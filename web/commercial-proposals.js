@@ -286,6 +286,25 @@ export function createCommercialProposalsFeature({ getClient, getContext, toast,
       .sort((a, b) => a.position - b.position);
   }
 
+  function normalizeTechnicalDescription(value) {
+    const text = String(value ?? "");
+    try {
+      const legacyPayload = JSON.parse(text);
+      if (
+        legacyPayload &&
+        typeof legacyPayload === "object" &&
+        (legacyPayload.__gll_item_v2 === true || legacyPayload._gll_item_v2 === true)
+      ) {
+        return typeof legacyPayload.technical_registration_text === "string"
+          ? legacyPayload.technical_registration_text
+          : "";
+      }
+    } catch {
+      // Preserve descriptions that are ordinary text rather than legacy metadata.
+    }
+    return text;
+  }
+
   function effectiveItemValue(item, field) {
     const override = {
       technical_description: item.override_technical_description,
@@ -296,7 +315,7 @@ export function createCommercialProposalsFeature({ getClient, getContext, toast,
       unit: item.override_unit,
     }[field];
     if (override !== null && override !== undefined && override !== "") return override;
-    if (field === "technical_description") return item.technical_text || "";
+    if (field === "technical_description") return normalizeTechnicalDescription(item.technical_text || "");
     if (field === "brand") return item.brand || item.manufacturer || "";
     return item[field] ?? "";
   }
@@ -488,14 +507,7 @@ export function createCommercialProposalsFeature({ getClient, getContext, toast,
           <button class="quiet-action compact-action" type="button" data-proposal-action="toggle-selection">${selectedItems().length === state.editor.items.length ? "Desmarcar todos" : "Selecionar todos"}</button></div>
         <div class="commercial-proposal-items">${renderItemRows()}</div>
         <div class="commercial-data-note"><span class="commercial-info-dot" aria-hidden="true">i</span><span>Os valores desta proposta são separados do orçamento. Atualize o orçamento somente se quiser reutilizar os novos valores em outros cálculos.</span></div>
-        <details class="commercial-proposal-more commercial-customize-proposal" data-proposal-details="customize"><summary>Personalizar esta proposta</summary><div class="commercial-advanced-content">
-          <section><h3>Descrição técnica dos itens</h3><p>Descrições longas são incluídas no PDF e podem ser ajustadas sem cortar o texto.</p>${renderItemEditors()}</section>
-          <section><div class="section-heading"><div><h3>Colunas do PDF</h3><p>Ative, reordene e ajuste a largura da descrição técnica.</p></div><button class="quiet-action compact-action" type="button" data-proposal-action="add-column">＋ Coluna personalizada</button></div>
-            <div class="commercial-column-list">${renderColumns()}</div><p class="table-secondary">O número do item e a descrição técnica permanecem no documento.</p>
-          </section>
-        </div></details>
       </section>
-      <div class="commercial-proposal-step-actions"><button class="quiet-action" type="button" data-proposal-action="back">Cancelar</button><div class="button-row"><button class="quiet-action" type="button" data-proposal-action="save">Salvar rascunho</button><button class="primary-action" type="button" data-proposal-action="next-step">Continuar <span aria-hidden="true">→</span></button></div></div>
       </div>
       <div class="commercial-proposal-tab-panel ${state.activeEditorTab === "review" ? "" : "hidden"}" data-proposal-panel="review">
         <section class="commercial-proposal-review-preview"><iframe id="commercialProposalReviewFrame" title="Pré-visualização da proposta em PDF"></iframe></section>
@@ -557,6 +569,13 @@ export function createCommercialProposalsFeature({ getClient, getContext, toast,
                 <button class="primary-action full-action" type="button" data-proposal-action="next-step">Pré-visualizar PDF</button>`}
             </section>`}
         </aside>
+        <details class="commercial-proposal-more commercial-customize-proposal ${state.activeEditorTab === "proposal" ? "" : "hidden"}" data-proposal-details="customize"><summary>Personalizar esta proposta</summary><div class="commercial-advanced-content">
+          <section><h3>Descrição técnica dos itens</h3><p>Descrições longas são incluídas no PDF e podem ser ajustadas sem cortar o texto.</p>${renderItemEditors()}</section>
+          <section><div class="section-heading"><div><h3>Colunas do PDF</h3><p>Ative, reordene e ajuste a largura da descrição técnica.</p></div><button class="quiet-action compact-action" type="button" data-proposal-action="add-column">＋ Coluna personalizada</button></div>
+            <div class="commercial-column-list">${renderColumns()}</div><p class="table-secondary">O número do item e a descrição técnica permanecem no documento.</p>
+          </section>
+        </div></details>
+        <div class="commercial-proposal-step-actions ${state.activeEditorTab === "proposal" ? "" : "hidden"}"><button class="quiet-action" type="button" data-proposal-action="back">Cancelar</button><div class="button-row"><button class="quiet-action" type="button" data-proposal-action="save">Salvar rascunho</button><button class="primary-action" type="button" data-proposal-action="next-step">Continuar <span aria-hidden="true">→</span></button></div></div>
       </div>
       <dialog id="commercialProposalPreviewDialog" class="declaration-preview-modal" aria-labelledby="commercialProposalPreviewTitle">
         <div class="declaration-preview-shell"><div class="quotation-item-modal-header"><div><span class="eyebrow">PRÉ-VISUALIZAÇÃO</span><h2 id="commercialProposalPreviewTitle">Proposta Comercial</h2></div><button class="quotation-item-modal-close" type="button" data-proposal-action="close-preview" aria-label="Fechar">×</button></div>
@@ -619,6 +638,12 @@ export function createCommercialProposalsFeature({ getClient, getContext, toast,
 
   async function openEditor(id) {
     state.editor = await rpc("get_commercial_proposal_editor", { p_proposal_id: id });
+    state.editor.items.forEach((item) => {
+      item.technical_text = normalizeTechnicalDescription(item.technical_text);
+      if (item.override_technical_description !== null && item.override_technical_description !== undefined) {
+        item.override_technical_description = normalizeTechnicalDescription(item.override_technical_description);
+      }
+    });
     state.editor.columns.forEach((column) => {
       if (column.source_field === "manufacturer") column.enabled = false;
       if (["item_number", "technical_description"].includes(column.source_field)) column.enabled = true;
