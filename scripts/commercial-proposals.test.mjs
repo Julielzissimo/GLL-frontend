@@ -47,21 +47,20 @@ test("mantém os ajustes de interface e organização do construtor de propostas
   ]);
 
   assert.match(feature, />Criar proposta<\/button>/);
-  assert.match(feature, />2\. Dados comerciais<\/button>/);
-  assert.match(feature, />3\. Conferir proposta<\/button>/);
+  assert.match(feature, /\[\["proposal", "Itens e edital"\], \["commercial", "Dados comerciais"\], \["review", "Conferir PDF"\]\]/);
   assert.match(feature, /data-update-budget-value=/);
   assert.match(feature, /override_final_bid/);
   assert.match(feature, /data-proposal-total/);
   assert.match(feature, /data-section-field="title"/);
-  assert.match(feature, /placeholder="Ex\.: Declaração de cumprimento dos requisitos"/);
+  assert.match(feature, /placeholder="Ex\.: Declarações"/);
   assert.doesNotMatch(feature, /DECLARAÇÕES \/ TEXTO ADICIONAL/);
   assert.match(feature, /const logoData = await assetDataUrl\(settings\.logo_path\)/);
   assert.match(feature, /const watermarkAsset = await assetDataUrl\(settings\.watermark_path\)/);
-  assert.match(feature, /<span class="eyebrow">RESUMO<\/span>/);
+  assert.match(feature, /Resumo da proposta/);
   assert.match(feature, /Marca \/ Fabricante/);
   assert.doesNotMatch(feature, /\["manufacturer", "Fabricante", "input"\]/);
-  assert.match(feature, /Salvar esta informação permanentemente/);
-  assert.match(feature, /data-toggle-item=/);
+  assert.match(feature, /Salvar também no orçamento ao salvar/);
+  assert.match(feature, /function renderItemEditors\(\)/);
   assert.match(feature, /drawWatermarkBackground\(\)/);
   assert.match(feature, /filter\(\(entry\) => entry\.type !== "signature"\)/);
   assert.match(feature, /enabledSections\.some\(\(entry\) => entry\.type === "signature"\)/);
@@ -84,24 +83,29 @@ test("mantém os ajustes de interface e organização do construtor de propostas
   assert.match(styles, /\.commercial-proposal-item-grid textarea[^}]+height: 168px/s);
 });
 
-test("apresenta a proposta em uma lista clara e em três etapas responsivas", async () => {
-  const [feature, styles] = await Promise.all([
+test("segue o protótipo: lista em tabela, etapas guiadas e prévia integral do PDF", async () => {
+  const [feature, styles, patterns] = await Promise.all([
     readFile(new URL("../web/commercial-proposals.js", import.meta.url), "utf8"),
     readFile(new URL("../web/styles.css", import.meta.url), "utf8"),
+    readFile(new URL("../stories/patterns/Patterns.stories.js", import.meta.url), "utf8"),
   ]);
 
-  assert.match(feature, /Resumo das propostas/);
-  assert.match(feature, /data-proposal-list-search/);
-  assert.match(feature, /\["all", "Todas"/);
-  assert.match(feature, /data-list-search-empty/);
-  assert.match(feature, /ETAPA 1 DE 3/);
-  assert.match(feature, /ETAPA 2 DE 3/);
-  assert.match(feature, /ETAPA 3 DE 3/);
+  assert.match(feature, /Propostas recentes/);
+  assert.match(feature, /Edital \/ órgão/);
+  assert.match(feature, /commercial-proposal-items-table/);
+  assert.match(feature, /<th class="numeric">Nº<\/th>/);
+  assert.match(feature, /Data da proposta<input type="date" data-proposal-field="proposal_date"/);
+  assert.match(feature, /Personalizar esta proposta/);
+  assert.match(feature, /Descrição técnica dos itens/);
+  assert.match(feature, /commercialProposalReviewFrame/);
   assert.match(feature, /data-item-quick-total=/);
-  assert.match(feature, /data-item-quick-price=/);
+  assert.match(feature, /data-item-quick-quantity=/);
+  assert.match(feature, /data-move-column=/);
+  assert.match(feature, /Gerar PDF/);
   assert.match(feature, /commercial-proposal-more/);
-  assert.match(styles, /\.commercial-proposal-overview/);
-  assert.match(styles, /\.commercial-proposal-list-card/);
-  assert.match(styles, /\.commercial-proposal-item-head/);
+  assert.match(styles, /\.commercial-proposal-items-table/);
+  assert.match(styles, /\.commercial-proposal-review-preview/);
+  assert.match(styles, /\.commercial-step-dot/);
   assert.match(styles, /@media \(max-width: 720px\)/);
+  assert.match(patterns, /CommercialProposalFlow/);
 });
