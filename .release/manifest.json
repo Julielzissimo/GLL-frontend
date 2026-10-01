@@ -308,6 +308,14 @@
         "6ef955eee00ea135a38a690d3acc6fa7ed1eaee0"
       ],
       "migrations": []
+    },
+    {
+      "id": "UX-PROPOSTA-COMERCIAL-007",
+      "backend_commits": [],
+      "frontend_commits": [
+        "d12bff2c93f641030eca5f9a06666f411ea5b40e"
+      ],
+      "migrations": []
     }
   ]
 }
