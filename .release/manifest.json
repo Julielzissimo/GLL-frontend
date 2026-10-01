@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "release_id": "2026-10-01-navegacao-configuracoes",
+  "release_id": "2026-10-01-correcao-personalizacao-proposta",
   "environment": "homolog",
   "target_branch": "homolog",
   "items": [
@@ -314,6 +314,14 @@
       "backend_commits": [],
       "frontend_commits": [
         "d12bff2c93f641030eca5f9a06666f411ea5b40e"
+      ],
+      "migrations": []
+    },
+    {
+      "id": "UX-PROPOSTA-COMERCIAL-008",
+      "backend_commits": [],
+      "frontend_commits": [
+        "12022f1bd96a1ba06b5e2a1096e3abcd8978b183"
       ],
       "migrations": []
     }
