@@ -171,7 +171,7 @@ const refs = {
   navUsersButton: $("navUsersButton"),
   navSettingsButton: $("navSettingsButton"),
   menuToggleButton: $("menuToggleButton"),
-  breadcrumbLabel: $("breadcrumbLabel"),
+  breadcrumbList: $("breadcrumbList"),
   currentUserName: $("currentUserName"),
   currentUserRole: $("currentUserRole"),
   toggleSidebarButton: $("toggleSidebarButton"),
@@ -1988,6 +1988,7 @@ function bindEvents() {
   refs.viewAllBidsButton.addEventListener("click", () => setPage("bids"));
   refs.menuToggleButton.addEventListener("click", toggleMainNavigation);
   window.addEventListener("resize", updateMainNavigationState);
+  window.addEventListener("resize", () => renderBreadcrumb(appState.activePage));
   refs.toggleSidebarButton.addEventListener("click", toggleSidebar);
   refs.toggleSidebarButton.addEventListener("mouseenter", previewSidebar);
   refs.toggleSidebarButton.addEventListener("mouseleave", clearSidebarPreview);
@@ -2599,6 +2600,104 @@ function resolveAuthorizedPage(page) {
   return page;
 }
 
+function breadcrumbItems(page) {
+  const compact = window.matchMedia("(max-width: 850px)").matches;
+  const home = { label: "Visão geral", page: "home" };
+  const pageLabels = {
+    items: "Itens",
+    documents: "Documentos",
+    failures: "Falhas",
+    declarationLibrary: "Biblioteca",
+    declarationSettings: "Configurações",
+    declarationHistory: "Histórico",
+    companyData: "Dados da Empresa",
+    designSystem: "Design System",
+  };
+
+  if (["items", "documents", "failures"].includes(page)) {
+    if (compact) return [{ label: "Licitações", page: "bids" }, { label: pageLabels[page] }];
+    const number = bidDisplayNumber(currentBid());
+    return [
+      home,
+      { label: "Licitações", page: "bids" },
+      { label: number ? `Licitação ${number}` : "Licitação", page: page === "items" ? undefined : "items" },
+      { label: pageLabels[page] },
+    ];
+  }
+  if (page === "edit") {
+    return compact
+      ? [{ label: "Licitações", page: "bids" }, { label: "Nova licitação" }]
+      : [home, { label: "Licitações", page: "bids" }, { label: "Nova licitação" }];
+  }
+  if (page === "commercialProposals") {
+    return compact
+      ? [{ label: "Documentos" }, { label: "Proposta Comercial" }]
+      : [home, { label: "Gerar Documentos" }, { label: "Proposta Comercial" }];
+  }
+  if (page === "declarations") {
+    return compact
+      ? [{ label: "Declarações" }]
+      : [home, { label: "Gerar Documentos" }, { label: "Declarações" }];
+  }
+  if (["declarationLibrary", "declarationSettings", "declarationHistory"].includes(page)) {
+    if (compact) return [{ label: "Declarações", page: "declarations" }, { label: pageLabels[page] }];
+    return [
+      home,
+      { label: "Gerar Documentos" },
+      { label: "Declarações", page: "declarations" },
+      { label: pageLabels[page] },
+    ];
+  }
+  if (["companyData", "designSystem"].includes(page)) {
+    if (compact) return [{ label: "Configurações", page: "settings" }, { label: pageLabels[page] }];
+    return [home, { label: "Configurações", page: "settings" }, { label: pageLabels[page] }];
+  }
+  const topLevelLabels = {
+    home: "Visão geral",
+    bids: "Licitações",
+    quotations: "Orçamento",
+    commercialProposals: "Proposta Comercial",
+    suppliers: "Fornecedores",
+    users: "Usuários",
+    settings: "Configurações",
+  };
+  if (compact || page === "home") return [{ label: topLevelLabels[page] || topLevelLabels.home }];
+  return [home, { label: topLevelLabels[page] || topLevelLabels.home }];
+}
+
+function renderBreadcrumb(page) {
+  const items = breadcrumbItems(page);
+  const nodes = items.map((item, index) => {
+    const listItem = document.createElement("li");
+    if (index === items.length - 1) {
+      listItem.setAttribute("aria-current", "page");
+      const current = document.createElement("span");
+      current.className = "breadcrumb-current";
+      current.textContent = item.label;
+      listItem.append(current);
+    } else if (item.page) {
+      const link = document.createElement("button");
+      link.className = "breadcrumb-link";
+      link.type = "button";
+      link.textContent = item.label;
+      link.addEventListener("click", () => setPage(item.page));
+      listItem.append(link);
+    } else {
+      const parent = document.createElement("span");
+      parent.className = "breadcrumb-parent";
+      parent.textContent = item.label;
+      listItem.append(parent);
+    }
+    return listItem;
+  });
+  refs.breadcrumbList.replaceChildren(...nodes);
+  scrollBreadcrumbToCurrent();
+}
+
+function scrollBreadcrumbToCurrent() {
+  refs.breadcrumbList.scrollLeft = refs.breadcrumbList.scrollWidth;
+}
+
 function creatorName(record) {
   const storedName = String(record?.created_by_name || "").trim();
   if (storedName) return storedName;
@@ -2895,8 +2994,7 @@ function setPage(page, options = {}) {
   refs.failuresTabButton.classList.toggle("active", page === "failures");
   refs.failuresTabButton.classList.toggle("hidden", !shouldShowFailureHistory());
   const primaryPage = showCommercialProposals ? "commercialProposals" : showDeclarations ? "declarations" : showSuppliers ? "suppliers" : showUsers ? "users" : showSettings || showCompanyData || showDesignSystem ? "settings" : showQuotations ? "quotations" : showHome ? "home" : "bids";
-  const pageLabels = { commercialProposals: "Proposta Comercial", declarations: "Declarações", suppliers: "Fornecedores", home: "Visão geral", bids: "Licitações", quotations: "Orçamento", users: "Usuários", settings: showCompanyData ? "Dados da Empresa" : showDesignSystem ? "Design System" : "Configurações" };
-  refs.breadcrumbLabel.textContent = pageLabels[primaryPage];
+  renderBreadcrumb(page);
   document.querySelectorAll("[data-navigation-page]").forEach((button) => {
     button.classList.toggle("active", button.dataset.navigationPage === primaryPage);
   });

@@ -205,7 +205,7 @@ export function createCommercialProposalsFeature({ getClient, getContext, toast,
           </select></label>
           ${available.length ? "" : `<div class="empty-state compact-empty">Todos os editais com orçamento já possuem proposta, ou não há itens cadastrados.</div>`}
           <p id="newCommercialProposalError" class="form-error" role="alert"></p>
-          <div class="button-row end"><button class="quiet-action" value="cancel">Cancelar</button>
+          <div class="button-row end"><button class="quiet-action" type="button" data-proposal-action="cancel-new">Cancelar</button>
           <button class="primary-action" type="submit" value="default" ${available.length ? "" : "disabled"}>Criar proposta</button></div>
         </form>
       </dialog>
@@ -1392,6 +1392,7 @@ export function createCommercialProposalsFeature({ getClient, getContext, toast,
     const action = event.target.closest("[data-proposal-action]")?.dataset.proposalAction;
     if (!action) return;
     if (action === "new") return root.querySelector("#newCommercialProposalDialog").showModal();
+    if (action === "cancel-new") return root.querySelector("#newCommercialProposalDialog").close();
     if (action === "back") {
       return void requestDiscardChanges(() => {
         state.editor = null;
