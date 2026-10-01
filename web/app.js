@@ -156,8 +156,6 @@ const refs = {
   environmentLabel: $("environmentLabel"),
   environmentBadge: $("environmentBadge"),
   storageStatus: $("storageStatus"),
-  sessionPolicyStatus: $("sessionPolicyStatus"),
-  authClientVersion: $("authClientVersion"),
   appSidebar: $("appSidebar"),
   homeIconButton: $("homeIconButton"),
   navHomeButton: $("navHomeButton"),
@@ -263,7 +261,6 @@ const refs = {
   deleteSupplierProductButton: $("deleteSupplierProductButton"),
   logoutButton: $("logoutButton"),
   logoutConfirmModal: $("logoutConfirmModal"),
-  resetDataButton: $("resetDataButton"),
   filterForm: $("filterForm"),
   filterAgency: $("filterAgency"),
   filterDate: $("filterDate"),
@@ -1827,11 +1824,6 @@ function applyEnvironmentConfig() {
   refs.environmentBadge.textContent = GLL_CONFIG.label;
   refs.environmentBadge.dataset.environment = GLL_CONFIG.environment;
   refs.storageStatus.textContent = GLL_CONFIG.storageLabel;
-  refs.sessionPolicyStatus.textContent = hasSupabaseConfig()
-    ? `${GLL_CONFIG.sessionIdleTimeoutMinutes} min inativa / ${GLL_CONFIG.sessionMaxLifetimeHours} h total`
-    : "Não aplicável ao modo demonstrativo";
-  refs.authClientVersion.textContent = hasSupabaseConfig() ? `Supabase JS ${SUPABASE_CLIENT_VERSION}` : "Autenticação local demonstrativa";
-  refs.resetDataButton.classList.toggle("hidden", hasSupabaseConfig());
   refs.loginHint.classList.toggle("hidden", hasSupabaseConfig());
   refs.userCreateOpenButton.classList.toggle("hidden", !hasSupabaseConfig());
   const suppliersEnabled = GLL_CONFIG.suppliersEnabled !== false;
@@ -2002,9 +1994,6 @@ function bindEvents() {
     refs.logoutConfirmModal.close();
     withBlockingLoading(logout, "Saindo do sistema…")();
   });
-  if (!hasSupabaseConfig()) {
-    refs.resetDataButton.addEventListener("click", withBlockingLoading(resetSeedData, "Restaurando a base…"));
-  }
   refs.filterForm.addEventListener("submit", (event) => {
     event.preventDefault();
     renderBids();
@@ -2725,15 +2714,6 @@ function updateAccessInterface() {
   refs.designSystemAccessCard.classList.toggle("hidden", !showUserManagement);
   refs.designSystemAccessCard.setAttribute("aria-hidden", String(!showUserManagement));
   refs.usersOrganizationLabel.textContent = `${appState.currentOrganizationName || "Organização"} · usuários vinculados no Supabase.`;
-}
-
-async function resetSeedData() {
-  if (!confirm("Restaurar a base inicial de demonstração? As alterações locais deste protótipo serão perdidas.")) return;
-  const seedData = await loadSeedData();
-  await store.applySeed(seedData);
-  await reloadData();
-  clearBidForm();
-  showToast("Base inicial restaurada.");
 }
 
 const DATA_KEYS = ["bids", "items", "documents", "failureHistory", "statusHistory", "quotations", "quotationItems", "users", "suppliers", "supplierProducts"];
