@@ -987,8 +987,8 @@ export function createCommercialProposalsFeature({ getClient, getContext, toast,
       doc.setFont("helvetica", "normal");
       doc.setFontSize(9.5);
       const dateText = signature.date !== false ? formatDate(proposal.proposal_date) : "";
-      if (location || dateText) doc.text(`${location}${location && dateText ? ", " : ""}${dateText}.`, pageWidth / 2, y + 4, { align: "center" });
-      y += 17;
+      if (location || dateText) doc.text(`${location}${location && dateText ? ", " : ""}${dateText}.`, pageWidth - margin, y + 4, { align: "right" });
+      y += 22;
       if (signature.line !== false) { doc.line(55, y, 155, y); y += 5; }
       if (signature.company !== false) {
         doc.setFont("helvetica", "bold");
