@@ -156,6 +156,12 @@
         "f9f1fa7272f826457ca1e69e35ec1cb67276f19b"
       ],
       "migrations": []
+    },
+    {
+      "id": "RESPONSIVIDADE-FILTROS-LICITACOES-001",
+      "backend_commits": [],
+      "frontend_commits": [],
+      "migrations": []
     }
   ]
 }
