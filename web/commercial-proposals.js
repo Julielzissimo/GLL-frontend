@@ -139,6 +139,9 @@ export function createCommercialProposalsFeature({ getClient, getContext, toast,
     previewUrl: "",
     dragged: null,
     activeEditorTab: "proposal",
+    listQuery: "",
+    listStatus: "all",
+    itemQuery: "",
     collapsedItems: new Set(),
     permanentFields: new Set(),
   };
@@ -169,29 +172,27 @@ export function createCommercialProposalsFeature({ getClient, getContext, toast,
   function renderList() {
     const available = state.bids.filter((bid) => !bid.proposal_id && Number(bid.item_count) > 0);
     root.innerHTML = `
-      <div class="page-heading">
+      <div class="page-heading commercial-proposal-list-title">
         <div><span class="eyebrow">DOCUMENTOS COMERCIAIS</span><h1 id="commercialProposalsTitle">Proposta Comercial</h1>
-        <p>Crie propostas estruturadas a partir dos itens do orçamento de cada edital.</p></div>
-        <button class="primary-action" type="button" data-proposal-action="new">＋ Nova Proposta Comercial</button>
+          <p>Prepare, confira e gere propostas para seus editais.</p></div>
+        <button class="primary-action" type="button" data-proposal-action="new">＋ Nova proposta</button>
       </div>
-      <section class="section-band table-panel commercial-proposal-list-panel">
+      <section class="section-band table-panel commercial-proposal-list-panel" aria-labelledby="commercialProposalListTitle">
+        <div class="commercial-proposal-list-toolbar"><div><h2 id="commercialProposalListTitle">Propostas recentes</h2><p>Abra uma proposta para revisar ou continuar.</p></div></div>
         <div class="table-wrap"><table class="commercial-proposal-list"><thead><tr>
-          <th>Número do edital</th><th>Órgão</th><th class="numeric">Itens</th>
-          <th class="numeric">Valor total</th><th>Status</th><th>Última alteração</th><th>Responsável</th><th>Ações</th>
+          <th>Edital / órgão</th><th>Itens</th><th class="numeric">Valor total</th><th>Status</th><th>Última alteração</th><th><span class="sr-only">Ações</span></th>
         </tr></thead><tbody>
           ${state.list.length ? state.list.map((proposal) => `<tr>
-            <td><strong>${escapeHtml(proposal.edital_number || proposal.bid_id)}</strong></td>
-            <td>${escapeHtml(proposal.agency || "—")}</td>
-            <td class="numeric">${proposal.selected_items}</td>
+            <td><strong>${escapeHtml(proposal.edital_number || proposal.bid_id)}</strong><span class="table-secondary commercial-proposal-agency">${escapeHtml(proposal.agency || "Órgão não informado")}</span></td>
+            <td>${proposal.selected_items} ${Number(proposal.selected_items) === 1 ? "item" : "itens"}</td>
             <td class="numeric"><strong>${formatCommercialMoney(proposal.total_value)}</strong></td>
             <td><span class="status-pill proposal-status-${proposal.status}">${statusLabel(proposal.status)}</span></td>
-            <td>${formatDateTime(proposal.updated_at)}</td><td>${escapeHtml(proposal.updated_by_name || "—")}</td>
-            <td><div class="commercial-proposal-row-actions">
-              <button class="quiet-action compact-action" type="button" data-open-proposal="${proposal.id}">Editar</button>
+            <td>${formatDateTime(proposal.updated_at)}</td><td><div class="commercial-proposal-row-actions">
+              <button class="quiet-action compact-action" type="button" data-open-proposal="${proposal.id}">Abrir</button>
               <button class="quiet-action compact-action" type="button" data-preview-proposal="${proposal.id}">Visualizar</button>
               <button class="quiet-action compact-action" type="button" data-download-reference="${escapeHtml(proposal.last_generation_reference || "")}" ${proposal.last_generation_reference ? "" : "disabled"}>Baixar PDF</button>
             </div></td>
-          </tr>`).join("") : `<tr><td colspan="8"><div class="empty-state compact-empty">Nenhuma Proposta Comercial cadastrada.</div></td></tr>`}
+          </tr>`).join("") : `<tr><td colspan="6"><div class="empty-state compact-empty">Nenhuma Proposta Comercial cadastrada.</div></td></tr>`}
         </tbody></table></div>
       </section>
       <dialog id="newCommercialProposalDialog" class="quotation-item-discard-modal commercial-proposal-create-modal" aria-labelledby="newCommercialProposalTitle">
@@ -222,7 +223,7 @@ export function createCommercialProposalsFeature({ getClient, getContext, toast,
 
   function enabledColumns() {
     return state.editor.columns
-      .filter((column) => column.enabled && column.source_field !== "manufacturer")
+      .filter((column) => (column.enabled || ["item_number", "technical_description"].includes(column.source_field)) && column.source_field !== "manufacturer")
       .sort((a, b) => a.position - b.position);
   }
 
@@ -257,18 +258,29 @@ export function createCommercialProposalsFeature({ getClient, getContext, toast,
   }
 
   function renderItemRows() {
-    const customColumns = state.editor.columns.filter((column) => column.is_custom);
-    return state.editor.items.sort((a, b) => a.position - b.position).map((item, index) => {
-      const collapsed = state.collapsedItems.has(item.id);
+    const rows = state.editor.items.sort((a, b) => a.position - b.position).map((item) => {
+      const itemIdentity = item.name || `Item ${item.item_number}`;
+      const subtitle = [effectiveItemValue(item, "brand"), effectiveItemValue(item, "model")].filter(Boolean).join(" · ");
       return `
-      <article class="commercial-proposal-item ${item.selected ? "selected" : ""} ${collapsed ? "is-collapsed" : ""}" data-drag-kind="item" data-drag-id="${item.id}">
-        <div class="commercial-proposal-item-head">
-          <label class="checkbox-line proposal-item-selector"><input type="checkbox" data-item-field="selected" data-item-id="${item.id}" ${item.selected ? "checked" : ""} />
-            <strong>Item ${escapeHtml(item.item_number)}</strong></label>
-          <span class="drag-handle" draggable="true" role="button" tabindex="0" title="Arraste para reorganizar" aria-label="Arraste para reorganizar">⠿</span>
-          <span class="table-secondary">Posição ${index + 1}</span>
-          <button class="commercial-item-collapse" type="button" data-toggle-item="${item.id}" aria-expanded="${!collapsed}" aria-label="${collapsed ? "Expandir" : "Recolher"} item ${escapeHtml(item.item_number)}"><span aria-hidden="true"></span></button>
-        </div>
+        <tr class="commercial-proposal-item-row ${item.selected ? "selected" : "not-selected"}" data-drag-kind="item" data-drag-id="${item.id}">
+          <td><input type="checkbox" class="commercial-item-check" data-item-field="selected" data-item-id="${item.id}" ${item.selected ? "checked" : ""} aria-label="Incluir item ${escapeHtml(item.item_number)}: ${escapeHtml(itemIdentity)}" /></td>
+          <td class="numeric commercial-item-number"><span class="drag-handle" draggable="true" role="button" tabindex="0" title="Arraste para reorganizar" aria-label="Reordenar item ${escapeHtml(item.item_number)}">⠿</span>${escapeHtml(item.item_number)}</td>
+          <td class="commercial-item-description"><strong>${escapeHtml(itemIdentity)}</strong><span class="table-secondary" data-item-quick-subtitle="${item.id}">${escapeHtml(subtitle || "Marca ou modelo não informado")}</span></td>
+          <td><span data-item-quick-quantity="${item.id}">${escapeHtml(effectiveItemValue(item, "quantity"))} ${escapeHtml(effectiveItemValue(item, "unit"))}</span></td>
+          <td><input class="commercial-proposal-price-input" data-final-bid data-item-id="${item.id}" inputmode="decimal" value="${Number(item.override_final_bid ?? item.final_bid ?? 0).toFixed(2).replace(".", ",")}" aria-label="Valor unitário da proposta para ${escapeHtml(itemIdentity)}" />
+            <button class="commercial-budget-update" type="button" data-update-budget-value="${item.id}">Atualizar orçamento</button></td>
+          <td class="numeric"><strong data-item-quick-total="${item.id}">${formatCommercialMoney(lineTotal(item))}</strong></td>
+        </tr>
+        `;
+    }).join("");
+    return `<table class="commercial-proposal-items-table"><thead><tr><th><span class="sr-only">Incluir</span></th><th class="numeric">Nº</th><th>Item</th><th>Quantidade</th><th>Valor unitário</th><th class="numeric">Total</th></tr></thead><tbody>${rows}</tbody></table>`;
+  }
+
+  function renderItemEditors() {
+    const customColumns = state.editor.columns.filter((column) => column.is_custom);
+    return state.editor.items.sort((a, b) => a.position - b.position).map((item) => `
+      <article class="commercial-item-editor">
+        <h4>Item ${escapeHtml(item.item_number)} · ${escapeHtml(item.name || "Item sem nome")}</h4>
         <div class="commercial-proposal-item-grid">
           ${[
             ["technical_description", "Descrição Técnica", "textarea"],
@@ -279,41 +291,38 @@ export function createCommercialProposalsFeature({ getClient, getContext, toast,
           ].map(([field, label, type]) => `<label class="proposal-item-field ${field === "technical_description" ? "wide" : ""}">
             ${label}
             ${type === "textarea"
-              ? `<textarea rows="5" data-item-field="${field}" data-item-id="${item.id}">${escapeHtml(effectiveItemValue(item, field))}</textarea>`
+              ? `<textarea rows="4" data-item-field="${field}" data-item-id="${item.id}">${escapeHtml(effectiveItemValue(item, field))}</textarea>`
               : `<input type="${type}" ${type === "number" ? 'min="0" step="0.0001"' : ""} data-item-field="${field}" data-item-id="${item.id}" value="${escapeHtml(effectiveItemValue(item, field))}" />`}
-            <span class="proposal-permanent-option" tabindex="0" data-tooltip="Ao marcar este checkbox, esta informação também será salva no orçamento vinculado."><input type="checkbox" data-permanent-field="${field}" data-item-id="${item.id}" ${state.permanentFields.has(`${item.id}:${field}`) ? "checked" : ""} /> <span>Salvar esta informação permanentemente</span></span>
+                <span class="proposal-permanent-option"><input type="checkbox" data-permanent-field="${field}" data-item-id="${item.id}" ${state.permanentFields.has(`${item.id}:${field}`) ? "checked" : ""} /> <span>Salvar também no orçamento ao salvar</span></span>
           </label>`).join("")}
-          <label>Valor unitário desta proposta
-            <input data-final-bid data-item-id="${item.id}" inputmode="decimal" value="${Number(item.override_final_bid ?? item.final_bid ?? 0).toFixed(2).replace(".", ",")}" />
-            <span class="proposal-budget-update"><span class="table-secondary">O orçamento não será alterado.</span><button class="quiet-action compact-action" type="button" data-update-budget-value="${item.id}">Atualizar orçamento</button></span>
-          </label>
-          <label>Valor Total<input data-line-total readonly value="${formatCommercialMoney(lineTotal(item))}" /></label>
           ${customColumns.map((column) => {
             const value = state.editor.custom_values.find((entry) => entry.proposal_item_id === item.id && entry.proposal_column_id === column.id)?.value || "";
             return `<label>${escapeHtml(column.display_name)}<input data-custom-value data-item-id="${item.id}" data-column-id="${column.id}" value="${escapeHtml(value)}" /></label>`;
           }).join("")}
         </div>
-      </article>
-    `;
-    }).join("");
+      </article>`).join("");
   }
 
   function renderColumns() {
-    return state.editor.columns
-      .filter((column) => column.source_field !== "manufacturer")
-      .sort((a, b) => a.position - b.position).map((column, index) => `
+    const columns = state.editor.columns.filter((column) => column.source_field !== "manufacturer").sort((a, b) => a.position - b.position);
+    return columns.map((column, index) => {
+      const required = ["item_number", "technical_description"].includes(column.source_field);
+      const descriptionWidth = column.source_field === "technical_description";
+      return `
       <article class="commercial-column-row" data-drag-kind="column" data-drag-id="${column.id}">
-        <span class="drag-handle" draggable="true" role="button" tabindex="0" title="Arraste para reorganizar" aria-label="Arraste para reorganizar">⠿</span>
-        <label class="checkbox-line"><input type="checkbox" data-column-field="enabled" data-column-id="${column.id}" ${column.enabled ? "checked" : ""} /> Exibir</label>
+        <label class="checkbox-line"><input type="checkbox" data-column-field="enabled" data-column-id="${column.id}" ${column.enabled || required ? "checked" : ""} ${required ? "disabled" : ""} /> ${required ? "Obrigatória" : "Exibir"}</label>
         <label>Título visual<input data-column-field="display_name" data-column-id="${column.id}" value="${escapeHtml(column.display_name)}" /></label>
-        <label>Largura <span class="commercial-width-output">${Number(column.width)}%</span>
-          <input type="range" min="5" max="60" step="1" data-column-field="width" data-column-id="${column.id}" value="${Number(column.width)}" />
+        <label>${descriptionWidth ? "Largura da descrição técnica" : "Largura"} <span class="commercial-width-output">${Number(column.width)}%</span>
+          <input type="range" min="${descriptionWidth ? 28 : 5}" max="${descriptionWidth ? 62 : 60}" step="1" data-column-field="width" data-column-id="${column.id}" value="${Number(column.width)}" aria-label="${descriptionWidth ? "Largura da descrição técnica" : `Largura de ${escapeHtml(column.display_name)}`}" />
         </label>
-        <span class="status-pill">${column.is_custom ? "Personalizada" : escapeHtml(BUILTIN_FIELDS[column.source_field] || "Campo")}</span>
+        <span class="table-secondary">${column.is_custom ? "Personalizada" : escapeHtml(BUILTIN_FIELDS[column.source_field] || "Campo")}</span>
+        <div class="commercial-column-move">
+          <button type="button" data-move-column="${column.id}" data-direction="-1" aria-label="Mover ${escapeHtml(column.display_name)} para cima" ${index === 0 ? "disabled" : ""}>↑</button>
+          <button type="button" data-move-column="${column.id}" data-direction="1" aria-label="Mover ${escapeHtml(column.display_name)} para baixo" ${index === columns.length - 1 ? "disabled" : ""}>↓</button>
+        </div>
         ${column.is_custom ? `<button class="danger-action compact-action" type="button" data-remove-column="${column.id}" aria-label="Remover coluna">Remover</button>` : ""}
-        <span class="table-secondary">${index + 1}</span>
-      </article>
-    `).join("");
+      </article>`;
+    }).join("");
   }
 
   function sectionLabel(section) {
@@ -326,7 +335,8 @@ export function createCommercialProposalsFeature({ getClient, getContext, toast,
   }
 
   function renderSections() {
-    return state.editor.sections.sort((a, b) => a.position - b.position).map((section, index) => `
+    const inlineTextSection = primaryTextSection();
+    return state.editor.sections.filter((section) => section.id !== inlineTextSection?.id).sort((a, b) => a.position - b.position).map((section, index) => `
       <article class="commercial-section-row" data-drag-kind="section" data-drag-id="${section.id}">
         <div class="commercial-section-head">
           <span class="drag-handle" draggable="true" role="button" tabindex="0" title="Arraste para reorganizar" aria-label="Arraste para reorganizar">⠿</span>
@@ -347,71 +357,89 @@ export function createCommercialProposalsFeature({ getClient, getContext, toast,
   }
 
   function renderEditor() {
+    const expandedDetails = new Set([...root.querySelectorAll("details[data-proposal-details][open]")].map((details) => details.dataset.proposalDetails));
     const { proposal, bid, representatives, generations, price_history: priceHistory } = state.editor;
     const total = proposalTotal();
     const textSection = primaryTextSection();
-    const nextStepLabel = state.activeEditorTab === "proposal" ? "Continuar" : state.activeEditorTab === "commercial" ? "Conferir proposta" : "Finalizar proposta";
+    const representative = representatives.find((entry) => entry.id === proposal.representative_id);
     root.innerHTML = `
       <div class="page-heading commercial-proposal-editor-heading">
         <div><button class="quiet-action compact-action" type="button" data-proposal-action="back">← Todas as propostas</button>
-          <span class="eyebrow">EDITAL ${escapeHtml(bid.edital_number || bid.id)}</span>
-          <h1 id="commercialProposalsTitle">Proposta Comercial</h1>
-          <p>Construtor estruturado · <span data-dirty-marker>${state.dirty ? "Alterações não salvas" : "Todas as alterações salvas"}</span></p>
+          <span class="eyebrow">PROPOSTA COMERCIAL · ${escapeHtml(bid.edital_number || bid.id)}</span>
+          <h1 id="commercialProposalsTitle">Revise sua proposta</h1>
+          <p>Os itens e dados do edital já estão aqui. Confira o que será enviado. · <span data-dirty-marker>${state.dirty ? "Alterações não salvas" : "Todas as alterações salvas"}</span></p>
         </div>
         <div class="commercial-proposal-toolbar">
           <span class="status-pill proposal-status-${proposal.status}">${statusLabel(proposal.status)}</span>
           <button class="quiet-action" type="button" data-proposal-action="save">Salvar rascunho</button>
-          <button class="primary-action" type="button" data-proposal-action="next-step">${nextStepLabel} →</button>
         </div>
       </div>
       <nav class="declarations-tabs commercial-proposal-tabs" aria-label="Etapas da proposta">
-        <button class="${state.activeEditorTab === "proposal" ? "active" : ""}" type="button" data-proposal-tab="proposal" aria-selected="${state.activeEditorTab === "proposal"}">1. Itens</button>
-        <button class="${state.activeEditorTab === "commercial" ? "active" : ""}" type="button" data-proposal-tab="commercial" aria-selected="${state.activeEditorTab === "commercial"}">2. Dados comerciais</button>
-        <button class="${state.activeEditorTab === "review" ? "active" : ""}" type="button" data-proposal-tab="review" aria-selected="${state.activeEditorTab === "review"}">3. Conferir proposta</button>
+        <div class="commercial-stepper">
+          ${[["proposal", "Itens e edital"], ["commercial", "Dados comerciais"], ["review", "Conferir PDF"]].map(([key, label], index) => {
+            const activeIndex = ["proposal", "commercial", "review"].indexOf(state.activeEditorTab);
+            const complete = index < activeIndex;
+            return `<button class="commercial-step ${state.activeEditorTab === key ? "active" : ""} ${complete ? "complete" : ""}" type="button" data-proposal-tab="${key}" aria-current="${state.activeEditorTab === key ? "step" : "false"}" aria-label="Etapa ${index + 1}: ${label}"><span class="commercial-step-dot">${complete ? "✓" : index + 1}</span><span class="commercial-step-name">${label}</span></button>`;
+          }).join("")}
+        </div>
         <details class="commercial-proposal-more"><summary>Mais opções</summary><div><button type="button" data-proposal-tab="settings">Configuração do PDF</button><button type="button" data-proposal-tab="history">Histórico</button></div></details>
       </nav>
       <div class="commercial-proposal-workspace">
         <main class="commercial-proposal-editor-column">
       <div class="commercial-proposal-tab-panel ${state.activeEditorTab === "commercial" ? "" : "hidden"}" data-proposal-panel="commercial">
       <section class="section-band commercial-builder-section">
-        <div class="section-heading"><div><h2>Informações da proposta</h2><p>Os dados do edital identificam a proposta, mas não são inseridos automaticamente no documento.</p></div></div>
+        <h2>Dados comerciais</h2><p class="commercial-section-intro">Confira as informações que serão usadas no documento.</p>
         <div class="form-grid commercial-proposal-general-grid">
-          <label>Data da proposta<input type="date" data-proposal-field="proposal_date" value="${proposal.proposal_date || todayInSaoPaulo()}" /></label>
           <label>Representante da proposta<select data-proposal-field="representative_id"><option value="">Sem representante</option>
             ${representatives.map((representative) => `<option value="${representative.id}" ${representative.id === proposal.representative_id ? "selected" : ""}>${escapeHtml(representative.name)} · ${escapeHtml(representative.position || "Representante legal")}</option>`).join("")}
           </select></label>
           <label>Prazo de entrega<input data-proposal-field="delivery_term" value="${escapeHtml(proposal.delivery_term)}" /></label>
           <label>Validade da proposta<input data-proposal-field="proposal_validity" value="${escapeHtml(proposal.proposal_validity)}" /></label>
           <label class="full-span">Condições de pagamento<input data-proposal-field="payment_terms" value="${escapeHtml(proposal.payment_terms)}" /></label>
-          <label class="proposal-switch"><input type="checkbox" role="switch" data-proposal-field="show_total_in_words" ${proposal.show_total_in_words ? "checked" : ""} /><span class="proposal-switch-control" aria-hidden="true"></span><span>Exibir valor total por extenso</span></label>
         </div>
+        <p class="table-secondary">Razão social, CNPJ e dados da assinatura vêm do cadastro da empresa. Data da proposta: <strong>${formatDate(proposal.proposal_date || todayInSaoPaulo())}</strong>.</p>
       </section>
       <section class="section-band commercial-builder-section">
-        <div class="section-heading"><div><h2>Texto adicional</h2><p>Inclua declarações ou informações complementares no documento.</p></div></div>
-        <label>Título do texto<input data-section-field="title" data-section-id="${textSection.id}" placeholder="Ex.: Declaração de cumprimento dos requisitos" value="${escapeHtml(textSection.title || "")}" /></label>
-        <label class="full-span">Texto adicional<textarea rows="5" data-section-field="content" data-section-id="${textSection.id}" placeholder="Digite o texto que será incluído na proposta">${escapeHtml(textSection.content || "")}</textarea></label>
+        <h2>O que aparecerá no PDF</h2><p class="commercial-section-intro">Usaremos o modelo padrão da empresa. Os detalhes opcionais ficam em personalização.</p>
+        <label class="checkbox-line"><input type="checkbox" role="switch" data-proposal-field="show_total_in_words" ${proposal.show_total_in_words ? "checked" : ""} /> Incluir valor total por extenso</label>
+        <details class="commercial-proposal-more commercial-document-options" data-proposal-details="document"><summary>Personalizar documento (opcional)</summary><div class="commercial-advanced-content">
+          <section><h3>Identidade visual e assinatura</h3><p>A logo e a marca-d’água cadastradas para a empresa aparecem sempre na proposta.</p>
+            <label class="checkbox-line"><input type="checkbox" data-visual-field="footer_all_pages" ${proposal.visual_config?.footer_all_pages !== false ? "checked" : ""} /> Exibir rodapé em todas as páginas</label>
+            <label class="full-span">Texto do rodapé<input data-visual-field="footer_text" value="${escapeHtml(proposal.visual_config?.footer_text || "")}" placeholder="Telefone, e-mail, razão social ou outro texto" /></label>
+          </section>
+          <section><h3>Conteúdo adicional</h3><label>Título do texto (opcional)<input data-section-field="title" data-section-id="${textSection.id}" placeholder="Ex.: Declarações" autocomplete="off" value="${escapeHtml(textSection.title || "")}" /></label>
+            <label class="full-span">Texto adicional (opcional)<textarea rows="5" data-section-field="content" data-section-id="${textSection.id}" placeholder="Inclua declarações, condições específicas ou outros textos para a proposta.">${escapeHtml(textSection.content || "")}</textarea></label>
+            <p class="table-secondary">O texto aparecerá no documento depois da tabela de itens.</p>
+          </section>
+        </div></details>
       </section>
+      <div class="commercial-proposal-step-actions"><button class="quiet-action" type="button" data-proposal-action="previous-step">← Voltar aos itens</button><button class="primary-action" type="button" data-proposal-action="next-step">Pré-visualizar PDF <span aria-hidden="true">→</span></button></div>
       </div>
       <div class="commercial-proposal-tab-panel ${state.activeEditorTab === "proposal" ? "" : "hidden"}" data-proposal-panel="proposal">
-      <section class="section-band commercial-builder-section">
-        <div class="section-heading"><div><h2>Itens da proposta</h2><p>Edite os itens e valores desta proposta; o orçamento só muda se você solicitar.</p></div>
-          <div class="button-row"><button class="quiet-action compact-action" type="button" data-proposal-action="select-all">Selecionar todos</button>
-          <button class="quiet-action compact-action" type="button" data-proposal-action="clear-selection">Limpar seleção</button></div>
-        </div>
-        <div class="commercial-proposal-items">${renderItemRows()}</div>
+      <section class="section-band commercial-builder-section commercial-edital-section">
+        <h2>Edital</h2><p>A proposta ficará vinculada a este edital e ao orçamento correspondente.</p>
+        <div class="form-grid"><label>Edital<input value="${escapeHtml(bid.edital_number || bid.id)} · ${escapeHtml(bid.agency || "Órgão não informado")}" readonly /></label>
+          <label>Data da proposta<input type="date" data-proposal-field="proposal_date" value="${proposal.proposal_date || todayInSaoPaulo()}" /></label></div>
       </section>
+      <section class="section-band commercial-builder-section">
+        <div class="commercial-items-intro"><div><h2>Itens incluídos</h2><p><span data-selected-count>${selectedItems().length}</span> de ${state.editor.items.length} itens do orçamento · você pode retirar os que não entram nesta proposta.</p></div>
+          <button class="quiet-action compact-action" type="button" data-proposal-action="toggle-selection">${selectedItems().length === state.editor.items.length ? "Desmarcar todos" : "Selecionar todos"}</button></div>
+        <div class="commercial-proposal-items">${renderItemRows()}</div>
+        <div class="commercial-data-note"><span class="commercial-info-dot" aria-hidden="true">i</span><span>Os valores desta proposta são separados do orçamento. Atualize o orçamento somente se quiser reutilizar os novos valores em outros cálculos.</span></div>
+        <details class="commercial-proposal-more commercial-customize-proposal" data-proposal-details="customize"><summary>Personalizar esta proposta</summary><div class="commercial-advanced-content">
+          <section><h3>Descrição técnica dos itens</h3><p>Descrições longas são incluídas no PDF e podem ser ajustadas sem cortar o texto.</p>${renderItemEditors()}</section>
+          <section><div class="section-heading"><div><h3>Colunas do PDF</h3><p>Ative, reordene e ajuste a largura da descrição técnica.</p></div><button class="quiet-action compact-action" type="button" data-proposal-action="add-column">＋ Coluna personalizada</button></div>
+            <div class="commercial-column-list">${renderColumns()}</div><p class="table-secondary">O número do item e a descrição técnica permanecem no documento.</p>
+          </section>
+        </div></details>
+      </section>
+      <div class="commercial-proposal-step-actions"><button class="quiet-action" type="button" data-proposal-action="back">Cancelar</button><div class="button-row"><button class="quiet-action" type="button" data-proposal-action="save">Salvar rascunho</button><button class="primary-action" type="button" data-proposal-action="next-step">Continuar <span aria-hidden="true">→</span></button></div></div>
       </div>
       <div class="commercial-proposal-tab-panel ${state.activeEditorTab === "review" ? "" : "hidden"}" data-proposal-panel="review">
-        <section class="section-band commercial-builder-section"><div class="section-heading"><div><h2>Confira sua proposta</h2><p>Revise o documento antes de gerar o PDF. A logo e a marca-d’água da empresa serão aplicadas automaticamente.</p></div></div>
-          <div class="button-row"><button class="quiet-action" type="button" data-proposal-action="preview">Pré-visualizar PDF</button><button class="primary-action" type="button" data-proposal-action="download">Gerar e baixar PDF</button></div>
-        </section>
+        <section class="commercial-proposal-review-preview"><iframe id="commercialProposalReviewFrame" title="Pré-visualização da proposta em PDF"></iframe></section>
+        <div class="commercial-proposal-step-actions"><button class="quiet-action" type="button" data-proposal-action="previous-step">← Voltar aos dados</button><span class="table-secondary">A geração salva esta versão no histórico da proposta.</span></div>
       </div>
       <div class="commercial-proposal-tab-panel ${state.activeEditorTab === "settings" ? "" : "hidden"}" data-proposal-panel="settings">
-      <section class="section-band commercial-builder-section">
-        <div class="section-heading"><div><h2>Colunas da tabela</h2><p>Ative, renomeie, dimensione e arraste as colunas para definir o PDF.</p></div>
-          <button class="quiet-action" type="button" data-proposal-action="add-column">＋ Coluna personalizada</button></div>
-        <div class="commercial-column-list">${renderColumns()}</div>
-      </section>
       <section class="section-band commercial-builder-section">
         <div class="section-heading"><div><h2>Estrutura do documento</h2><p>Arraste seções, condições, tabela, assinatura e blocos de texto.</p></div>
           <button class="quiet-action" type="button" data-proposal-action="add-text">＋ Bloco de Texto</button></div>
@@ -443,19 +471,29 @@ export function createCommercialProposalsFeature({ getClient, getContext, toast,
       </section>
       </div>
         </main>
-        <aside class="commercial-proposal-summary-column">
-          <section class="section-band declaration-summary-card commercial-proposal-summary-card">
-            <span class="eyebrow">RESUMO</span>
-            <h2>Proposta pronta para conferência</h2>
-            <dl>
-              <div><dt>Itens selecionados</dt><dd>${selectedItems().length}</dd></div>
-              <div><dt>Valor total</dt><dd data-proposal-total>${formatCommercialMoney(total)}</dd></div>
-              <div><dt>Saída</dt><dd>PDF A4</dd></div>
-            </dl>
-            <p class="commercial-proposal-total-words">${moneyInWords(total)}</p>
-            <button class="quiet-action full-action" type="button" data-proposal-action="preview">Pré-visualizar</button>
-            <button class="primary-action full-action" type="button" data-proposal-action="download">Gerar PDF</button>
-          </section>
+        <aside class="commercial-proposal-summary-column ${["settings", "history"].includes(state.activeEditorTab) ? "hidden" : ""}">
+          ${state.activeEditorTab === "review" ? `
+            <section class="section-band declaration-summary-card commercial-proposal-summary-card commercial-final-check">
+              <h2>Conferência final</h2><p>Confira o documento. Volte para ajustar qualquer informação antes de gerar.</p>
+              <ul><li>Edital e órgão identificados</li><li>${selectedItems().length} ${selectedItems().length === 1 ? "item incluído" : "itens incluídos"}</li><li>Total de ${formatCommercialMoney(total)}</li><li>${representative ? "Representante preenchido" : "Representante não informado"}</li></ul>
+              <button class="primary-action full-action" type="button" data-proposal-action="download">Gerar PDF</button>
+              <button class="quiet-action full-action" type="button" data-proposal-action="previous-step">← Voltar aos dados</button>
+            </section>` : `
+            <section class="section-band declaration-summary-card commercial-proposal-summary-card">
+              <h2>${state.activeEditorTab === "proposal" ? "Resumo da proposta" : "Resumo"}</h2>
+              <p>${state.activeEditorTab === "proposal" ? "Atualizado conforme os itens selecionados." : "Confira os dados antes de visualizar."}</p>
+              ${state.activeEditorTab === "proposal" ? `
+                <div class="sum-row"><span>Itens incluídos</span><b data-selected-count>${selectedItems().length}</b></div>
+                <div class="sum-row"><span>Valor total</span><b class="sum-total" data-proposal-total>${formatCommercialMoney(total)}</b></div>
+                <div class="sum-row"><span>Documento</span><b>PDF A4</b></div>
+                <button class="primary-action full-action" type="button" data-proposal-action="next-step">Continuar</button>
+                <p class="hint">Você poderá voltar e ajustar os itens antes de gerar o PDF.</p>` : `
+                <div class="sum-row"><span>Edital</span><b>${escapeHtml(bid.edital_number || bid.id)}</b></div>
+                <div class="sum-row"><span>Representante</span><b>${escapeHtml(representative?.name || "Não informado")}</b></div>
+                <div class="sum-row"><span>Itens</span><b>${selectedItems().length}</b></div>
+                <div class="sum-row"><span>Valor total</span><b class="sum-total" data-proposal-total>${formatCommercialMoney(total)}</b></div>
+                <button class="primary-action full-action" type="button" data-proposal-action="next-step">Pré-visualizar PDF</button>`}
+            </section>`}
         </aside>
       </div>
       <dialog id="commercialProposalPreviewDialog" class="declaration-preview-modal" aria-labelledby="commercialProposalPreviewTitle">
@@ -486,6 +524,9 @@ export function createCommercialProposalsFeature({ getClient, getContext, toast,
         </div>
       </dialog>
     `;
+    root.querySelectorAll("details[data-proposal-details]").forEach((details) => {
+      details.open = expandedDetails.has(details.dataset.proposalDetails);
+    });
   }
 
   function requestDiscardChanges(action, onCancel) {
@@ -518,6 +559,8 @@ export function createCommercialProposalsFeature({ getClient, getContext, toast,
     state.editor = await rpc("get_commercial_proposal_editor", { p_proposal_id: id });
     state.editor.columns.forEach((column) => {
       if (column.source_field === "manufacturer") column.enabled = false;
+      if (["item_number", "technical_description"].includes(column.source_field)) column.enabled = true;
+      if (column.source_field === "technical_description" && (Number(column.width) < 28 || Number(column.width) > 62)) column.width = 42;
       if (column.source_field === "brand" && /^marca$/i.test(column.display_name || "")) column.display_name = "MARCA / FABRICANTE";
     });
     if (!state.editor.columns.some((column) => column.enabled)) {
@@ -532,7 +575,8 @@ export function createCommercialProposalsFeature({ getClient, getContext, toast,
     state.editor.sections.sort((a, b) => a.position - b.position).forEach((section, index) => { section.position = index; });
     state.dirty = false;
     state.activeEditorTab = "proposal";
-    state.collapsedItems = new Set(state.editor.items.filter((item) => item.selected).map((item) => item.id));
+    state.itemQuery = "";
+    state.collapsedItems = new Set(state.editor.items.map((item) => item.id));
     state.permanentFields = new Set();
     renderEditor();
   }
@@ -592,6 +636,7 @@ export function createCommercialProposalsFeature({ getClient, getContext, toast,
   }
 
   async function saveProposal(finalize = false) {
+    const returnTab = state.activeEditorTab;
     if (finalize) validateForDocument();
     const defaultSectionIds = [...root.querySelectorAll("[data-save-default-section]:checked")].map((input) => input.dataset.saveDefaultSection);
     for (const sectionId of defaultSectionIds) {
@@ -627,6 +672,11 @@ export function createCommercialProposalsFeature({ getClient, getContext, toast,
     state.permanentFields.clear();
     state.dirty = false;
     await openEditor(state.editor.proposal.id);
+    if (returnTab !== "proposal") {
+      state.activeEditorTab = returnTab;
+      renderEditor();
+      if (returnTab === "review") await renderReviewPreview();
+    }
     toast(finalize ? "Proposta finalizada." : "Rascunho salvo.");
   }
 
@@ -1070,15 +1120,26 @@ export function createCommercialProposalsFeature({ getClient, getContext, toast,
     return doc;
   }
 
-  async function previewPdf() {
+  async function renderPdfPreview(frame) {
     const doc = await buildPdf();
     if (state.previewUrl) URL.revokeObjectURL(state.previewUrl);
     state.previewUrl = URL.createObjectURL(doc.output("blob"));
-    root.querySelector("#commercialProposalPreviewFrame").src = state.previewUrl;
+    if (frame) frame.src = state.previewUrl;
+    return state.previewUrl;
+  }
+
+  async function previewPdf() {
+    await renderPdfPreview(root.querySelector("#commercialProposalPreviewFrame"));
     root.querySelector("#commercialProposalPreviewDialog").showModal();
   }
 
+  async function renderReviewPreview() {
+    const frame = root.querySelector("#commercialProposalReviewFrame");
+    if (frame) await renderPdfPreview(frame);
+  }
+
   async function generateAndDownload() {
+    const returnToReview = state.activeEditorTab === "review";
     if (state.dirty) await saveProposal(false);
     const doc = await buildPdf();
     const blob = doc.output("blob");
@@ -1093,6 +1154,11 @@ export function createCommercialProposalsFeature({ getClient, getContext, toast,
     });
     doc.save(commercialProposalFileName(state.editor.bid.edital_number || state.editor.bid.id));
     await openEditor(state.editor.proposal.id);
+    if (returnToReview) {
+      state.activeEditorTab = "review";
+      renderEditor();
+      await renderReviewPreview();
+    }
     toast("PDF gerado e registrado no histórico.");
   }
 
@@ -1107,8 +1173,29 @@ export function createCommercialProposalsFeature({ getClient, getContext, toast,
   }
 
   root.addEventListener("input", (event) => {
-    if (!state.editor) return;
     const target = event.target;
+    if (target.matches("[data-proposal-list-search]")) {
+      state.listQuery = target.value;
+      const query = state.listQuery.trim().toLocaleLowerCase("pt-BR");
+      root.querySelectorAll(".commercial-proposal-list-card").forEach((card) => {
+        card.hidden = (state.listStatus !== "all" && card.dataset.status !== state.listStatus)
+          || !card.dataset.searchText.toLocaleLowerCase("pt-BR").includes(query);
+      });
+      const empty = root.querySelector("[data-list-search-empty]");
+      if (empty) empty.hidden = [...root.querySelectorAll(".commercial-proposal-list-card")].some((card) => !card.hidden);
+      return;
+    }
+    if (!state.editor) return;
+    if (target.matches("[data-item-search]")) {
+      state.itemQuery = target.value;
+      const query = state.itemQuery.trim().toLocaleLowerCase("pt-BR");
+      root.querySelectorAll(".commercial-proposal-item").forEach((item) => {
+        item.hidden = !item.dataset.searchText.toLocaleLowerCase("pt-BR").includes(query);
+      });
+      const empty = root.querySelector("[data-item-search-empty]");
+      if (empty) empty.hidden = !query || [...root.querySelectorAll(".commercial-proposal-item")].some((item) => !item.hidden);
+      return;
+    }
     if (target.matches("[data-final-bid]")) {
       const item = state.editor.items.find((entry) => entry.id === target.dataset.itemId);
       const value = Number(String(target.value).replace(/\./g, "").replace(",", "."));
@@ -1116,8 +1203,9 @@ export function createCommercialProposalsFeature({ getClient, getContext, toast,
       item.override_final_bid = value;
       markDirty();
       root.querySelectorAll("[data-proposal-total]").forEach((node) => { node.textContent = formatCommercialMoney(proposalTotal()); });
-      const totalInput = target.closest(".commercial-proposal-item")?.querySelector("[data-line-total]");
-      if (totalInput) totalInput.value = formatCommercialMoney(lineTotal(item));
+      root.querySelectorAll("[data-proposal-total-words]").forEach((node) => { node.textContent = moneyInWords(proposalTotal()); });
+      const quickTotal = root.querySelector(`[data-item-quick-total="${CSS.escape(item.id)}"]`);
+      if (quickTotal) quickTotal.textContent = formatCommercialMoney(lineTotal(item));
       return;
     }
     if (target.dataset.proposalField) {
@@ -1143,6 +1231,7 @@ export function createCommercialProposalsFeature({ getClient, getContext, toast,
       const key = `${target.dataset.itemId}:${target.dataset.permanentField}`;
       if (target.checked) state.permanentFields.add(key);
       else state.permanentFields.delete(key);
+      markDirty();
       return;
     }
     if (target.dataset.itemField) {
@@ -1159,6 +1248,18 @@ export function createCommercialProposalsFeature({ getClient, getContext, toast,
         item[overrideField] = field === "quantity" ? (target.value === "" ? null : Number(target.value)) : target.value;
       }
       markDirty();
+      if (["quantity", "unit"].includes(field)) {
+        const quantity = root.querySelector(`[data-item-quick-quantity="${CSS.escape(item.id)}"]`);
+        const quickTotal = root.querySelector(`[data-item-quick-total="${CSS.escape(item.id)}"]`);
+        if (quantity) quantity.textContent = `${effectiveItemValue(item, "quantity")} ${effectiveItemValue(item, "unit")}`;
+        if (quickTotal) quickTotal.textContent = formatCommercialMoney(lineTotal(item));
+        root.querySelectorAll("[data-proposal-total]").forEach((node) => { node.textContent = formatCommercialMoney(proposalTotal()); });
+        root.querySelectorAll("[data-proposal-total-words]").forEach((node) => { node.textContent = moneyInWords(proposalTotal()); });
+      }
+      if (["brand", "model"].includes(field)) {
+        const subtitle = root.querySelector(`[data-item-quick-subtitle="${CSS.escape(item.id)}"]`);
+        if (subtitle) subtitle.textContent = [effectiveItemValue(item, "brand"), effectiveItemValue(item, "model")].filter(Boolean).join(" · ") || "Marca ou modelo não informado";
+      }
       return;
     }
     if (target.dataset.customValue !== undefined) {
@@ -1242,6 +1343,14 @@ export function createCommercialProposalsFeature({ getClient, getContext, toast,
       state.editor.custom_values = state.editor.custom_values.filter((value) => value.proposal_column_id !== removeColumn.dataset.removeColumn);
       markDirty(); renderEditor(); return;
     }
+    const moveColumnButton = event.target.closest("[data-move-column]");
+    if (moveColumnButton) {
+      const columns = state.editor.columns.filter((column) => column.source_field !== "manufacturer").sort((a, b) => a.position - b.position);
+      const index = columns.findIndex((column) => column.id === moveColumnButton.dataset.moveColumn);
+      const targetIndex = index + Number(moveColumnButton.dataset.direction);
+      if (targetIndex >= 0 && targetIndex < columns.length) moveRecord("column", columns[index].id, columns[targetIndex].id);
+      return;
+    }
     const removeSection = event.target.closest("[data-remove-section]");
     if (removeSection) {
       state.editor.sections = state.editor.sections.filter((section) => section.id !== removeSection.dataset.removeSection);
@@ -1249,8 +1358,27 @@ export function createCommercialProposalsFeature({ getClient, getContext, toast,
     }
     const tab = event.target.closest("[data-proposal-tab]");
     if (tab) {
-      state.activeEditorTab = tab.dataset.proposalTab;
+      const target = tab.dataset.proposalTab;
+      const steps = ["proposal", "commercial", "review"];
+      if (steps.includes(target)) {
+        const currentIndex = steps.indexOf(state.activeEditorTab);
+        const targetIndex = steps.indexOf(target);
+        if (targetIndex > currentIndex + 1) return;
+        if (target === "commercial" && !selectedItems().length) return toast("Selecione ao menos um item para continuar.", "error");
+        if (target === "review") {
+          try { validateForDocument(); }
+          catch (error) { return toast(error.message, "error"); }
+        }
+      }
+      state.activeEditorTab = target;
       renderEditor();
+      if (target === "review") runBusy(renderReviewPreview, "Preparando pré-visualização…").catch((error) => toast(error.message, "error"));
+      return;
+    }
+    const filter = event.target.closest("[data-proposal-filter]");
+    if (filter) {
+      state.listStatus = filter.dataset.proposalFilter;
+      renderList();
       return;
     }
     const itemToggle = event.target.closest("[data-toggle-item]");
@@ -1276,9 +1404,27 @@ export function createCommercialProposalsFeature({ getClient, getContext, toast,
     if (action === "save") return void runBusy(() => saveProposal(false), "Salvando rascunho…").catch((error) => toast(error.message, "error"));
     if (action === "finalize") return void runBusy(() => saveProposal(true), "Finalizando proposta…").catch((error) => toast(error.message, "error"));
     if (action === "next-step") {
-      if (state.activeEditorTab === "proposal") state.activeEditorTab = "commercial";
-      else if (state.activeEditorTab === "commercial") state.activeEditorTab = "review";
+      if (state.activeEditorTab === "settings" || state.activeEditorTab === "history") {
+        state.activeEditorTab = "proposal";
+        renderEditor();
+        return;
+      }
+      if (state.activeEditorTab === "proposal") {
+        if (!selectedItems().length) return toast("Selecione ao menos um item para continuar.", "error");
+        state.activeEditorTab = "commercial";
+      }
+      else if (state.activeEditorTab === "commercial") {
+        try { validateForDocument(); }
+        catch (error) { return toast(error.message, "error"); }
+        state.activeEditorTab = "review";
+      }
       else return void runBusy(() => saveProposal(true), "Finalizando proposta…").catch((error) => toast(error.message, "error"));
+      renderEditor();
+      if (state.activeEditorTab === "review") runBusy(renderReviewPreview, "Preparando pré-visualização…").catch((error) => toast(error.message, "error"));
+      return;
+    }
+    if (action === "previous-step") {
+      state.activeEditorTab = state.activeEditorTab === "review" ? "commercial" : "proposal";
       renderEditor();
       return;
     }
@@ -1288,11 +1434,11 @@ export function createCommercialProposalsFeature({ getClient, getContext, toast,
     if (action === "add-column") return root.querySelector("#commercialCustomColumnDialog").showModal();
     if (action === "add-text") return addTextBlock();
     if (action === "settings-from-review") { state.activeEditorTab = "settings"; renderEditor(); return; }
-    if (action === "select-all" || action === "clear-selection") {
+    if (action === "toggle-selection") {
+      const shouldSelect = selectedItems().length !== state.editor.items.length;
       state.editor.items.forEach((item) => {
-        item.selected = action === "select-all";
-        if (item.selected) state.collapsedItems.add(item.id);
-        else state.collapsedItems.delete(item.id);
+        item.selected = shouldSelect;
+        state.collapsedItems.add(item.id);
       });
       markDirty(); renderEditor();
     }
@@ -1382,7 +1528,8 @@ export function createCommercialProposalsFeature({ getClient, getContext, toast,
     pendingDiscardRequest = null;
     Object.assign(state, {
       loaded: false, list: [], bids: [], editor: null, dirty: false, previewUrl: "", dragged: null,
-      activeEditorTab: "proposal", collapsedItems: new Set(), permanentFields: new Set(),
+        activeEditorTab: "proposal", listQuery: "", listStatus: "all", itemQuery: "",
+        collapsedItems: new Set(), permanentFields: new Set(),
     });
     root.innerHTML = "";
   }

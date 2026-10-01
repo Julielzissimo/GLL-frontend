@@ -194,7 +194,10 @@ const refs = {
   currentBidCreatorTag: $("currentBidCreatorTag"),
   currentBidAgency: $("currentBidAgency"),
   usersPage: $("usersPage"),
-  userCreatePanel: $("userCreatePanel"),
+  userCreateOpenButton: $("userCreateOpenButton"),
+  userCreateDialog: $("userCreateDialog"),
+  closeUserCreateDialogButton: $("closeUserCreateDialogButton"),
+  cancelUserCreateButton: $("cancelUserCreateButton"),
   userCreateForm: $("userCreateForm"),
   userCreateFullName: $("userCreateFullName"),
   userCreateDisplayName: $("userCreateDisplayName"),
@@ -1798,7 +1801,7 @@ function applyEnvironmentConfig() {
   refs.authClientVersion.textContent = hasSupabaseConfig() ? `Supabase JS ${SUPABASE_CLIENT_VERSION}` : "Autenticação local demonstrativa";
   refs.resetDataButton.classList.toggle("hidden", hasSupabaseConfig());
   refs.loginHint.classList.toggle("hidden", hasSupabaseConfig());
-  refs.userCreatePanel.classList.toggle("hidden", !hasSupabaseConfig());
+  refs.userCreateOpenButton.classList.toggle("hidden", !hasSupabaseConfig());
   const suppliersEnabled = GLL_CONFIG.suppliersEnabled !== false;
   refs.navSuppliersButton.disabled = !suppliersEnabled;
   refs.navSuppliersButton.classList.toggle("nav-link-disabled", !suppliersEnabled);
@@ -1869,6 +1872,7 @@ function withBlockingLoading(operation, message) {
 }
 
 function bindEvents() {
+  bindPasswordVisibility();
   refs.toastDismissButton.innerHTML = GLLDesignSystem.ICONS.close;
   refs.toastDismissButton.addEventListener("click", () => {
     clearTimeout(toastTimer);
@@ -1908,6 +1912,16 @@ function bindEvents() {
   refs.loginForm.addEventListener("submit", withBlockingLoading(handleLogin, "Entrando no sistema…"));
   refs.passwordResetForm.addEventListener("submit", withBlockingLoading(handlePasswordReset, "Atualizando sua senha…"));
   refs.passwordResetSignOutButton.addEventListener("click", logout);
+  refs.userCreateOpenButton.addEventListener("click", openUserCreateDialog);
+  refs.closeUserCreateDialogButton.addEventListener("click", closeUserCreateDialog);
+  refs.cancelUserCreateButton.addEventListener("click", closeUserCreateDialog);
+  refs.userCreateDialog.addEventListener("cancel", (event) => {
+    event.preventDefault();
+    closeUserCreateDialog();
+  });
+  refs.userCreateDialog.addEventListener("click", (event) => {
+    if (event.target === refs.userCreateDialog) closeUserCreateDialog();
+  });
   refs.userCreateForm.addEventListener("submit", withBlockingLoading(handleUserCreate, "Cadastrando usuário…"));
   window.addEventListener("popstate", () => {
     if (appState.authenticated) applyNavigationRoute();
@@ -2102,6 +2116,30 @@ function bindEvents() {
   refs.requiredQuantity.addEventListener("input", updateItemProfit);
 }
 
+function bindPasswordVisibility() {
+  document.querySelectorAll("[data-password-toggle]").forEach((button) => {
+    const input = $(button.dataset.passwordToggle);
+    if (!input) return;
+    button.addEventListener("click", () => {
+      const showPassword = input.type === "password";
+      input.type = showPassword ? "text" : "password";
+      button.setAttribute("aria-pressed", String(showPassword));
+      button.setAttribute("aria-label", showPassword ? "Ocultar senha" : "Mostrar senha");
+    });
+  });
+
+  document.querySelectorAll("form").forEach((form) => {
+    form.addEventListener("reset", () => {
+      form.querySelectorAll("[data-password-toggle]").forEach((button) => {
+        const input = $(button.dataset.passwordToggle);
+        if (input) input.type = "password";
+        button.setAttribute("aria-pressed", "false");
+        button.setAttribute("aria-label", "Mostrar senha");
+      });
+    });
+  });
+}
+
 async function handleLogin(event) {
   event.preventDefault();
   setLoginMessage("");
@@ -2165,6 +2203,21 @@ async function returnToLoginAfterPasswordReset() {
   }
 }
 
+function openUserCreateDialog() {
+  refs.userCreateError.textContent = "";
+  refs.userCreateDialog.showModal();
+  refs.userCreateFullName.focus();
+}
+
+function closeUserCreateDialog() {
+  refs.userCreateForm.reset();
+  refs.userCreateError.textContent = "";
+  if (refs.userCreateDialog.open) refs.userCreateDialog.close();
+  if (refs.userCreateOpenButton.getClientRects().length) {
+    refs.userCreateOpenButton.focus({ preventScroll: true });
+  }
+}
+
 async function handleUserCreate(event) {
   event.preventDefault();
   refs.userCreateError.textContent = "";
@@ -2180,9 +2233,13 @@ async function handleUserCreate(event) {
       temporaryPassword: refs.userCreatePassword.value,
       role: refs.userCreateRole.value,
     });
-    refs.userCreateForm.reset();
-    await reloadData();
+    closeUserCreateDialog();
     showToast("Usuário cadastrado. A troca de senha será obrigatória no primeiro acesso.");
+    try {
+      await reloadData();
+    } catch (error) {
+      showToast(`Usuário cadastrado, mas não foi possível atualizar a lista: ${error.message}`, "error");
+    }
   } catch (error) {
     refs.userCreateError.textContent = error.message;
   }
