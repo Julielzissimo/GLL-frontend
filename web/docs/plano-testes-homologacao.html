@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="Plano de testes do GLL para selecionar a regressão proporcional às funcionalidades afetadas em cada implantação de homologação.">
   <meta name="robots" content="noindex, nofollow">
-  <meta name="source-sha256" content="cc2a452fab01a8fb9c5ce9f001ec02331447f7dff521f15556e0d04553f4647c">
+  <meta name="source-sha256" content="634386eb7cb2fae0a96a624454eac738fc8e819a8c1b195253d02f5a0de27195">
   <title>Plano de Testes de Homologação — GLL</title>
   <style>
     :root{color-scheme:light;--ink:#1c3044;--muted:#526476;--blue:#1558a0;--line:#d8e1ea;--soft:#eef4fa}
@@ -56,11 +56,11 @@
 <tbody>
 <tr>
 <td>Versão</td>
-<td>1.0</td>
+<td>1.1</td>
 </tr>
 <tr>
 <td>Data-base</td>
-<td>28/09/2026</td>
+<td>30/09/2026</td>
 </tr>
 <tr>
 <td>Ambiente-alvo</td>
@@ -83,6 +83,7 @@
 <li>Execute sempre a suíte <code>CORE</code>. Execute também todos os casos dos domínios marcados e os casos indicados na coluna <strong>Regressão associada</strong>.</li>
 <li>Para mudanças de banco, execute <code>DB</code>, <code>ACL</code> e os domínios que leem ou gravam as tabelas/funções afetadas. Para mudanças em componentes ou estilos compartilhados, execute <code>NAV</code>, <code>UX</code> e todos os módulos consumidores.</li>
 <li>Registre resultado, evidência e defeito por ID de caso. Um caso é <code>Aprovado</code>, <code>Reprovado</code>, <code>Bloqueado</code> ou <code>Não aplicável</code>, sempre com justificativa nos dois últimos estados.</li>
+<li>Mantenha separado o resultado dos testes automatizados, das verificações de banco e da validação funcional manual. Testes com serviços simulados não comprovam RLS, Storage ou operação do Supabase real.</li>
 <li>Não promova para produção enquanto houver falha P0/P1, migração não comprovada, divergência de manifesto ou caso selecionado sem resultado.</li>
 </ol>
 <h3 id="selecao-rapida-por-tipo-de-alteracao">1.1 Seleção rápida por tipo de alteração</h3>
@@ -148,6 +149,14 @@
 </tr>
 </tbody>
 </table></div>
+<h3 id="o-que-cada-barreira-comprova">1.2 O que cada barreira comprova</h3>
+<ul>
+<li><code>npm test</code> executa os testes automatizados do frontend. Eles usam serviços simulados e verificam regras e estados isolados; não substituem testes de integração com o Supabase real.</li>
+<li>O workflow de publicação do frontend valida os commits do manifesto, executa <code>npm test</code>, gera os builds de produção e homologação, publica o Pages e confere o commit em <code>deployment.json</code>.</li>
+<li>O workflow <code>Validar integridade da promoção</code> compara os manifestos e verifica commits e migrações; também executa os testes unitários do verificador. Isso não testa a interface nem substitui a validação funcional na URL.</li>
+<li>Para alterações de banco, o workflow Supabase é acionado manualmente. O <code>dry-run</code>, aplicação, histórico de migrações e resposta do serviço devem constar na evidência. A resposta de saúde <code>200</code> ou <code>401</code> comprova disponibilidade do endpoint, não o funcionamento dos fluxos do GLL.</li>
+<li>Storybook é uma verificação local complementar para mudanças de componentes/design system. Sua compilação não é uma barreira do workflow de publicação.</li>
+</ul>
 <h2 id="criticidade-e-profundidade">2. Criticidade e profundidade</h2>
 <div class="table-scroll" tabindex="0" role="region" aria-label="Tabela com rolagem horizontal"><table>
 <thead>
@@ -397,8 +406,8 @@
 <tr>
 <td>CORE-06</td>
 <td style="text-align: center;">P0</td>
-<td>Consultar <code>deployment.json</code> de homologação.</td>
-<td>O commit publicado é exatamente o commit esperado da branch <code>homolog</code>.</td>
+<td>Consultar <code>deployment.json</code> publicado em <code>/homolog/</code>.</td>
+<td>O campo <code>commit</code> corresponde ao commit do frontend esperado na branch <code>homolog</code>; registre também o commit do backend e a execução Supabase quando houver migração.</td>
 </tr>
 </tbody>
 </table></div>
@@ -648,6 +657,12 @@
 <td style="text-align: center;">P1</td>
 <td>Marcar vários itens vencidos nos status aplicáveis e recarregar.</td>
 <td>Cada checkbox persiste imediatamente; linha destaca; em <code>Faturado</code> fica visível e bloqueado.</td>
+</tr>
+<tr>
+<td>QTD-11</td>
+<td style="text-align: center;">P1</td>
+<td>Abrir um edital ativo que já possuía itens legados e orçamento reparado pela migração; conferir edital, orçamento e itens antes/depois de recarregar.</td>
+<td>O edital aponta para um orçamento próprio; cada item aparece uma vez, mantém número, descrição, quantidade e valores, e os dados continuam editáveis conforme status e permissões.</td>
 </tr>
 <tr>
 <td>CAL-01</td>
@@ -1086,6 +1101,12 @@
 <td>Conferir constraints, cascatas, unicidade, triggers e precisão do domínio alterado.</td>
 <td>Banco rejeita invariantes inválidas mesmo sem frontend.</td>
 </tr>
+<tr>
+<td>DB-06</td>
+<td style="text-align: center;">P0</td>
+<td>Para reparo de editais legados, comparar inventário prévio com o resultado em base descartável ou evidência aprovada da migração: editais ativos com itens e sem vínculo, inclusive editais com números repetidos.</td>
+<td>Cada edital elegível recebe orçamento próprio; itens e campos são copiados uma única vez, vínculos/status existentes não são alterados indevidamente e uma segunda execução não duplica dados. Não criar ou alterar registros legados diretamente na base compartilhada para simular o cenário.</td>
+</tr>
 </tbody>
 </table></div>
 <h2 id="experiencia-acessibilidade-e-compatibilidade">14. Experiência, acessibilidade e compatibilidade</h2>
@@ -1131,9 +1152,9 @@
 </tr>
 <tr>
 <td>UX-06</td>
-<td style="text-align: center;">P1</td>
-<td>Compilar Storybook e inspecionar componentes alterados, sem publicá-lo.</td>
-<td>Catálogo compila; tokens/componentes são reutilizados; artefato Pages não contém Storybook.</td>
+<td style="text-align: center;">P2</td>
+<td>Quando houver mudança no Design System, compilar Storybook localmente e inspecionar os componentes alterados.</td>
+<td>Catálogo compila e componentes/tokens seguem o padrão visual; esta checagem complementar não é barreira do workflow Pages.</td>
 </tr>
 </tbody>
 </table></div>
@@ -1156,21 +1177,21 @@
 </tr>
 <tr>
 <td>REL-02</td>
-<td style="text-align: center;">P1</td>
-<td>Executar testes automatizados, build de homologação e Storybook.</td>
-<td><code>npm test</code>, <code>npm run build:homolog</code> e <code>npm run build-storybook</code> concluem sem falha.</td>
+<td style="text-align: center;">P0</td>
+<td>Conferir a execução do workflow Pages acionada pelo commit de <code>homolog</code>.</td>
+<td>Validação do manifesto e <code>npm test</code> passam; os builds de ambos os ambientes concluem; Pages publica e valida <code>deployment.json</code>. Storybook não é requisito deste workflow.</td>
 </tr>
 <tr>
 <td>REL-03</td>
 <td style="text-align: center;">P0</td>
-<td>Validar workflows da entrega.</td>
-<td>Integridade, migração quando aplicável e Pages concluem com evidências.</td>
+<td>Conferir <code>Validar integridade da promoção</code> e, quando houver migração, <code>Supabase - Migrar produção</code> executado com <code>HOMOLOG</code>.</td>
+<td>Integridade conclui; migração tem <code>dry-run</code>, histórico e serviço registrados; para mudança sem migração, registrar “não se aplica”.</td>
 </tr>
 <tr>
 <td>REL-04</td>
 <td style="text-align: center;">P0</td>
-<td>Comparar commit remoto, workflow e <code>deployment.json</code>; abrir a URL final.</td>
-<td>Os três apontam para a entrega esperada e a aplicação está operacional.</td>
+<td>Comparar commit do frontend no workflow com <code>deployment.json</code>, abrir a URL final e conferir o Markdown/HTML do plano quando alterados.</td>
+<td>URL <code>/homolog/</code> está acessível, metadado aponta ao commit esperado e as cópias web correspondem ao Markdown fonte.</td>
 </tr>
 <tr>
 <td>REL-05</td>
@@ -1180,11 +1201,12 @@
 </tr>
 </tbody>
 </table></div>
-<p>A rodada é aprovada quando: todos os casos selecionados foram executados; não há defeito P0/P1 aberto; P2/P3 possuem decisão registrada; testes/build/workflows passaram; migrações e RLS foram comprovadas quando aplicáveis; e o commit correto foi observado na URL de homologação.</p>
+<p>A rodada é aprovada quando: todos os casos selecionados foram executados; não há defeito P0/P1 aberto; P2/P3 possuem decisão registrada; os resultados automatizados, funcionais e de banco estão identificados separadamente; os workflows aplicáveis passaram; migrações e RLS foram comprovadas quando aplicáveis; e o commit correto foi observado na URL de homologação. Um endpoint saudável, isoladamente, não aprova a aplicação.</p>
 <h2 id="modelo-de-relatorio-da-rodada">16. Modelo de relatório da rodada</h2>
 <pre><code class="language-text">Entrega:
 Data/hora:
 Responsável:
+Ambiente/URL:
 Frontend commit:
 Backend commit:
 Migrações:
@@ -1192,7 +1214,10 @@ Domínios afetados:
 Justificativa da seleção:
 Casos CORE executados:
 Casos de regressão executados:
-Resultados (aprovado/reprovado/bloqueado/N/A):
+Resultados por ID (aprovado/reprovado/bloqueado/N/A):
+Resultado de `npm test` e workflow Pages:
+Resultado de integridade/manifesta:
+Resultado de migração e endpoint, ou “não se aplica”:
 Defeitos e severidade:
 Evidências/URLs:
 Risco residual:
@@ -1200,9 +1225,9 @@ Decisão: aprovar | rejeitar | repetir
 Aprovador:
 </code></pre>
 <h2 id="rastreabilidade-da-cobertura">17. Rastreabilidade da cobertura</h2>
-<p>Este plano foi derivado do comportamento observável na branch <code>homolog</code>, incluindo <code>web/index.html</code>, <code>web/app.js</code>, <code>web/declarations.js</code>, <code>web/company-data.js</code>, <code>web/commercial-proposals.js</code>, testes automatizados, workflows, schema e migrações. Ele é deliberadamente independente da especificação de produção: funcionalidades exclusivas de homologação podem ser testadas aqui sem antecipar sua incorporação em <code>docs/especificacao-tecnica/ESPECIFICACAO_TECNICA_GLL.md</code>.</p>
+<p>Revisão de 30/09/2026 na branch <code>homolog</code>. Cobertura conferida contra o frontend (aplicação, testes, build e workflow Pages), workflows de integridade/publicação do backend, manifesto, schema e migrações. A suíte automatizada do frontend usa serviços simulados; os casos <code>ACL</code>, <code>DB</code> e a validação na URL exigem evidência própria. Este plano é independente da especificação de produção: funcionalidades exclusivas de homologação podem ser testadas aqui sem antecipar sua incorporação em <code>docs/especificacao-tecnica/ESPECIFICACAO_TECNICA_GLL.md</code>.</p>
 </article>
-    <footer>Cópia de leitura gerada a partir de PLANO_DE_TESTES_HOMOLOGACAO.md. SHA-256 da fonte: <code>cc2a452fab01a8fb9c5ce9f001ec02331447f7dff521f15556e0d04553f4647c</code>.</footer>
+    <footer>Cópia de leitura gerada a partir de PLANO_DE_TESTES_HOMOLOGACAO.md. SHA-256 da fonte: <code>634386eb7cb2fae0a96a624454eac738fc8e819a8c1b195253d02f5a0de27195</code>.</footer>
   </main>
 </body>
 </html>
