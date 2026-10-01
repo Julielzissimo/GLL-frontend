@@ -1,6 +1,5 @@
 const ASSET_BUCKET = "declaration-assets";
 const PDF_BUCKET = "declaration-pdfs";
-const MAX_IMAGE_SIZE = 5 * 1024 * 1024;
 const JSPDF_URL = "https://cdn.jsdelivr.net/npm/jspdf@2.5.2/+esm";
 
 export const DECLARATION_VARIABLES = Object.freeze([
@@ -107,6 +106,14 @@ function writeLocal(context, data) {
   localStorage.setItem(localKey(context.organizationId), JSON.stringify(data));
 }
 
+function readCompanyLocal(context) {
+  try {
+    return JSON.parse(localStorage.getItem(`gll-company-data-v1-${context.organizationId}`)) || {};
+  } catch {
+    return {};
+  }
+}
+
 function defaultSettings(context) {
   return {
     organization_id: context.organizationId,
@@ -128,11 +135,6 @@ function defaultSettings(context) {
   };
 }
 
-function setImagePreview(element, url) {
-  element.src = url || "";
-  element.classList.toggle("hidden", !url);
-}
-
 function fileAsDataUrl(file) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -147,12 +149,6 @@ async function urlAsDataUrl(url) {
   const response = await fetch(url);
   if (!response.ok) throw new Error("Não foi possível carregar a identidade visual da organização.");
   return fileAsDataUrl(await response.blob());
-}
-
-function safeStorageName(value) {
-  return String(value || "imagem")
-    .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^a-zA-Z0-9._-]+/g, "-").replace(/^-+|-+$/g, "") || "imagem";
 }
 
 export function createDeclarationsFeature({ getClient, getContext, getBids, navigate, toast, runBusy }) {
@@ -182,7 +178,7 @@ export function createDeclarationsFeature({ getClient, getContext, getBids, navi
     "declarationSettingsForm", "declarationLegalName", "declarationCnpj", "declarationAddress", "declarationCompanyCity",
     "declarationCompanyState", "declarationRepresentative", "declarationRepresentativeCpf", "declarationClassification",
     "declarationPhone", "declarationEmail", "declarationSignatureCity", "declarationSignatureState", "declarationDefaultIntroduction",
-    "declarationLogo", "declarationWatermark", "declarationLogoPreview", "declarationWatermarkPreview", "declarationSettingsStatus",
+    "declarationSettingsStatus",
     "declarationHistoryList", "refreshDeclarationHistoryButton", "declarationTemplateModal", "declarationTemplateForm",
     "declarationTemplateModalTitle", "declarationTemplateId", "declarationTemplateTitle", "declarationTemplateScope",
     "declarationTemplateBidField", "declarationTemplateBid", "declarationTemplateContent", "declarationTemplateError",
@@ -209,25 +205,38 @@ export function createDeclarationsFeature({ getClient, getContext, getBids, navi
       const context = currentContext();
       const supabase = client();
       if (supabase) {
-        const [settingsResult, templatesResult, historyResult, bidsResult] = await Promise.all([
+        const [settingsResult, organizationResult, templatesResult, historyResult, bidsResult] = await Promise.all([
           supabase.from("declaration_settings").select("*").maybeSingle(),
+          supabase.from("organizations").select("logo_path,watermark_path").eq("id", context.organizationId).single(),
           supabase.from("declaration_templates").select("*").order("title"),
           supabase.from("declaration_documents").select("*").order("generated_at", { ascending: false }),
           supabase.rpc("list_declaration_bids"),
         ]);
-        state.settings = assertResult(settingsResult) || defaultSettings(context);
+        const declarationSettings = assertResult(settingsResult) || defaultSettings(context);
+        const organization = assertResult(organizationResult);
+        state.settings = {
+          ...declarationSettings,
+          logo_path: organization.logo_path ?? declarationSettings.logo_path ?? null,
+          watermark_path: organization.watermark_path ?? declarationSettings.watermark_path ?? null,
+        };
         state.templates = assertResult(templatesResult) || [];
         state.history = assertResult(historyResult) || [];
         state.bids = assertResult(bidsResult) || [];
         await loadAssetUrls();
       } else {
         const local = readLocal(context);
-        state.settings = { ...defaultSettings(context), ...(local.settings || {}) };
+        const company = readCompanyLocal(context).organization || {};
+        state.settings = {
+          ...defaultSettings(context),
+          ...(local.settings || {}),
+          logo_path: company.logo_path ?? local.settings?.logo_path ?? null,
+          watermark_path: company.watermark_path ?? local.settings?.watermark_path ?? null,
+        };
         state.templates = local.templates || [];
         state.history = local.history || [];
         state.bids = getBids();
-        state.logoUrl = state.settings.logo_data_url || "";
-        state.watermarkUrl = state.settings.watermark_data_url || "";
+        state.logoUrl = company.logo_data_url || state.settings.logo_data_url || "";
+        state.watermarkUrl = company.watermark_data_url || state.settings.watermark_data_url || "";
       }
       state.loaded = true;
       refs.declarationLoading.classList.add("hidden");
@@ -273,8 +282,6 @@ export function createDeclarationsFeature({ getClient, getContext, getBids, navi
       declarationDefaultIntroduction: "default_introduction",
     };
     for (const [id, key] of Object.entries(mapping)) refs[id].value = config[key] || "";
-    setImagePreview(refs.declarationLogoPreview, state.logoUrl);
-    setImagePreview(refs.declarationWatermarkPreview, state.watermarkUrl);
   }
 
   function readSettingsForm() {
@@ -289,18 +296,7 @@ export function createDeclarationsFeature({ getClient, getContext, getBids, navi
       email: refs.declarationEmail.value.trim(), signature_city: refs.declarationSignatureCity.value.trim(),
       signature_state: refs.declarationSignatureState.value.trim().toUpperCase(),
       default_introduction: refs.declarationDefaultIntroduction.value.trim(),
-      logo_path: state.settings?.logo_path || null, watermark_path: state.settings?.watermark_path || null,
     };
-  }
-
-  async function uploadAsset(file, kind) {
-    if (!file) return state.settings?.[`${kind}_path`] || null;
-    if (!file.type.startsWith("image/") || file.size > MAX_IMAGE_SIZE) throw new Error("Use uma imagem PNG, JPG ou WebP de até 5 MB.");
-    const supabase = client();
-    if (!supabase) return fileAsDataUrl(file);
-    const path = `${currentContext().organizationId}/${kind}-${Date.now()}-${safeStorageName(file.name)}`;
-    assertResult(await supabase.storage.from(ASSET_BUCKET).upload(path, file, { contentType: file.type, upsert: false }));
-    return path;
   }
 
   async function saveSettings(event) {
@@ -309,34 +305,17 @@ export function createDeclarationsFeature({ getClient, getContext, getBids, navi
     const supabase = client();
     const data = readSettingsForm();
     if (supabase) {
-      data.logo_path = await uploadAsset(refs.declarationLogo.files[0], "logo");
-      data.watermark_path = await uploadAsset(refs.declarationWatermark.files[0], "watermark");
       assertResult(await supabase.from("declaration_settings").upsert(data, { onConflict: "organization_id" }).select().single());
     } else {
-      const logoFile = refs.declarationLogo.files[0];
-      const watermarkFile = refs.declarationWatermark.files[0];
-      data.logo_data_url = logoFile ? await fileAsDataUrl(logoFile) : state.settings?.logo_data_url || "";
-      data.watermark_data_url = watermarkFile ? await fileAsDataUrl(watermarkFile) : state.settings?.watermark_data_url || "";
+      data.logo_data_url = state.settings?.logo_data_url || "";
+      data.watermark_data_url = state.settings?.watermark_data_url || "";
       const local = readLocal(currentContext());
       writeLocal(currentContext(), { ...local, settings: data });
     }
-    state.settings = data;
-    await loadAssetUrlsIfNeeded();
-    refs.declarationLogo.value = "";
-    refs.declarationWatermark.value = "";
+    state.settings = { ...state.settings, ...data };
     refs.declarationSettingsStatus.textContent = "Configurações salvas para a organização.";
     resetGenerator(false);
     toast("Configurações de Declarações salvas.");
-  }
-
-  async function loadAssetUrlsIfNeeded() {
-    if (client()) await loadAssetUrls();
-    else {
-      state.logoUrl = state.settings.logo_data_url || "";
-      state.watermarkUrl = state.settings.watermark_data_url || "";
-    }
-    setImagePreview(refs.declarationLogoPreview, state.logoUrl);
-    setImagePreview(refs.declarationWatermarkPreview, state.watermarkUrl);
   }
 
   function resetGenerator(clearSelection = true) {
@@ -908,8 +887,6 @@ export function createDeclarationsFeature({ getClient, getContext, getBids, navi
     refs.declarationPreviewModal.addEventListener("cancel", (event) => { event.preventDefault(); closePreview(); });
     refs.closeDeclarationValidationButton.addEventListener("click", () => refs.declarationValidationModal.close());
     refs.declarationSettingsForm.addEventListener("submit", (event) => runBusy(() => saveSettings(event), "Salvando configurações…"));
-    refs.declarationLogo.addEventListener("change", async () => setImagePreview(refs.declarationLogoPreview, refs.declarationLogo.files[0] ? await fileAsDataUrl(refs.declarationLogo.files[0]) : state.logoUrl));
-    refs.declarationWatermark.addEventListener("change", async () => setImagePreview(refs.declarationWatermarkPreview, refs.declarationWatermark.files[0] ? await fileAsDataUrl(refs.declarationWatermark.files[0]) : state.watermarkUrl));
     refs.newDeclarationTemplateButton.addEventListener("click", () => openTemplateModal());
     refs.declarationTemplateList.addEventListener("click", (event) => {
       const button = event.target.closest("[data-edit-template]"); if (button) openTemplateModal(state.templates.find((row) => row.id === button.dataset.editTemplate));

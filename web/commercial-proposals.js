@@ -964,9 +964,10 @@ export function createCommercialProposalsFeature({ getClient, getContext, toast,
     const values = variableValues();
     const proposal = state.editor.proposal;
     const settings = state.editor.declaration_settings || {};
+    const organization = state.editor.organization || {};
     const representative = state.editor.representatives.find((entry) => entry.id === proposal.representative_id) || {};
-    const logoData = await assetDataUrl(settings.logo_path);
-    const watermarkAsset = await assetDataUrl(settings.watermark_path);
+    const logoData = await assetDataUrl(organization.logo_path);
+    const watermarkAsset = await assetDataUrl(organization.watermark_path);
     const watermarkData = await imageDataUrlWithOpacity(watermarkAsset, 0.08);
 
     const drawWatermarkBackground = () => {

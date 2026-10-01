@@ -66,6 +66,17 @@ test("pré-visualização do PDF ocupa a área disponível no modal", async () =
   );
 });
 
+test("identidade visual da empresa alimenta declarações e deixa de ser editada nesta página", async () => {
+  const [html, source] = await Promise.all([
+    readFile(new URL("../web/index.html", import.meta.url), "utf8"),
+    readFile(new URL("../web/declarations.js", import.meta.url), "utf8"),
+  ]);
+  assert.doesNotMatch(html, /id="declarationLogo"|id="declarationWatermark"|<h3>Identidade visual<\/h3>/);
+  assert.match(source, /from\("organizations"\)\.select\("logo_path,watermark_path"\)/);
+  assert.match(source, /logo_path: organization\.logo_path/);
+  assert.match(source, /watermark_path: organization\.watermark_path/);
+});
+
 test("configurações preservam o espaçamento visual entre cabeçalho e seções", async () => {
   const styles = await readFile(new URL("../web/styles.css", import.meta.url), "utf8");
   assert.match(

@@ -54,8 +54,8 @@ test("mantém os ajustes de interface e organização do construtor de propostas
   assert.match(feature, /data-section-field="title"/);
   assert.match(feature, /placeholder="Ex\.: Declarações"/);
   assert.doesNotMatch(feature, /DECLARAÇÕES \/ TEXTO ADICIONAL/);
-  assert.match(feature, /const logoData = await assetDataUrl\(settings\.logo_path\)/);
-  assert.match(feature, /const watermarkAsset = await assetDataUrl\(settings\.watermark_path\)/);
+  assert.match(feature, /const logoData = await assetDataUrl\(organization\.logo_path\)/);
+  assert.match(feature, /const watermarkAsset = await assetDataUrl\(organization\.watermark_path\)/);
   assert.match(feature, /Resumo da proposta/);
   assert.match(feature, /Marca \/ Fabricante/);
   assert.doesNotMatch(feature, /\["manufacturer", "Fabricante", "input"\]/);

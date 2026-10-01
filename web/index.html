@@ -1239,7 +1239,7 @@
 
         <section id="declarationSettingsPanel" class="declaration-panel hidden">
           <form id="declarationSettingsForm">
-            <div class="declaration-panel-heading"><div><h2>Configurações dos documentos</h2><p>Dados e identidade visual compartilhados pela organização.</p></div><button class="primary-action" type="submit">Salvar configurações</button></div>
+            <div class="declaration-panel-heading"><div><h2>Configurações dos documentos</h2><p>Dados padrão e introdução usados na composição das declarações.</p></div><button class="primary-action" type="submit">Salvar configurações</button></div>
             <section class="section-band declaration-form-section"><h3>Dados da empresa</h3><div id="declarationCompanyFields" class="form-grid declaration-variable-grid">
               <label>Razão social <code>{{razao_social}}</code><input id="declarationLegalName" maxlength="240" /></label>
               <label>CNPJ <code>{{cnpj}}</code><input id="declarationCnpj" maxlength="30" /></label>
@@ -1255,10 +1255,7 @@
               <label>UF da assinatura<input id="declarationSignatureState" maxlength="2" /></label>
             </div></section>
             <section class="section-band declaration-form-section"><h3>Introdução padrão</h3><label class="variable-editor full-field">Texto<textarea id="declarationDefaultIntroduction" rows="7" data-variable-editor></textarea><span class="variable-help">Digite <code>{{</code> para pesquisar variáveis.</span></label></section>
-            <section class="section-band declaration-form-section"><h3>Identidade visual</h3><div class="declaration-assets-grid">
-              <label class="declaration-upload-card"><span>Logo</span><input id="declarationLogo" type="file" accept="image/png,image/jpeg,image/webp" /><small>PNG, JPG ou WebP, até 5 MB.</small><img id="declarationLogoPreview" class="hidden" alt="Pré-visualização da logo" /></label>
-              <label class="declaration-upload-card"><span>Marca-d'água</span><input id="declarationWatermark" type="file" accept="image/png,image/jpeg,image/webp" /><small>PNG, JPG ou WebP, até 5 MB.</small><img id="declarationWatermarkPreview" class="hidden" alt="Pré-visualização da marca-d'água" /></label>
-            </div><p id="declarationSettingsStatus" class="form-error" role="status"></p></section>
+            <p id="declarationSettingsStatus" class="form-error" role="status"></p>
           </form>
         </section>
 
@@ -1323,6 +1320,16 @@
             <div class="form-grid company-data-organization-grid">
               <label>Razão social *<input id="companyLegalName" maxlength="240" autocomplete="organization" required /></label>
               <label>CNPJ *<input id="companyCnpj" maxlength="18" inputmode="numeric" autocomplete="off" placeholder="00.000.000/0000-00" required /></label>
+            </div>
+          </section>
+
+          <section class="section-band company-data-section">
+            <div class="company-data-section-heading">
+              <div><h2>Identidade visual</h2><p>Logo e marca-d'água serão incluídas automaticamente nas propostas e declarações.</p></div>
+            </div>
+            <div class="declaration-assets-grid">
+              <label class="declaration-upload-card"><span>Logo</span><input id="companyLogo" type="file" accept="image/png,image/jpeg,image/webp" /><small>PNG, JPG ou WebP, até 5 MB.</small><img id="companyLogoPreview" class="hidden" alt="Pré-visualização da logo" /></label>
+              <label class="declaration-upload-card"><span>Marca-d'água</span><input id="companyWatermark" type="file" accept="image/png,image/jpeg,image/webp" /><small>PNG, JPG ou WebP, até 5 MB.</small><img id="companyWatermarkPreview" class="hidden" alt="Pré-visualização da marca-d'água" /></label>
             </div>
           </section>
 
