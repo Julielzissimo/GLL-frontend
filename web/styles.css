@@ -232,6 +232,165 @@
   .declaration-summary-card .full-action { grid-column: 1; }
 }
 
+/* Proposta Comercial: fluxo enxuto e responsivo */
+.commercial-list-heading {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: var(--space-xl);
+  margin-bottom: var(--space-xl);
+}
+
+.commercial-list-heading h1 { margin: var(--space-xs) 0; }
+.commercial-list-heading p { margin: 0; color: var(--color-text-secondary); }
+
+.commercial-proposal-overview {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-lg);
+  margin-bottom: var(--space-xl);
+}
+
+.commercial-proposal-overview article,
+.commercial-proposal-list-panel {
+  padding: var(--space-xl);
+  border: var(--border-default);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-sm);
+}
+
+.commercial-proposal-overview article { display: grid; gap: var(--space-xs); }
+.commercial-proposal-overview article span,
+.commercial-proposal-list-card-metric span,
+.commercial-proposal-list-card-meta { color: var(--color-text-secondary); font-size: var(--font-size-sm); }
+.commercial-proposal-overview article strong { font-size: var(--font-size-2xl); }
+
+.commercial-proposal-list-heading,
+.commercial-items-intro,
+.commercial-item-toolbar,
+.commercial-proposal-step-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-lg);
+}
+
+.commercial-proposal-list-heading { margin-bottom: var(--space-lg); }
+.commercial-proposal-list-heading h2,
+.commercial-items-intro h2 { margin: 0 0 var(--space-xs); }
+.commercial-proposal-list-heading p,
+.commercial-items-intro p { margin: 0; color: var(--color-text-secondary); }
+.commercial-proposal-search { display: block; width: min(100%, 24rem); }
+.commercial-proposal-search input { width: 100%; min-height: var(--control-height-md); }
+
+.commercial-proposal-filters { display: flex; gap: var(--space-sm); margin-bottom: var(--space-lg); }
+.commercial-proposal-filters button {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-sm);
+  min-height: var(--control-height-sm);
+  padding: 0 var(--space-md);
+  border: var(--border-default);
+  border-radius: var(--radius-pill);
+  background: var(--color-surface);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+}
+.commercial-proposal-filters button.active { border-color: var(--color-primary); background: var(--color-info-surface); color: var(--color-primary); font-weight: var(--font-weight-bold); }
+.commercial-proposal-filters button span { font-size: var(--font-size-xs); }
+.commercial-proposal-card-list { display: grid; gap: var(--space-md); }
+.commercial-proposal-list-card {
+  display: grid;
+  grid-template-columns: minmax(12rem, 1.5fr) repeat(2, minmax(8rem, .8fr)) minmax(9rem, 1fr) auto;
+  align-items: center;
+  gap: var(--space-lg);
+  padding: var(--space-lg);
+  border: var(--border-default);
+  border-radius: var(--radius-md);
+  transition: border-color .16s ease, box-shadow .16s ease;
+}
+.commercial-proposal-list-card:hover { border-color: var(--color-border-strong); box-shadow: var(--shadow-sm); }
+.commercial-proposal-list-card[hidden], .commercial-proposal-item[hidden] { display: none; }
+.commercial-proposal-list-card h3 { margin: var(--space-xs) 0; font-size: var(--font-size-lg); }
+.commercial-proposal-list-card p { margin: 0; color: var(--color-text-secondary); }
+.commercial-proposal-list-card-main .eyebrow { font-size: var(--font-size-xs); }
+.commercial-proposal-list-card-metric { display: grid; gap: var(--space-xs); }
+.commercial-proposal-list-card-meta { display: grid; justify-items: start; gap: var(--space-xs); }
+.commercial-proposal-row-actions { display: flex; flex-wrap: wrap; justify-content: end; gap: var(--space-xs); }
+.commercial-proposal-row-actions button { white-space: nowrap; }
+.commercial-proposal-empty-state { display: grid; justify-items: center; gap: var(--space-sm); padding: var(--space-3xl) var(--space-xl); text-align: center; }
+.commercial-proposal-empty-state h3, .commercial-proposal-empty-state p { margin: 0; }
+.commercial-proposal-empty-state p { max-width: 34rem; color: var(--color-text-secondary); }
+.commercial-proposal-empty-state[hidden], .commercial-proposal-search-empty[hidden] { display: none; }
+
+.commercial-proposal-tabs { align-items: center; }
+.commercial-proposal-more { position: relative; margin-left: auto; }
+.commercial-proposal-more summary { padding: var(--space-sm) var(--space-md); color: var(--color-text-secondary); cursor: pointer; }
+.commercial-proposal-more > div { position: absolute; z-index: var(--z-dropdown); top: calc(100% + var(--space-xs)); right: 0; display: grid; min-width: 13rem; padding: var(--space-xs); border: var(--border-default); border-radius: var(--radius-md); background: var(--color-surface); box-shadow: var(--shadow-md); }
+.commercial-proposal-more button { padding: var(--space-md); border: 0; background: transparent; text-align: left; cursor: pointer; }
+.commercial-proposal-more button:hover { background: var(--color-surface-subtle); }
+.commercial-proposal-editor-column { min-width: 0; }
+.commercial-items-intro { margin-bottom: var(--space-lg); }
+.commercial-selected-count { flex: none; padding: var(--space-sm) var(--space-md); border-radius: var(--radius-pill); background: var(--color-info-surface); color: var(--color-primary); font-size: var(--font-size-sm); font-weight: var(--font-weight-bold); }
+.commercial-item-toolbar { margin-bottom: var(--space-md); }
+.commercial-item-toolbar .commercial-proposal-search { flex: 1; }
+.commercial-proposal-items { display: grid; gap: var(--space-sm); }
+.commercial-proposal-item { overflow: hidden; border: var(--border-default); border-radius: var(--radius-md); background: var(--color-surface); }
+.commercial-proposal-item.selected { border-color: color-mix(in srgb, var(--color-primary) 35%, var(--color-border)); }
+.commercial-proposal-item-head { display: grid; grid-template-columns: auto minmax(12rem, 1fr) repeat(3, minmax(6rem, .55fr)) auto auto; align-items: center; gap: var(--space-md); padding: var(--space-md) var(--space-lg); }
+.commercial-item-identity { display: grid; min-width: 0; gap: 2px; }
+.commercial-item-identity > span, .commercial-item-quick-value small { color: var(--color-text-secondary); font-size: var(--font-size-xs); }
+.commercial-item-identity strong, .commercial-item-identity small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.commercial-item-identity small { color: var(--color-text-secondary); }
+.commercial-item-quick-value { display: grid; gap: 2px; }
+.commercial-item-collapse { display: inline-flex; gap: var(--space-xs); border: 0; background: transparent; color: var(--color-primary); font-weight: var(--font-weight-bold); cursor: pointer; }
+.commercial-proposal-item.is-collapsed .commercial-proposal-item-grid { display: none; }
+.commercial-proposal-item-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-lg); padding: var(--space-lg); border-top: var(--border-default); }
+.commercial-proposal-item-grid .wide { grid-column: 1 / -1; }
+.commercial-proposal-search-empty { padding: var(--space-xl); color: var(--color-text-secondary); text-align: center; }
+.commercial-proposal-step-actions { margin-top: var(--space-xl); padding-top: var(--space-lg); border-top: var(--border-default); }
+.commercial-proposal-step-actions > span { color: var(--color-text-secondary); font-size: var(--font-size-sm); }
+.commercial-review-summary { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-md); margin: var(--space-xl) 0; }
+.commercial-review-summary > div { padding: var(--space-md); border-radius: var(--radius-sm); background: var(--color-surface-subtle); }
+.commercial-review-summary dt { color: var(--color-text-secondary); font-size: var(--font-size-sm); }
+.commercial-review-summary dd { margin: var(--space-xs) 0 0; font-weight: var(--font-weight-bold); }
+.commercial-review-item-list { display: grid; gap: var(--space-sm); }
+.commercial-review-item-list h3 { margin: 0 0 var(--space-xs); }
+.commercial-review-item-list > div { display: flex; justify-content: space-between; gap: var(--space-lg); padding: var(--space-md) 0; border-bottom: var(--border-default); }
+.commercial-review-item-list > div > span { min-width: 0; overflow-wrap: anywhere; }
+
+@media (max-width: 1100px) {
+  .commercial-proposal-list-card { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .commercial-proposal-list-card-main { grid-column: 1 / -1; }
+  .commercial-proposal-row-actions { grid-column: 1 / -1; justify-content: start; }
+  .commercial-proposal-item-head { grid-template-columns: auto minmax(0, 1fr) repeat(3, minmax(5rem, .6fr)) auto; }
+  .commercial-proposal-item-head .drag-handle { display: none; }
+}
+
+@media (max-width: 720px) {
+  .commercial-list-heading, .commercial-proposal-list-heading, .commercial-items-intro,
+  .commercial-item-toolbar, .commercial-proposal-step-actions { align-items: stretch; flex-direction: column; }
+  .commercial-list-heading > button, .commercial-proposal-search { width: 100%; }
+  .commercial-proposal-overview { gap: var(--space-sm); }
+  .commercial-proposal-overview article { padding: var(--space-md); }
+  .commercial-proposal-overview article span { font-size: var(--font-size-xs); }
+  .commercial-proposal-overview article strong { font-size: var(--font-size-xl); }
+  .commercial-proposal-list-panel { padding: var(--space-md); }
+  .commercial-proposal-list-card { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-md); padding: var(--space-md); }
+  .commercial-proposal-list-card-main, .commercial-proposal-row-actions { grid-column: 1 / -1; }
+  .commercial-proposal-row-actions { display: grid; grid-template-columns: 1fr 1fr; }
+  .commercial-proposal-row-actions button:first-child { grid-column: 1 / -1; }
+  .commercial-proposal-filters { overflow-x: auto; }
+  .commercial-proposal-filters button { white-space: nowrap; }
+  .commercial-proposal-item-head { grid-template-columns: auto minmax(0, 1fr) auto; }
+  .commercial-item-quick-value { display: none; }
+  .commercial-proposal-item-grid, .commercial-review-summary { grid-template-columns: minmax(0, 1fr); }
+  .commercial-proposal-step-actions > .button-row { width: 100%; flex-direction: column; }
+  .commercial-proposal-step-actions > .button-row button { width: 100%; }
+  .commercial-review-item-list > div { align-items: start; }
+}
+
 body {
   margin: 0;
   min-width: 320px;
