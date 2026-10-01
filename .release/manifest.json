@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "release_id": "2026-10-01-ux-proposta-comercial",
+  "release_id": "2026-10-01-prototipo-proposta-comercial",
   "environment": "homolog",
   "target_branch": "homolog",
   "items": [
@@ -266,6 +266,14 @@
       "backend_commits": [],
       "frontend_commits": [
         "9a0cf522d411a2f9803921dcbd48909fbf67b115"
+      ],
+      "migrations": []
+    },
+    {
+      "id": "UX-PROPOSTA-COMERCIAL-003",
+      "backend_commits": [],
+      "frontend_commits": [
+        "b7f5d61d42acf941d1d45e7cae432e12434560ab"
       ],
       "migrations": []
     }
