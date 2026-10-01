@@ -174,6 +174,12 @@ function client(db = backend(), auth = { session: { user } }) {
   api.store.getUsers = async () => structuredClone(db.users);
   api.store.getUser = async () => db.users[0] || null;
   api.store.client = {
+    functions: {
+      invoke: async (name) => ({
+        data: name === "password-reset-status" ? { mustChangePassword: auth.mustChangePassword === true } : { ok: true },
+        error: null,
+      }),
+    },
     auth: {
       getSession: async () => ({ data: { session: auth.session }, error: null }),
       signOut: async ({ scope }) => { assert.equal(scope, "local"); auth.session = null; return { error: null }; },

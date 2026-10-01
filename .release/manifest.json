@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "release_id": "2026-09-28-sincronizacao-pos-promocao",
+  "release_id": "2026-09-30-cadastro-usuarios",
   "environment": "homolog",
   "target_branch": "homolog",
   "items": [
@@ -166,6 +166,26 @@
         "cc2288b06f5aead96fa36362533531d89519759e"
       ],
       "migrations": []
+    },
+    {
+      "id": "CONFIRMACAO-SAIDA-001",
+      "backend_commits": [],
+      "frontend_commits": [
+        "dd386db8a2fc40ddda10f4f0455a3e9d06e19aae"
+      ],
+      "migrations": []
+    },
+    {
+      "id": "CADASTRO-USUARIOS-001",
+      "backend_commits": [
+        "9f16ef9b3aa6913d54e33224af4862084dfc5a2a"
+      ],
+      "frontend_commits": [
+        "2683fbebb324901c4b89812f77302041bebd7b08"
+      ],
+      "migrations": [
+        "supabase/migrations/20260930120000_admin_user_provisioning.sql"
+      ]
     }
   ]
 }
