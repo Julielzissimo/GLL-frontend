@@ -3489,6 +3489,32 @@ tr.item-won td {
   padding: 26px;
 }
 
+.user-create-panel {
+  display: grid;
+  gap: var(--space-md);
+}
+
+.user-create-panel .users-list-toolbar {
+  margin-bottom: 0;
+}
+
+.user-create-description {
+  margin: 0;
+  color: var(--color-text-secondary);
+}
+
+.user-create-form {
+  display: grid;
+  gap: var(--space-md);
+}
+
+.user-create-form .form-grid > label {
+  display: grid;
+  gap: var(--space-xs);
+  color: var(--color-text-primary);
+  font-weight: var(--font-weight-medium);
+}
+
 .users-list-toolbar,
 .users-list-heading,
 .users-list-controls,

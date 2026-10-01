@@ -41,6 +41,25 @@
       </form>
     </main>
 
+    <main id="passwordResetView" class="login-view hidden">
+      <section class="login-brand" aria-label="Primeiro acesso ao sistema">
+        <span class="brand-mark">GLL</span>
+        <h1>Proteja seu acesso</h1>
+        <p>Esta é a primeira entrada com uma senha provisória. Defina uma senha pessoal para continuar.</p>
+      </section>
+      <form id="passwordResetForm" class="login-panel login-form">
+        <span class="eyebrow">PRIMEIRO ACESSO</span>
+        <h2>Redefina sua senha</h2>
+        <p>A senha provisória não permite acessar os dados do sistema.</p>
+        <label>Login<input id="passwordResetEmail" type="email" readonly /></label>
+        <label>Nova senha<input id="newPassword" type="password" autocomplete="new-password" minlength="8" required /></label>
+        <label>Confirme a nova senha<input id="confirmNewPassword" type="password" autocomplete="new-password" minlength="8" required /></label>
+        <p id="passwordResetError" class="form-error" role="alert"></p>
+        <button class="primary-action full-action" type="submit">Salvar nova senha</button>
+        <button id="passwordResetSignOutButton" class="quiet-action full-action" type="button">Sair</button>
+      </form>
+    </main>
+
     <main id="appView" class="app-view hidden">
       <aside id="appSidebar" class="app-sidebar" aria-label="Navegação principal">
         <button id="homeIconButton" class="app-logo" type="button" aria-label="Ir para a visão geral">
@@ -835,12 +854,41 @@
           </div>
           <div class="users-hero-note">
             <span class="users-icon-tile" aria-hidden="true">ⓘ</span>
-            <p>Os logins são cadastrados no Supabase. Aqui você consulta os perfis e atribui editais aos analistas.</p>
+            <p>Cadastre os acessos da equipe e defina quais usuários poderão administrar a organização.</p>
           </div>
           <div class="users-total-card" aria-live="polite">
             <span aria-hidden="true">♟</span>
             <strong id="usersTotalLabel">0 usuários</strong>
           </div>
+        </section>
+
+        <section id="userCreatePanel" class="section-band users-list-panel user-create-panel">
+          <div class="users-list-toolbar">
+            <div class="users-list-heading">
+              <span class="users-icon-tile" aria-hidden="true">＋</span>
+              <h2>Cadastrar novo usuário</h2>
+            </div>
+          </div>
+          <p class="user-create-description">A pessoa deverá criar uma senha pessoal no primeiro acesso.</p>
+          <form id="userCreateForm" class="user-create-form">
+            <div class="form-grid three">
+              <label>Nome completo<input id="userCreateFullName" name="fullName" autocomplete="name" required /></label>
+              <label>Nome de exibição<input id="userCreateDisplayName" name="displayName" autocomplete="nickname" required /></label>
+              <label>Login (e-mail)<input id="userCreateEmail" name="email" type="email" autocomplete="email" required /></label>
+              <label>Senha provisória<input id="userCreatePassword" name="temporaryPassword" type="password" autocomplete="new-password" minlength="8" required /></label>
+              <label>Confirme a senha provisória<input id="userCreatePasswordConfirm" name="temporaryPasswordConfirm" type="password" autocomplete="new-password" minlength="8" required /></label>
+              <label>Tipo de usuário
+                <select id="userCreateRole" name="role" required>
+                  <option value="Analista">Analista</option>
+                  <option value="Administrador">Administrador</option>
+                </select>
+              </label>
+            </div>
+            <p id="userCreateError" class="form-error" role="alert"></p>
+            <div class="button-row end">
+              <button class="primary-action" type="submit">Cadastrar usuário</button>
+            </div>
+          </form>
         </section>
 
         <section class="section-band users-list-panel">
