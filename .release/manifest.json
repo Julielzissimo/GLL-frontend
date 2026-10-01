@@ -204,7 +204,7 @@
         "f94600055a88f05f069aa102928da84b4f4a1012"
       ],
       "migrations": [
-        "supabase/migrations/20260930120000_simplify_commercial_proposals.sql"
+        "supabase/migrations/20261001022200_simplify_commercial_proposals.sql"
       ]
     }
   ]
