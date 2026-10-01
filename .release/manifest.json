@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "release_id": "2026-09-30-ajuste-status-edital",
+  "release_id": "2026-10-01-breadcrumb-navegacao",
   "environment": "homolog",
   "target_branch": "homolog",
   "items": [
@@ -238,6 +238,14 @@
       "backend_commits": [],
       "frontend_commits": [
         "f0817a5b0ea7a2cec3944c71adcc78324eb3c0dc"
+      ],
+      "migrations": []
+    },
+    {
+      "id": "NAVEGACAO-BREADCRUMB-001",
+      "backend_commits": [],
+      "frontend_commits": [
+        "a54b4ad2af80756518095ac91e9b16de5edce81c"
       ],
       "migrations": []
     }
