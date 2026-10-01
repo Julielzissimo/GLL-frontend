@@ -30,5 +30,5 @@ export const Shadows = {
 };
 
 export const Icons = {
-  render: () => frame(`<div class="ds-section-heading"><h1>Ícones</h1><p>Glifos atualmente usados pela aplicação.</p></div><div class="ds-icon-grid">${Object.entries(catalog().ICONS).map(([name, glyph]) => `<div class="ds-icon-sample"><span aria-hidden="true">${glyph}</span><code>${name}</code></div>`).join("")}</div>`),
+  render: () => frame(`<div class="ds-section-heading"><h1>Ícones</h1><p>Coleção central de SVGs usados pela aplicação.</p></div><div class="ds-icon-grid">${Object.entries(catalog().ICONS).map(([name, markup]) => `<div class="ds-icon-sample">${markup}<code>${name}</code></div>`).join("")}</div>`),
 };
