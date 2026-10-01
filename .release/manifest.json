@@ -202,7 +202,8 @@
       ],
       "frontend_commits": [
         "f94600055a88f05f069aa102928da84b4f4a1012",
-        "bcc9cb93226a7d7f9a3107bbc2bb69aead9a97c3"
+        "bcc9cb93226a7d7f9a3107bbc2bb69aead9a97c3",
+        "8d5c48b537503f4416f8bc1bd4691a98c022bb6c"
       ],
       "migrations": [
         "supabase/migrations/20261001022200_simplify_commercial_proposals.sql"
