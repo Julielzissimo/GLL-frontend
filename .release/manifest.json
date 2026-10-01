@@ -232,6 +232,14 @@
         "faf76df4acca1ebba0096eeb93766961643f6b51"
       ],
       "migrations": []
+    },
+    {
+      "id": "CANCELAR-PROPOSTA-COMERCIAL-001",
+      "backend_commits": [],
+      "frontend_commits": [
+        "f0817a5b0ea7a2cec3944c71adcc78324eb3c0dc"
+      ],
+      "migrations": []
     }
   ]
 }
