@@ -132,10 +132,12 @@
     {
       "id": "PLANO-TESTES-HOMOLOGACAO-001",
       "backend_commits": [
-        "2d9f4b0b00c0a7c95c485a82ee5d4ed38b094d93"
+        "2d9f4b0b00c0a7c95c485a82ee5d4ed38b094d93",
+        "ff33b62919bb73d1688fa50413ac6dbb3154c3cd"
       ],
       "frontend_commits": [
-        "2e80bc4f0a42a7bf38f2564576463fcce7d4a49d"
+        "2e80bc4f0a42a7bf38f2564576463fcce7d4a49d",
+        "48e1c03c7b23ff033ffd860facc4c7db22c57133"
       ],
       "migrations": []
     },
@@ -160,7 +162,9 @@
     {
       "id": "RESPONSIVIDADE-FILTROS-LICITACOES-001",
       "backend_commits": [],
-      "frontend_commits": [],
+      "frontend_commits": [
+        "cc2288b06f5aead96fa36362533531d89519759e"
+      ],
       "migrations": []
     }
   ]

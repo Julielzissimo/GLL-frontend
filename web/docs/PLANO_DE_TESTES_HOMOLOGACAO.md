@@ -2,8 +2,8 @@
 
 | Campo | Valor |
 |---|---|
-| Versão | 1.0 |
-| Data-base | 28/09/2026 |
+| Versão | 1.1 |
+| Data-base | 30/09/2026 |
 | Ambiente-alvo | `homolog` |
 | Aplicação | Gerenciador de Licitações Locais (GLL) |
 | Objetivo | Selecionar e executar somente a regressão proporcional às funcionalidades afetadas por cada implantação, sem perder a cobertura dos fluxos críticos. |
@@ -15,7 +15,8 @@
 3. Execute sempre a suíte `CORE`. Execute também todos os casos dos domínios marcados e os casos indicados na coluna **Regressão associada**.
 4. Para mudanças de banco, execute `DB`, `ACL` e os domínios que leem ou gravam as tabelas/funções afetadas. Para mudanças em componentes ou estilos compartilhados, execute `NAV`, `UX` e todos os módulos consumidores.
 5. Registre resultado, evidência e defeito por ID de caso. Um caso é `Aprovado`, `Reprovado`, `Bloqueado` ou `Não aplicável`, sempre com justificativa nos dois últimos estados.
-6. Não promova para produção enquanto houver falha P0/P1, migração não comprovada, divergência de manifesto ou caso selecionado sem resultado.
+6. Mantenha separado o resultado dos testes automatizados, das verificações de banco e da validação funcional manual. Testes com serviços simulados não comprovam RLS, Storage ou operação do Supabase real.
+7. Não promova para produção enquanto houver falha P0/P1, migração não comprovada, divergência de manifesto ou caso selecionado sem resultado.
 
 ### 1.1 Seleção rápida por tipo de alteração
 
@@ -34,6 +35,14 @@
 | Proposta comercial | `CORE`, `PROP`, `QTD`, `CAL`, `EMP`, `ACL`, `SYNC`, `UX` |
 | Migração, trigger, RPC, Storage ou schema | `CORE`, `DB`, `ACL` + todos os domínios consumidores |
 | Build, workflow ou publicação | `CORE`, `REL` + fumaça dos domínios incluídos na entrega |
+
+### 1.2 O que cada barreira comprova
+
+- `npm test` executa os testes automatizados do frontend. Eles usam serviços simulados e verificam regras e estados isolados; não substituem testes de integração com o Supabase real.
+- O workflow de publicação do frontend valida os commits do manifesto, executa `npm test`, gera os builds de produção e homologação, publica o Pages e confere o commit em `deployment.json`.
+- O workflow `Validar integridade da promoção` compara os manifestos e verifica commits e migrações; também executa os testes unitários do verificador. Isso não testa a interface nem substitui a validação funcional na URL.
+- Para alterações de banco, o workflow Supabase é acionado manualmente. O `dry-run`, aplicação, histórico de migrações e resposta do serviço devem constar na evidência. A resposta de saúde `200` ou `401` comprova disponibilidade do endpoint, não o funcionamento dos fluxos do GLL.
+- Storybook é uma verificação local complementar para mudanças de componentes/design system. Sua compilação não é uma barreira do workflow de publicação.
 
 ## 2. Criticidade e profundidade
 
@@ -106,7 +115,7 @@ Todo dado de teste deve ter prefixo identificável, por exemplo `HML-AAAAMMDD-`,
 | CORE-03 | P1 | Abrir Visão geral, Licitações, Orçamento, Geração de Documentos, Fornecedores e Configurações. | Nenhuma tela quebra; carregamentos terminam e erros não aparecem no console. |
 | CORE-04 | P1 | Criar ou editar um registro do domínio alterado, salvar e recarregar. | Confirmação visível e dados persistidos sem duplicidade. |
 | CORE-05 | P0 | Sair e tentar voltar pela URL/histórico. | Sessão e dados em memória são limpos; tela protegida não reaparece. |
-| CORE-06 | P0 | Consultar `deployment.json` de homologação. | O commit publicado é exatamente o commit esperado da branch `homolog`. |
+| CORE-06 | P0 | Consultar `deployment.json` publicado em `/homolog/`. | O campo `commit` corresponde ao commit do frontend esperado na branch `homolog`; registre também o commit do backend e a execução Supabase quando houver migração. |
 
 ## 6. Autenticação, navegação e painel
 
@@ -157,6 +166,7 @@ Todo dado de teste deve ter prefixo identificável, por exemplo `HML-AAAAMMDD-`,
 | QTD-08 | P1 | Adicionar especificações completas, parciais e linha vazia. | Completas/parciais persistem; somente linha totalmente vazia é descartada. |
 | QTD-09 | P2 | Fechar modal com e sem alterações e testar texto longo/tela estreita. | Confirma descarte apenas quando sujo; modal rola internamente e tabela rola sem alargar a página. |
 | QTD-10 | P1 | Marcar vários itens vencidos nos status aplicáveis e recarregar. | Cada checkbox persiste imediatamente; linha destaca; em `Faturado` fica visível e bloqueado. |
+| QTD-11 | P1 | Abrir um edital ativo que já possuía itens legados e orçamento reparado pela migração; conferir edital, orçamento e itens antes/depois de recarregar. | O edital aponta para um orçamento próprio; cada item aparece uma vez, mantém número, descrição, quantidade e valores, e os dados continuam editáveis conforme status e permissões. |
 | CAL-01 | P1 | Usar valor final `150,00`, custo `100,00`, quantidade `3`. | Lucro do item = `(150 - 100) × 3` = `R$ 150,00`. |
 | CAL-02 | P1 | Usar valor final `150,00` e custo `100,00`. | Margem efetiva = `(150 - 100) / 150 × 100` = `33,3333%`. |
 | CAL-03 | P1 | Usar custo `100,00` e margem desejada `20%`; depois `100%`. | Valor com margem = `100 / (1 - 0,20)` = `R$ 125,00`; 100% ou mais não gera preço. |
@@ -244,6 +254,7 @@ Todo dado de teste deve ter prefixo identificável, por exemplo `HML-AAAAMMDD-`,
 | DB-03 | P0 | Aplicar em base com dados legados e em base vazia descartável. | Dados são preservados e schema final é equivalente. |
 | DB-04 | P0 | Reaplicar e simular falha transacional. | Reaplicação não tem pendência; falha não deixa objetos/dados parciais e permite recuperação. |
 | DB-05 | P1 | Conferir constraints, cascatas, unicidade, triggers e precisão do domínio alterado. | Banco rejeita invariantes inválidas mesmo sem frontend. |
+| DB-06 | P0 | Para reparo de editais legados, comparar inventário prévio com o resultado em base descartável ou evidência aprovada da migração: editais ativos com itens e sem vínculo, inclusive editais com números repetidos. | Cada edital elegível recebe orçamento próprio; itens e campos são copiados uma única vez, vínculos/status existentes não são alterados indevidamente e uma segunda execução não duplica dados. Não criar ou alterar registros legados diretamente na base compartilhada para simular o cenário. |
 
 ## 14. Experiência, acessibilidade e compatibilidade
 
@@ -254,19 +265,19 @@ Todo dado de teste deve ter prefixo identificável, por exemplo `HML-AAAAMMDD-`,
 | UX-03 | P2 | Testar 320 px, tablet e desktop com zoom de 200%. | Sem perda de conteúdo/ação; rolagem horizontal fica limitada a tabelas. |
 | UX-04 | P1 | Testar carregamento, sucesso, erro, vazio, confirmação e duplo clique. | Feedback bloqueia duplicidade, explica próximo passo e não deixa estado indefinido. |
 | UX-05 | P2 | Validar versões atuais de Chrome e Edge. | Fluxos selecionados e downloads funcionam de modo equivalente. |
-| UX-06 | P1 | Compilar Storybook e inspecionar componentes alterados, sem publicá-lo. | Catálogo compila; tokens/componentes são reutilizados; artefato Pages não contém Storybook. |
+| UX-06 | P2 | Quando houver mudança no Design System, compilar Storybook localmente e inspecionar os componentes alterados. | Catálogo compila e componentes/tokens seguem o padrão visual; esta checagem complementar não é barreira do workflow Pages. |
 
 ## 15. Publicação e critérios de saída
 
 | ID | P | Procedimento | Resultado esperado |
 |---|:---:|---|---|
 | REL-01 | P0 | Comparar `.release/manifest.json` do frontend e backend. | Arquivos idênticos; branch `homolog`; commits/migrações existem e pertencem à branch. |
-| REL-02 | P1 | Executar testes automatizados, build de homologação e Storybook. | `npm test`, `npm run build:homolog` e `npm run build-storybook` concluem sem falha. |
-| REL-03 | P0 | Validar workflows da entrega. | Integridade, migração quando aplicável e Pages concluem com evidências. |
-| REL-04 | P0 | Comparar commit remoto, workflow e `deployment.json`; abrir a URL final. | Os três apontam para a entrega esperada e a aplicação está operacional. |
+| REL-02 | P0 | Conferir a execução do workflow Pages acionada pelo commit de `homolog`. | Validação do manifesto e `npm test` passam; os builds de ambos os ambientes concluem; Pages publica e valida `deployment.json`. Storybook não é requisito deste workflow. |
+| REL-03 | P0 | Conferir `Validar integridade da promoção` e, quando houver migração, `Supabase - Migrar produção` executado com `HOMOLOG`. | Integridade conclui; migração tem `dry-run`, histórico e serviço registrados; para mudança sem migração, registrar “não se aplica”. |
+| REL-04 | P0 | Comparar commit do frontend no workflow com `deployment.json`, abrir a URL final e conferir o Markdown/HTML do plano quando alterados. | URL `/homolog/` está acessível, metadado aponta ao commit esperado e as cópias web correspondem ao Markdown fonte. |
 | REL-05 | P1 | Arquivar relatório da rodada com casos selecionados e resultados. | Escopo, aprovações, falhas, evidências e risco residual ficam rastreáveis. |
 
-A rodada é aprovada quando: todos os casos selecionados foram executados; não há defeito P0/P1 aberto; P2/P3 possuem decisão registrada; testes/build/workflows passaram; migrações e RLS foram comprovadas quando aplicáveis; e o commit correto foi observado na URL de homologação.
+A rodada é aprovada quando: todos os casos selecionados foram executados; não há defeito P0/P1 aberto; P2/P3 possuem decisão registrada; os resultados automatizados, funcionais e de banco estão identificados separadamente; os workflows aplicáveis passaram; migrações e RLS foram comprovadas quando aplicáveis; e o commit correto foi observado na URL de homologação. Um endpoint saudável, isoladamente, não aprova a aplicação.
 
 ## 16. Modelo de relatório da rodada
 
@@ -274,6 +285,7 @@ A rodada é aprovada quando: todos os casos selecionados foram executados; não 
 Entrega:
 Data/hora:
 Responsável:
+Ambiente/URL:
 Frontend commit:
 Backend commit:
 Migrações:
@@ -281,7 +293,10 @@ Domínios afetados:
 Justificativa da seleção:
 Casos CORE executados:
 Casos de regressão executados:
-Resultados (aprovado/reprovado/bloqueado/N/A):
+Resultados por ID (aprovado/reprovado/bloqueado/N/A):
+Resultado de `npm test` e workflow Pages:
+Resultado de integridade/manifesta:
+Resultado de migração e endpoint, ou “não se aplica”:
 Defeitos e severidade:
 Evidências/URLs:
 Risco residual:
@@ -291,4 +306,4 @@ Aprovador:
 
 ## 17. Rastreabilidade da cobertura
 
-Este plano foi derivado do comportamento observável na branch `homolog`, incluindo `web/index.html`, `web/app.js`, `web/declarations.js`, `web/company-data.js`, `web/commercial-proposals.js`, testes automatizados, workflows, schema e migrações. Ele é deliberadamente independente da especificação de produção: funcionalidades exclusivas de homologação podem ser testadas aqui sem antecipar sua incorporação em `docs/especificacao-tecnica/ESPECIFICACAO_TECNICA_GLL.md`.
+Revisão de 30/09/2026 na branch `homolog`. Cobertura conferida contra o frontend (aplicação, testes, build e workflow Pages), workflows de integridade/publicação do backend, manifesto, schema e migrações. A suíte automatizada do frontend usa serviços simulados; os casos `ACL`, `DB` e a validação na URL exigem evidência própria. Este plano é independente da especificação de produção: funcionalidades exclusivas de homologação podem ser testadas aqui sem antecipar sua incorporação em `docs/especificacao-tecnica/ESPECIFICACAO_TECNICA_GLL.md`.
