@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "release_id": "2026-09-30-cadastro-usuarios",
+  "release_id": "2026-09-30-tipo-edital",
   "environment": "homolog",
   "target_branch": "homolog",
   "items": [
@@ -186,6 +186,14 @@
       "migrations": [
         "supabase/migrations/20260930120000_admin_user_provisioning.sql"
       ]
+    },
+    {
+      "id": "TIPOS-EDITAL-001",
+      "backend_commits": [],
+      "frontend_commits": [
+        "2b8913ccde2e4862a98eee95826791b23bf5cb5f"
+      ],
+      "migrations": []
     }
   ]
 }
