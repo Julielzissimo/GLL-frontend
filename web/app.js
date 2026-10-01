@@ -206,6 +206,23 @@ const refs = {
   userCreatePasswordConfirm: $("userCreatePasswordConfirm"),
   userCreateRole: $("userCreateRole"),
   userCreateError: $("userCreateError"),
+  userAccessDialog: $("userAccessDialog"),
+  userAccessForm: $("userAccessForm"),
+  userAccessTitle: $("userAccessTitle"),
+  userAccessDescription: $("userAccessDescription"),
+  userAccessReasonField: $("userAccessReasonField"),
+  userAccessReason: $("userAccessReason"),
+  userAccessPasswordField: $("userAccessPasswordField"),
+  userAccessPassword: $("userAccessPassword"),
+  userAccessPasswordConfirm: $("userAccessPasswordConfirm"),
+  userAccessError: $("userAccessError"),
+  userAccessSubmitButton: $("submitUserAccessButton"),
+  closeUserAccessDialogButton: $("closeUserAccessDialogButton"),
+  cancelUserAccessButton: $("cancelUserAccessButton"),
+  userAccessHistoryDialog: $("userAccessHistoryDialog"),
+  userAccessHistoryTitle: $("userAccessHistoryTitle"),
+  userAccessHistoryList: $("userAccessHistoryList"),
+  closeUserAccessHistoryButton: $("closeUserAccessHistoryButton"),
   settingsPage: $("settingsPage"),
   companyDataPage: $("companyDataPage"),
   designSystemPage: $("designSystemPage"),
@@ -1195,10 +1212,25 @@ class SupabaseStore {
     });
   }
 
-  async deleteUser(email) {
+  async setUserAccess({ targetUserId, action, reason, temporaryPassword }) {
     const client = await this.open();
-    const { error } = await client.from("app_users").delete().eq("email", normalizeEmail(email));
+    return invokeSupabaseFunction(client, "user-access", {
+      targetUserId,
+      action,
+      reason,
+      temporaryPassword,
+    });
+  }
+
+  async getUserAccessHistory(targetUserId) {
+    const client = await this.open();
+    const { data, error } = await client
+      .from("user_access_history")
+      .select("*")
+      .eq("target_auth_user_id", targetUserId)
+      .order("changed_at", { ascending: false });
     assertSupabase(error);
+    return data || [];
   }
 
   async assignAccessToAnalyst(analystId, selectedBidIds, selectedQuotationIds) {
@@ -1923,6 +1955,21 @@ function bindEvents() {
     if (event.target === refs.userCreateDialog) closeUserCreateDialog();
   });
   refs.userCreateForm.addEventListener("submit", withBlockingLoading(handleUserCreate, "Cadastrando usuário…"));
+  refs.closeUserAccessDialogButton.addEventListener("click", closeUserAccessDialog);
+  refs.cancelUserAccessButton.addEventListener("click", closeUserAccessDialog);
+  refs.userAccessDialog.addEventListener("cancel", (event) => {
+    event.preventDefault();
+    closeUserAccessDialog();
+  });
+  refs.userAccessDialog.addEventListener("click", (event) => {
+    if (event.target === refs.userAccessDialog) closeUserAccessDialog();
+  });
+  refs.userAccessForm.addEventListener("submit", withBlockingLoading(handleUserAccessChange, "Atualizando acesso…"));
+  refs.closeUserAccessHistoryButton.addEventListener("click", () => refs.userAccessHistoryDialog.close());
+  refs.userAccessHistoryDialog.addEventListener("click", (event) => {
+    if (event.target === refs.userAccessHistoryDialog) refs.userAccessHistoryDialog.close();
+  });
+  refs.usersTableBody.addEventListener("click", handleUserManagementAction);
   window.addEventListener("popstate", () => {
     if (appState.authenticated) applyNavigationRoute();
   });
@@ -2243,6 +2290,140 @@ async function handleUserCreate(event) {
     }
   } catch (error) {
     refs.userCreateError.textContent = error.message;
+  }
+}
+
+function handleUserManagementAction(event) {
+  const accessButton = event.target.closest("[data-user-access-target]");
+  if (accessButton) {
+    openUserAccessDialog(accessButton.dataset.userAccessTarget);
+    return;
+  }
+  const historyButton = event.target.closest("[data-user-access-history]");
+  if (historyButton) void openUserAccessHistory(historyButton.dataset.userAccessHistory);
+}
+
+function accessActionLabel(user) {
+  if (user.pending_access_action === "revoke") return "Concluir bloqueio";
+  if (user.pending_access_action === "reactivate") return "Concluir reativação";
+  return user.access_revoked_at ? "Reativar acesso" : "Revogar acesso";
+}
+
+function openUserAccessDialog(targetUserId) {
+  if (!isCurrentUserAdmin() || !(store instanceof SupabaseStore)) return;
+  const user = appState.users.find((candidate) => candidate.auth_user_id === targetUserId);
+  if (!user || normalizeEmail(user.email) === normalizeEmail(appState.currentUserEmail)) return;
+
+  const mode = user.pending_access_action || (user.access_revoked_at ? "reactivate" : "revoke");
+  const isRetry = Boolean(user.pending_access_action);
+  const isReactivation = mode === "reactivate";
+  refs.userAccessForm.dataset.targetUserId = targetUserId;
+  refs.userAccessForm.dataset.action = mode;
+  refs.userAccessTitle.textContent = isReactivation
+    ? (isRetry ? "Concluir reativação" : "Reativar acesso")
+    : (isRetry ? "Concluir bloqueio" : "Revogar acesso");
+  refs.userAccessSubmitButton.textContent = isRetry
+    ? (isReactivation ? "Concluir reativação" : "Concluir bloqueio")
+    : (isReactivation ? "Reativar acesso" : "Revogar acesso");
+  refs.userAccessDescription.textContent = isRetry
+    ? (isReactivation
+      ? "A conta Auth foi atualizada, mas a confirmação final ainda está pendente. Informe uma nova senha provisória para concluir."
+      : "O acesso aos dados já está bloqueado. Tente novamente o bloqueio da conta Auth e o encerramento das sessões.")
+    : isReactivation
+      ? "A conta será reativada com uma nova senha provisória. A pessoa precisará trocá-la no próximo acesso."
+      : "O acesso aos dados será bloqueado imediatamente, a conta Auth será suspensa e as sessões serão encerradas.";
+  refs.userAccessReasonField.classList.toggle("hidden", isRetry);
+  refs.userAccessReason.disabled = isRetry;
+  refs.userAccessReason.required = !isRetry;
+  refs.userAccessPasswordField.classList.toggle("hidden", !isReactivation);
+  refs.userAccessPassword.disabled = !isReactivation;
+  refs.userAccessPasswordConfirm.disabled = !isReactivation;
+  refs.userAccessPassword.required = isReactivation;
+  refs.userAccessPasswordConfirm.required = isReactivation;
+  refs.userAccessError.textContent = "";
+  refs.userAccessDialog.showModal();
+  if (isReactivation) refs.userAccessPassword.focus();
+  else if (!isRetry) refs.userAccessReason.focus();
+  else refs.cancelUserAccessButton.focus();
+}
+
+function closeUserAccessDialog() {
+  const targetUserId = refs.userAccessForm.dataset.targetUserId;
+  refs.userAccessForm.reset();
+  refs.userAccessError.textContent = "";
+  if (refs.userAccessDialog.open) refs.userAccessDialog.close();
+  const trigger = refs.usersTableBody.querySelector(`[data-user-access-target="${CSS.escape(targetUserId || "")}"]`);
+  trigger?.focus({ preventScroll: true });
+}
+
+async function handleUserAccessChange(event) {
+  event.preventDefault();
+  const targetUserId = refs.userAccessForm.dataset.targetUserId;
+  const action = refs.userAccessForm.dataset.action;
+  const isRetry = action === "revoke" && refs.userAccessReason.disabled
+    || action === "reactivate" && refs.userAccessReason.disabled;
+  const reason = refs.userAccessReason.value.trim();
+  if (!isRetry && !reason) {
+    refs.userAccessError.textContent = "Informe o motivo da alteração de acesso.";
+    return;
+  }
+  if (action === "reactivate" && refs.userAccessPassword.value !== refs.userAccessPasswordConfirm.value) {
+    refs.userAccessError.textContent = "As senhas provisórias não coincidem.";
+    return;
+  }
+
+  refs.userAccessError.textContent = "";
+  try {
+    const result = await store.setUserAccess({
+      targetUserId,
+      action,
+      reason,
+      temporaryPassword: refs.userAccessPassword.value,
+    });
+    closeUserAccessDialog();
+    await reloadData();
+    const message = result.changed
+      ? action === "revoke" ? "Acesso revogado e sessões encerradas." : "Acesso reativado. A senha provisória deverá ser trocada no primeiro acesso."
+      : action === "revoke" ? "O acesso já estava revogado." : "O acesso já estava ativo.";
+    showToast(message);
+  } catch (error) {
+    try {
+      await reloadData();
+    } catch {
+      // Mantém a mensagem da operação de revogação/reativação.
+    }
+    refs.userAccessError.textContent = error.message;
+  }
+}
+
+async function openUserAccessHistory(targetUserId) {
+  if (!isCurrentUserAdmin() || !(store instanceof SupabaseStore)) return;
+  const user = appState.users.find((candidate) => candidate.auth_user_id === targetUserId);
+  refs.userAccessHistoryTitle.textContent = `Histórico de acesso · ${user ? userDisplayName(user) : "Usuário"}`;
+  refs.userAccessHistoryList.innerHTML = '<li class="user-access-history-empty" role="status">Carregando histórico…</li>';
+  refs.userAccessHistoryDialog.showModal();
+  try {
+    const history = await store.getUserAccessHistory(targetUserId);
+    if (!history.length) {
+      refs.userAccessHistoryList.innerHTML = '<li class="user-access-history-empty">Nenhuma alteração de acesso registrada.</li>';
+      return;
+    }
+    refs.userAccessHistoryList.innerHTML = history.map((entry) => {
+      const actionLabel = entry.action === "revoked" ? "Acesso revogado" : "Acesso reativado";
+      const statusLabel = entry.auth_status === "completed"
+        ? "Concluído"
+        : entry.auth_status === "failed" ? "Falha na autenticação" : "Pendente";
+      return `
+        <li class="user-access-history-entry">
+          <div class="user-access-history-heading"><strong>${escapeHtml(actionLabel)}</strong><span class="user-access-history-status ${escapeHtml(entry.auth_status)}">${escapeHtml(statusLabel)}</span></div>
+          <p>${escapeHtml(entry.reason)}</p>
+          <small>${escapeHtml(entry.actor_name)} · ${escapeHtml(entry.actor_email)} · ${escapeHtml(formatDateTime(entry.changed_at))}</small>
+          ${entry.auth_error ? `<small class="user-access-history-error">${escapeHtml(entry.auth_error)}</small>` : ""}
+        </li>
+      `;
+    }).join("");
+  } catch (error) {
+    refs.userAccessHistoryList.innerHTML = `<li class="user-access-history-empty" role="alert">${escapeHtml(error.message)}</li>`;
   }
 }
 
@@ -4908,19 +5089,53 @@ function renderUsers() {
         : 0;
       const displayName = userDisplayName(user);
       const initials = userInitials(displayName);
-      const action = canConfigure
-        ? `<button class="quiet-action compact-action configure-user-action" type="button" data-configure-user="${escapeHtml(user.auth_user_id)}"><span aria-hidden="true">⚙</span> Configurar acessos</button>`
+      const canManageAccess = store instanceof SupabaseStore && Boolean(user.auth_user_id) && !isCurrent;
+      const actionButtons = [];
+      if (canConfigure) {
+        actionButtons.push(`<button class="quiet-action compact-action configure-user-action" type="button" data-configure-user="${escapeHtml(user.auth_user_id)}"><span aria-hidden="true">⚙</span> Configurar acessos</button>`);
+      }
+      if (canManageAccess) {
+        const label = accessActionLabel(user);
+        const accessAction = user.pending_access_action || (user.access_revoked_at ? "reactivate" : "revoke");
+        const actionClass = accessAction === "revoke" ? "danger-action" : "quiet-action";
+        actionButtons.push(`<button class="${actionClass} compact-action user-access-action" type="button" data-user-access-target="${escapeHtml(user.auth_user_id)}">${escapeHtml(label)}</button>`);
+      }
+      if (store instanceof SupabaseStore && user.auth_user_id) {
+        actionButtons.push(`<button class="quiet-action compact-action user-access-history-action" type="button" data-user-access-history="${escapeHtml(user.auth_user_id)}">Histórico</button>`);
+      }
+      const action = actionButtons.length
+        ? `<div class="user-management-actions">${actionButtons.join("")}</div>`
         : isCurrent
           ? `<span class="current-user-pill"><span aria-hidden="true">♙</span> Usuário atual</span>`
           : `<span class="muted-text">—</span>`;
       const assignedBids = role === USER_ROLES.ADMIN
         ? `<span class="all-bids-label"><span aria-hidden="true">∞</span> Todos os editais</span>`
         : `<span class="assigned-bids-pill" title="Editais atribuídos diretamente pelo administrador"><span aria-hidden="true">▱</span> ${assignedBidCount} ${assignedBidCount === 1 ? "edital" : "editais"}</span>`;
+      const accessStatus = user.pending_access_action === "revoke"
+        ? "Bloqueio de autenticação pendente"
+        : user.pending_access_action === "reactivate"
+          ? "Reativação pendente"
+          : user.access_revoked_at
+            ? "Acesso revogado"
+            : "Acesso ativo";
+      const revokedBy = user.access_revoked_by
+        ? appState.users.find((candidate) => candidate.auth_user_id === user.access_revoked_by)
+        : null;
+      const accessDetails = user.access_revoked_at
+        ? [
+            `Data: ${formatDateTime(user.access_revoked_at)}`,
+            revokedBy ? `Responsável: ${userDisplayName(revokedBy)}` : "",
+            user.access_revocation_reason ? `Motivo: ${user.access_revocation_reason}` : "",
+          ].filter(Boolean).join(" · ")
+        : "";
+      const accessStatusClass = user.pending_access_action
+        ? "pending"
+        : user.access_revoked_at ? "revoked" : "active";
       return `
         <tr>
           <td><div class="user-identity"><span class="user-avatar" aria-hidden="true">${escapeHtml(initials)}</span><span><strong>${escapeHtml(displayName)}</strong><small>${escapeHtml(role === USER_ROLES.ADMIN ? "Conta principal" : role)}</small></span></div></td>
           <td>${escapeHtml(user.email || "")}</td>
-          <td><span class="user-role-pill ${role === USER_ROLES.ADMIN ? "admin" : "analyst"}"><span aria-hidden="true">${role === USER_ROLES.ADMIN ? "♢" : "♙"}</span> ${escapeHtml(role)}</span></td>
+          <td><span class="user-role-pill ${role === USER_ROLES.ADMIN ? "admin" : "analyst"}"><span aria-hidden="true">${role === USER_ROLES.ADMIN ? "♢" : "♙"}</span> ${escapeHtml(role)}</span><small class="user-access-status ${accessStatusClass}" title="${escapeHtml(accessDetails)}">${escapeHtml(accessStatus)}</small></td>
           <td>${assignedBids}</td>
           <td>${action}</td>
         </tr>

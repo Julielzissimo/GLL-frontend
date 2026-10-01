@@ -242,13 +242,16 @@ export function createDeclarationsFeature({ getClient, getContext, getBids, navi
 
   async function loadAssetUrls() {
     const supabase = client();
+    for (const urlKey of ["logoUrl", "watermarkUrl"]) {
+      if (state[urlKey]?.startsWith("blob:")) URL.revokeObjectURL(state[urlKey]);
+    }
     state.logoUrl = "";
     state.watermarkUrl = "";
     for (const [pathKey, urlKey] of [["logo_path", "logoUrl"], ["watermark_path", "watermarkUrl"]]) {
       const path = state.settings?.[pathKey];
       if (!path) continue;
-      const result = await supabase.storage.from(ASSET_BUCKET).createSignedUrl(path, 3600);
-      if (!result.error) state[urlKey] = result.data.signedUrl;
+      const result = await supabase.storage.from(ASSET_BUCKET).download(path);
+      if (!result.error && result.data) state[urlKey] = URL.createObjectURL(result.data);
     }
   }
 
@@ -757,9 +760,11 @@ export function createDeclarationsFeature({ getClient, getContext, getBids, navi
     const row = state.history.find((item) => item.id === id);
     if (!row) return;
     if (!client()) { toast("No modo local, gere novamente o PDF para baixá-lo."); return; }
-    const result = await client().storage.from(PDF_BUCKET).createSignedUrl(row.file_path, 600, { download: row.file_name });
+    const result = await client().storage.from(PDF_BUCKET).download(row.file_path);
     assertResult(result);
-    const link = document.createElement("a"); link.href = result.data.signedUrl; link.target = "_blank"; link.rel = "noopener"; link.click();
+    const url = URL.createObjectURL(result.data);
+    const link = document.createElement("a"); link.href = url; link.download = row.file_name; link.click();
+    setTimeout(() => URL.revokeObjectURL(url), 60000);
   }
 
   function showVariableSuggestions(textarea) {
