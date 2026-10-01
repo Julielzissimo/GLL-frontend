@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "release_id": "2026-09-30-ux-proposta-comercial",
+  "release_id": "2026-09-30-ajuste-status-edital",
   "environment": "homolog",
   "target_branch": "homolog",
   "items": [
@@ -206,6 +206,14 @@
       "migrations": [
         "supabase/migrations/20261001022200_simplify_commercial_proposals.sql"
       ]
+    },
+    {
+      "id": "AJUSTE-STATUS-EDITAL-001",
+      "backend_commits": [],
+      "frontend_commits": [
+        "d1f14533e63c0591258a33d41513bd94c2fec4fe"
+      ],
+      "migrations": []
     }
   ]
 }
