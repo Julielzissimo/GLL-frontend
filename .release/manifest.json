@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "release_id": "2026-09-30-ajuste-status-edital",
+  "release_id": "2026-10-01-imp-001-revogacao-acesso",
   "environment": "homolog",
   "target_branch": "homolog",
   "items": [
@@ -232,6 +232,18 @@
         "faf76df4acca1ebba0096eeb93766961643f6b51"
       ],
       "migrations": []
+    },
+    {
+      "id": "IMP-001",
+      "backend_commits": [
+        "4a256e5bbd048e53a071f08e351cee71b15be07e"
+      ],
+      "frontend_commits": [
+        "dfb80ec68381a8d324ad5855e03edf5fab1c56c4"
+      ],
+      "migrations": [
+        "supabase/migrations/20261001140000_complete_user_access_revocation.sql"
+      ]
     }
   ]
 }
