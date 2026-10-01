@@ -6425,7 +6425,15 @@ button.history-row:hover {
 .commercial-proposal-summary-card { position: static; display: block; padding: var(--space-xl); }
 .commercial-proposal-summary-card h2 { margin-bottom: var(--space-xs); }
 .commercial-proposal-summary-card > p { color: var(--color-text-secondary); font-size: var(--font-size-sm); line-height: var(--line-height-normal); }
-.commercial-proposal-summary-card .sum-row { border-top: var(--border-default); }
+.commercial-proposal-summary-card .sum-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-lg);
+  padding: var(--space-md) 0;
+  border-top: var(--border-default);
+}
+.commercial-proposal-summary-card .sum-row b { min-width: 0; text-align: right; overflow-wrap: anywhere; }
 .commercial-proposal-summary-card .full-action { width: 100%; margin-top: var(--space-sm); }
 .commercial-proposal-summary-card .hint { text-align: center; color: var(--color-text-secondary); }
 .commercial-section-intro, .commercial-edital-section > p { margin: var(--space-xs) 0 var(--space-lg); color: var(--color-text-secondary); font-size: var(--font-size-sm); line-height: var(--line-height-normal); }
