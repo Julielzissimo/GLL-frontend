@@ -6723,6 +6723,8 @@ button.history-row:hover {
 }
 .commercial-proposal-toolbar { flex-wrap: wrap; justify-content: flex-end; }
 .commercial-proposal-save-state { color: var(--color-text-secondary); font-size: var(--font-size-xs); }
+.declarations-tabs.commercial-proposal-tabs { width: 100%; max-width: none; }
+.declarations-tabs.commercial-proposal-tabs .commercial-stepper { width: 100%; }
 
 @media (max-width: 1100px) {
   .commercial-proposal-summary-column { grid-row: 1; grid-column: 1; }
