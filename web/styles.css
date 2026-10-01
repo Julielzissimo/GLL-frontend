@@ -3587,30 +3587,95 @@ tr.item-won td {
   padding: 26px;
 }
 
-.user-create-panel {
-  display: grid;
-  gap: var(--space-md);
-}
-
-.user-create-panel .users-list-toolbar {
-  margin-bottom: 0;
-}
-
 .user-create-description {
-  margin: 0;
+  margin: var(--space-sm) 0 0;
   color: var(--color-text-secondary);
+}
+
+.user-create-modal {
+  width: min(var(--dialog-width-xl), calc(100vw - 32px));
 }
 
 .user-create-form {
   display: grid;
-  gap: var(--space-md);
+  gap: var(--space-lg);
 }
 
-.user-create-form .form-grid > label {
+.user-create-form .form-grid > label,
+.user-create-form .form-grid > .password-field {
   display: grid;
   gap: var(--space-xs);
   color: var(--color-text-primary);
   font-weight: var(--font-weight-medium);
+}
+
+.user-create-form .password-field > label {
+  color: inherit;
+}
+
+.user-create-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.user-create-trigger > span {
+  font-size: var(--font-size-lg);
+  line-height: 1;
+}
+
+.password-field {
+  display: grid;
+  gap: var(--space-xs);
+  min-width: 0;
+}
+
+.password-input-wrap {
+  position: relative;
+  display: block;
+  width: 100%;
+}
+
+.password-input-wrap > input {
+  padding-right: calc(var(--control-height-md) + var(--space-xs));
+}
+
+.password-visibility-toggle {
+  position: absolute;
+  top: 50%;
+  right: 0;
+  display: grid;
+  width: var(--control-height-md);
+  min-width: var(--control-height-md);
+  height: var(--control-height-md);
+  min-height: var(--control-height-md);
+  place-items: center;
+  transform: translateY(-50%);
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-text-secondary);
+}
+
+.password-visibility-toggle:hover {
+  background: var(--color-surface-subtle);
+  color: var(--color-primary);
+}
+
+.password-eye-icon {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.password-visibility-toggle[aria-pressed="false"] .password-eye-closed,
+.password-visibility-toggle[aria-pressed="true"] .password-eye-open {
+  display: none;
 }
 
 .users-list-toolbar,
@@ -3891,10 +3956,16 @@ tr.item-won td {
 
   .users-list-controls {
     width: 100%;
+    flex-wrap: wrap;
   }
 
   .users-search-control {
-    width: 100%;
+    width: auto;
+    flex: 1 1 220px;
+  }
+
+  .users-filter-control {
+    flex: 0 1 220px;
   }
 
   .users-guide-intro {
