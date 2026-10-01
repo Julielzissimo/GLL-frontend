@@ -124,6 +124,7 @@ const appState = {
   sidebarCollapsed: false,
   appNavigationCollapsed: false,
   documentsNavigationExpanded: false,
+  settingsNavigationExpanded: false,
   bids: [],
   items: [],
   documents: [],
@@ -170,6 +171,8 @@ const refs = {
   navDeclarationsButton: $("navDeclarationsButton"),
   navUsersButton: $("navUsersButton"),
   navSettingsButton: $("navSettingsButton"),
+  settingsNavigationItems: $("settingsNavigationItems"),
+  navDesignSystemButton: $("navDesignSystemButton"),
   menuToggleButton: $("menuToggleButton"),
   breadcrumbList: $("breadcrumbList"),
   currentUserName: $("currentUserName"),
@@ -1978,6 +1981,7 @@ function bindEvents() {
     button.addEventListener("click", () => setPage(button.dataset.navigationPage));
   });
   refs.navDocumentsButton.addEventListener("click", toggleDocumentsNavigation);
+  refs.navSettingsButton.addEventListener("click", toggleSettingsNavigation);
   $("openDesignSystemButton").addEventListener("click", () => setPage("designSystem"));
   $("openCompanyDataButton").addEventListener("click", () => setPage("companyData"));
   $("backToSettingsButton").addEventListener("click", () => setPage("settings"));
@@ -2584,6 +2588,20 @@ function updateDocumentsNavigation() {
   refs.documentsNavigationItems.inert = !isExpanded;
 }
 
+function toggleSettingsNavigation() {
+  appState.settingsNavigationExpanded = !appState.settingsNavigationExpanded;
+  updateSettingsNavigation();
+}
+
+function updateSettingsNavigation() {
+  const isExpanded = appState.settingsNavigationExpanded;
+  refs.navSettingsButton.setAttribute("aria-expanded", String(isExpanded));
+  refs.navSettingsButton.classList.remove("active");
+  refs.settingsNavigationItems.classList.toggle("is-expanded", isExpanded);
+  refs.settingsNavigationItems.setAttribute("aria-hidden", String(!isExpanded));
+  refs.settingsNavigationItems.inert = !isExpanded;
+}
+
 function normalizeUserRole(role) {
   return role === USER_ROLES.ANALYST ? USER_ROLES.ANALYST : USER_ROLES.ADMIN;
 }
@@ -2722,6 +2740,8 @@ function updateAccessInterface() {
   refs.navUsersButton.classList.toggle("hidden", !showUserManagement);
   refs.navUsersButton.disabled = !showUserManagement;
   refs.navUsersButton.setAttribute("aria-hidden", String(!showUserManagement));
+  refs.navDesignSystemButton.classList.toggle("hidden", !showUserManagement);
+  refs.navDesignSystemButton.setAttribute("aria-hidden", String(!showUserManagement));
   refs.designSystemAccessCard.classList.toggle("hidden", !showUserManagement);
   refs.designSystemAccessCard.setAttribute("aria-hidden", String(!showUserManagement));
   refs.usersOrganizationLabel.textContent = `${appState.currentOrganizationName || "Organização"} · usuários vinculados no Supabase.`;
@@ -2957,6 +2977,9 @@ function setPage(page, options = {}) {
   if (["commercialProposals", ...declarationPages].includes(page)) {
     appState.documentsNavigationExpanded = true;
   }
+  if (["settings", "companyData", "designSystem"].includes(page)) {
+    appState.settingsNavigationExpanded = true;
+  }
   placeQuotationEditor(page);
   const showUsers = page === "users";
   const showSettings = page === "settings";
@@ -2994,11 +3017,13 @@ function setPage(page, options = {}) {
   refs.failuresTabButton.classList.toggle("active", page === "failures");
   refs.failuresTabButton.classList.toggle("hidden", !shouldShowFailureHistory());
   const primaryPage = showCommercialProposals ? "commercialProposals" : showDeclarations ? "declarations" : showSuppliers ? "suppliers" : showUsers ? "users" : showSettings || showCompanyData || showDesignSystem ? "settings" : showQuotations ? "quotations" : showHome ? "home" : "bids";
+  const activeNavigationPage = ["settings", "companyData", "designSystem"].includes(page) ? page : primaryPage;
   renderBreadcrumb(page);
   document.querySelectorAll("[data-navigation-page]").forEach((button) => {
-    button.classList.toggle("active", button.dataset.navigationPage === primaryPage);
+    button.classList.toggle("active", button.dataset.navigationPage === activeNavigationPage);
   });
   updateDocumentsNavigation();
+  updateSettingsNavigation();
   refs.appView.classList.remove("mobile-nav-open");
   updateMainNavigationState();
   updateBidWorkspaceHeader();

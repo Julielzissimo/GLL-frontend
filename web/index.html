@@ -110,7 +110,21 @@
           </div>
           <button id="navSuppliersButton" class="nav-link" type="button" data-navigation-page="suppliers"><span aria-hidden="true" data-gll-icon="suppliers"></span>Fornecedores</button>
           <button id="navUsersButton" class="nav-link" type="button" data-navigation-page="users"><span aria-hidden="true" data-gll-icon="users"></span>Usuários</button>
-          <button id="navSettingsButton" class="nav-link" type="button" data-navigation-page="settings"><span aria-hidden="true" data-gll-icon="settings"></span>Configurações</button>
+          <div id="settingsNavigationGroup" class="nav-group">
+            <button id="navSettingsButton" class="nav-link nav-group-toggle" type="button" aria-expanded="false" aria-controls="settingsNavigationItems">
+              <span aria-hidden="true" data-gll-icon="settings"></span><span class="nav-group-label">Configurações</span>
+              <svg class="nav-group-chevron" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="m9 18 6-6-6-6"></path>
+              </svg>
+            </button>
+            <div id="settingsNavigationItems" class="nav-submenu" aria-hidden="true" inert>
+              <div class="nav-submenu-inner">
+                <button id="navSettingsGeneralButton" class="nav-link nav-sublink" type="button" data-navigation-page="settings">Geral</button>
+                <button id="navCompanyDataButton" class="nav-link nav-sublink" type="button" data-navigation-page="companyData">Dados da Empresa</button>
+                <button id="navDesignSystemButton" class="nav-link nav-sublink" type="button" data-navigation-page="designSystem">Design System</button>
+              </div>
+            </div>
+          </div>
         </nav>
         <div class="sidebar-footer">
           <span class="environment-dot" aria-hidden="true"></span>
