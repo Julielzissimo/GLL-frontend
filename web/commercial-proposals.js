@@ -428,10 +428,11 @@ export function createCommercialProposalsFeature({ getClient, getContext, toast,
         <div><button class="quiet-action compact-action" type="button" data-proposal-action="back">← Todas as propostas</button>
           <span class="eyebrow">PROPOSTA COMERCIAL · ${escapeHtml(bid.edital_number || bid.id)}</span>
           <h1 id="commercialProposalsTitle">Revise sua proposta</h1>
-          <p>Os itens e dados do edital já estão aqui. Confira o que será enviado. · <span data-dirty-marker>${state.dirty ? "Alterações não salvas" : "Todas as alterações salvas"}</span></p>
+          <p>Os itens e dados do edital já estão aqui. Confira o que será enviado.</p>
         </div>
         <div class="commercial-proposal-toolbar">
           <span class="status-pill proposal-status-${proposal.status}">${statusLabel(proposal.status)}</span>
+          <span class="commercial-proposal-save-state" data-dirty-marker role="status" aria-live="polite">${state.dirty ? "Alterações não salvas" : "Todas as alterações salvas"}</span>
           <button class="quiet-action" type="button" data-proposal-action="save">Salvar rascunho</button>
         </div>
       </div>

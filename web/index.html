@@ -1281,7 +1281,7 @@
 
       <section id="settingsPage" class="users-page settings-page hidden">
         <div class="page-heading">
-          <div><span class="eyebrow">SISTEMA</span><h1>Configurações</h1><p>Preferências do ambiente e manutenção da base demonstrativa.</p></div>
+          <div><span class="eyebrow">SISTEMA</span><h1>Configurações</h1></div>
         </div>
         <div class="settings-grid">
           <section class="section-band settings-access-card company-data-access-card">
@@ -1292,13 +1292,6 @@
             </div>
             <button id="openCompanyDataButton" class="primary-action" type="button">Abrir cadastro</button>
           </section>
-          <section class="section-band">
-            <h2>Ambiente</h2>
-            <div class="setting-row"><div><strong>Modo de persistência</strong><small>Os dados utilizam a configuração ativa deste ambiente.</small></div><span class="status-pill">IndexedDB / Supabase</span></div>
-            <div class="setting-row"><div><strong>Política de sessão</strong><small>A sessão termina ao atingir qualquer um dos limites.</small></div><strong id="sessionPolicyStatus">30 min inativa / 8 h total</strong></div>
-            <div class="setting-row"><div><strong>Cliente de autenticação</strong><small>Versão fixada para atualizações reproduzíveis.</small></div><strong id="authClientVersion">Supabase JS</strong></div>
-            <div class="setting-row"><div><strong>Interface</strong><small>Identidade visual do protótipo aprovado.</small></div><strong>GLL 2.0</strong></div>
-          </section>
           <section id="designSystemAccessCard" class="section-band design-system-access-card hidden">
             <span class="settings-icon" aria-hidden="true">◫</span>
             <div>
@@ -1306,11 +1299,6 @@
               <p>Consulte foundations, componentes reutilizáveis e padrões oficiais da interface.</p>
             </div>
             <button id="openDesignSystemButton" class="primary-action" type="button">Abrir catálogo</button>
-          </section>
-          <section class="section-band danger-zone">
-            <h2>Base de demonstração</h2>
-            <p>Restaure todos os registros locais para os valores iniciais. Esta ação não está disponível nos ambientes conectados ao Supabase.</p>
-            <button id="resetDataButton" class="danger-action" type="button">Restaurar base</button>
           </section>
         </div>
       </section>
