@@ -214,6 +214,14 @@
         "d1f14533e63c0591258a33d41513bd94c2fec4fe"
       ],
       "migrations": []
+    },
+    {
+      "id": "CONFIRMACAO-SENHA-001",
+      "backend_commits": [],
+      "frontend_commits": [
+        "3be3fb6f16cc2e30da18aad0cd4e1b9aaa41fdf8"
+      ],
+      "migrations": []
     }
   ]
 }
