@@ -1165,6 +1165,10 @@ th.numeric {
   gap: var(--space-sm);
 }
 
+.bid-status-field {
+  align-self: start;
+}
+
 .bid-type-field legend {
   padding: 0;
   color: var(--color-text-secondary);
