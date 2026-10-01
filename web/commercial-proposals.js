@@ -128,6 +128,14 @@ function resolveVariables(text, values) {
   });
 }
 
+function normalizeSearch(value) {
+  return String(value ?? "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLocaleLowerCase("pt-BR")
+    .trim();
+}
+
 export function createCommercialProposalsFeature({ getClient, getContext, toast, runBusy }) {
   const root = document.getElementById("commercialProposalsRoot");
   const state = {
@@ -169,47 +177,98 @@ export function createCommercialProposalsFeature({ getClient, getContext, toast,
     return status === "finalized" ? "Finalizada" : "Rascunho";
   }
 
+  function applyProposalListFilters() {
+    const query = normalizeSearch(state.listQuery);
+    let visible = 0;
+    const cards = [...root.querySelectorAll(".commercial-proposal-list-card")];
+    cards.forEach((card) => {
+      const matchesStatus = state.listStatus === "all" || card.dataset.status === state.listStatus;
+      const matchesQuery = !query || normalizeSearch(card.dataset.searchText).includes(query);
+      card.hidden = !(matchesStatus && matchesQuery);
+      if (!card.hidden) visible += 1;
+    });
+    const empty = root.querySelector("[data-list-search-empty]");
+    if (empty) empty.hidden = visible > 0;
+    const results = root.querySelector("[data-list-results-count]");
+    if (results) results.textContent = `${visible} de ${cards.length} ${cards.length === 1 ? "proposta" : "propostas"}`;
+    root.querySelectorAll("[data-proposal-filter]").forEach((button) => {
+      const active = button.dataset.proposalFilter === state.listStatus;
+      button.classList.toggle("active", active);
+      button.setAttribute("aria-pressed", String(active));
+    });
+  }
+
   function renderList() {
     const available = state.bids.filter((bid) => !bid.proposal_id && Number(bid.item_count) > 0);
+    const counts = {
+      all: state.list.length,
+      draft: state.list.filter((proposal) => proposal.status === "draft").length,
+      finalized: state.list.filter((proposal) => proposal.status === "finalized").length,
+    };
+    const query = normalizeSearch(state.listQuery);
+    const matches = (proposal) => (state.listStatus === "all" || proposal.status === state.listStatus)
+      && (!query || normalizeSearch([proposal.edital_number || proposal.bid_id, proposal.agency, statusLabel(proposal.status)].join(" ")).includes(query));
     root.innerHTML = `
-      <div class="page-heading commercial-proposal-list-title">
+      <div class="page-heading commercial-list-heading commercial-proposal-list-title">
         <div><span class="eyebrow">DOCUMENTOS COMERCIAIS</span><h1 id="commercialProposalsTitle">Proposta Comercial</h1>
           <p>Prepare, confira e gere propostas para seus editais.</p></div>
         <button class="primary-action" type="button" data-proposal-action="new">＋ Nova proposta</button>
       </div>
       <section class="section-band table-panel commercial-proposal-list-panel" aria-labelledby="commercialProposalListTitle">
-        <div class="commercial-proposal-list-toolbar"><div><h2 id="commercialProposalListTitle">Propostas recentes</h2><p>Abra uma proposta para revisar ou continuar.</p></div></div>
-        <div class="table-wrap"><table class="commercial-proposal-list"><thead><tr>
-          <th>Edital / órgão</th><th>Itens</th><th class="numeric">Valor total</th><th>Status</th><th>Última alteração</th><th><span class="sr-only">Ações</span></th>
-        </tr></thead><tbody>
-          ${state.list.length ? state.list.map((proposal) => `<tr>
-            <td><strong>${escapeHtml(proposal.edital_number || proposal.bid_id)}</strong><span class="table-secondary commercial-proposal-agency">${escapeHtml(proposal.agency || "Órgão não informado")}</span></td>
-            <td>${proposal.selected_items} ${Number(proposal.selected_items) === 1 ? "item" : "itens"}</td>
-            <td class="numeric"><strong>${formatCommercialMoney(proposal.total_value)}</strong></td>
-            <td><span class="status-pill proposal-status-${proposal.status}">${statusLabel(proposal.status)}</span></td>
-            <td>${formatDateTime(proposal.updated_at)}</td><td><div class="commercial-proposal-row-actions">
-              <button class="quiet-action compact-action" type="button" data-open-proposal="${proposal.id}">Abrir</button>
-              <button class="quiet-action compact-action" type="button" data-preview-proposal="${proposal.id}">Visualizar</button>
-              <button class="quiet-action compact-action" type="button" data-download-reference="${escapeHtml(proposal.last_generation_reference || "")}" ${proposal.last_generation_reference ? "" : "disabled"}>Baixar PDF</button>
-            </div></td>
-          </tr>`).join("") : `<tr><td colspan="6"><div class="empty-state compact-empty">Nenhuma Proposta Comercial cadastrada.</div></td></tr>`}
-        </tbody></table></div>
+        <div class="commercial-proposal-list-controls">
+          <div class="commercial-proposal-list-heading">
+            <div><h2 id="commercialProposalListTitle">Propostas recentes</h2><p>Abra uma proposta para revisar ou continuar. Cada cartão mostra Edital / órgão, itens, valor e status.</p></div>
+            ${state.list.length ? `<label class="commercial-proposal-search"><span class="sr-only">Buscar propostas por edital ou órgão</span>
+              <input type="search" data-proposal-list-search value="${escapeHtml(state.listQuery)}" placeholder="Buscar por edital ou órgão" autocomplete="off" />
+            </label>` : ""}
+          </div>
+          ${state.list.length ? `<div class="commercial-proposal-filters" role="group" aria-label="Filtrar propostas por status">
+            ${[["all", "Todas"], ["draft", "Rascunhos"], ["finalized", "Finalizadas"]].map(([key, label]) => `<button type="button" data-proposal-filter="${key}" class="${state.listStatus === key ? "active" : ""}" aria-pressed="${state.listStatus === key}">${label}<span>${counts[key]}</span></button>`).join("")}
+          </div>` : ""}
+          ${state.list.length ? `<p class="commercial-proposal-results-count" data-list-results-count aria-live="polite"></p>` : ""}
+        </div>
+        ${state.list.length ? `<div class="commercial-proposal-card-list" role="list" aria-label="Propostas recentes">
+          ${state.list.map((proposal) => {
+            const edital = proposal.edital_number || proposal.bid_id;
+            const agency = proposal.agency || "Órgão não informado";
+            const updated = formatDateTime(proposal.updated_at);
+            const itemCount = Number(proposal.selected_items) || 0;
+            const searchText = [edital, agency, statusLabel(proposal.status)].join(" ");
+            return `<article class="commercial-proposal-list-card" role="listitem" data-status="${escapeHtml(proposal.status)}" data-search-text="${escapeHtml(searchText)}" ${matches(proposal) ? "" : "hidden"}>
+              <div class="commercial-proposal-list-card-main"><span class="eyebrow">EDITAL</span><h3>${escapeHtml(edital)}</h3><p>${escapeHtml(agency)}</p></div>
+              <div class="commercial-proposal-list-card-metric"><span>Itens na proposta</span><strong>${itemCount === 0 ? "Nenhum item" : `${itemCount} ${itemCount === 1 ? "item" : "itens"}`}</strong></div>
+              <div class="commercial-proposal-list-card-metric"><span>Valor total</span><strong>${formatCommercialMoney(proposal.total_value)}</strong></div>
+              <div class="commercial-proposal-list-card-meta"><span class="status-pill proposal-status-${escapeHtml(proposal.status)}">${statusLabel(proposal.status)}</span><span>Atualizada em ${escapeHtml(updated)}</span></div>
+              <div class="commercial-proposal-row-actions">
+                <button class="quiet-action compact-action" type="button" data-open-proposal="${escapeHtml(proposal.id)}">Abrir proposta</button>
+                <button class="quiet-action compact-action" type="button" data-preview-proposal="${escapeHtml(proposal.id)}">Visualizar PDF</button>
+                <button class="quiet-action compact-action" type="button" data-download-reference="${escapeHtml(proposal.last_generation_reference || "")}" ${proposal.last_generation_reference ? "" : "disabled"}>Baixar PDF</button>
+              </div>
+            </article>`;
+          }).join("")}
+        </div><div class="commercial-proposal-search-empty" data-list-search-empty role="status" ${state.list.some(matches) ? "hidden" : ""}>
+          <h3>Nenhuma proposta encontrada</h3><p>Altere a busca ou o filtro de status para ver outras propostas.</p>
+        </div>` : `<div class="commercial-proposal-empty-state" role="status"><span class="commercial-proposal-empty-icon" aria-hidden="true">▤</span>
+          <h3>Ainda não há propostas</h3><p>Crie a primeira proposta a partir de um edital com orçamento vinculado e pelo menos um item.</p>
+          <button class="primary-action" type="button" data-proposal-action="new">＋ Nova proposta</button>
+        </div>`}
       </section>
       <dialog id="newCommercialProposalDialog" class="quotation-item-discard-modal commercial-proposal-create-modal" aria-labelledby="newCommercialProposalTitle">
         <form method="dialog" class="commercial-proposal-dialog-form">
           <h2 id="newCommercialProposalTitle">Nova Proposta Comercial</h2>
-          <p>Selecione um edital com orçamento vinculado. Se já houver proposta, ela será aberta para edição.</p>
+          <p>Selecione um edital com orçamento vinculado e pelo menos um item. Propostas existentes aparecem na lista para continuar a edição.</p>
           <label>Edital<select id="newCommercialProposalBid" required>
             <option value="">Selecione um edital</option>
             ${available.map((bid) => `<option value="${escapeHtml(bid.bid_id)}">${escapeHtml(bid.edital_number || bid.bid_id)} · ${escapeHtml(bid.agency || "Órgão não informado")} (${bid.item_count} itens)</option>`).join("")}
           </select></label>
-          ${available.length ? "" : `<div class="empty-state compact-empty">Todos os editais com orçamento já possuem proposta, ou não há itens cadastrados.</div>`}
+          ${available.length ? "" : `<div class="empty-state compact-empty"><strong>Nenhum edital está pronto para uma nova proposta.</strong><span>Inclua itens em um orçamento vinculado na página Orçamento, ou abra uma proposta existente na lista.</span></div>`}
           <p id="newCommercialProposalError" class="form-error" role="alert"></p>
           <div class="button-row end"><button class="quiet-action" type="button" data-proposal-action="cancel-new">Cancelar</button>
           <button class="primary-action" type="submit" value="default" ${available.length ? "" : "disabled"}>Criar proposta</button></div>
         </form>
       </dialog>
     `;
+    applyProposalListFilters();
   }
 
   function selectedItems() {
@@ -263,13 +322,13 @@ export function createCommercialProposalsFeature({ getClient, getContext, toast,
       const subtitle = [effectiveItemValue(item, "brand"), effectiveItemValue(item, "model")].filter(Boolean).join(" · ");
       return `
         <tr class="commercial-proposal-item-row ${item.selected ? "selected" : "not-selected"}" data-drag-kind="item" data-drag-id="${item.id}">
-          <td><input type="checkbox" class="commercial-item-check" data-item-field="selected" data-item-id="${item.id}" ${item.selected ? "checked" : ""} aria-label="Incluir item ${escapeHtml(item.item_number)}: ${escapeHtml(itemIdentity)}" /></td>
-          <td class="numeric commercial-item-number"><span class="drag-handle" draggable="true" role="button" tabindex="0" title="Arraste para reorganizar" aria-label="Reordenar item ${escapeHtml(item.item_number)}">⠿</span>${escapeHtml(item.item_number)}</td>
-          <td class="commercial-item-description"><strong>${escapeHtml(itemIdentity)}</strong><span class="table-secondary" data-item-quick-subtitle="${item.id}">${escapeHtml(subtitle || "Marca ou modelo não informado")}</span></td>
-          <td><span data-item-quick-quantity="${item.id}">${escapeHtml(effectiveItemValue(item, "quantity"))} ${escapeHtml(effectiveItemValue(item, "unit"))}</span></td>
-          <td><input class="commercial-proposal-price-input" data-final-bid data-item-id="${item.id}" inputmode="decimal" value="${Number(item.override_final_bid ?? item.final_bid ?? 0).toFixed(2).replace(".", ",")}" aria-label="Valor unitário da proposta para ${escapeHtml(itemIdentity)}" />
+          <td data-label="Incluir"><input type="checkbox" class="commercial-item-check" data-item-field="selected" data-item-id="${item.id}" ${item.selected ? "checked" : ""} aria-label="Incluir item ${escapeHtml(item.item_number)}: ${escapeHtml(itemIdentity)}" /></td>
+          <td class="numeric commercial-item-number" data-label="Número"><span class="drag-handle" draggable="true" role="button" tabindex="0" title="Use as setas para reorganizar" aria-label="Reordenar item ${escapeHtml(item.item_number)}">⠿</span>${escapeHtml(item.item_number)}</td>
+          <td class="commercial-item-description" data-label="Item"><strong>${escapeHtml(itemIdentity)}</strong><span class="table-secondary" data-item-quick-subtitle="${item.id}">${escapeHtml(subtitle || "Marca ou modelo não informado")}</span></td>
+          <td data-label="Quantidade"><span data-item-quick-quantity="${item.id}">${escapeHtml(effectiveItemValue(item, "quantity"))} ${escapeHtml(effectiveItemValue(item, "unit"))}</span></td>
+          <td data-label="Valor unitário"><input class="commercial-proposal-price-input" data-final-bid data-item-id="${item.id}" inputmode="decimal" value="${Number(item.override_final_bid ?? item.final_bid ?? 0).toFixed(2).replace(".", ",")}" aria-label="Valor unitário da proposta para ${escapeHtml(itemIdentity)}" />
             <button class="commercial-budget-update" type="button" data-update-budget-value="${item.id}">Atualizar orçamento</button></td>
-          <td class="numeric"><strong data-item-quick-total="${item.id}">${formatCommercialMoney(lineTotal(item))}</strong></td>
+          <td class="numeric" data-label="Total"><strong data-item-quick-total="${item.id}">${formatCommercialMoney(lineTotal(item))}</strong></td>
         </tr>
         `;
     }).join("");
@@ -359,6 +418,8 @@ export function createCommercialProposalsFeature({ getClient, getContext, toast,
   function renderEditor() {
     const expandedDetails = new Set([...root.querySelectorAll("details[data-proposal-details][open]")].map((details) => details.dataset.proposalDetails));
     const { proposal, bid, representatives, generations, price_history: priceHistory } = state.editor;
+    const linkedBid = state.bids.find((entry) => entry.bid_id === bid.id || entry.bid_id === proposal.bid_id);
+    const bidAgency = bid.buyer_agency || bid.agency || linkedBid?.agency || "Órgão não informado";
     const total = proposalTotal();
     const textSection = primaryTextSection();
     const representative = representatives.find((entry) => entry.id === proposal.representative_id);
@@ -418,7 +479,7 @@ export function createCommercialProposalsFeature({ getClient, getContext, toast,
       <div class="commercial-proposal-tab-panel ${state.activeEditorTab === "proposal" ? "" : "hidden"}" data-proposal-panel="proposal">
       <section class="section-band commercial-builder-section commercial-edital-section">
         <h2>Edital</h2><p>A proposta ficará vinculada a este edital e ao orçamento correspondente.</p>
-        <div class="form-grid"><label>Edital<input value="${escapeHtml(bid.edital_number || bid.id)} · ${escapeHtml(bid.agency || "Órgão não informado")}" readonly /></label>
+        <div class="form-grid"><div class="commercial-bid-reference"><span class="eyebrow">Edital vinculado</span><strong>${escapeHtml(bid.edital_number || bid.id)}</strong><span>${escapeHtml(bidAgency)}</span></div>
           <label>Data da proposta<input type="date" data-proposal-field="proposal_date" value="${proposal.proposal_date || todayInSaoPaulo()}" /></label></div>
       </section>
       <section class="section-band commercial-builder-section">
@@ -1176,13 +1237,7 @@ export function createCommercialProposalsFeature({ getClient, getContext, toast,
     const target = event.target;
     if (target.matches("[data-proposal-list-search]")) {
       state.listQuery = target.value;
-      const query = state.listQuery.trim().toLocaleLowerCase("pt-BR");
-      root.querySelectorAll(".commercial-proposal-list-card").forEach((card) => {
-        card.hidden = (state.listStatus !== "all" && card.dataset.status !== state.listStatus)
-          || !card.dataset.searchText.toLocaleLowerCase("pt-BR").includes(query);
-      });
-      const empty = root.querySelector("[data-list-search-empty]");
-      if (empty) empty.hidden = [...root.querySelectorAll(".commercial-proposal-list-card")].some((card) => !card.hidden);
+      applyProposalListFilters();
       return;
     }
     if (!state.editor) return;
@@ -1305,7 +1360,13 @@ export function createCommercialProposalsFeature({ getClient, getContext, toast,
       return;
     }
     if (target.matches('[data-item-field="selected"], [data-column-field="enabled"], [data-section-field="enabled"]')) {
+      const focusSelector = target.matches('[data-item-field="selected"]')
+        ? `[data-item-field="selected"][data-item-id="${CSS.escape(target.dataset.itemId)}"]`
+        : target.matches('[data-column-field="enabled"]')
+          ? `[data-column-field="enabled"][data-column-id="${CSS.escape(target.dataset.columnId)}"]`
+          : `[data-section-field="enabled"][data-section-id="${CSS.escape(target.dataset.sectionId)}"]`;
       renderEditor();
+      root.querySelector(focusSelector)?.focus();
     }
   });
 
@@ -1378,7 +1439,7 @@ export function createCommercialProposalsFeature({ getClient, getContext, toast,
     const filter = event.target.closest("[data-proposal-filter]");
     if (filter) {
       state.listStatus = filter.dataset.proposalFilter;
-      renderList();
+      applyProposalListFilters();
       return;
     }
     const itemToggle = event.target.closest("[data-toggle-item]");
