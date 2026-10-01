@@ -14,13 +14,12 @@ const BID_STATUS_TRANSITIONS = Object.freeze({
 });
 const BID_TYPE_OPTIONS = [
   "Pregao Eletronico",
-  "Pregao Presencial",
-  "Concorrencia",
   "Dispensa",
-  "Inexigibilidade",
-  "Tomada de Precos",
-  "Outro",
 ];
+const BID_TYPE_LABELS = Object.freeze({
+  "Pregao Eletronico": "Pregão Eletrônico",
+  Dispensa: "Dispensa",
+});
 const SALES_UNIT_OPTIONS = ["Unidade", "Pacote", "Caixa", "Kilo", "Metro", "Litro", "Par", "Servico", "Outro"];
 const BID_EDITAL_BUCKET = "bid-edital-files";
 const MAX_EDITAL_FILE_SIZE = 20 * 1024 * 1024;
@@ -249,7 +248,8 @@ const refs = {
   editalFile: $("editalFile"),
   editalAttachmentHelp: $("editalAttachmentHelp"),
   editalAttachmentList: $("editalAttachmentList"),
-  bidType: $("bidType"),
+  bidTypeGroup: $("bidTypeGroup"),
+  bidTypeHelp: $("bidTypeHelp"),
   bidStatus: $("bidStatus"),
   hasGuaranteeDeposit: $("hasGuaranteeDeposit"),
   bidStatusReasonField: $("bidStatusReasonField"),
@@ -1786,8 +1786,26 @@ function applyEnvironmentConfig() {
 function populateOptions() {
   refs.filterStatus.innerHTML = optionList(["Todos", ...STATUS_OPTIONS]);
   refs.bidStatus.innerHTML = optionList(STATUS_OPTIONS);
-  refs.bidType.innerHTML = optionList(BID_TYPE_OPTIONS);
   refs.salesUnit.innerHTML = optionList(SALES_UNIT_OPTIONS);
+}
+
+function setBidType(value) {
+  const isSupportedType = BID_TYPE_OPTIONS.includes(value);
+  refs.bidTypeGroup.querySelectorAll('input[name="bidType"]').forEach((input) => {
+    input.checked = isSupportedType && input.value === value;
+    input.toggleAttribute("aria-invalid", Boolean(value) && !isSupportedType);
+  });
+  refs.bidTypeHelp.textContent = value && !isSupportedType
+    ? "Este edital tem um tipo antigo. Escolha uma das opções disponíveis para atualizá-lo."
+    : "Selecione o tipo do edital.";
+}
+
+function selectedBidType() {
+  return refs.bidTypeGroup.querySelector('input[name="bidType"]:checked')?.value || "";
+}
+
+function bidTypeLabel(value) {
+  return BID_TYPE_LABELS[value] || String(value || "");
 }
 
 function optionList(values) {
@@ -1897,6 +1915,10 @@ function bindEvents() {
     button.addEventListener("click", () => applyHomeStatusFilter(button.dataset.homeStatus));
   });
   refs.bidForm.addEventListener("submit", withBlockingLoading(saveBid, "Salvando edital…"));
+  refs.bidTypeGroup.addEventListener("change", () => {
+    refs.bidTypeHelp.textContent = "Selecione o tipo do edital.";
+    refs.bidTypeGroup.querySelectorAll('input[name="bidType"]').forEach((input) => input.removeAttribute("aria-invalid"));
+  });
   refs.bidQuotation.addEventListener("click", openBidQuotationModal);
   refs.bidQuotation.addEventListener("keydown", (event) => {
     if (event.key === "Enter" || event.key === " ") {
@@ -2655,7 +2677,7 @@ function renderBids() {
           <td><div class="bid-number-cell"><strong class="table-link">${escapeHtml(bidDisplayNumber(bid))}</strong><span class="creator-tag compact">${creatorTagMarkup(bid)}</span></div></td>
           <td>${escapeHtml(bid.buyer_agency || "")}</td>
           <td>${formatDateTime(bid.session_datetime)}</td>
-          <td>${escapeHtml(bid.bid_type || "")}</td>
+          <td>${escapeHtml(bidTypeLabel(bid.bid_type))}</td>
           <td>${GLLDesignSystem.COMPONENTS.statusBadge({ status: normalizeBidStatus(bid.status), label: statusDisplay(bid.status) })}</td>
           <td class="numeric">${summary.itemCount}</td>
           <td class="numeric"><strong>${money(summary.totalFinal)}</strong></td>
@@ -2789,7 +2811,7 @@ function loadBid(bidId, options = {}) {
   refs.proposalDeadline.value = toDateTimeInputValue(bid.proposal_deadline);
   refs.deliveryPlace.value = bid.delivery_place || "";
   refs.publicSessionLink.value = bid.public_session_link || "";
-  refs.bidType.value = bid.bid_type || BID_TYPE_OPTIONS[0];
+  setBidType(bid.bid_type || BID_TYPE_OPTIONS[0]);
   refs.bidStatus.value = bid.status || STATUS_OPTIONS[0];
   refs.hasGuaranteeDeposit.checked = Boolean(bid.has_guarantee_deposit);
   refs.bidStatusReason.value = "";
@@ -2844,7 +2866,7 @@ function renderHomeSummary() {
         const dateParts = zonedDateTimeParts(date);
         return `<button class="timeline-item" type="button" data-upcoming-bid="${escapeHtml(bid.id)}">
           <span class="date-box"><strong>${dateParts.day}</strong><small>${dateParts.monthShort.toUpperCase()}</small></span>
-          <span class="timeline-copy"><span class="bid-title-line"><strong>${escapeHtml(bidDisplayNumber(bid))}</strong><span class="creator-tag compact">${creatorTagMarkup(bid)}</span></span><span>${escapeHtml(bid.buyer_agency || "")}</span><small>${dateParts.time} • ${escapeHtml(bid.bid_type || "")}</small></span>
+          <span class="timeline-copy"><span class="bid-title-line"><strong>${escapeHtml(bidDisplayNumber(bid))}</strong><span class="creator-tag compact">${creatorTagMarkup(bid)}</span></span><span>${escapeHtml(bid.buyer_agency || "")}</span><small>${dateParts.time} • ${escapeHtml(bidTypeLabel(bid.bid_type))}</small></span>
           ${GLLDesignSystem.COMPONENTS.statusBadge({ status: normalizeBidStatus(bid.status), label: statusDisplay(bid.status) })}
         </button>`;
       }).join("")
@@ -2880,7 +2902,7 @@ function clearBidForm(options = {}) {
   renderBidQuotationSelection();
   renderBidAttachment(null);
   renderPublicSessionLink();
-  refs.bidType.value = BID_TYPE_OPTIONS[0];
+  setBidType(BID_TYPE_OPTIONS[0]);
   refs.bidStatus.value = STATUS_OPTIONS[0];
   refs.bidStatusReason.value = "";
   updateBidStatusControls();
@@ -3100,6 +3122,8 @@ function collectBidData() {
   if (!refs.bidId.value.trim()) throw new Error("Preencha o N° do Edital.");
   if (!refs.buyerAgency.value.trim()) throw new Error("Preencha o Órgão Comprador.");
   if (!refs.sessionDatetime.value) throw new Error("Preencha a Data e Hora da Sessão.");
+  const bidType = selectedBidType();
+  if (!BID_TYPE_OPTIONS.includes(bidType)) throw new Error("Selecione o tipo do edital.");
   const publicSessionLink = refs.publicSessionLink.value.trim();
   const normalizedPublicSessionLink = normalizeUrlValue(publicSessionLink);
   if (publicSessionLink && !normalizedPublicSessionLink) throw new Error("Informe um Link da Sessão Pública válido.");
@@ -3109,7 +3133,7 @@ function collectBidData() {
     buyer_agency: refs.buyerAgency.value.trim(),
     session_datetime: fromDateTimeInputValue(refs.sessionDatetime.value),
     delivery_place: refs.deliveryPlace.value.trim(),
-    bid_type: refs.bidType.value,
+    bid_type: bidType,
     public_session_link: normalizedPublicSessionLink,
     proposal_deadline: fromDateTimeInputValue(refs.proposalDeadline.value),
     has_guarantee_deposit: refs.hasGuaranteeDeposit.checked,

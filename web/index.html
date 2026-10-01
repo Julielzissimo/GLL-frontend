@@ -212,10 +212,20 @@
                   </span>
                 </div>
               </div>
-              <label>
-                Tipo
-                <select id="bidType"></select>
-              </label>
+              <fieldset id="bidTypeGroup" class="bid-type-field" aria-describedby="bidTypeHelp">
+                <legend>Tipo *</legend>
+                <div class="bid-type-options">
+                  <label class="bid-type-option" for="bidTypeElectronic">
+                    <input id="bidTypeElectronic" name="bidType" type="radio" value="Pregao Eletronico" required checked />
+                    <span>Pregão Eletrônico</span>
+                  </label>
+                  <label class="bid-type-option" for="bidTypeWaiver">
+                    <input id="bidTypeWaiver" name="bidType" type="radio" value="Dispensa" required />
+                    <span>Dispensa</span>
+                  </label>
+                </div>
+                <small id="bidTypeHelp">Selecione o tipo do edital.</small>
+              </fieldset>
               <label>
                 Status
                 <select id="bidStatus"></select>
