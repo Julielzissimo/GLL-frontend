@@ -1747,8 +1747,13 @@ async function expireSession(message) {
     if (store.requiresAuthenticationBeforeData) await store.client.auth.signOut({ scope: "local" });
   } finally {
     resetAuthenticatedView();
-    refs.loginError.textContent = message;
+    setLoginMessage(message);
   }
+}
+
+function setLoginMessage(message, tone = "error") {
+  refs.loginError.textContent = message;
+  refs.loginError.classList.toggle("is-success", tone === "success");
 }
 
 async function main() {
@@ -1764,7 +1769,7 @@ async function main() {
       if (event === "SIGNED_IN") {
         setTimeout(() => {
           if (!appState.authenticated && !blockingOperationActive) {
-            restoreSession().catch((error) => { refs.loginError.textContent = error.message; });
+            restoreSession().catch((error) => { setLoginMessage(error.message); });
           }
         }, 0);
       }
@@ -1772,7 +1777,7 @@ async function main() {
     try {
       await restoreSession();
     } catch (error) {
-      refs.loginError.textContent = "Não foi possível recuperar sua sessão. Verifique a conexão e tente novamente.";
+      setLoginMessage("Não foi possível recuperar sua sessão. Verifique a conexão e tente novamente.");
     }
   }
   if (!store.requiresAuthenticationBeforeData) {
@@ -2077,13 +2082,13 @@ function bindEvents() {
 
 async function handleLogin(event) {
   event.preventDefault();
-  refs.loginError.textContent = "";
+  setLoginMessage("");
   const email = refs.loginEmail.value.trim();
   const password = refs.loginPassword.value;
   try {
     const user = await store.authenticate(email, password);
     if (!user) {
-      refs.loginError.textContent = "E-mail ou senha inválidos.";
+      setLoginMessage("E-mail ou senha inválidos.");
       return;
     }
     if (user.mustChangePassword) {
@@ -2094,7 +2099,7 @@ async function handleLogin(event) {
     await enterAuthenticatedView(user);
     showToast("Login realizado.");
   } catch (error) {
-    refs.loginError.textContent = error.message;
+    setLoginMessage(error.message);
   }
 }
 
@@ -2134,7 +2139,7 @@ async function returnToLoginAfterPasswordReset() {
     await store.client.auth.signOut({ scope: "local" });
   } finally {
     resetAuthenticatedView();
-    refs.loginError.textContent = "Senha atualizada. Entre novamente com a nova senha.";
+    setLoginMessage("Senha atualizada. Entre novamente com a nova senha.", "success");
   }
 }
 
@@ -2230,7 +2235,7 @@ async function enterAuthenticatedView(user) {
 }
 
 async function logout() {
-  refs.loginError.textContent = "";
+  setLoginMessage("");
   try {
     if (store.requiresAuthenticationBeforeData) {
       const { error } = await store.client.auth.signOut({ scope: "local" });
@@ -2503,7 +2508,7 @@ async function reloadData({ background = false } = {}) {
   next.users = rows[6].sort((a, b) => userDisplayName(a).localeCompare(userDisplayName(b), "pt-BR"));
   if (store.requiresAuthenticationBeforeData && !next.users.some((user) => normalizeEmail(user.email) === normalizeEmail(appState.currentUserEmail))) {
     resetAuthenticatedView();
-    refs.loginError.textContent = "Seu acesso não está mais disponível. Entre novamente ou contate o administrador.";
+    setLoginMessage("Seu acesso não está mais disponível. Entre novamente ou contate o administrador.");
     return;
   }
   const changed = DATA_KEYS.some((key) => dataSignature(appState[key]) !== dataSignature(next[key]));

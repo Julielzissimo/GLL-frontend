@@ -1584,6 +1584,10 @@ input[readonly] {
   font-weight: 700;
 }
 
+.form-error.is-success {
+  color: var(--success);
+}
+
 .metrics-row {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
