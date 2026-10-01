@@ -168,6 +168,34 @@
       "migrations": []
     },
     {
+      "id": "CONFIRMACAO-SAIDA-001",
+      "backend_commits": [],
+      "frontend_commits": [
+        "dd386db8a2fc40ddda10f4f0455a3e9d06e19aae"
+      ],
+      "migrations": []
+    },
+    {
+      "id": "CADASTRO-USUARIOS-001",
+      "backend_commits": [
+        "9f16ef9b3aa6913d54e33224af4862084dfc5a2a"
+      ],
+      "frontend_commits": [
+        "2683fbebb324901c4b89812f77302041bebd7b08"
+      ],
+      "migrations": [
+        "supabase/migrations/20260930120000_admin_user_provisioning.sql"
+      ]
+    },
+    {
+      "id": "TIPOS-EDITAL-001",
+      "backend_commits": [],
+      "frontend_commits": [
+        "2b8913ccde2e4862a98eee95826791b23bf5cb5f"
+      ],
+      "migrations": []
+    },
+    {
       "id": "UX-PROPOSTA-COMERCIAL-001",
       "backend_commits": [
         "cc4f3a02ba86475def4d8c6f339990b40f90074e"

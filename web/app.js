@@ -14,13 +14,12 @@ const BID_STATUS_TRANSITIONS = Object.freeze({
 });
 const BID_TYPE_OPTIONS = [
   "Pregao Eletronico",
-  "Pregao Presencial",
-  "Concorrencia",
   "Dispensa",
-  "Inexigibilidade",
-  "Tomada de Precos",
-  "Outro",
 ];
+const BID_TYPE_LABELS = Object.freeze({
+  "Pregao Eletronico": "Pregão Eletrônico",
+  Dispensa: "Dispensa",
+});
 const SALES_UNIT_OPTIONS = ["Unidade", "Pacote", "Caixa", "Kilo", "Metro", "Litro", "Par", "Servico", "Outro"];
 const BID_EDITAL_BUCKET = "bid-edital-files";
 const MAX_EDITAL_FILE_SIZE = 20 * 1024 * 1024;
@@ -141,6 +140,13 @@ const $ = (id) => document.getElementById(id);
 
 const refs = {
   loginView: $("loginView"),
+  passwordResetView: $("passwordResetView"),
+  passwordResetForm: $("passwordResetForm"),
+  passwordResetEmail: $("passwordResetEmail"),
+  newPassword: $("newPassword"),
+  confirmNewPassword: $("confirmNewPassword"),
+  passwordResetError: $("passwordResetError"),
+  passwordResetSignOutButton: $("passwordResetSignOutButton"),
   appView: $("appView"),
   loginForm: $("loginForm"),
   loginEmail: $("loginEmail"),
@@ -188,6 +194,15 @@ const refs = {
   currentBidCreatorTag: $("currentBidCreatorTag"),
   currentBidAgency: $("currentBidAgency"),
   usersPage: $("usersPage"),
+  userCreatePanel: $("userCreatePanel"),
+  userCreateForm: $("userCreateForm"),
+  userCreateFullName: $("userCreateFullName"),
+  userCreateDisplayName: $("userCreateDisplayName"),
+  userCreateEmail: $("userCreateEmail"),
+  userCreatePassword: $("userCreatePassword"),
+  userCreatePasswordConfirm: $("userCreatePasswordConfirm"),
+  userCreateRole: $("userCreateRole"),
+  userCreateError: $("userCreateError"),
   settingsPage: $("settingsPage"),
   companyDataPage: $("companyDataPage"),
   designSystemPage: $("designSystemPage"),
@@ -227,6 +242,7 @@ const refs = {
   supplierProductFormError: $("supplierProductFormError"),
   deleteSupplierProductButton: $("deleteSupplierProductButton"),
   logoutButton: $("logoutButton"),
+  logoutConfirmModal: $("logoutConfirmModal"),
   resetDataButton: $("resetDataButton"),
   filterForm: $("filterForm"),
   filterAgency: $("filterAgency"),
@@ -249,7 +265,8 @@ const refs = {
   editalFile: $("editalFile"),
   editalAttachmentHelp: $("editalAttachmentHelp"),
   editalAttachmentList: $("editalAttachmentList"),
-  bidType: $("bidType"),
+  bidTypeGroup: $("bidTypeGroup"),
+  bidTypeHelp: $("bidTypeHelp"),
   bidStatus: $("bidStatus"),
   hasGuaranteeDeposit: $("hasGuaranteeDeposit"),
   bidStatusReasonField: $("bidStatusReasonField"),
@@ -426,6 +443,21 @@ async function loadSupabaseClientFactory() {
 function assertSupabase(error) {
   if (!error) return;
   throw new Error(error.message || "Erro ao acessar o Supabase.");
+}
+
+async function invokeSupabaseFunction(client, functionName, body = {}) {
+  const { data, error } = await client.functions.invoke(functionName, { body });
+  if (!error && !data?.error) return data;
+  if (functionName === "password-reset-status" && error?.context instanceof Response && error.context.status === 404) {
+    return { mustChangePassword: false };
+  }
+  let responseBody = null;
+  try {
+    if (error?.context instanceof Response) responseBody = await error.context.clone().json();
+  } catch {
+    responseBody = null;
+  }
+  throw new Error(responseBody?.error || data?.error || error?.message || "Não foi possível concluir a solicitação.");
 }
 
 function quotationSaveError(error) {
@@ -1066,10 +1098,24 @@ class SupabaseStore {
       password,
     });
     if (error || !data.user) return null;
+    if (await this.isPasswordResetRequired()) {
+      return { email: data.user.email, mustChangePassword: true };
+    }
     const profile = await this.getUser(data.user.email);
     if (profile) return profile;
     await client.auth.signOut();
     return null;
+  }
+
+  async isPasswordResetRequired() {
+    const client = await this.open();
+    const data = await invokeSupabaseFunction(client, "password-reset-status");
+    return data?.mustChangePassword === true;
+  }
+
+  async changePassword(newPassword) {
+    const client = await this.open();
+    await invokeSupabaseFunction(client, "change-password", { newPassword });
   }
 
   async getAll(tableName) {
@@ -1137,37 +1183,13 @@ class SupabaseStore {
 
   async saveUser(userData) {
     const client = await this.open();
-    const email = normalizeEmail(userData.email);
-    const existing = await this.getUser(email);
-    if (existing) throw new Error("Já existe um usuário cadastrado com este e-mail.");
-
-    const { createClient } = await loadSupabaseClientFactory();
-    const signupClient = createClient(GLL_CONFIG.supabaseUrl, GLL_CONFIG.supabaseAnonKey, {
-      auth: {
-        autoRefreshToken: false,
-        detectSessionInUrl: false,
-        persistSession: false,
-      },
-    });
-    const { error: signupError } = await signupClient.auth.signUp({
-      email,
-      password: userData.password,
-      options: {
-        data: {
-          name: userData.name?.trim() || email,
-          role: userData.role || USER_ROLES.ANALYST,
-        },
-      },
-    });
-    assertSupabase(signupError);
-
-    const { error } = await client.from("app_users").insert({
-      email,
-      name: userData.name?.trim() || email,
+    await invokeSupabaseFunction(client, "create-user", {
+      email: normalizeEmail(userData.email),
+      fullName: userData.fullName?.trim(),
+      displayName: userData.displayName?.trim(),
+      temporaryPassword: userData.temporaryPassword,
       role: userData.role || USER_ROLES.ANALYST,
-      created_at: timestampNow(),
     });
-    assertSupabase(error);
   }
 
   async deleteUser(email) {
@@ -1771,6 +1793,7 @@ function applyEnvironmentConfig() {
   refs.authClientVersion.textContent = hasSupabaseConfig() ? `Supabase JS ${SUPABASE_CLIENT_VERSION}` : "Autenticação local demonstrativa";
   refs.resetDataButton.classList.toggle("hidden", hasSupabaseConfig());
   refs.loginHint.classList.toggle("hidden", hasSupabaseConfig());
+  refs.userCreatePanel.classList.toggle("hidden", !hasSupabaseConfig());
   const suppliersEnabled = GLL_CONFIG.suppliersEnabled !== false;
   refs.navSuppliersButton.disabled = !suppliersEnabled;
   refs.navSuppliersButton.classList.toggle("nav-link-disabled", !suppliersEnabled);
@@ -1786,8 +1809,26 @@ function applyEnvironmentConfig() {
 function populateOptions() {
   refs.filterStatus.innerHTML = optionList(["Todos", ...STATUS_OPTIONS]);
   refs.bidStatus.innerHTML = optionList(STATUS_OPTIONS);
-  refs.bidType.innerHTML = optionList(BID_TYPE_OPTIONS);
   refs.salesUnit.innerHTML = optionList(SALES_UNIT_OPTIONS);
+}
+
+function setBidType(value) {
+  const isSupportedType = BID_TYPE_OPTIONS.includes(value);
+  refs.bidTypeGroup.querySelectorAll('input[name="bidType"]').forEach((input) => {
+    input.checked = isSupportedType && input.value === value;
+    input.toggleAttribute("aria-invalid", Boolean(value) && !isSupportedType);
+  });
+  refs.bidTypeHelp.textContent = value && !isSupportedType
+    ? "Este edital tem um tipo antigo. Escolha uma das opções disponíveis para atualizá-lo."
+    : "Selecione o tipo do edital.";
+}
+
+function selectedBidType() {
+  return refs.bidTypeGroup.querySelector('input[name="bidType"]:checked')?.value || "";
+}
+
+function bidTypeLabel(value) {
+  return BID_TYPE_LABELS[value] || String(value || "");
 }
 
 function optionList(values) {
@@ -1860,6 +1901,9 @@ function bindEvents() {
   bindAutoGrowTextareas(refs.supplierProductForm);
   document.getElementById("blockingLoadingModal").addEventListener("cancel", (event) => event.preventDefault());
   refs.loginForm.addEventListener("submit", withBlockingLoading(handleLogin, "Entrando no sistema…"));
+  refs.passwordResetForm.addEventListener("submit", withBlockingLoading(handlePasswordReset, "Atualizando sua senha…"));
+  refs.passwordResetSignOutButton.addEventListener("click", logout);
+  refs.userCreateForm.addEventListener("submit", withBlockingLoading(handleUserCreate, "Cadastrando usuário…"));
   window.addEventListener("popstate", () => {
     if (appState.authenticated) applyNavigationRoute();
   });
@@ -1884,7 +1928,13 @@ function bindEvents() {
   refs.toggleSidebarButton.addEventListener("focus", previewSidebar);
   refs.toggleSidebarButton.addEventListener("blur", clearSidebarPreview);
   refs.sidebarPanel.addEventListener("click", collapseSidebarFromEmptyArea);
-  refs.logoutButton.addEventListener("click", withBlockingLoading(logout, "Saindo do sistema…"));
+  refs.logoutButton.addEventListener("click", () => refs.logoutConfirmModal.showModal());
+  $("cancelLogoutButton").addEventListener("click", () => refs.logoutConfirmModal.close());
+  $("confirmLogoutButton").addEventListener("click", () => {
+    if (!refs.logoutConfirmModal.open) return;
+    refs.logoutConfirmModal.close();
+    withBlockingLoading(logout, "Saindo do sistema…")();
+  });
   if (!hasSupabaseConfig()) {
     refs.resetDataButton.addEventListener("click", withBlockingLoading(resetSeedData, "Restaurando a base…"));
   }
@@ -1897,6 +1947,10 @@ function bindEvents() {
     button.addEventListener("click", () => applyHomeStatusFilter(button.dataset.homeStatus));
   });
   refs.bidForm.addEventListener("submit", withBlockingLoading(saveBid, "Salvando edital…"));
+  refs.bidTypeGroup.addEventListener("change", () => {
+    refs.bidTypeHelp.textContent = "Selecione o tipo do edital.";
+    refs.bidTypeGroup.querySelectorAll('input[name="bidType"]').forEach((input) => input.removeAttribute("aria-invalid"));
+  });
   refs.bidQuotation.addEventListener("click", openBidQuotationModal);
   refs.bidQuotation.addEventListener("keydown", (event) => {
     if (event.key === "Enter" || event.key === " ") {
@@ -2054,6 +2108,10 @@ async function handleLogin(event) {
       refs.loginError.textContent = "E-mail ou senha inválidos.";
       return;
     }
+    if (user.mustChangePassword) {
+      showPasswordResetView(user.email || email);
+      return;
+    }
     beginSessionPolicy(user.email, { forceNew: true });
     await enterAuthenticatedView(user);
     showToast("Login realizado.");
@@ -2062,11 +2120,91 @@ async function handleLogin(event) {
   }
 }
 
+async function handlePasswordReset(event) {
+  event.preventDefault();
+  refs.passwordResetError.textContent = "";
+  const newPassword = refs.newPassword.value;
+  if (newPassword !== refs.confirmNewPassword.value) {
+    refs.passwordResetError.textContent = "As senhas não coincidem.";
+    return;
+  }
+  try {
+    await store.changePassword(newPassword);
+    const { data, error } = await store.client.auth.refreshSession();
+    if (error || !data.session) {
+      await returnToLoginAfterPasswordReset();
+      return;
+    }
+    refs.passwordResetForm.reset();
+    try {
+      await restoreSession();
+    } catch {
+      // A senha já foi salva; se a sessão não puder ser retomada, peça um novo login.
+    }
+    if (appState.authenticated) {
+      showToast("Senha atualizada. Acesso liberado.");
+      return;
+    }
+    await returnToLoginAfterPasswordReset();
+  } catch (error) {
+    refs.passwordResetError.textContent = error.message;
+  }
+}
+
+async function returnToLoginAfterPasswordReset() {
+  try {
+    await store.client.auth.signOut({ scope: "local" });
+  } finally {
+    resetAuthenticatedView();
+    refs.loginError.textContent = "Senha atualizada. Entre novamente com a nova senha.";
+  }
+}
+
+async function handleUserCreate(event) {
+  event.preventDefault();
+  refs.userCreateError.textContent = "";
+  if (refs.userCreatePassword.value !== refs.userCreatePasswordConfirm.value) {
+    refs.userCreateError.textContent = "As senhas provisórias não coincidem.";
+    return;
+  }
+  try {
+    await store.saveUser({
+      email: refs.userCreateEmail.value,
+      fullName: refs.userCreateFullName.value,
+      displayName: refs.userCreateDisplayName.value,
+      temporaryPassword: refs.userCreatePassword.value,
+      role: refs.userCreateRole.value,
+    });
+    refs.userCreateForm.reset();
+    await reloadData();
+    showToast("Usuário cadastrado. A troca de senha será obrigatória no primeiro acesso.");
+  } catch (error) {
+    refs.userCreateError.textContent = error.message;
+  }
+}
+
+function showPasswordResetView(email) {
+  resetAuthenticatedView();
+  refs.loginView.classList.add("hidden");
+  refs.passwordResetView.classList.remove("hidden");
+  refs.passwordResetEmail.value = email || "";
+  refs.passwordResetError.textContent = "";
+  refs.passwordResetForm.reset();
+  refs.passwordResetEmail.value = email || "";
+  refs.newPassword.focus();
+}
+
 async function restoreSession() {
   const epoch = sessionEpoch;
   const { data, error } = await store.client.auth.getSession();
   assertSupabase(error);
   if (!data.session) return;
+  const mustChangePassword = await store.isPasswordResetRequired();
+  if (epoch !== sessionEpoch) return;
+  if (mustChangePassword) {
+    showPasswordResetView(data.session.user.email);
+    return;
+  }
   beginSessionPolicy(data.session.user.email);
   const expirationMessage = sessionPolicyExpiration();
   if (expirationMessage) {
@@ -2088,7 +2226,7 @@ async function enterAuthenticatedView(user) {
   appState.currentUserEmail = user.email;
   appState.currentUserAuthId = user.auth_user_id || user.email;
   appState.currentUserRole = normalizeUserRole(user.role);
-  appState.currentUserName = user.name || user.email;
+  appState.currentUserName = userDisplayName(user);
   appState.currentOrganizationId = user.organization_id || user.organization?.id || null;
   appState.currentOrganizationName = user.organization?.name || "LSMS Suprimentos";
   appState.currentOrganizationCnpj = user.organization?.cnpj || "";
@@ -2096,9 +2234,10 @@ async function enterAuthenticatedView(user) {
     updateAccessInterface();
     await reloadData();
     if (epoch !== sessionEpoch) return;
-    refs.currentUserName.textContent = user.name || user.email;
+    refs.currentUserName.textContent = userDisplayName(user);
     refs.currentUserRole.textContent = appState.currentUserRole;
     refs.loginView.classList.add("hidden");
+    refs.passwordResetView.classList.add("hidden");
     refs.appView.classList.remove("hidden");
     refs.loginPassword.value = "";
     clearBidForm({ history: "none" });
@@ -2138,8 +2277,11 @@ function resetAuthenticatedView() {
   appState.currentOrganizationName = null;
   appState.currentOrganizationCnpj = null;
   refs.appView.classList.add("hidden");
+  refs.passwordResetView.classList.add("hidden");
   refs.loginView.classList.remove("hidden");
   refs.loginPassword.value = "";
+  refs.passwordResetForm.reset();
+  refs.passwordResetError.textContent = "";
   declarationsFeature.reset();
   commercialProposalsFeature.reset();
   companyDataFeature.reset();
@@ -2380,7 +2522,7 @@ async function reloadData({ background = false } = {}) {
     .sort((a, b) => Number(a.item_number || 0) - Number(b.item_number || 0));
   next.suppliers = rows[7].map(normalizeSupplierRecord).sort((a, b) => a.name.localeCompare(b.name, "pt-BR"));
   next.supplierProducts = (rows[8] || []).map(normalizeSupplierProductRecord).sort((a, b) => a.name.localeCompare(b.name, "pt-BR"));
-  next.users = rows[6].sort((a, b) => String(a.name).localeCompare(String(b.name)));
+  next.users = rows[6].sort((a, b) => userDisplayName(a).localeCompare(userDisplayName(b), "pt-BR"));
   if (store.requiresAuthenticationBeforeData && !next.users.some((user) => normalizeEmail(user.email) === normalizeEmail(appState.currentUserEmail))) {
     resetAuthenticatedView();
     refs.loginError.textContent = "Seu acesso não está mais disponível. Entre novamente ou contate o administrador.";
@@ -2655,7 +2797,7 @@ function renderBids() {
           <td><div class="bid-number-cell"><strong class="table-link">${escapeHtml(bidDisplayNumber(bid))}</strong><span class="creator-tag compact">${creatorTagMarkup(bid)}</span></div></td>
           <td>${escapeHtml(bid.buyer_agency || "")}</td>
           <td>${formatDateTime(bid.session_datetime)}</td>
-          <td>${escapeHtml(bid.bid_type || "")}</td>
+          <td>${escapeHtml(bidTypeLabel(bid.bid_type))}</td>
           <td>${GLLDesignSystem.COMPONENTS.statusBadge({ status: normalizeBidStatus(bid.status), label: statusDisplay(bid.status) })}</td>
           <td class="numeric">${summary.itemCount}</td>
           <td class="numeric"><strong>${money(summary.totalFinal)}</strong></td>
@@ -2789,7 +2931,7 @@ function loadBid(bidId, options = {}) {
   refs.proposalDeadline.value = toDateTimeInputValue(bid.proposal_deadline);
   refs.deliveryPlace.value = bid.delivery_place || "";
   refs.publicSessionLink.value = bid.public_session_link || "";
-  refs.bidType.value = bid.bid_type || BID_TYPE_OPTIONS[0];
+  setBidType(bid.bid_type || BID_TYPE_OPTIONS[0]);
   refs.bidStatus.value = bid.status || STATUS_OPTIONS[0];
   refs.hasGuaranteeDeposit.checked = Boolean(bid.has_guarantee_deposit);
   refs.bidStatusReason.value = "";
@@ -2844,7 +2986,7 @@ function renderHomeSummary() {
         const dateParts = zonedDateTimeParts(date);
         return `<button class="timeline-item" type="button" data-upcoming-bid="${escapeHtml(bid.id)}">
           <span class="date-box"><strong>${dateParts.day}</strong><small>${dateParts.monthShort.toUpperCase()}</small></span>
-          <span class="timeline-copy"><span class="bid-title-line"><strong>${escapeHtml(bidDisplayNumber(bid))}</strong><span class="creator-tag compact">${creatorTagMarkup(bid)}</span></span><span>${escapeHtml(bid.buyer_agency || "")}</span><small>${dateParts.time} • ${escapeHtml(bid.bid_type || "")}</small></span>
+          <span class="timeline-copy"><span class="bid-title-line"><strong>${escapeHtml(bidDisplayNumber(bid))}</strong><span class="creator-tag compact">${creatorTagMarkup(bid)}</span></span><span>${escapeHtml(bid.buyer_agency || "")}</span><small>${dateParts.time} • ${escapeHtml(bidTypeLabel(bid.bid_type))}</small></span>
           ${GLLDesignSystem.COMPONENTS.statusBadge({ status: normalizeBidStatus(bid.status), label: statusDisplay(bid.status) })}
         </button>`;
       }).join("")
@@ -2880,7 +3022,7 @@ function clearBidForm(options = {}) {
   renderBidQuotationSelection();
   renderBidAttachment(null);
   renderPublicSessionLink();
-  refs.bidType.value = BID_TYPE_OPTIONS[0];
+  setBidType(BID_TYPE_OPTIONS[0]);
   refs.bidStatus.value = STATUS_OPTIONS[0];
   refs.bidStatusReason.value = "";
   updateBidStatusControls();
@@ -3100,6 +3242,8 @@ function collectBidData() {
   if (!refs.bidId.value.trim()) throw new Error("Preencha o N° do Edital.");
   if (!refs.buyerAgency.value.trim()) throw new Error("Preencha o Órgão Comprador.");
   if (!refs.sessionDatetime.value) throw new Error("Preencha a Data e Hora da Sessão.");
+  const bidType = selectedBidType();
+  if (!BID_TYPE_OPTIONS.includes(bidType)) throw new Error("Selecione o tipo do edital.");
   const publicSessionLink = refs.publicSessionLink.value.trim();
   const normalizedPublicSessionLink = normalizeUrlValue(publicSessionLink);
   if (publicSessionLink && !normalizedPublicSessionLink) throw new Error("Informe um Link da Sessão Pública válido.");
@@ -3109,7 +3253,7 @@ function collectBidData() {
     buyer_agency: refs.buyerAgency.value.trim(),
     session_datetime: fromDateTimeInputValue(refs.sessionDatetime.value),
     delivery_place: refs.deliveryPlace.value.trim(),
-    bid_type: refs.bidType.value,
+    bid_type: bidType,
     public_session_link: normalizedPublicSessionLink,
     proposal_deadline: fromDateTimeInputValue(refs.proposalDeadline.value),
     has_guarantee_deposit: refs.hasGuaranteeDeposit.checked,
@@ -4578,7 +4722,8 @@ function renderUsers() {
   const visibleUsers = appState.users.filter((user) => {
     const role = normalizeUserRole(user.role);
     const matchesRole = roleFilter === "all" || role === roleFilter;
-    const searchableText = normalizeSearchText(`${user.name || ""} ${user.email || ""}`);
+    const displayName = userDisplayName(user);
+    const searchableText = normalizeSearchText(`${displayName} ${user.full_name || ""} ${user.email || ""}`);
     return matchesRole && (!query || searchableText.includes(query));
   });
   refs.usersTotalLabel.textContent = totalLabel;
@@ -4601,7 +4746,8 @@ function renderUsers() {
       const assignedBidCount = user.auth_user_id
         ? appState.bids.filter((bid) => bid.assigned_to === user.auth_user_id).length
         : 0;
-      const initials = userInitials(user.name || user.email);
+      const displayName = userDisplayName(user);
+      const initials = userInitials(displayName);
       const action = canConfigure
         ? `<button class="quiet-action compact-action configure-user-action" type="button" data-configure-user="${escapeHtml(user.auth_user_id)}"><span aria-hidden="true">⚙</span> Configurar acessos</button>`
         : isCurrent
@@ -4612,7 +4758,7 @@ function renderUsers() {
         : `<span class="assigned-bids-pill" title="Editais atribuídos diretamente pelo administrador"><span aria-hidden="true">▱</span> ${assignedBidCount} ${assignedBidCount === 1 ? "edital" : "editais"}</span>`;
       return `
         <tr>
-          <td><div class="user-identity"><span class="user-avatar" aria-hidden="true">${escapeHtml(initials)}</span><span><strong>${escapeHtml(user.name || "")}</strong><small>${escapeHtml(role === USER_ROLES.ADMIN ? "Conta principal" : role)}</small></span></div></td>
+          <td><div class="user-identity"><span class="user-avatar" aria-hidden="true">${escapeHtml(initials)}</span><span><strong>${escapeHtml(displayName)}</strong><small>${escapeHtml(role === USER_ROLES.ADMIN ? "Conta principal" : role)}</small></span></div></td>
           <td>${escapeHtml(user.email || "")}</td>
           <td><span class="user-role-pill ${role === USER_ROLES.ADMIN ? "admin" : "analyst"}"><span aria-hidden="true">${role === USER_ROLES.ADMIN ? "♢" : "♙"}</span> ${escapeHtml(role)}</span></td>
           <td>${assignedBids}</td>
@@ -4633,6 +4779,10 @@ function normalizeSearchText(value) {
     .replace(/[\u0300-\u036f]/g, "")
     .toLocaleLowerCase("pt-BR")
     .trim();
+}
+
+function userDisplayName(user) {
+  return String(user?.display_name || user?.name || user?.email || "").trim();
 }
 
 function userInitials(value) {

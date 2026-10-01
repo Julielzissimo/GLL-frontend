@@ -30,6 +30,7 @@
   ]);
 
   const DIALOG_CATALOG = Object.freeze([
+    { id: "logoutConfirmModal", area: "Confirmação", title: "Deseja sair do sistema?", description: "Confirma o encerramento da sessão neste dispositivo.", actions: ["Cancelar", "Sair"] },
     { id: "bidQuotationModal", area: "Editais / orçamentos", title: "Localizar orçamento", description: "Filtrar por ID e órgão e escolher uma linha da tabela de resultados.", actions: ["Fechar", "Selecionar orçamento"] },
     { id: "quotationItemModal", area: "Editais / orçamentos", title: "Cadastrar item", description: "Descrição, modelo, marca, fornecedores, especificações e valores do item.", actions: ["Excluir item", "Limpar", "Cadastrar"] },
     { id: "quotationItemDiscardModal", area: "Confirmação", title: "Descartar alterações?", description: "Existem alterações não cadastradas neste item. Se sair agora, o conteúdo preenchido será perdido.", actions: ["Continuar editando", "Descartar alterações"] },
