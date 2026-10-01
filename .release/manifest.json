@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "release_id": "2026-10-01-correcao-personalizacao-proposta",
+  "release_id": "2026-10-01-identidade-visual-empresa",
   "environment": "homolog",
   "target_branch": "homolog",
   "items": [
@@ -324,6 +324,18 @@
         "12022f1bd96a1ba06b5e2a1096e3abcd8978b183"
       ],
       "migrations": []
+    },
+    {
+      "id": "IDENTIDADE-VISUAL-EMPRESA-001",
+      "backend_commits": [
+        "c3cac5c7edbd73dd889f2704fd6d2df8a7c0f06c"
+      ],
+      "frontend_commits": [
+        "816515654d9131d07b8c528f8ca2c72d880958f1"
+      ],
+      "migrations": [
+        "supabase/migrations/20261001155000_add_organization_branding.sql"
+      ]
     }
   ]
 }
