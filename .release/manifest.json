@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "release_id": "2026-10-01-identidade-visual-empresa",
+  "release_id": "2026-10-01-correcao-exclusao-orcamento",
   "environment": "homolog",
   "target_branch": "homolog",
   "items": [
@@ -335,6 +335,16 @@
       ],
       "migrations": [
         "supabase/migrations/20261001155000_add_organization_branding.sql"
+      ]
+    },
+    {
+      "id": "CORRECAO-EXCLUSAO-ORCAMENTO-001",
+      "backend_commits": [
+        "1e681f4172d11363f850aa5407f9cdf6d9ef10c6"
+      ],
+      "frontend_commits": [],
+      "migrations": [
+        "supabase/migrations/20261001222200_fix_deleted_quotation_timestamp.sql"
       ]
     }
   ]
