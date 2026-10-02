@@ -85,15 +85,21 @@ test("o login de teste acessa somente a organização de teste", async ({ page }
         passwordResetRequired: !document.querySelector("#passwordResetView")?.classList.contains("hidden"),
         stillProcessing: Boolean(document.querySelector("#blockingLoadingModal")?.open),
         hasLoginError: Boolean(loginError),
-        loginErrorCategory: /bloquead|sess[aã]o/i.test(loginError)
-          ? "session"
-          : /permiss[aã]o|policy|RLS/i.test(loginError)
-            ? "authorization"
-            : /fetch|conex[aã]o|network|timeout/i.test(loginError)
-              ? "network"
-              : loginError
-                ? "application"
-                : "none",
+        loginErrorCategory: /sess[aã]o sem identificador/i.test(loginError)
+          ? "session_id_missing"
+          : /sess[aã]o inv[aá]lida|sess[aã]o expirada/i.test(loginError)
+            ? "session_invalid"
+            : /acesso desta conta.*bloqueado/i.test(loginError)
+              ? "access_blocked"
+              : /sess[aã]o|bloquead/i.test(loginError)
+                ? "session_other"
+                : /permiss[aã]o|policy|RLS/i.test(loginError)
+                  ? "authorization"
+                  : /fetch|conex[aã]o|network|timeout/i.test(loginError)
+                    ? "network"
+                    : loginError
+                      ? "application"
+                      : "none",
       };
     });
     if (!postAuthState.appVisible) {
