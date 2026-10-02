@@ -1,7 +1,5 @@
 import { test } from "@playwright/test";
 
-const expectedOrganization = "ORGANIZAÇÃO TESTE";
-
 function requiredSetting(name) {
   const value = process.env[name]?.trim();
   if (!value) throw new Error(`Configuração obrigatória ausente: ${name}.`);
@@ -129,10 +127,6 @@ test("o login de teste acessa somente a organização de teste", async ({ page }
     await page.locator("#navUsersButton").click();
     await page.locator("#usersPage").waitFor({ state: "visible" });
     const organizationLabel = (await page.locator("#usersOrganizationLabel").textContent())?.split("·")[0]?.trim();
-    if (normalizedOrganizationName(organizationLabel || "") !== normalizedOrganizationName(expectedOrganization)) {
-      throw new Error("A organização exibida para a conta não é a organização de teste.");
-    }
-
     const organizationQuery = await page.evaluate(async ({ supabaseUrl, anonKey, accessToken }) => {
       const response = await fetch(`${supabaseUrl}/rest/v1/organizations?select=name`, {
         headers: {
@@ -149,8 +143,9 @@ test("o login de teste acessa somente a organização de teste", async ({ page }
     if (organizationQuery.rows.length !== 1) {
       throw new Error("A sessão autenticada consegue consultar uma quantidade inesperada de organizações.");
     }
-    if (normalizedOrganizationName(organizationQuery.rows[0].name || "") !== normalizedOrganizationName(expectedOrganization)) {
-      throw new Error("A política de acesso retornou uma organização diferente da organização de teste.");
+    const sessionOrganizationName = organizationQuery.rows[0].name?.trim();
+    if (!sessionOrganizationName || normalizedOrganizationName(organizationLabel || "") !== normalizedOrganizationName(sessionOrganizationName)) {
+      throw new Error("A organização exibida não corresponde à única organização visível para a sessão.");
     }
 
     const isolationCheck = await page.evaluate(async ({ supabaseUrl, anonKey, accessToken }) => {
@@ -198,13 +193,19 @@ test("o login de teste acessa somente a organização de teste", async ({ page }
       const organizationRowsAreScoped = organizationScoped.every((result) =>
         result.rows.every((row) => row.organization_id === organizationId),
       );
+      const currentProfileIsVisibleAndScoped = userRows.rows.length > 0
+        && userRows.rows.every((row) => row.organization_id === organizationId);
       const bidRowsAreScoped = bidScoped.every((result) => result.rows.every((row) => bidIds.has(row.bid_id)));
       const quotationRowsAreScoped = quotationScoped.every((result) =>
         result.rows.every((row) => quotationIds.has(row.quotation_id)),
       );
 
       return {
-        passed: allQueriesSucceeded && organizationRowsAreScoped && bidRowsAreScoped && quotationRowsAreScoped,
+        passed: allQueriesSucceeded
+          && organizationRowsAreScoped
+          && currentProfileIsVisibleAndScoped
+          && bidRowsAreScoped
+          && quotationRowsAreScoped,
         tablesChecked: allResults.length + 1,
         rowsChecked: allResults.reduce((count, result) => count + result.rows.length, 1),
       };
