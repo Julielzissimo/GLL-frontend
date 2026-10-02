@@ -2,8 +2,8 @@
 
 | Campo | Valor |
 |---|---|
-| Versão | 1.1 |
-| Data-base | 30/09/2026 |
+| Versão | 1.2 |
+| Data-base | 02/10/2026 |
 | Ambiente-alvo | `homolog` |
 | Aplicação | Gerenciador de Licitações Locais (GLL) |
 | Objetivo | Selecionar e executar somente a regressão proporcional às funcionalidades afetadas por cada implantação, sem perder a cobertura dos fluxos críticos. |
@@ -77,7 +77,7 @@ Todo dado de teste deve ter prefixo identificável, por exemplo `HML-AAAAMMDD-`,
 - resultado esperado e observado;
 - captura de tela ou arquivo gerado quando houver interface/PDF/CSV;
 - consulta ou resposta sanitizada quando houver banco/RPC/RLS;
-- ID do defeito e severidade quando reprovado.
+- ID do defeito e severidade quando reprovado; nos casos de UX, tempo da tarefa, pedidos de ajuda, desvios/retornos e viewport usados.
 
 ## 4. Matriz de impacto funcional
 
@@ -103,7 +103,7 @@ Todo dado de teste deve ter prefixo identificável, por exemplo `HML-AAAAMMDD-`,
 | `SYNC` | Atualização entre clientes e recuperação de rede | Todos os agregados remotos | Domínio alterado |
 | `ACL` | Perfis, organização e RLS | Todas as tabelas/RPCs/Storage | Domínio alterado |
 | `DB` | Migrações, schema, integridade e rollback | Supabase | `ACL`, domínio alterado |
-| `UX` | Acessibilidade, responsividade e feedback | Design System | Telas alteradas |
+| `UX` | Descoberta de telas, conclusão das tarefas, conteúdo, feedback, acessibilidade e adaptação da interface | Todas as telas e o Design System | Telas alteradas e regressões associadas |
 | `REL` | Manifesto, testes, build e Pages | Frontend e backend | `CORE` |
 
 ## 5. Suíte obrigatória de fumaça
@@ -258,14 +258,60 @@ Todo dado de teste deve ter prefixo identificável, por exemplo `HML-AAAAMMDD-`,
 
 ## 14. Experiência, acessibilidade e compatibilidade
 
+Apresente à pessoa que testa apenas o objetivo de cada procedimento, sem explicar onde clicar. Observe se ela encontra a tela, entende os rótulos e estados, conclui a tarefa e se recupera de erros sem ajuda. Registre tempo, pedidos de ajuda, desvios/retornos e qualquer ação ambígua. Considere aprovado quando a tarefa for concluída sem ação acidental, o resultado ficar claro e a pessoa conseguir corrigir entradas inválidas usando as orientações da interface.
+
+Execute os casos transversais e todos os casos de UX das telas afetadas. Associe cada caso aos domínios funcionais das seções anteriores; não repita a validação de regra de negócio quando outro caso já a cobre.
+
+### 14.1 Interação transversal
+
 | ID | P | Procedimento | Resultado esperado |
 |---|:---:|---|---|
-| UX-01 | P1 | Executar fluxo somente por teclado, inclusive modais e menu. | Ordem lógica, foco visível, foco preso no modal e retorno ao acionador. |
-| UX-02 | P1 | Inspecionar nomes acessíveis, rótulos, mensagens e contraste. | Controles têm nome/estado; erros usam texto e região viva; contraste AA. |
-| UX-03 | P2 | Testar 320 px, tablet e desktop com zoom de 200%. | Sem perda de conteúdo/ação; rolagem horizontal fica limitada a tabelas. |
-| UX-04 | P1 | Testar carregamento, sucesso, erro, vazio, confirmação e duplo clique. | Feedback bloqueia duplicidade, explica próximo passo e não deixa estado indefinido. |
-| UX-05 | P2 | Validar versões atuais de Chrome e Edge. | Fluxos selecionados e downloads funcionam de modo equivalente. |
-| UX-06 | P2 | Quando houver mudança no Design System, compilar Storybook localmente e inspecionar os componentes alterados. | Catálogo compila e componentes/tokens seguem o padrão visual; esta checagem complementar não é barreira do workflow Pages. |
+| UX-01 | P1 | Percorrer os fluxos selecionados usando somente teclado, incluindo menu, abas, formulários, ordenação, diálogos e ações de voltar/fechar. | Ordem de foco acompanha a leitura; foco fica visível; diálogos mantêm o foco e o devolvem ao acionador; ações disponíveis por arraste também têm alternativa por teclado. |
+| UX-02 | P1 | Revisar os fluxos com leitor de tela ou inspetor de acessibilidade e verificar rótulos, nomes, estado, instruções e mensagens. | Controles têm nomes compreensíveis; foco, estado atual e erros são anunciados; mensagens não dependem apenas de cor ou ícone; contraste atende WCAG AA. |
+| UX-03 | P2 | Concluir tarefas selecionadas em 320 px, tablet, desktop e zoom de 200%. | Conteúdo e ações continuam encontráveis; rolagem horizontal fica restrita a tabelas ou áreas que precisam dela; diálogos e painéis não escondem ações essenciais. |
+| UX-04 | P1 | Em cada tela afetada, observar carregamento, sucesso, erro, vazio, confirmação e tentativa de duplo clique. | Estado e próximo passo ficam claros; ações em andamento evitam duplicidade; não há tela presa nem confirmação ambígua. |
+| UX-05 | P2 | Repetir fluxos selecionados nas versões atuais de Chrome e Edge. | Navegação, edição, diálogos e downloads funcionam de forma equivalente. |
+| UX-06 | P2 | Quando a alteração envolver Design System, compilar o Storybook e inspecionar os componentes alterados. | Catálogo compila e componentes/tokens seguem o padrão visual; esta checagem complementar não é barreira do workflow Pages. |
+
+### 14.2 Acesso, navegação e descoberta
+
+| ID | P | Procedimento | Resultado esperado |
+|---|:---:|---|---|
+| UX-07 | P1 | Na entrada, identificar como acessar o sistema; tentar enviar o formulário vazio e credenciais inválidas antes de entrar com perfil autorizado. | Campos obrigatórios e erro indicam como corrigir sem revelar detalhes técnicos; carregamento e confirmação de entrada são perceptíveis. |
+| UX-08 | P1 | Localizar Licitações, Orçamento, Fornecedores, Usuários e Configurações pelo menu; abrir uma tela de detalhe e usar o breadcrumb para voltar. | Rótulos refletem as áreas reais; item atual fica destacado; breadcrumb indica o contexto e retorna à área esperada sem ambiguidade. |
+| UX-09 | P2 | Recolher/expandir a navegação no desktop; em tela estreita abrir e fechar o menu, alternar Propostas/Declarações e localizar Dados da Empresa/Design System. | O menu informa seu estado, não encobre conteúdo sem saída e mantém as páginas agrupadas fáceis de encontrar; a navegação continua clara após alternar de área. |
+| UX-10 | P1 | Abrir uma página e um edital, recarregar, usar Voltar/Avançar e entrar novamente por um link direto suportado. | A URL, o breadcrumb e a tela apresentam o mesmo contexto; a navegação preserva parâmetros válidos e não deixa uma página protegida exposta após sair. |
+| UX-11 | P2 | Usando o painel, localizar editais próximos, pendências documentais e ações para continuar o trabalho. | Prioridades, datas, contadores e próximos passos podem ser identificados rapidamente e correspondem às telas de destino. |
+
+### 14.3 Operação diária e administração
+
+| ID | P | Procedimento | Resultado esperado |
+|---|:---:|---|---|
+| UX-12 | P1 | Nas listas de Licitações, Orçamento, Fornecedores, Usuários e Propostas, localizar um registro usando busca/filtros e depois limpar a busca. | Campos de busca e filtros são fáceis de distinguir; resultados, contagens e filtros ativos ficam visíveis; estado sem resultado explica como recomeçar. |
+| UX-13 | P1 | Criar ou editar um edital e um orçamento, primeiro enviando campos inválidos e depois corrigindo-os. | Campos obrigatórios e opcionais são distinguíveis; erros aparecem junto ao campo; a interface preserva entradas válidas e permite concluir sem repetir tudo. |
+| UX-14 | P1 | Iniciar e cancelar exclusão de edital, orçamento, anexo e saída da sessão; depois confirmar uma ação de teste. | Diálogo identifica claramente o registro e o efeito; cancelar não altera dados; confirmar executa uma única vez e informa a conclusão. |
+| UX-15 | P1 | Salvar uma alteração, provocar erro recuperável e tentar salvar duas vezes rapidamente. | Indicador de processamento, sucesso ou erro é perceptível; a mensagem aponta como agir; a interface não duplica a gravação nem perde os dados digitados. |
+| UX-16 | P1 | Abrir um edital e localizar dados principais, Orçamento, checklist/documentos, anexos e histórico; mudar o status com motivo e encontrar a área de falhas quando aplicável. | Seções e estado atual são fáceis de reconhecer; ações disponíveis e bloqueadas são distinguíveis; a pessoa entende como voltar ao edital e localizar a próxima tarefa. |
+| UX-17 | P1 | No editor de itens, localizar a ação de adicionar/editar, preencher um item com texto longo, fechar sem salvar e reabrir salvando. | A relação entre edital, orçamento e item é compreensível; campos extensos e ações cabem no modal; alterações não salvas são protegidas por confirmação clara. |
+| UX-18 | P2 | Na tela de Fornecedores, pesquisar por fornecedor/produto/tag, escolher filtros e ordenação, abrir um fornecedor e manter seus produtos. | Filtros globais e do detalhe não se confundem; o fornecedor selecionado e o contexto de seus produtos permanecem claros; estados vazios oferecem ação coerente. |
+| UX-19 | P1 | Como administrador, localizar a lista de usuários, abrir o cadastro, preencher os dados, alternar a visualização da senha, corrigir validações e cancelar uma tentativa. | O modal deixa claros os campos e requisitos; mostrar/ocultar senha é identificável; erros são associados aos campos; salvar/cancelar têm efeitos inequívocos. |
+| UX-20 | P1 | Atribuir acesso a um analista; depois abrir a revogação, conferir o usuário/motivo, cancelar e repetir confirmando; abrir o histórico. | A tela diferencia atribuir, revogar e remover usuário; confirma o efeito antes de agir; registra o motivo e apresenta o histórico em linguagem compreensível. |
+| UX-21 | P1 | Abrir Configurações > Dados da Empresa, consultar o cadastro como analista e como administrador, voltar e editar representantes/identidade visual como administrador. | Caminho e botão de retorno são previsíveis; somente leitura é comunicada; lista, representante principal e ativos visuais têm ações identificáveis e resultado confirmado. |
+| UX-22 | P2 | Abrir o Design System em Configurações e percorrer foundations, componentes e exemplos disponíveis. | A pessoa entende a finalidade do catálogo, identifica padrões e diferencia demonstração de controles operacionais do sistema. |
+
+### 14.4 Declarações e propostas comerciais
+
+| ID | P | Procedimento | Resultado esperado |
+|---|:---:|---|---|
+| UX-23 | P1 | Criar uma declaração avulsa e outra vinculada, avançando pelas áreas de identificação, introdução, seleção, ordem e texto manual. | Ordem de trabalho é compreensível; o contexto avulso/vinculado aparece; contagem e resumo acompanham as escolhas; a ação para abrir a biblioteca fica encontrável. |
+| UX-24 | P1 | Em campos de declaração, digitar `{{`, escolher uma variável e reorganizar blocos usando arraste e, depois, controles de teclado. | Sugestões aparecem perto do campo ativo, inserem a variável no local esperado e podem ser usadas sem mouse; a ordem final fica visível e previsível. |
+| UX-25 | P1 | Na biblioteca, localizar um modelo, filtrar por escopo, criar/editar um modelo e alternar configurações/histórico. | Escopo do modelo fica explícito; busca e filtros são distinguíveis; salvar, cancelar e trocar de área preservam ou descartam dados conforme informado. |
+| UX-26 | P1 | Tentar pré-visualizar uma declaração com variável sem valor, corrigir o dado, voltar do preview ao editor e gerar o PDF; localizar depois o histórico. | Falta de dados indica os campos pendentes; retorno ao editor mantém a composição; preview, geração e download são etapas distintas e o arquivo pode ser reencontrado. |
+| UX-27 | P1 | Na lista de Propostas Comerciais, alternar Todas, Rascunhos e Finalizadas; abrir proposta existente e iniciar uma nova para edital elegível. | Filtros e contadores deixam o estado da proposta claro; a relação com o edital é visível; ações de criar, abrir, visualizar e retomar são distinguíveis. |
+| UX-28 | P1 | Em uma proposta, seguir o indicador de etapas, avançar, voltar, abrir etapa concluída e retomar após salvar rascunho. | Nomes e andamento das etapas ajudam a prever o próximo passo; etapas indisponíveis não parecem clicáveis; voltar ou retomar preserva o que já foi preenchido. |
+| UX-29 | P1 | Selecionar itens, editar dados para a proposta, marcar um campo para gravação permanente no orçamento, salvar rascunho e cancelar outra edição. | A diferença entre ajuste da proposta e alteração permanente do orçamento é clara antes de salvar; itens selecionados e totais são fáceis de conferir; descarte exige decisão explícita. |
+| UX-30 | P2 | Personalizar colunas e seções do PDF: ativar, desativar, reordenar, ajustar largura, criar/reutilizar coluna e configurar texto reutilizável. | Opções, controles de ordem/largura e itens personalizados são compreensíveis; a prévia reflete a configuração; a pessoa consegue voltar a uma opção válida. |
+| UX-31 | P1 | Pré-visualizar, corrigir dados, finalizar uma proposta válida e localizar/baixar uma geração anterior. | A prévia corresponde à saída; requisitos pendentes são explicados; finalizar é distinto de salvar rascunho; histórico identifica cada geração e sua ação de download. |
 
 ## 15. Publicação e critérios de saída
 
@@ -306,4 +352,4 @@ Aprovador:
 
 ## 17. Rastreabilidade da cobertura
 
-Revisão de 30/09/2026 na branch `homolog`. Cobertura conferida contra o frontend (aplicação, testes, build e workflow Pages), workflows de integridade/publicação do backend, manifesto, schema e migrações. A suíte automatizada do frontend usa serviços simulados; os casos `ACL`, `DB` e a validação na URL exigem evidência própria. Este plano é independente da especificação de produção: funcionalidades exclusivas de homologação podem ser testadas aqui sem antecipar sua incorporação em `docs/especificacao-tecnica/ESPECIFICACAO_TECNICA_GLL.md`.
+Revisão de 02/10/2026 na branch `homolog`. A cobertura foi conferida contra as jornadas e telas da aplicação, incluindo navegação por breadcrumb, agrupamento de Configurações, cadastro/revogação de usuários, Design System e o fluxo atual de propostas comerciais; também foram conferidos testes, Storybook, builds, workflows, manifesto, schema e migrações. A suíte automatizada do frontend usa serviços simulados; os casos `ACL`, `DB` e a validação na URL exigem evidência própria. Os casos `UX` pedem observação de tarefa sem orientação passo a passo. Este plano é independente da especificação de produção: funcionalidades exclusivas de homologação podem ser testadas aqui sem antecipar sua incorporação em `docs/especificacao-tecnica/ESPECIFICACAO_TECNICA_GLL.md`.
