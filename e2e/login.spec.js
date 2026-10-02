@@ -220,7 +220,8 @@ test("o login de teste acessa somente a organização de teste", async ({ page }
       { timeout: 15_000 },
     );
     await page.locator("#logoutButton").click();
-    await page.locator("#confirmLogoutButton").click();
+    const confirmLogoutButton = page.locator("#confirmLogoutButton");
+    if (await confirmLogoutButton.isVisible().catch(() => false)) await confirmLogoutButton.click();
     const logoutResponse = await logoutResponsePromise;
     if (!logoutResponse.ok()) throw new Error("O Supabase não confirmou o encerramento da sessão de teste.");
     await page.locator("#loginForm").waitFor({ state: "visible" });
