@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "release_id": "2026-10-01-correcao-exclusao-orcamento",
+  "release_id": "2026-10-02-validacao-login-organizacao",
   "environment": "homolog",
   "target_branch": "homolog",
   "items": [
@@ -348,6 +348,14 @@
       "migrations": [
         "supabase/migrations/20261001222200_fix_deleted_quotation_timestamp.sql"
       ]
+    },
+    {
+      "id": "LOGIN-E2E-001",
+      "backend_commits": [],
+      "frontend_commits": [
+        "0b689033140eeaf084305f6efd9d4057511d4017"
+      ],
+      "migrations": []
     }
   ]
 }
