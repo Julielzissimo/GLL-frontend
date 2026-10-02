@@ -342,7 +342,9 @@
       "backend_commits": [
         "1e681f4172d11363f850aa5407f9cdf6d9ef10c6"
       ],
-      "frontend_commits": [],
+      "frontend_commits": [
+        "5b48dbf8c0cd5c7c832d030fe59f4e1e6ef0f809"
+      ],
       "migrations": [
         "supabase/migrations/20261001222200_fix_deleted_quotation_timestamp.sql"
       ]
