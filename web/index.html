@@ -1402,6 +1402,17 @@
       </div>
     </dialog>
 
+    <dialog id="deleteQuotationModal" class="quotation-item-discard-modal" aria-labelledby="deleteQuotationModalTitle" aria-describedby="deleteQuotationModalDescription">
+      <div class="quotation-item-discard-content">
+        <h2 id="deleteQuotationModalTitle">Excluir orçamento?</h2>
+        <p id="deleteQuotationModalDescription">Deseja excluir este orçamento? Ele deixará de aparecer no sistema, mas seus itens e demais dados permanecerão preservados.</p>
+        <div class="button-row end">
+          <button id="cancelDeleteQuotationButton" class="quiet-action" type="button" autofocus>Cancelar</button>
+          <button id="confirmDeleteQuotationButton" class="danger-action" type="button">Excluir orçamento</button>
+        </div>
+      </div>
+    </dialog>
+
     <dialog id="blockingLoadingModal" class="blocking-loading-modal" aria-labelledby="blockingLoadingMessage" aria-describedby="blockingLoadingDescription" aria-modal="true" tabindex="-1">
       <div class="blocking-loading-spinner" aria-hidden="true"></div>
       <h2 id="blockingLoadingMessage" role="status" aria-live="polite">Processando…</h2>

@@ -387,6 +387,10 @@ const refs = {
   quotationDeliveryDeadline: $("quotationDeliveryDeadline"),
   quotationFormError: $("quotationFormError"),
   deleteQuotationButton: $("deleteQuotationButton"),
+  deleteQuotationModal: $("deleteQuotationModal"),
+  deleteQuotationModalDescription: $("deleteQuotationModalDescription"),
+  cancelDeleteQuotationButton: $("cancelDeleteQuotationButton"),
+  confirmDeleteQuotationButton: $("confirmDeleteQuotationButton"),
   clearQuotationButton: $("clearQuotationButton"),
   quotationItemsSection: $("quotationItemsSection"),
   quotationItemsStatus: $("quotationItemsStatus"),
@@ -2080,7 +2084,15 @@ function bindEvents() {
   refs.quotationsListToggle.addEventListener("click", () => setQuotationListCollapsed(!appState.quotationListCollapsed));
   refs.quotationForm.addEventListener("submit", withBlockingLoading(saveQuotation, "Salvando orçamento…"));
   refs.clearQuotationButton.addEventListener("click", clearQuotationForm);
-  refs.deleteQuotationButton.addEventListener("click", withBlockingLoading(deleteCurrentQuotation, "Excluindo orçamento…"));
+  refs.deleteQuotationButton.addEventListener("click", requestDeleteCurrentQuotation);
+  refs.cancelDeleteQuotationButton.addEventListener("click", () => refs.deleteQuotationModal.close());
+  refs.confirmDeleteQuotationButton.addEventListener("click", () => {
+    const modal = refs.deleteQuotationModal;
+    if (!modal.open) return;
+    const quotationId = modal.dataset.quotationId;
+    modal.close();
+    withBlockingLoading(() => deleteCurrentQuotation(quotationId), "Excluindo orçamento…")();
+  });
   refs.quotationCep.addEventListener("input", formatQuotationCepInput);
   refs.downloadQuotationItemsButton.addEventListener("click", downloadCurrentQuotationItemsCsv);
   refs.openQuotationItemModalButton.addEventListener("click", openQuotationItemModal);
@@ -4692,10 +4704,17 @@ async function saveQuotation(event) {
   }
 }
 
-async function deleteCurrentQuotation() {
+function requestDeleteCurrentQuotation() {
   const quotation = currentQuotation();
   if (!quotation) return;
-  if (!confirm(`Excluir o orçamento do edital ${quotation.edital}? Ele deixará de aparecer no sistema, mas seus itens e demais dados permanecerão preservados.`)) return;
+  refs.deleteQuotationModal.dataset.quotationId = String(quotation.id);
+  refs.deleteQuotationModalDescription.textContent = `Deseja excluir o orçamento do edital ${quotation.edital}? Ele deixará de aparecer no sistema, mas seus itens e demais dados permanecerão preservados.`;
+  refs.deleteQuotationModal.showModal();
+}
+
+async function deleteCurrentQuotation(quotationId = appState.currentQuotationId) {
+  const quotation = appState.quotations.find((row) => Number(row.id) === Number(quotationId));
+  if (!quotation) return;
   try {
     await store.deleteQuotation(quotation.id);
     appState.currentQuotationId = null;
