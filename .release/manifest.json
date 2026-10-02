@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "release_id": "2026-09-28-promocao-dados-empresa-propostas-bloqueadas",
+  "release_id": "2026-10-02-validacao-login-organizacao",
   "environment": "production",
   "target_branch": "main",
   "items": [
@@ -148,6 +148,21 @@
       "migrations": [
         "supabase/migrations/20260928233000_repair_all_legacy_bid_quotations.sql"
       ]
+    },
+    {
+      "id": "LOGIN-E2E-001",
+      "backend_commits": [
+        "6817b77b5cc2428d7b8394729871d645fe76777b"
+      ],
+      "frontend_commits": [
+        "2c23e5bcc0f0bd08a97a45a8d81d01b476670501",
+        "b438ba65d3868ada676b4d723dccbfdbe3b933f4",
+        "16f8e4d27a423a3aba05c6f9a9d66d7d72d857ef",
+        "7d856633d0ca468b1eb7a3c15a3c348dbc54f2d1",
+        "c9a132fbadb2806800fb774aa9fa559bca215c73",
+        "34bdda361778869d5f555e9c94ede9159d82dff3"
+      ],
+      "migrations": []
     }
   ]
 }
