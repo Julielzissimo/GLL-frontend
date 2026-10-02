@@ -65,6 +65,15 @@ export function resolveVariableSuggestionHost(textarea, fallbackHost) {
   return textarea?.closest?.("dialog") || fallbackHost;
 }
 
+export async function getPdfBrandingDataUrl({ kind, path, blob, url }) {
+  if (!path && !blob && !url) return "";
+  if (blob) return fileAsDataUrl(blob);
+  if (url?.startsWith("data:")) return url;
+  if (url) return urlAsDataUrl(url);
+  const label = kind === "watermark" ? "marca-d'água" : "logo";
+  throw new Error(`Não foi possível carregar a ${label} configurada para o papel timbrado.`);
+}
+
 function todayInSaoPaulo() {
   return new Intl.DateTimeFormat("en-CA", {
     year: "numeric", month: "2-digit", day: "2-digit", timeZone: "America/Sao_Paulo",
@@ -163,6 +172,8 @@ export function createDeclarationsFeature({ getClient, getContext, getBids, navi
     selectedIds: [],
     logoUrl: "",
     watermarkUrl: "",
+    logoBlob: null,
+    watermarkBlob: null,
     previewUrl: "",
     draggedId: null,
   };
@@ -256,11 +267,21 @@ export function createDeclarationsFeature({ getClient, getContext, getBids, navi
     }
     state.logoUrl = "";
     state.watermarkUrl = "";
-    for (const [pathKey, urlKey] of [["logo_path", "logoUrl"], ["watermark_path", "watermarkUrl"]]) {
+    state.logoBlob = null;
+    state.watermarkBlob = null;
+    for (const [pathKey, urlKey, blobKey, label] of [
+      ["logo_path", "logoUrl", "logoBlob", "logo"],
+      ["watermark_path", "watermarkUrl", "watermarkBlob", "marca-d'água"],
+    ]) {
       const path = state.settings?.[pathKey];
       if (!path) continue;
       const result = await supabase.storage.from(ASSET_BUCKET).download(path);
-      if (!result.error && result.data) state[urlKey] = URL.createObjectURL(result.data);
+      if (result.error || !result.data) {
+        const detail = result.error?.message ? ` ${result.error.message}` : "";
+        throw new Error(`Não foi possível carregar a ${label} configurada para o papel timbrado.${detail}`);
+      }
+      state[blobKey] = result.data;
+      state[urlKey] = URL.createObjectURL(result.data);
     }
   }
 
@@ -564,10 +585,10 @@ export function createDeclarationsFeature({ getClient, getContext, getBids, navi
     const bottom = 28;
     const contentWidth = pageWidth - marginX * 2;
     let y = top;
-    let logoData = "";
-    let watermarkData = "";
-    try { logoData = await urlAsDataUrl(state.logoUrl); } catch { logoData = ""; }
-    try { watermarkData = await urlAsDataUrl(state.watermarkUrl); } catch { watermarkData = ""; }
+    const [logoData, watermarkData] = await Promise.all([
+      getPdfBrandingDataUrl({ kind: "logo", path: state.settings?.logo_path, blob: state.logoBlob, url: state.logoUrl }),
+      getPdfBrandingDataUrl({ kind: "watermark", path: state.settings?.watermark_path, blob: state.watermarkBlob, url: state.watermarkUrl }),
+    ]);
 
     const addPage = () => { doc.addPage(); y = top; };
     const ensureSpace = (height) => { if (y + height > pageHeight - bottom) addPage(); };
@@ -629,14 +650,16 @@ export function createDeclarationsFeature({ getClient, getContext, getBids, navi
     for (let page = 1; page <= pageCount; page += 1) {
       doc.setPage(page);
       if (watermarkData) {
+        doc.saveGraphicsState();
         try {
-          doc.saveGraphicsState(); doc.setGState(new doc.GState({ opacity: 0.09 }));
+          doc.setGState(new doc.GState({ opacity: 0.09 }));
           doc.addImage(watermarkData, "AUTO", 48, 82, 114, 114, undefined, "FAST");
+        } finally {
           doc.restoreGraphicsState();
-        } catch { /* PDF continua válido sem transparência da marca-d'água. */ }
+        }
       }
       if (logoData) {
-        try { doc.addImage(logoData, "AUTO", marginX, 10, 36, 18, undefined, "FAST"); } catch { /* imagem inválida não bloqueia o documento */ }
+        doc.addImage(logoData, "AUTO", marginX, 10, 36, 18, undefined, "FAST");
       } else {
         doc.setFont("helvetica", "bold"); doc.setFontSize(9); doc.setTextColor(70, 78, 90);
         doc.text(composition.legalName || currentContext().organizationName || "", marginX, 19);
@@ -816,6 +839,12 @@ export function createDeclarationsFeature({ getClient, getContext, getBids, navi
 
   function reset() {
     state.loaded = false; state.loading = null; state.settings = null; state.templates = []; state.history = []; state.bids = []; state.selectedIds = [];
+    for (const urlKey of ["logoUrl", "watermarkUrl"]) {
+      if (state[urlKey]?.startsWith("blob:")) URL.revokeObjectURL(state[urlKey]);
+      state[urlKey] = "";
+    }
+    state.logoBlob = null;
+    state.watermarkBlob = null;
     if (state.previewUrl) URL.revokeObjectURL(state.previewUrl);
     state.previewUrl = "";
   }

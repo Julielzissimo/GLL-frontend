@@ -6,6 +6,7 @@ import {
   DECLARATION_VARIABLES,
   formatDeclarationDate,
   formatDeclarationFooter,
+  getPdfBrandingDataUrl,
   resolveDeclarationVariables,
   resolveVariableSuggestionHost,
   sanitizePdfFileName,
@@ -75,6 +76,41 @@ test("identidade visual da empresa alimenta declarações e deixa de ser editada
   assert.match(source, /from\("organizations"\)\.select\("logo_path,watermark_path"\)/);
   assert.match(source, /logo_path: organization\.logo_path/);
   assert.match(source, /watermark_path: organization\.watermark_path/);
+});
+
+test("logo e marca-d'água são convertidas do Blob baixado sem refazer fetch do blob URL", async () => {
+  const originalFileReader = globalThis.FileReader;
+  const originalFetch = globalThis.fetch;
+  let fetchCalled = false;
+  globalThis.FileReader = class {
+    readAsDataURL(blob) {
+      blob.arrayBuffer().then((buffer) => {
+        const bytes = new Uint8Array(buffer);
+        this.result = `data:${blob.type};base64,${btoa(String.fromCharCode(...bytes))}`;
+        this.onload?.();
+      }, (error) => this.onerror?.(error));
+    }
+  };
+  globalThis.fetch = async () => { fetchCalled = true; throw new Error("fetch não deveria ser chamado"); };
+
+  try {
+    const blob = new Blob(["logo"], { type: "image/png" });
+    const result = await getPdfBrandingDataUrl({
+      kind: "logo", path: "org/logo.png", blob, url: "blob:temporario",
+    });
+    assert.equal(result, "data:image/png;base64,bG9nbw==");
+    assert.equal(fetchCalled, false);
+  } finally {
+    globalThis.FileReader = originalFileReader;
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("não gera papel sem uma imagem configurada que falhou ao carregar", async () => {
+  await assert.rejects(
+    getPdfBrandingDataUrl({ kind: "watermark", path: "org/watermark.png", blob: null, url: "" }),
+    /marca-d'água/,
+  );
 });
 
 test("configurações preservam o espaçamento visual entre cabeçalho e seções", async () => {
