@@ -23,6 +23,8 @@ test("o login de teste acessa somente a organização de teste", async ({ page }
   const password = requiredSetting("GLL_E2E_PASSWORD");
   const expectedEnvironment = requiredSetting("GLL_E2E_EXPECTED_ENVIRONMENT");
   let authenticated = false;
+  let loggedOut = false;
+  let accessTokenForCleanup = null;
 
   try {
     await page.goto(baseUrl, { waitUntil: "domcontentloaded" });
@@ -65,6 +67,7 @@ test("o login de teste acessa somente a organização de teste", async ({ page }
       throw new Error("A sessão autenticada não corresponde à conta de teste configurada.");
     }
     authenticated = true;
+    accessTokenForCleanup = authSession.access_token;
 
     await page.waitForFunction(
       () => {
@@ -211,17 +214,44 @@ test("o login de teste acessa somente a organização de teste", async ({ page }
       throw new Error("A sessão não passou na verificação de isolamento das tabelas da organização.");
     }
 
+    const logoutResponsePromise = page.waitForResponse(
+      (response) => new URL(response.url()).pathname.endsWith("/auth/v1/logout") && response.request().method() === "POST",
+      { timeout: 15_000 },
+    );
     await page.locator("#logoutButton").click();
     await page.locator("#confirmLogoutButton").click();
+    const logoutResponse = await logoutResponsePromise;
+    if (!logoutResponse.ok()) throw new Error("O Supabase não confirmou o encerramento da sessão de teste.");
     await page.locator("#loginForm").waitFor({ state: "visible" });
-    authenticated = false;
+    loggedOut = true;
 
     console.log(`Login validado em ${expectedEnvironment}; ${isolationCheck.tablesChecked} tabelas retornaram apenas dados permitidos pela organização.`);
   } finally {
-    if (authenticated) {
-      await page.locator("#logoutButton").click({ timeout: 5_000 }).catch(() => {});
-      await page.locator("#confirmLogoutButton").click({ timeout: 5_000 }).catch(() => {});
-      await page.locator("#loginForm").waitFor({ state: "visible", timeout: 5_000 }).catch(() => {});
+    if (authenticated && !loggedOut && accessTokenForCleanup) {
+      const cleanupConfirmed = await page.evaluate(async (accessToken) => {
+        const config = window.GLL_CONFIG;
+        if (!config?.supabaseUrl || !config?.supabaseAnonKey) return false;
+        const controller = new AbortController();
+        const timeoutId = window.setTimeout(() => controller.abort(), 8_000);
+        try {
+          const response = await fetch(`${config.supabaseUrl}/auth/v1/logout?scope=local`, {
+            method: "POST",
+            headers: {
+              apikey: config.supabaseAnonKey,
+              Authorization: `Bearer ${accessToken}`,
+            },
+            signal: controller.signal,
+          });
+          return response.ok;
+        } catch {
+          return false;
+        } finally {
+          window.clearTimeout(timeoutId);
+          window.localStorage.clear();
+          window.sessionStorage.clear();
+        }
+      }, accessTokenForCleanup).catch(() => false);
+      console.log(`Encerramento de segurança no cleanup: ${cleanupConfirmed ? "confirmado" : "não confirmado"}.`);
     }
   }
 });
