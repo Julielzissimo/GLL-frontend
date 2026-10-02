@@ -351,7 +351,9 @@
     },
     {
       "id": "LOGIN-E2E-001",
-      "backend_commits": [],
+      "backend_commits": [
+        "6817b77b5cc2428d7b8394729871d645fe76777b"
+      ],
       "frontend_commits": [
         "0b689033140eeaf084305f6efd9d4057511d4017",
         "49ff1a47b7e3a13706c7b63e1c30a9d849d44292",
@@ -359,7 +361,14 @@
         "5e9f3b9127463ac51f4742aaf0cab8bece2314cb",
         "73d787fee3cfe9ee5fed8bdffb36a73963888294",
         "ff57db7c9215cd68d771c5cc4ef9cfa8d695eaff",
-        "d06294b2ab41a46d63c1599491aeb2f3578a0d58"
+        "d06294b2ab41a46d63c1599491aeb2f3578a0d58",
+        "2c23e5bcc0f0bd08a97a45a8d81d01b476670501",
+        "b438ba65d3868ada676b4d723dccbfdbe3b933f4",
+        "16f8e4d27a423a3aba05c6f9a9d66d7d72d857ef",
+        "7d856633d0ca468b1eb7a3c15a3c348dbc54f2d1",
+        "c9a132fbadb2806800fb774aa9fa559bca215c73",
+        "34bdda361778869d5f555e9c94ede9159d82dff3",
+        "a77b3c523108530aaf1fcb660580d2db73fa46ea"
       ],
       "migrations": []
     }
