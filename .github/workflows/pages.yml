@@ -8,8 +8,11 @@ on:
     paths:
       - "web/**"
       - "scripts/**"
+      - "e2e/**"
       - ".release/**"
       - "package.json"
+      - "package-lock.json"
+      - "playwright.config.js"
       - ".github/workflows/pages.yml"
   workflow_dispatch:
 
@@ -171,6 +174,8 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    outputs:
+      target_url: ${{ steps.validation.outputs.url }}
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
@@ -244,6 +249,78 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: evidencia-publicacao-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ env.EVIDENCE_FILE }}
+          if-no-files-found: error
+          retention-days: 90
+
+  e2e-login:
+    name: Validar login e isolamento (${{ github.ref_name }})
+    needs: deploy
+    if: github.ref_name == 'main' || github.ref_name == 'homolog'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment:
+      name: ${{ github.ref_name == 'main' && 'production' || 'homolog' }}
+    steps:
+      - name: Obter código publicado
+        uses: actions/checkout@v6
+
+      - name: Preparar Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Instalar dependências
+        run: npm ci
+
+      - name: Instalar Chromium para Playwright
+        run: npx playwright install --with-deps chromium
+
+      - name: Entrar no ambiente publicado e validar isolamento
+        id: login_test
+        env:
+          GLL_E2E_BASE_URL: ${{ needs.deploy.outputs.target_url }}
+          GLL_E2E_EMAIL: ${{ secrets.GLL_E2E_EMAIL }}
+          GLL_E2E_PASSWORD: ${{ secrets.GLL_E2E_PASSWORD }}
+          GLL_E2E_EXPECTED_ENVIRONMENT: ${{ github.ref_name == 'main' && 'production' || 'homolog' }}
+        run: npm run test:e2e:login
+
+      - name: Registrar evidência da validação de login
+        if: always()
+        shell: bash
+        env:
+          TEST_RESULT: ${{ steps.login_test.outcome }}
+          TARGET_URL: ${{ needs.deploy.outputs.target_url }}
+        run: |
+          if [[ "${GITHUB_REF_NAME}" == "main" ]]; then
+            target_environment="produção"
+          else
+            target_environment="homologação"
+          fi
+
+          evidence="evidencia-login-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}.md"
+          {
+            echo "# Evidência de validação de login e isolamento"
+            echo
+            echo "- Ambiente: ${target_environment}"
+            echo "- Commit: \`${GITHUB_SHA}\`"
+            echo "- Branch: \`${GITHUB_REF_NAME}\`"
+            echo "- Execução: https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+            echo "- Data UTC: $(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+            echo "- Teste de login e isolamento: \`${TEST_RESULT:-não executado}\`"
+            echo "- URL publicada: ${TARGET_URL}"
+            echo "- Validação: ${TEST_RESULT:-não executada}"
+            echo "- Credenciais: armazenadas nos secrets do Environment; não incluídas nesta evidência"
+          } > "$evidence"
+          cat "$evidence" >> "$GITHUB_STEP_SUMMARY"
+          echo "EVIDENCE_FILE=$evidence" >> "$GITHUB_ENV"
+
+      - name: Armazenar evidência da validação de login
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: evidencia-login-${{ github.run_id }}-${{ github.run_attempt }}
           path: ${{ env.EVIDENCE_FILE }}
           if-no-files-found: error
           retention-days: 90
