@@ -66,7 +66,41 @@ test("o login de teste acessa somente a organização de teste", async ({ page }
     }
     authenticated = true;
 
-    await page.locator("#appView").waitFor({ state: "visible" });
+    await page.waitForFunction(
+      () => {
+        const appView = document.querySelector("#appView");
+        const passwordResetView = document.querySelector("#passwordResetView");
+        const loginError = document.querySelector("#loginError")?.textContent?.trim();
+        return (appView && !appView.classList.contains("hidden"))
+          || (passwordResetView && !passwordResetView.classList.contains("hidden"))
+          || Boolean(loginError);
+      },
+      null,
+      { timeout: 35_000 },
+    ).catch(() => {});
+    const postAuthState = await page.evaluate(() => {
+      const loginError = document.querySelector("#loginError")?.textContent?.trim() || "";
+      return {
+        appVisible: !document.querySelector("#appView")?.classList.contains("hidden"),
+        passwordResetRequired: !document.querySelector("#passwordResetView")?.classList.contains("hidden"),
+        stillProcessing: Boolean(document.querySelector("#blockingLoadingModal")?.open),
+        hasLoginError: Boolean(loginError),
+        loginErrorCategory: /bloquead|sess[aã]o/i.test(loginError)
+          ? "session"
+          : /permiss[aã]o|policy|RLS/i.test(loginError)
+            ? "authorization"
+            : /fetch|conex[aã]o|network|timeout/i.test(loginError)
+              ? "network"
+              : loginError
+                ? "application"
+                : "none",
+      };
+    });
+    if (!postAuthState.appVisible) {
+      if (postAuthState.passwordResetRequired) throw new Error("A conta exige redefinição de senha antes do acesso.");
+      if (postAuthState.stillProcessing) throw new Error("O GLL não concluiu o acesso após 35 segundos.");
+      throw new Error(`O Supabase autenticou, mas o GLL não concluiu o acesso (${postAuthState.loginErrorCategory}).`);
+    }
     const runtime = await page.evaluate(() => ({
       environment: window.GLL_CONFIG?.environment,
       supabaseUrl: window.GLL_CONFIG?.supabaseUrl,
