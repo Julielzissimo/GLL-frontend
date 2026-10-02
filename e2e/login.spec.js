@@ -26,14 +26,35 @@ test("o login de teste acessa somente a organização de teste", async ({ page }
 
   try {
     await page.goto(baseUrl, { waitUntil: "domcontentloaded" });
+    await page.waitForFunction(
+      (environment) => {
+        const badge = document.querySelector("#environmentBadge");
+        const loadingModal = document.querySelector("#blockingLoadingModal");
+        return badge?.dataset.environment === environment && !loadingModal?.open && Boolean(window.GLL_CONFIG?.supabaseUrl);
+      },
+      expectedEnvironment,
+      { timeout: 30_000 },
+    );
     await page.locator("#loginEmail").fill(email);
     await page.locator("#loginPassword").fill(password);
 
+    let authRequestStarted = false;
+    page.on("request", (request) => {
+      const requestUrl = new URL(request.url());
+      if (requestUrl.pathname.endsWith("/auth/v1/token") && request.method() === "POST") authRequestStarted = true;
+    });
     const authResponsePromise = page.waitForResponse(
       (response) => response.url().includes("/auth/v1/token") && response.request().method() === "POST",
+      { timeout: 30_000 },
     );
     await page.locator("#loginForm button[type='submit']").click();
-    const authResponse = await authResponsePromise;
+    let authResponse;
+    try {
+      authResponse = await authResponsePromise;
+    } catch {
+      const reason = authRequestStarted ? "A tentativa de login não recebeu resposta do serviço." : "A aplicação não iniciou uma tentativa de login.";
+      throw new Error(reason);
+    }
     if (!authResponse.ok()) throw new Error("O serviço de autenticação recusou o login de teste.");
 
     const authSession = await authResponse.json();
