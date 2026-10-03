@@ -103,7 +103,7 @@ Diálogos usam `--dialog-width-sm`, `--dialog-width-md`, `--dialog-width-lg` e `
 
 As factories em `components.js` usam as classes reais da aplicação (`primary-action`, `quiet-action`, `danger-action`, `section-band`, `page-heading`, `tabs`, `table-wrap` etc.). Não mantenha uma cópia visual separada nas stories.
 
-Tooltip, Dropdown, Pagination, Breadcrumb e filtros compostos continuam como padrões candidatos. Eles devem ser consolidados quando houver uso real recorrente; não foram criados apenas para preencher o catálogo.
+Tooltip, Dropdown, Pagination e filtros compostos continuam como padrões candidatos. Breadcrumb já aparece na navegação de documentos e configurações; mantenha sua apresentação curta e ligada ao caminho da página. Esses padrões devem ser consolidados quando houver uso recorrente, sem criar componentes apenas para preencher o catálogo.
 
 ## Regras de estado e interação
 
