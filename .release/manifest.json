@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "release_id": "2026-10-03-ajustes-informativos-interface",
+  "release_id": "2026-10-03-ordenacao-tabela-editais",
   "environment": "homolog",
   "target_branch": "homolog",
   "items": [
@@ -416,6 +416,22 @@
       "backend_commits": [],
       "frontend_commits": [
         "48d14738be6218d2a3a1728d1b0cc9462e79cef5"
+      ],
+      "migrations": []
+    },
+    {
+      "id": "LUCRO-TOTAL-EDITAIS-001",
+      "backend_commits": [],
+      "frontend_commits": [
+        "aef6cebe548cfa018b98c235abba45ed694b97e1"
+      ],
+      "migrations": []
+    },
+    {
+      "id": "ORDENACAO-EDITAIS-001",
+      "backend_commits": [],
+      "frontend_commits": [
+        "0446b4012fe6bd8b00bffa0b9c17032a80bfec1c"
       ],
       "migrations": []
     }

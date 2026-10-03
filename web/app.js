@@ -115,6 +115,8 @@ const appState = {
   quotationListCollapsed: false,
   quotationSortKey: "opening_date",
   quotationSortDirection: "descending",
+  bidSortKey: "session_datetime",
+  bidSortDirection: "descending",
   currentQuotationItemId: null,
   quotationItemFormBaseline: "",
   supplierLinksDraft: [],
@@ -2122,6 +2124,7 @@ function bindEvents() {
     refs.logoutConfirmModal.close();
     withBlockingLoading(logout, "Saindo do sistema…")();
   });
+  refs.bidList.closest("table").querySelector("thead").addEventListener("click", handleBidSort);
   refs.filterForm.addEventListener("submit", (event) => {
     event.preventDefault();
     renderBids();
@@ -3509,19 +3512,81 @@ function bidMatchesSearch(bid, query) {
   ].some((value) => normalizeSearchText(value).includes(normalizedQuery));
 }
 
+function handleBidSort(event) {
+  const button = event.target.closest("[data-bid-sort]");
+  if (!button) return;
+
+  const sortKey = button.dataset.bidSort;
+  if (appState.bidSortKey === sortKey) {
+    appState.bidSortDirection = appState.bidSortDirection === "ascending" ? "descending" : "ascending";
+  } else {
+    appState.bidSortKey = sortKey;
+    appState.bidSortDirection = sortKey === "session_datetime" ? "descending" : "ascending";
+  }
+
+  renderBids();
+}
+
+function updateBidSortHeaders() {
+  refs.bidList.closest("table").querySelectorAll("[data-bid-sort]").forEach((button) => {
+    const sortKey = button.dataset.bidSort;
+    const active = sortKey === appState.bidSortKey;
+    const currentDirection = active ? appState.bidSortDirection : sortKey === "session_datetime" ? "descending" : "ascending";
+    const nextDirection = active ? (currentDirection === "ascending" ? "descending" : "ascending") : currentDirection;
+    const header = button.closest("th");
+    if (active) header.setAttribute("aria-sort", currentDirection);
+    else header.removeAttribute("aria-sort");
+    button.setAttribute("aria-label", "Ordenar " + button.dataset.sortLabel + " em ordem " + (nextDirection === "descending" ? "decrescente" : "crescente"));
+    button.querySelector(".bid-sort-indicator").textContent = active ? (currentDirection === "descending" ? "↓" : "↑") : "↕";
+  });
+}
+
 function renderBids() {
+  updateBidSortHeaders();
   renderHomeSummary();
   const searchFilter = refs.filterSearch.value;
   const dateFilter = refs.filterDate.value;
   const statusFilter = refs.filterStatus.value;
   const guaranteeDepositFilter = refs.filterGuaranteeDeposit.checked;
-  const rows = appState.bids.filter((bid) => {
+  const filteredRows = appState.bids.filter((bid) => {
     const matchesSearch = bidMatchesSearch(bid, searchFilter);
     const matchesDate = !dateFilter || toDateInputValue(bid.session_datetime) === dateFilter;
     const matchesStatus = statusFilter === "Todos" || bid.status === statusFilter;
     const matchesGuaranteeDeposit = !guaranteeDepositFilter || bid.has_guarantee_deposit;
     return matchesSearch && matchesDate && matchesStatus && matchesGuaranteeDeposit;
   });
+  const sortKey = appState.bidSortKey;
+  const direction = appState.bidSortDirection === "ascending" ? 1 : -1;
+  const rows = filteredRows
+    .map((bid, index) => {
+      const summary = calculateBidSummary(bid.id);
+      const totalProfit = calculateLinkedQuotationProfit(bid);
+      const sortValues = {
+        bid_number: bidDisplayNumber(bid),
+        buyer_agency: bid.buyer_agency,
+        session_datetime: parseStoredDateTime(bid.session_datetime).getTime(),
+        status: statusDisplay(bid.status),
+        item_count: summary.itemCount,
+        total: summary.totalFinal,
+        total_profit: totalProfit,
+      };
+      return { bid, index, summary, totalProfit, sortValue: sortValues[sortKey] };
+    })
+    .sort((left, right) => {
+      const leftValue = left.sortValue;
+      const rightValue = right.sortValue;
+      const leftEmpty = leftValue == null || (typeof leftValue === "string" && !leftValue.trim()) || (typeof leftValue === "number" && !Number.isFinite(leftValue));
+      const rightEmpty = rightValue == null || (typeof rightValue === "string" && !rightValue.trim()) || (typeof rightValue === "number" && !Number.isFinite(rightValue));
+      if (leftEmpty !== rightEmpty) return leftEmpty ? 1 : -1;
+
+      let comparison = 0;
+      if (!leftEmpty && typeof leftValue === "number" && typeof rightValue === "number") {
+        comparison = leftValue - rightValue;
+      } else if (!leftEmpty) {
+        comparison = String(leftValue).localeCompare(String(rightValue), "pt-BR", { numeric: true, sensitivity: "base" });
+      }
+      return comparison ? comparison * direction : left.index - right.index;
+    });
 
   if (!rows.length) {
     refs.bidList.innerHTML = `<tr><td colspan="8" class="empty-state">Nenhuma licitação encontrada.</td></tr>`;
@@ -3529,9 +3594,7 @@ function renderBids() {
   }
 
   refs.bidList.innerHTML = rows
-    .map((bid) => {
-      const summary = calculateBidSummary(bid.id);
-      const totalProfit = calculateLinkedQuotationProfit(bid);
+    .map(({ bid, summary, totalProfit }) => {
       const active = bid.id === appState.currentBidId ? " active" : "";
       return `
         <tr class="selectable bid-row${active}" data-bid-id="${escapeHtml(bid.id)}" tabindex="0">
