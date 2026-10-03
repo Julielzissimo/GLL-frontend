@@ -265,7 +265,7 @@ const refs = {
   logoutButton: $("logoutButton"),
   logoutConfirmModal: $("logoutConfirmModal"),
   filterForm: $("filterForm"),
-  filterAgency: $("filterAgency"),
+  filterSearch: $("filterSearch"),
   filterDate: $("filterDate"),
   filterStatus: $("filterStatus"),
   filterGuaranteeDeposit: $("filterGuaranteeDeposit"),
@@ -2006,6 +2006,7 @@ function bindEvents() {
     event.preventDefault();
     renderBids();
   });
+  refs.filterSearch.addEventListener("input", renderBids);
   refs.clearFiltersButton.addEventListener("click", clearFilters);
   document.querySelectorAll("[data-home-status]").forEach((button) => {
     button.addEventListener("click", () => applyHomeStatusFilter(button.dataset.homeStatus));
@@ -3127,18 +3128,33 @@ function updateSidebarVisibility() {
   refs.toggleSidebarButton.classList.add("hidden");
 }
 
+function bidMatchesSearch(bid, query) {
+  const normalizedQuery = normalizeSearchText(query);
+  if (!normalizedQuery) return true;
+
+  const quotation = bid.quotation_id
+    ? appState.quotations.find((row) => Number(row.id) === Number(bid.quotation_id))
+    : null;
+  return [
+    bid.buyer_agency,
+    bidTypeLabel(bid.bid_type),
+    bidDisplayNumber(bid),
+    quotation?.delivery_deadline,
+  ].some((value) => normalizeSearchText(value).includes(normalizedQuery));
+}
+
 function renderBids() {
   renderHomeSummary();
-  const agencyFilter = refs.filterAgency.value.trim().toLowerCase();
+  const searchFilter = refs.filterSearch.value;
   const dateFilter = refs.filterDate.value;
   const statusFilter = refs.filterStatus.value;
   const guaranteeDepositFilter = refs.filterGuaranteeDeposit.checked;
   const rows = appState.bids.filter((bid) => {
-    const matchesAgency = !agencyFilter || String(bid.buyer_agency || "").toLowerCase().includes(agencyFilter);
+    const matchesSearch = bidMatchesSearch(bid, searchFilter);
     const matchesDate = !dateFilter || toDateInputValue(bid.session_datetime) === dateFilter;
     const matchesStatus = statusFilter === "Todos" || bid.status === statusFilter;
     const matchesGuaranteeDeposit = !guaranteeDepositFilter || bid.has_guarantee_deposit;
-    return matchesAgency && matchesDate && matchesStatus && matchesGuaranteeDeposit;
+    return matchesSearch && matchesDate && matchesStatus && matchesGuaranteeDeposit;
   });
 
   if (!rows.length) {
@@ -3174,7 +3190,7 @@ function renderBids() {
 }
 
 function clearFilters() {
-  refs.filterAgency.value = "";
+  refs.filterSearch.value = "";
   refs.filterDate.value = "";
   refs.filterStatus.value = "Todos";
   refs.filterGuaranteeDeposit.checked = false;
