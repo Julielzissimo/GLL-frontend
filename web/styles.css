@@ -7028,3 +7028,10 @@ button.history-row:hover {
   background: transparent;
   backdrop-filter: none;
 }
+
+.bids-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: var(--z-sticky);
+  background: var(--color-surface-subtle);
+}
