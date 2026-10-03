@@ -2452,12 +2452,75 @@ textarea[aria-invalid="true"]:focus {
 }
 
 .sidebar-footer {
+  display: grid;
+  align-items: stretch;
+  gap: 12px;
+  margin-top: auto;
+  padding: 14px 8px 0;
+  border-top: 1px solid #29395b;
+}
+
+.sidebar-profile-button {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 10px;
+  padding: 8px;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  background: transparent;
+  color: #dce5fb;
+  text-align: left;
+  cursor: pointer;
+}
+
+.sidebar-profile-button:hover {
+  border-color: #334566;
+  background: #21345b;
+}
+
+.sidebar-profile-button:focus-visible {
+  outline: 2px solid #93c5fd;
+  outline-offset: 2px;
+}
+
+.sidebar-profile-button .sidebar-profile-avatar {
+  flex: 0 0 38px;
+  border: 2px solid rgba(220, 229, 251, 0.88);
+  background: #305083;
+  color: #fff;
+}
+
+.sidebar-profile-copy {
+  display: grid;
+  min-width: 0;
+  flex: 1;
+  gap: 3px;
+}
+
+.sidebar-profile-copy strong,
+.sidebar-profile-copy small {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sidebar-profile-copy strong {
+  color: #fff;
+  font-size: 13px;
+}
+
+.sidebar-profile-copy small {
+  margin: 0;
+  color: #aebbd7;
+  font-size: 11px;
+}
+
+.sidebar-environment {
   display: flex;
   align-items: center;
   gap: 10px;
-  margin-top: auto;
-  padding: 18px 8px 0;
-  border-top: 1px solid #29395b;
 }
 
 .sidebar-footer small {

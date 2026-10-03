@@ -127,10 +127,16 @@
           </div>
         </nav>
         <div class="sidebar-footer">
-          <span class="environment-dot" aria-hidden="true"></span>
-          <div>
-            <strong id="environmentBadge" class="environment-badge">Local</strong>
-            <small id="storageStatus">IndexedDB local</small>
+          <button id="editOwnProfileFooterButton" class="sidebar-profile-button" type="button" aria-label="Editar meu perfil" title="Editar meu perfil">
+            <span id="currentUserFooterAvatar" class="avatar sidebar-profile-avatar" aria-hidden="true">AD</span>
+            <span class="sidebar-profile-copy"><strong id="currentUserFooterName">Administrador</strong><small id="currentUserFooterRole">Administrador</small></span>
+          </button>
+          <div class="sidebar-environment">
+            <span class="environment-dot" aria-hidden="true"></span>
+            <div>
+              <strong id="environmentBadge" class="environment-badge">Local</strong>
+              <small id="storageStatus">IndexedDB local</small>
+            </div>
           </div>
         </div>
       </aside>

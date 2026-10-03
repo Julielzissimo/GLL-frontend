@@ -179,6 +179,10 @@ const refs = {
   breadcrumbList: $("breadcrumbList"),
   editOwnProfileButton: $("editOwnProfileButton"),
   currentUserAvatar: $("currentUserAvatar"),
+  editOwnProfileFooterButton: $("editOwnProfileFooterButton"),
+  currentUserFooterAvatar: $("currentUserFooterAvatar"),
+  currentUserFooterName: $("currentUserFooterName"),
+  currentUserFooterRole: $("currentUserFooterRole"),
   currentUserName: $("currentUserName"),
   currentUserRole: $("currentUserRole"),
   toggleSidebarButton: $("toggleSidebarButton"),
@@ -1937,7 +1941,7 @@ function applyEnvironmentConfig() {
   refs.environmentLabel.textContent = GLL_CONFIG.description;
   refs.environmentBadge.textContent = GLL_CONFIG.label;
   refs.environmentBadge.dataset.environment = GLL_CONFIG.environment;
-  refs.environmentBadge.closest(".sidebar-footer").classList.toggle("hidden", GLL_CONFIG.environment === "production");
+  refs.environmentBadge.closest(".sidebar-environment").classList.toggle("hidden", GLL_CONFIG.environment === "production");
   refs.storageStatus.textContent = GLL_CONFIG.storageLabel;
   refs.loginHint.classList.toggle("hidden", hasSupabaseConfig());
   refs.userCreateOpenButton.classList.toggle("hidden", !hasSupabaseConfig());
@@ -2053,6 +2057,7 @@ function bindEvents() {
   refs.passwordResetSignOutButton.addEventListener("click", logout);
   refs.userCreateOpenButton.addEventListener("click", openUserCreateDialog);
   refs.editOwnProfileButton.addEventListener("click", () => openUserProfileDialog());
+  refs.editOwnProfileFooterButton.addEventListener("click", () => openUserProfileDialog(appState.currentUserAuthId, refs.editOwnProfileFooterButton));
   refs.closeUserCreateDialogButton.addEventListener("click", closeUserCreateDialog);
   refs.cancelUserCreateButton.addEventListener("click", closeUserCreateDialog);
   refs.userCreateDialog.addEventListener("cancel", (event) => {
@@ -2907,6 +2912,9 @@ function resetAuthenticatedView() {
   refs.currentUserName.textContent = "";
   refs.currentUserRole.textContent = "";
   refs.currentUserAvatar.textContent = "";
+  refs.currentUserFooterName.textContent = "";
+  refs.currentUserFooterRole.textContent = "";
+  refs.currentUserFooterAvatar.textContent = "";
   setSyncNotice("");
 }
 
@@ -5717,11 +5725,16 @@ function updateCurrentUserProfile() {
   const name = user ? userDisplayName(user) : appState.currentUserName || appState.currentUserEmail || "Usuário";
   appState.currentUserName = name;
   refs.currentUserName.textContent = name;
+  refs.currentUserFooterName.textContent = name;
+  refs.currentUserFooterRole.textContent = appState.currentUserRole || "Editar perfil";
   refs.currentUserAvatar.innerHTML = user?.avatar_signed_url
     ? `<img src="${escapeHtml(user.avatar_signed_url)}" alt="" width="38" height="38" decoding="async" />`
     : escapeHtml(userInitials(name));
+  refs.currentUserFooterAvatar.innerHTML = refs.currentUserAvatar.innerHTML;
   refs.editOwnProfileButton.setAttribute("aria-label", `Editar perfil de ${name}`);
   refs.editOwnProfileButton.title = `Editar perfil de ${name}`;
+  refs.editOwnProfileFooterButton.setAttribute("aria-label", `Editar perfil de ${name}`);
+  refs.editOwnProfileFooterButton.title = `Editar perfil de ${name}`;
 }
 
 function userInitials(value) {
