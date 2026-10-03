@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net; connect-src 'self' https://*.supabase.co wss://*.supabase.co; img-src 'self' data: blob:; frame-src 'self' blob:; style-src 'self'; font-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'; upgrade-insecure-requests" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net; connect-src 'self' https://*.supabase.co wss://*.supabase.co; img-src 'self' data: blob: https://*.supabase.co; frame-src 'self' blob:; style-src 'self'; font-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'; upgrade-insecure-requests" />
     <title>GLL Web</title>
     <link rel="icon" type="image/svg+xml" href="./assets/favicon.svg" />
     <link rel="stylesheet" href="./design-system/tokens.css" />
@@ -154,8 +154,10 @@
             </nav>
           </div>
           <div class="topbar-actions">
-            <div class="avatar" aria-hidden="true">AD</div>
-            <div class="user-info"><strong id="currentUserName">Administrador</strong><small id="currentUserRole">Administrador</small></div>
+            <button id="editOwnProfileButton" class="topbar-profile-button" type="button" aria-label="Editar meu perfil" title="Editar meu perfil">
+              <span id="currentUserAvatar" class="avatar" aria-hidden="true">AD</span>
+              <span class="user-info"><strong id="currentUserName">Administrador</strong><small id="currentUserRole">Administrador</small></span>
+            </button>
             <button id="logoutButton" class="icon-button logout-action" type="button" aria-label="Sair" title="Sair"><span data-gll-icon="logout" aria-hidden="true"></span></button>
           </div>
         </header>
@@ -975,7 +977,7 @@
           <div class="quotation-item-modal-shell">
             <div class="quotation-item-modal-header">
               <div>
-                <span class="eyebrow">CADASTRO DE USUÁRIO</span>
+                <span id="userCreateEyebrow" class="eyebrow">CADASTRO DE USUÁRIO</span>
                 <h2 id="userCreateModalTitle">Cadastrar novo usuário</h2>
                 <p id="userCreateDescription" class="user-create-description">A pessoa deverá criar uma senha pessoal no primeiro acesso.</p>
               </div>
@@ -983,40 +985,69 @@
             </div>
             <form id="userCreateForm" class="quotation-item-modal-form user-create-form">
               <div class="form-grid three">
-                <label>Nome completo<input id="userCreateFullName" name="fullName" autocomplete="name" required /></label>
-                <label>Nome de exibição<input id="userCreateDisplayName" name="displayName" autocomplete="nickname" required /></label>
-                <label>Login (e-mail)<input id="userCreateEmail" name="email" type="email" autocomplete="email" required /></label>
-                <div class="password-field">
+                <label>Nome completo<input id="userCreateFullName" name="fullName" autocomplete="name" maxlength="160" required /></label>
+                <label>Nome de exibição<input id="userCreateDisplayName" name="displayName" autocomplete="nickname" maxlength="100" required /></label>
+                <label class="user-create-only">Login (e-mail)<input id="userCreateEmail" name="email" type="email" autocomplete="email" maxlength="254" required /></label>
+                <div class="password-field user-create-only">
                   <label for="userCreatePassword">Senha provisória</label>
                   <span class="password-input-wrap">
-                    <input id="userCreatePassword" name="temporaryPassword" type="password" autocomplete="new-password" minlength="8" required />
+                    <input id="userCreatePassword" name="temporaryPassword" type="password" autocomplete="new-password" minlength="8" maxlength="72" required />
                     <button class="password-visibility-toggle" type="button" data-password-toggle="userCreatePassword" aria-controls="userCreatePassword" aria-label="Mostrar senha" aria-pressed="false">
                       <svg class="password-eye-icon password-eye-open" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M2 12s3.5-6.5 10-6.5S22 12 22 12s-3.5 6.5-10 6.5S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg>
                       <svg class="password-eye-icon password-eye-closed" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M2 12s3.5-6.5 10-6.5S22 12 22 12s-3.5 6.5-10 6.5S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/><path d="m4 4 16 16"/></svg>
                     </button>
                   </span>
                 </div>
-                <div class="password-field">
+                <div class="password-field user-create-only">
                   <label for="userCreatePasswordConfirm">Confirme a senha provisória</label>
                   <span class="password-input-wrap">
-                    <input id="userCreatePasswordConfirm" name="temporaryPasswordConfirm" type="password" autocomplete="new-password" minlength="8" required />
+                    <input id="userCreatePasswordConfirm" name="temporaryPasswordConfirm" type="password" autocomplete="new-password" minlength="8" maxlength="72" required />
                     <button class="password-visibility-toggle" type="button" data-password-toggle="userCreatePasswordConfirm" aria-controls="userCreatePasswordConfirm" aria-label="Mostrar senha" aria-pressed="false">
                       <svg class="password-eye-icon password-eye-open" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M2 12s3.5-6.5 10-6.5S22 12 22 12s-3.5 6.5-10 6.5S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg>
                       <svg class="password-eye-icon password-eye-closed" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M2 12s3.5-6.5 10-6.5S22 12 22 12s-3.5 6.5-10 6.5S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/><path d="m4 4 16 16"/></svg>
                     </button>
                   </span>
                 </div>
-                <label>Tipo de usuário
+                <label class="user-create-only">Tipo de usuário
                   <select id="userCreateRole" name="role" required>
                     <option value="Analista">Analista</option>
                     <option value="Administrador">Administrador</option>
                   </select>
                 </label>
               </div>
+              <section class="profile-photo-editor" aria-labelledby="userProfilePhotoTitle">
+                <div class="profile-photo-preview-wrap">
+                  <img id="userProfilePhotoCurrent" class="profile-photo-current hidden" src="" alt="" width="192" height="192" />
+                  <canvas id="userProfilePhotoCanvas" class="profile-photo-canvas hidden" width="256" height="256" role="img" aria-label="Pré-visualização do recorte da foto de perfil. Arraste para reposicionar."></canvas>
+                  <span id="userProfilePhotoFallback" class="profile-photo-fallback" aria-hidden="true">?</span>
+                </div>
+                <div class="profile-photo-controls">
+                  <div>
+                    <h3 id="userProfilePhotoTitle">Foto do perfil</h3>
+                    <p id="userProfilePhotoHint">Escolha uma imagem para identificar este perfil nas páginas do GLL.</p>
+                  </div>
+                  <div class="profile-photo-actions">
+                    <button id="chooseUserProfilePhotoButton" class="quiet-action compact-action" type="button">Escolher foto</button>
+                    <input id="userProfilePhotoInput" class="hidden" type="file" accept="image/jpeg,image/png,image/webp" aria-label="Escolher foto de perfil" />
+                    <button id="clearUserProfilePhotoButton" class="text-action hidden" type="button">Remover foto</button>
+                  </div>
+                  <div id="userProfilePhotoCropControls" class="profile-photo-crop-controls hidden">
+                    <label for="userProfilePhotoZoom">Zoom <output id="userProfilePhotoZoomValue" for="userProfilePhotoZoom">1×</output></label>
+                    <input id="userProfilePhotoZoom" type="range" min="1" max="4" step="0.05" value="1" />
+                    <div class="profile-photo-pan-controls" aria-label="Reposicionar foto">
+                      <button type="button" data-profile-photo-pan="left" aria-label="Mover foto para a esquerda">←</button>
+                      <button type="button" data-profile-photo-pan="up" aria-label="Mover foto para cima">↑</button>
+                      <button type="button" data-profile-photo-pan="down" aria-label="Mover foto para baixo">↓</button>
+                      <button type="button" data-profile-photo-pan="right" aria-label="Mover foto para a direita">→</button>
+                    </div>
+                    <small>Arraste a imagem para ajustar o enquadramento quadrado. O arquivo salvo será otimizado para 512 × 512 px.</small>
+                  </div>
+                </div>
+              </section>
               <p id="userCreateError" class="form-error" role="alert"></p>
               <div class="button-row end">
                 <button id="cancelUserCreateButton" class="quiet-action" type="button">Cancelar</button>
-                <button class="primary-action" type="submit">Cadastrar usuário</button>
+                <button id="userCreateSubmitButton" class="primary-action" type="submit">Cadastrar usuário</button>
               </div>
             </form>
           </div>
@@ -1043,19 +1074,6 @@
               <button id="submitUserAccessButton" class="danger-action" type="submit">Revogar acesso</button>
             </div>
           </form>
-        </dialog>
-
-        <dialog id="userAccessHistoryDialog" class="user-assignments-modal user-access-history-dialog" aria-labelledby="userAccessHistoryTitle">
-          <div>
-            <div class="modal-header">
-              <div>
-                <span class="eyebrow">TRILHA DE AUDITORIA</span>
-                <h2 id="userAccessHistoryTitle">Histórico de acesso</h2>
-              </div>
-              <button id="closeUserAccessHistoryButton" class="icon-button" type="button" aria-label="Fechar"><span data-gll-icon="close" aria-hidden="true"></span></button>
-            </div>
-            <ol id="userAccessHistoryList" class="user-access-history-list" aria-live="polite"></ol>
-          </div>
         </dialog>
 
         <dialog id="userAssignmentsModal" class="modal-card user-assignments-modal">
