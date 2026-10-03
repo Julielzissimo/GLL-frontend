@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "release_id": "2026-10-03-promocao-homolog",
+  "release_id": "2026-10-03-ajustes-informativos-interface",
   "environment": "homolog",
   "target_branch": "homolog",
   "items": [
@@ -408,6 +408,14 @@
       "backend_commits": [],
       "frontend_commits": [
         "e0a55d2052a2a5c714c0ee72642609dac3816e0c"
+      ],
+      "migrations": []
+    },
+    {
+      "id": "RODAPE-AMBIENTE-PRODUCAO-001",
+      "backend_commits": [],
+      "frontend_commits": [
+        "48d14738be6218d2a3a1728d1b0cc9462e79cef5"
       ],
       "migrations": []
     }
