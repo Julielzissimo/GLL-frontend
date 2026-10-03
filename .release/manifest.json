@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
-  "release_id": "2026-10-03-pesquisa-dinamica-licitacoes",
-  "environment": "homolog",
-  "target_branch": "homolog",
+  "release_id": "2026-10-03-promocao-homolog",
+  "environment": "production",
+  "target_branch": "main",
   "items": [
     {
       "id": "IMP-003",
@@ -95,14 +95,16 @@
       "backend_commits": [],
       "frontend_commits": [
         "b1573563cdba12abaa9f0859ec22e73f15c397e6",
-        "8e95ced67b83823bd65d2388ab3932361bbe8440"
+        "8e95ced67b83823bd65d2388ab3932361bbe8440",
+        "7d7aba8c90bac4fc6a9b649a41ab136bf3073335"
       ],
       "migrations": []
     },
     {
       "id": "CORRECAO-ORCAMENTO-VINCULADO-001",
       "backend_commits": [
-        "0b78934874d978cd92427c2251155cca827768f9"
+        "0b78934874d978cd92427c2251155cca827768f9",
+        "a5e99809eb946359aa370af71face7e54cfd1365"
       ],
       "frontend_commits": [
         "2c23799f3f572281f34d4884d46ce32ae0a5a447"
@@ -137,14 +139,16 @@
       ],
       "frontend_commits": [
         "2e80bc4f0a42a7bf38f2564576463fcce7d4a49d",
-        "48e1c03c7b23ff033ffd860facc4c7db22c57133"
+        "48e1c03c7b23ff033ffd860facc4c7db22c57133",
+        "dee74eaeb2463b16e3ad2199bb9da92e4aa12ed8"
       ],
       "migrations": []
     },
     {
       "id": "CORRECAO-ORCAMENTOS-LEGADOS-SEM-VINCULO-001",
       "backend_commits": [
-        "2a928d8c3e2e8ff8ddc9e22182d167c9e9a236fd"
+        "2a928d8c3e2e8ff8ddc9e22182d167c9e9a236fd",
+        "16f5b04fcdc5f3cc4ad08654fcfc612abd026ba2"
       ],
       "frontend_commits": [],
       "migrations": [
@@ -198,7 +202,8 @@
     {
       "id": "UX-PROPOSTA-COMERCIAL-001",
       "backend_commits": [
-        "cc4f3a02ba86475def4d8c6f339990b40f90074e"
+        "cc4f3a02ba86475def4d8c6f339990b40f90074e",
+        "e0ebd31115dff35c5c07b3f896e7a3058f02155d"
       ],
       "frontend_commits": [
         "f94600055a88f05f069aa102928da84b4f4a1012",
@@ -297,7 +302,8 @@
       "id": "NAVEGACAO-CONFIGURACOES-001",
       "backend_commits": [],
       "frontend_commits": [
-        "b2b98dd123bca2bfe85bc199e89bf8647f5ce7de"
+        "b2b98dd123bca2bfe85bc199e89bf8647f5ce7de",
+        "6843fbd0d06216442b55f794a9b47b3225b73756"
       ],
       "migrations": []
     },
@@ -331,7 +337,8 @@
         "c3cac5c7edbd73dd889f2704fd6d2df8a7c0f06c"
       ],
       "frontend_commits": [
-        "816515654d9131d07b8c528f8ca2c72d880958f1"
+        "816515654d9131d07b8c528f8ca2c72d880958f1",
+        "6b323ff60fe5f2b798f1324dce888fa79b1953f0"
       ],
       "migrations": [
         "supabase/migrations/20261001155000_add_organization_branding.sql"
@@ -377,6 +384,30 @@
       "backend_commits": [],
       "frontend_commits": [
         "080462e86291a5ee672b3ee3e089d5af9e35cc6c"
+      ],
+      "migrations": []
+    },
+    {
+      "id": "DESIGN-SYSTEM-ESTADOS-001",
+      "backend_commits": [],
+      "frontend_commits": [
+        "a285913196c6a66e49da90d07cf56ff0600231e1"
+      ],
+      "migrations": []
+    },
+    {
+      "id": "MARCA-DAGUA-PROPOSTA-001",
+      "backend_commits": [],
+      "frontend_commits": [
+        "b9257edd01ef51ee2bace1b3684d704f18f92e61"
+      ],
+      "migrations": []
+    },
+    {
+      "id": "UX-PROPOSTA-COMERCIAL-009",
+      "backend_commits": [],
+      "frontend_commits": [
+        "e0a55d2052a2a5c714c0ee72642609dac3816e0c"
       ],
       "migrations": []
     }
