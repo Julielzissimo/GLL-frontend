@@ -669,11 +669,11 @@
             <table class="quotations-table">
               <thead>
                 <tr>
-                  <th>Data de abertura</th>
-                  <th>Edital</th>
-                  <th>Cidade / CEP</th>
-                  <th class="numeric">Itens</th>
-                  <th class="numeric">Total</th>
+                  <th scope="col" aria-sort="descending"><button class="quotation-sort-button" type="button" data-quotation-sort="opening_date" data-sort-label="por data de abertura" aria-label="Ordenar por data de abertura em ordem crescente">Data de abertura <span class="quotation-sort-indicator" aria-hidden="true">↓</span></button></th>
+                  <th scope="col"><button class="quotation-sort-button" type="button" data-quotation-sort="edital" data-sort-label="por edital">Edital <span class="quotation-sort-indicator" aria-hidden="true">↕</span></button></th>
+                  <th scope="col"><button class="quotation-sort-button" type="button" data-quotation-sort="location" data-sort-label="por cidade / CEP">Cidade / CEP <span class="quotation-sort-indicator" aria-hidden="true">↕</span></button></th>
+                  <th scope="col" class="numeric"><button class="quotation-sort-button" type="button" data-quotation-sort="items_count" data-sort-label="por itens">Itens <span class="quotation-sort-indicator" aria-hidden="true">↕</span></button></th>
+                  <th scope="col" class="numeric"><button class="quotation-sort-button" type="button" data-quotation-sort="total" data-sort-label="por total">Total <span class="quotation-sort-indicator" aria-hidden="true">↕</span></button></th>
                 </tr>
               </thead>
               <tbody id="quotationsTableBody"></tbody>
