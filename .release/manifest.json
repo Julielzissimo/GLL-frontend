@@ -434,6 +434,18 @@
         "0446b4012fe6bd8b00bffa0b9c17032a80bfec1c"
       ],
       "migrations": []
+    },
+    {
+      "id": "PERFIL-USUARIO-AVATAR-001",
+      "backend_commits": [
+        "3796933b91269396684af2e5fd2781eb409de603"
+      ],
+      "frontend_commits": [
+        "82e5d7e6ec9f7b4062fd1417587ad2b5fc3dd4b4"
+      ],
+      "migrations": [
+        "supabase/migrations/20261003185624_user_profile_avatars_and_permissions.sql"
+      ]
     }
   ]
 }
