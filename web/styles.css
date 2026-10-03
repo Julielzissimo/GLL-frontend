@@ -4789,7 +4789,8 @@ tr.item-won td {
   box-shadow: 0 1px 0 var(--border);
 }
 
-.quotation-sort-button {
+.quotation-sort-button,
+.bid-sort-button {
   display: inline-flex;
   min-height: 0;
   align-items: center;
@@ -4799,27 +4800,32 @@ tr.item-won td {
   border-radius: var(--radius-xs);
   background: transparent;
   color: inherit;
+  cursor: pointer;
   font: inherit;
   letter-spacing: inherit;
   text-align: inherit;
 }
 
-.quotation-sort-button:hover {
+.quotation-sort-button:hover,
+.bid-sort-button:hover {
   color: var(--color-text-primary);
 }
 
-.quotation-sort-button:focus-visible {
+.quotation-sort-button:focus-visible,
+.bid-sort-button:focus-visible {
   outline: 2px solid var(--color-primary);
   outline-offset: 3px;
 }
 
-.quotation-sort-indicator {
+.quotation-sort-indicator,
+.bid-sort-indicator {
   color: var(--color-primary);
   font-size: 13px;
   line-height: 1;
 }
 
-.quotations-table .numeric .quotation-sort-button {
+.quotations-table .numeric .quotation-sort-button,
+.bids-table .numeric .bid-sort-button {
   width: 100%;
   justify-content: flex-end;
 }
