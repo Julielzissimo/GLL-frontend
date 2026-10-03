@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "release_id": "2026-10-02-validacao-login-organizacao",
+  "release_id": "2026-10-03-pesquisa-dinamica-licitacoes",
   "environment": "homolog",
   "target_branch": "homolog",
   "items": [
@@ -369,6 +369,14 @@
         "c9a132fbadb2806800fb774aa9fa559bca215c73",
         "34bdda361778869d5f555e9c94ede9159d82dff3",
         "a77b3c523108530aaf1fcb660580d2db73fa46ea"
+      ],
+      "migrations": []
+    },
+    {
+      "id": "PESQUISA-DINAMICA-LICITACOES-001",
+      "backend_commits": [],
+      "frontend_commits": [
+        "080462e86291a5ee672b3ee3e089d5af9e35cc6c"
       ],
       "migrations": []
     }
