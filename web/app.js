@@ -3169,16 +3169,17 @@ function renderBids() {
   refs.bidList.innerHTML = rows
     .map((bid) => {
       const summary = calculateBidSummary(bid.id);
+      const totalProfit = calculateLinkedQuotationProfit(bid);
       const active = bid.id === appState.currentBidId ? " active" : "";
       return `
         <tr class="selectable bid-row${active}" data-bid-id="${escapeHtml(bid.id)}" tabindex="0">
           <td><div class="bid-number-cell"><strong class="table-link">${escapeHtml(bidDisplayNumber(bid))}</strong><span class="creator-tag compact">${creatorTagMarkup(bid)}</span></div></td>
           <td>${escapeHtml(bid.buyer_agency || "")}</td>
           <td>${formatDateTime(bid.session_datetime)}</td>
-          <td>${escapeHtml(bidTypeLabel(bid.bid_type))}</td>
           <td>${GLLDesignSystem.COMPONENTS.statusBadge({ status: normalizeBidStatus(bid.status), label: statusDisplay(bid.status) })}</td>
           <td class="numeric">${summary.itemCount}</td>
           <td class="numeric"><strong>${money(summary.totalFinal)}</strong></td>
+          <td class="numeric">${totalProfit === null ? "—" : `<strong>${money(totalProfit)}</strong>`}</td>
           <td><button class="icon-button row-action" type="button" aria-label="Abrir ${escapeHtml(bidDisplayNumber(bid))}">→</button></td>
         </tr>
       `;
@@ -5395,6 +5396,16 @@ function calculateBidSummary(bidId) {
         return acc;
       },
       { totalFinal: 0, totalEstimated: 0, itemCount: 0 }
+    );
+}
+
+function calculateLinkedQuotationProfit(bid) {
+  if (!bid?.quotation_id) return null;
+  return appState.quotationItems
+    .filter((item) => Number(item.quotation_id) === Number(bid.quotation_id))
+    .reduce(
+      (total, item) => roundMoney(total + calculateItemProfit(item.final_bid, item.supplier_cost, item.quantity)),
+      0
     );
 }
 
