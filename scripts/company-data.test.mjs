@@ -33,6 +33,10 @@ test("Configurações oferece a subpágina Dados da Empresa", () => {
   assert.match(html, /id="openCompanyDataButton"[\s\S]*?>Abrir cadastro</);
   assert.match(html, /id="companyDataPage"[\s\S]*?Dados da Empresa/);
   assert.match(html, /id="legalRepresentativesList"/);
+  assert.match(html, /<h2>Identidade visual<\/h2>[\s\S]*?incluídas automaticamente nas propostas e declarações/);
+  assert.match(html, /id="companyLogo"/);
+  assert.match(html, /id="companyWatermark"/);
+  assert.doesNotMatch(html, /id="declarationLogo"|id="declarationWatermark"/);
   assert.match(app, /companyData:\s*"configuracoes\/dados-da-empresa"/);
   assert.match(app, /companyDataFeature\.showPage\(\)/);
 });
@@ -41,4 +45,7 @@ test("salvamento central usa função transacional e sincroniza a organização"
   assert.match(feature, /client\.rpc\("save_current_company_data"/);
   assert.match(feature, /onOrganizationUpdate\?\.\(organization\)/);
   assert.match(feature, /Somente administradores podem alterar os dados da empresa/);
+  assert.match(feature, /select\("id,name,cnpj,logo_path,watermark_path"\)/);
+  assert.match(feature, /from\(COMPANY_ASSET_BUCKET\)\.upload/);
+  assert.match(feature, /\.update\(branding\)/);
 });

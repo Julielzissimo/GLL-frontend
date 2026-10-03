@@ -1,6 +1,5 @@
 const ASSET_BUCKET = "declaration-assets";
 const PDF_BUCKET = "declaration-pdfs";
-const MAX_IMAGE_SIZE = 5 * 1024 * 1024;
 const JSPDF_URL = "https://cdn.jsdelivr.net/npm/jspdf@2.5.2/+esm";
 
 export const DECLARATION_VARIABLES = Object.freeze([
@@ -66,6 +65,15 @@ export function resolveVariableSuggestionHost(textarea, fallbackHost) {
   return textarea?.closest?.("dialog") || fallbackHost;
 }
 
+export async function getPdfBrandingDataUrl({ kind, path, blob, url }) {
+  if (!path && !blob && !url) return "";
+  if (blob) return fileAsDataUrl(blob);
+  if (url?.startsWith("data:")) return url;
+  if (url) return urlAsDataUrl(url);
+  const label = kind === "watermark" ? "marca-d'água" : "logo";
+  throw new Error(`Não foi possível carregar a ${label} configurada para o papel timbrado.`);
+}
+
 function todayInSaoPaulo() {
   return new Intl.DateTimeFormat("en-CA", {
     year: "numeric", month: "2-digit", day: "2-digit", timeZone: "America/Sao_Paulo",
@@ -107,6 +115,14 @@ function writeLocal(context, data) {
   localStorage.setItem(localKey(context.organizationId), JSON.stringify(data));
 }
 
+function readCompanyLocal(context) {
+  try {
+    return JSON.parse(localStorage.getItem(`gll-company-data-v1-${context.organizationId}`)) || {};
+  } catch {
+    return {};
+  }
+}
+
 function defaultSettings(context) {
   return {
     organization_id: context.organizationId,
@@ -128,11 +144,6 @@ function defaultSettings(context) {
   };
 }
 
-function setImagePreview(element, url) {
-  element.src = url || "";
-  element.classList.toggle("hidden", !url);
-}
-
 function fileAsDataUrl(file) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -149,12 +160,6 @@ async function urlAsDataUrl(url) {
   return fileAsDataUrl(await response.blob());
 }
 
-function safeStorageName(value) {
-  return String(value || "imagem")
-    .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^a-zA-Z0-9._-]+/g, "-").replace(/^-+|-+$/g, "") || "imagem";
-}
-
 export function createDeclarationsFeature({ getClient, getContext, getBids, navigate, toast, runBusy }) {
   const $ = (id) => document.getElementById(id);
   const state = {
@@ -167,6 +172,8 @@ export function createDeclarationsFeature({ getClient, getContext, getBids, navi
     selectedIds: [],
     logoUrl: "",
     watermarkUrl: "",
+    logoBlob: null,
+    watermarkBlob: null,
     previewUrl: "",
     draggedId: null,
   };
@@ -182,7 +189,7 @@ export function createDeclarationsFeature({ getClient, getContext, getBids, navi
     "declarationSettingsForm", "declarationLegalName", "declarationCnpj", "declarationAddress", "declarationCompanyCity",
     "declarationCompanyState", "declarationRepresentative", "declarationRepresentativeCpf", "declarationClassification",
     "declarationPhone", "declarationEmail", "declarationSignatureCity", "declarationSignatureState", "declarationDefaultIntroduction",
-    "declarationLogo", "declarationWatermark", "declarationLogoPreview", "declarationWatermarkPreview", "declarationSettingsStatus",
+    "declarationSettingsStatus",
     "declarationHistoryList", "refreshDeclarationHistoryButton", "declarationTemplateModal", "declarationTemplateForm",
     "declarationTemplateModalTitle", "declarationTemplateId", "declarationTemplateTitle", "declarationTemplateScope",
     "declarationTemplateBidField", "declarationTemplateBid", "declarationTemplateContent", "declarationTemplateError",
@@ -209,25 +216,38 @@ export function createDeclarationsFeature({ getClient, getContext, getBids, navi
       const context = currentContext();
       const supabase = client();
       if (supabase) {
-        const [settingsResult, templatesResult, historyResult, bidsResult] = await Promise.all([
+        const [settingsResult, organizationResult, templatesResult, historyResult, bidsResult] = await Promise.all([
           supabase.from("declaration_settings").select("*").maybeSingle(),
+          supabase.from("organizations").select("logo_path,watermark_path").eq("id", context.organizationId).single(),
           supabase.from("declaration_templates").select("*").order("title"),
           supabase.from("declaration_documents").select("*").order("generated_at", { ascending: false }),
           supabase.rpc("list_declaration_bids"),
         ]);
-        state.settings = assertResult(settingsResult) || defaultSettings(context);
+        const declarationSettings = assertResult(settingsResult) || defaultSettings(context);
+        const organization = assertResult(organizationResult);
+        state.settings = {
+          ...declarationSettings,
+          logo_path: organization.logo_path ?? declarationSettings.logo_path ?? null,
+          watermark_path: organization.watermark_path ?? declarationSettings.watermark_path ?? null,
+        };
         state.templates = assertResult(templatesResult) || [];
         state.history = assertResult(historyResult) || [];
         state.bids = assertResult(bidsResult) || [];
         await loadAssetUrls();
       } else {
         const local = readLocal(context);
-        state.settings = { ...defaultSettings(context), ...(local.settings || {}) };
+        const company = readCompanyLocal(context).organization || {};
+        state.settings = {
+          ...defaultSettings(context),
+          ...(local.settings || {}),
+          logo_path: company.logo_path ?? local.settings?.logo_path ?? null,
+          watermark_path: company.watermark_path ?? local.settings?.watermark_path ?? null,
+        };
         state.templates = local.templates || [];
         state.history = local.history || [];
         state.bids = getBids();
-        state.logoUrl = state.settings.logo_data_url || "";
-        state.watermarkUrl = state.settings.watermark_data_url || "";
+        state.logoUrl = company.logo_data_url || state.settings.logo_data_url || "";
+        state.watermarkUrl = company.watermark_data_url || state.settings.watermark_data_url || "";
       }
       state.loaded = true;
       refs.declarationLoading.classList.add("hidden");
@@ -242,13 +262,26 @@ export function createDeclarationsFeature({ getClient, getContext, getBids, navi
 
   async function loadAssetUrls() {
     const supabase = client();
+    for (const urlKey of ["logoUrl", "watermarkUrl"]) {
+      if (state[urlKey]?.startsWith("blob:")) URL.revokeObjectURL(state[urlKey]);
+    }
     state.logoUrl = "";
     state.watermarkUrl = "";
-    for (const [pathKey, urlKey] of [["logo_path", "logoUrl"], ["watermark_path", "watermarkUrl"]]) {
+    state.logoBlob = null;
+    state.watermarkBlob = null;
+    for (const [pathKey, urlKey, blobKey, label] of [
+      ["logo_path", "logoUrl", "logoBlob", "logo"],
+      ["watermark_path", "watermarkUrl", "watermarkBlob", "marca-d'água"],
+    ]) {
       const path = state.settings?.[pathKey];
       if (!path) continue;
-      const result = await supabase.storage.from(ASSET_BUCKET).createSignedUrl(path, 3600);
-      if (!result.error) state[urlKey] = result.data.signedUrl;
+      const result = await supabase.storage.from(ASSET_BUCKET).download(path);
+      if (result.error || !result.data) {
+        const detail = result.error?.message ? ` ${result.error.message}` : "";
+        throw new Error(`Não foi possível carregar a ${label} configurada para o papel timbrado.${detail}`);
+      }
+      state[blobKey] = result.data;
+      state[urlKey] = URL.createObjectURL(result.data);
     }
   }
 
@@ -270,8 +303,6 @@ export function createDeclarationsFeature({ getClient, getContext, getBids, navi
       declarationDefaultIntroduction: "default_introduction",
     };
     for (const [id, key] of Object.entries(mapping)) refs[id].value = config[key] || "";
-    setImagePreview(refs.declarationLogoPreview, state.logoUrl);
-    setImagePreview(refs.declarationWatermarkPreview, state.watermarkUrl);
   }
 
   function readSettingsForm() {
@@ -286,18 +317,7 @@ export function createDeclarationsFeature({ getClient, getContext, getBids, navi
       email: refs.declarationEmail.value.trim(), signature_city: refs.declarationSignatureCity.value.trim(),
       signature_state: refs.declarationSignatureState.value.trim().toUpperCase(),
       default_introduction: refs.declarationDefaultIntroduction.value.trim(),
-      logo_path: state.settings?.logo_path || null, watermark_path: state.settings?.watermark_path || null,
     };
-  }
-
-  async function uploadAsset(file, kind) {
-    if (!file) return state.settings?.[`${kind}_path`] || null;
-    if (!file.type.startsWith("image/") || file.size > MAX_IMAGE_SIZE) throw new Error("Use uma imagem PNG, JPG ou WebP de até 5 MB.");
-    const supabase = client();
-    if (!supabase) return fileAsDataUrl(file);
-    const path = `${currentContext().organizationId}/${kind}-${Date.now()}-${safeStorageName(file.name)}`;
-    assertResult(await supabase.storage.from(ASSET_BUCKET).upload(path, file, { contentType: file.type, upsert: false }));
-    return path;
   }
 
   async function saveSettings(event) {
@@ -306,34 +326,17 @@ export function createDeclarationsFeature({ getClient, getContext, getBids, navi
     const supabase = client();
     const data = readSettingsForm();
     if (supabase) {
-      data.logo_path = await uploadAsset(refs.declarationLogo.files[0], "logo");
-      data.watermark_path = await uploadAsset(refs.declarationWatermark.files[0], "watermark");
       assertResult(await supabase.from("declaration_settings").upsert(data, { onConflict: "organization_id" }).select().single());
     } else {
-      const logoFile = refs.declarationLogo.files[0];
-      const watermarkFile = refs.declarationWatermark.files[0];
-      data.logo_data_url = logoFile ? await fileAsDataUrl(logoFile) : state.settings?.logo_data_url || "";
-      data.watermark_data_url = watermarkFile ? await fileAsDataUrl(watermarkFile) : state.settings?.watermark_data_url || "";
+      data.logo_data_url = state.settings?.logo_data_url || "";
+      data.watermark_data_url = state.settings?.watermark_data_url || "";
       const local = readLocal(currentContext());
       writeLocal(currentContext(), { ...local, settings: data });
     }
-    state.settings = data;
-    await loadAssetUrlsIfNeeded();
-    refs.declarationLogo.value = "";
-    refs.declarationWatermark.value = "";
+    state.settings = { ...state.settings, ...data };
     refs.declarationSettingsStatus.textContent = "Configurações salvas para a organização.";
     resetGenerator(false);
     toast("Configurações de Declarações salvas.");
-  }
-
-  async function loadAssetUrlsIfNeeded() {
-    if (client()) await loadAssetUrls();
-    else {
-      state.logoUrl = state.settings.logo_data_url || "";
-      state.watermarkUrl = state.settings.watermark_data_url || "";
-    }
-    setImagePreview(refs.declarationLogoPreview, state.logoUrl);
-    setImagePreview(refs.declarationWatermarkPreview, state.watermarkUrl);
   }
 
   function resetGenerator(clearSelection = true) {
@@ -404,7 +407,7 @@ export function createDeclarationsFeature({ getClient, getContext, getBids, navi
   function renderOrder() {
     const selected = selectedTemplates();
     refs.declarationSelectedOrder.innerHTML = selected.length ? selected.map((template, index) => `
-      <li draggable="true" data-template-id="${escapeHtml(template.id)}"><span class="declaration-drag" aria-hidden="true">⠿</span><strong><span>${index + 1}.</span> ${escapeHtml(template.title)}</strong><span class="declaration-order-actions"><button type="button" data-move="up" aria-label="Mover para cima" ${index === 0 ? "disabled" : ""}>↑</button><button type="button" data-move="down" aria-label="Mover para baixo" ${index === selected.length - 1 ? "disabled" : ""}>↓</button></span></li>`).join("") : `<li class="empty-state compact-empty">Selecione uma ou mais declarações acima.</li>`;
+      <li data-template-id="${escapeHtml(template.id)}"><span class="declaration-drag" draggable="true" role="button" tabindex="0" title="Arraste para reorganizar" aria-label="Arraste para reorganizar">⠿</span><strong><span>${index + 1}.</span> ${escapeHtml(template.title)}</strong><span class="declaration-order-actions"><button type="button" data-move="up" aria-label="Mover para cima" ${index === 0 ? "disabled" : ""}>↑</button><button type="button" data-move="down" aria-label="Mover para baixo" ${index === selected.length - 1 ? "disabled" : ""}>↓</button></span></li>`).join("") : `<li class="empty-state compact-empty">Selecione uma ou mais declarações acima.</li>`;
   }
 
   function moveTemplate(id, direction) {
@@ -582,10 +585,10 @@ export function createDeclarationsFeature({ getClient, getContext, getBids, navi
     const bottom = 28;
     const contentWidth = pageWidth - marginX * 2;
     let y = top;
-    let logoData = "";
-    let watermarkData = "";
-    try { logoData = await urlAsDataUrl(state.logoUrl); } catch { logoData = ""; }
-    try { watermarkData = await urlAsDataUrl(state.watermarkUrl); } catch { watermarkData = ""; }
+    const [logoData, watermarkData] = await Promise.all([
+      getPdfBrandingDataUrl({ kind: "logo", path: state.settings?.logo_path, blob: state.logoBlob, url: state.logoUrl }),
+      getPdfBrandingDataUrl({ kind: "watermark", path: state.settings?.watermark_path, blob: state.watermarkBlob, url: state.watermarkUrl }),
+    ]);
 
     const addPage = () => { doc.addPage(); y = top; };
     const ensureSpace = (height) => { if (y + height > pageHeight - bottom) addPage(); };
@@ -647,14 +650,16 @@ export function createDeclarationsFeature({ getClient, getContext, getBids, navi
     for (let page = 1; page <= pageCount; page += 1) {
       doc.setPage(page);
       if (watermarkData) {
+        doc.saveGraphicsState();
         try {
-          doc.saveGraphicsState(); doc.setGState(new doc.GState({ opacity: 0.09 }));
+          doc.setGState(new doc.GState({ opacity: 0.09 }));
           doc.addImage(watermarkData, "AUTO", 48, 82, 114, 114, undefined, "FAST");
+        } finally {
           doc.restoreGraphicsState();
-        } catch { /* PDF continua válido sem transparência da marca-d'água. */ }
+        }
       }
       if (logoData) {
-        try { doc.addImage(logoData, "AUTO", marginX, 10, 36, 18, undefined, "FAST"); } catch { /* imagem inválida não bloqueia o documento */ }
+        doc.addImage(logoData, "AUTO", marginX, 10, 36, 18, undefined, "FAST");
       } else {
         doc.setFont("helvetica", "bold"); doc.setFontSize(9); doc.setTextColor(70, 78, 90);
         doc.text(composition.legalName || currentContext().organizationName || "", marginX, 19);
@@ -757,9 +762,11 @@ export function createDeclarationsFeature({ getClient, getContext, getBids, navi
     const row = state.history.find((item) => item.id === id);
     if (!row) return;
     if (!client()) { toast("No modo local, gere novamente o PDF para baixá-lo."); return; }
-    const result = await client().storage.from(PDF_BUCKET).createSignedUrl(row.file_path, 600, { download: row.file_name });
+    const result = await client().storage.from(PDF_BUCKET).download(row.file_path);
     assertResult(result);
-    const link = document.createElement("a"); link.href = result.data.signedUrl; link.target = "_blank"; link.rel = "noopener"; link.click();
+    const url = URL.createObjectURL(result.data);
+    const link = document.createElement("a"); link.href = url; link.download = row.file_name; link.click();
+    setTimeout(() => URL.revokeObjectURL(url), 60000);
   }
 
   function showVariableSuggestions(textarea) {
@@ -832,6 +839,12 @@ export function createDeclarationsFeature({ getClient, getContext, getBids, navi
 
   function reset() {
     state.loaded = false; state.loading = null; state.settings = null; state.templates = []; state.history = []; state.bids = []; state.selectedIds = [];
+    for (const urlKey of ["logoUrl", "watermarkUrl"]) {
+      if (state[urlKey]?.startsWith("blob:")) URL.revokeObjectURL(state[urlKey]);
+      state[urlKey] = "";
+    }
+    state.logoBlob = null;
+    state.watermarkBlob = null;
     if (state.previewUrl) URL.revokeObjectURL(state.previewUrl);
     state.previewUrl = "";
   }
@@ -845,13 +858,51 @@ export function createDeclarationsFeature({ getClient, getContext, getBids, navi
       const button = event.target.closest("[data-move]"); const item = event.target.closest("[data-template-id]");
       if (button && item) moveTemplate(item.dataset.templateId, button.dataset.move);
     });
-    refs.declarationSelectedOrder.addEventListener("dragstart", (event) => { state.draggedId = event.target.closest("[data-template-id]")?.dataset.templateId || null; });
-    refs.declarationSelectedOrder.addEventListener("dragover", (event) => event.preventDefault());
+    refs.declarationSelectedOrder.addEventListener("keydown", (event) => {
+      const handle = event.target.closest(".declaration-drag"); const item = event.target.closest("[data-template-id]");
+      if (!handle || !item || !["ArrowUp", "ArrowDown"].includes(event.key)) return;
+      event.preventDefault(); const id = item.dataset.templateId;
+      moveTemplate(id, event.key === "ArrowUp" ? "up" : "down");
+      refs.declarationSelectedOrder.querySelector(`[data-template-id="${id}"] .declaration-drag`)?.focus();
+    });
+    refs.declarationSelectedOrder.addEventListener("dragstart", (event) => {
+      const handle = event.target.closest(".declaration-drag");
+      const item = event.target.closest("[data-template-id]");
+      if (!handle || !item) { event.preventDefault(); return; }
+      state.draggedId = item.dataset.templateId;
+      event.dataTransfer.effectAllowed = "move";
+      event.dataTransfer.setData("text/plain", state.draggedId);
+      requestAnimationFrame(() => item.classList.add("is-dragging"));
+    });
+    refs.declarationSelectedOrder.addEventListener("dragover", (event) => {
+      const target = event.target.closest("[data-template-id]");
+      const dragged = refs.declarationSelectedOrder.querySelector(`[data-template-id="${state.draggedId}"]`);
+      if (!target || !dragged || target === dragged) return;
+      event.preventDefault();
+      const items = [...refs.declarationSelectedOrder.querySelectorAll("[data-template-id]")];
+      const previousPositions = new Map(items.map((item) => [item.dataset.templateId, item.getBoundingClientRect()]));
+      const bounds = target.getBoundingClientRect();
+      const placeAfter = event.clientY > bounds.top + bounds.height / 2;
+      const alreadyAdjacent = placeAfter ? target.nextElementSibling === dragged : target.previousElementSibling === dragged;
+      if (alreadyAdjacent) return;
+      refs.declarationSelectedOrder.insertBefore(dragged, placeAfter ? target.nextSibling : target);
+      if (!window.matchMedia("(prefers-reduced-motion: reduce)").matches) items.forEach((item) => {
+        if (item === dragged) return;
+        const previous = previousPositions.get(item.dataset.templateId); const current = item.getBoundingClientRect();
+        const deltaY = previous.top - current.top;
+        if (deltaY) item.animate([{ transform: `translateY(${deltaY}px)` }, { transform: "translateY(0)" }], { duration: 180, easing: "cubic-bezier(.2, .8, .2, 1)" });
+      });
+    });
     refs.declarationSelectedOrder.addEventListener("drop", (event) => {
-      event.preventDefault(); const targetId = event.target.closest("[data-template-id]")?.dataset.templateId;
-      if (!state.draggedId || !targetId || targetId === state.draggedId) return;
-      const from = state.selectedIds.indexOf(state.draggedId); const to = state.selectedIds.indexOf(targetId);
-      state.selectedIds.splice(to, 0, state.selectedIds.splice(from, 1)[0]); renderOrder();
+      if (!state.draggedId) return;
+      event.preventDefault();
+      state.selectedIds = [...refs.declarationSelectedOrder.querySelectorAll("[data-template-id]")].map((item) => item.dataset.templateId);
+      state.draggedId = null; renderOrder();
+    });
+    refs.declarationSelectedOrder.addEventListener("dragend", () => {
+      if (!state.draggedId) return;
+      state.selectedIds = [...refs.declarationSelectedOrder.querySelectorAll("[data-template-id]")].map((item) => item.dataset.templateId);
+      state.draggedId = null; renderOrder();
     });
     refs.declarationSaveManual.addEventListener("change", () => {
       refs.declarationManualTitleField.classList.toggle("hidden", !refs.declarationSaveManual.checked);
@@ -865,8 +916,6 @@ export function createDeclarationsFeature({ getClient, getContext, getBids, navi
     refs.declarationPreviewModal.addEventListener("cancel", (event) => { event.preventDefault(); closePreview(); });
     refs.closeDeclarationValidationButton.addEventListener("click", () => refs.declarationValidationModal.close());
     refs.declarationSettingsForm.addEventListener("submit", (event) => runBusy(() => saveSettings(event), "Salvando configurações…"));
-    refs.declarationLogo.addEventListener("change", async () => setImagePreview(refs.declarationLogoPreview, refs.declarationLogo.files[0] ? await fileAsDataUrl(refs.declarationLogo.files[0]) : state.logoUrl));
-    refs.declarationWatermark.addEventListener("change", async () => setImagePreview(refs.declarationWatermarkPreview, refs.declarationWatermark.files[0] ? await fileAsDataUrl(refs.declarationWatermark.files[0]) : state.watermarkUrl));
     refs.newDeclarationTemplateButton.addEventListener("click", () => openTemplateModal());
     refs.declarationTemplateList.addEventListener("click", (event) => {
       const button = event.target.closest("[data-edit-template]"); if (button) openTemplateModal(state.templates.find((row) => row.id === button.dataset.editTemplate));

@@ -1,3 +1,6 @@
+const COMPANY_ASSET_BUCKET = "declaration-assets";
+const MAX_IMAGE_SIZE = 5 * 1024 * 1024;
+
 export function documentDigits(value) {
   return String(value || "").replace(/\D/g, "");
 }
@@ -69,6 +72,26 @@ function assertResult(result) {
   return result?.data;
 }
 
+function fileAsDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = () => reject(new Error("Não foi possível ler a imagem selecionada."));
+    reader.readAsDataURL(file);
+  });
+}
+
+function safeStorageName(value) {
+  return String(value || "imagem")
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-zA-Z0-9._-]+/g, "-").replace(/^-+|-+$/g, "") || "imagem";
+}
+
+function setImagePreview(element, url) {
+  element.src = url || "";
+  element.classList.toggle("hidden", !url);
+}
+
 export function createCompanyDataFeature(options) {
   const { getClient, getContext, isAdmin, onOrganizationUpdate, toast, runBusy } = options;
   const $ = (id) => document.getElementById(id);
@@ -83,14 +106,25 @@ export function createCompanyDataFeature(options) {
     readOnlyNotice: $("companyDataReadOnlyNotice"),
     status: $("companyDataStatus"),
     actions: $("companyDataActions"),
+    logo: $("companyLogo"),
+    watermark: $("companyWatermark"),
+    logoPreview: $("companyLogoPreview"),
+    watermarkPreview: $("companyWatermarkPreview"),
   };
   const localKey = () => `gll-company-data-v1-${getContext().organizationId}`;
   let loaded = false;
   let state = { organization: null, representatives: [] };
+  let assetUrls = { logo: "", watermark: "" };
 
   function defaultOrganization() {
     const context = getContext();
-    return { id: context.organizationId, name: context.organizationName || "", cnpj: context.organizationCnpj || "" };
+    return {
+      id: context.organizationId,
+      name: context.organizationName || "",
+      cnpj: context.organizationCnpj || "",
+      logo_path: null,
+      watermark_path: null,
+    };
   }
 
   function readLocal() {
@@ -113,7 +147,7 @@ export function createCompanyDataFeature(options) {
     if (client) {
       const organizationId = getContext().organizationId;
       const [organizationResult, representativesResult] = await Promise.all([
-        client.from("organizations").select("id,name,cnpj").eq("id", organizationId).single(),
+        client.from("organizations").select("id,name,cnpj,logo_path,watermark_path").eq("id", organizationId).single(),
         client.from("organization_legal_representatives")
           .select("id,name,cpf,position,is_primary,display_order")
           .eq("organization_id", organizationId)
@@ -124,8 +158,13 @@ export function createCompanyDataFeature(options) {
         organization: assertResult(organizationResult),
         representatives: assertResult(representativesResult) || [],
       };
+      await loadAssetUrls();
     } else {
       state = readLocal() || { organization: defaultOrganization(), representatives: [] };
+      assetUrls = {
+        logo: state.organization?.logo_data_url || "",
+        watermark: state.organization?.watermark_data_url || "",
+      };
     }
     loaded = true;
     render();
@@ -166,10 +205,42 @@ export function createCompanyDataFeature(options) {
     const editable = isAdmin();
     refs.legalName.disabled = !editable;
     refs.cnpj.disabled = !editable;
+    refs.logo.disabled = !editable;
+    refs.watermark.disabled = !editable;
     refs.addButton.classList.toggle("hidden", !editable);
     refs.actions.classList.toggle("hidden", !editable);
     refs.readOnlyNotice.classList.toggle("hidden", editable);
+    setImagePreview(refs.logoPreview, assetUrls.logo);
+    setImagePreview(refs.watermarkPreview, assetUrls.watermark);
     renderRepresentatives();
+  }
+
+  function revokeAssetUrls() {
+    for (const url of Object.values(assetUrls)) {
+      if (url.startsWith("blob:")) URL.revokeObjectURL(url);
+    }
+  }
+
+  async function loadAssetUrls() {
+    revokeAssetUrls();
+    assetUrls = { logo: "", watermark: "" };
+    const client = getClient();
+    for (const [kind, pathKey] of [["logo", "logo_path"], ["watermark", "watermark_path"]]) {
+      const path = state.organization?.[pathKey];
+      if (!path) continue;
+      const result = await client.storage.from(COMPANY_ASSET_BUCKET).download(path);
+      if (!result.error && result.data) assetUrls[kind] = URL.createObjectURL(result.data);
+    }
+  }
+
+  async function uploadAsset(file, kind, existingPath) {
+    if (!file) return existingPath || null;
+    if (!["image/png", "image/jpeg", "image/webp"].includes(file.type) || file.size > MAX_IMAGE_SIZE) {
+      throw new Error("Use uma imagem PNG, JPG ou WebP de até 5 MB.");
+    }
+    const path = `${getContext().organizationId}/${kind}-${Date.now()}-${safeStorageName(file.name)}`;
+    assertResult(await getClient().storage.from(COMPANY_ASSET_BUCKET).upload(path, file, { contentType: file.type, upsert: false }));
+    return path;
   }
 
   function addRepresentative() {
@@ -227,14 +298,52 @@ export function createCompanyDataFeature(options) {
         p_company_cnpj: organization.cnpj,
         p_representatives: representatives,
       }));
+      const logoFile = refs.logo.files[0];
+      const watermarkFile = refs.watermark.files[0];
+      if (logoFile || watermarkFile) {
+        const branding = {
+          logo_path: await uploadAsset(logoFile, "logo", state.organization?.logo_path),
+          watermark_path: await uploadAsset(watermarkFile, "watermark", state.organization?.watermark_path),
+        };
+        const updatedOrganization = await client.from("organizations")
+          .update(branding)
+          .eq("id", organization.id)
+          .select("id,name,cnpj,logo_path,watermark_path")
+          .single();
+        Object.assign(organization, assertResult(updatedOrganization));
+      } else {
+        Object.assign(organization, {
+          logo_path: state.organization?.logo_path || null,
+          watermark_path: state.organization?.watermark_path || null,
+        });
+      }
     } else {
+      organization.logo_data_url = refs.logo.files[0]
+        ? await fileAsDataUrl(refs.logo.files[0])
+        : state.organization?.logo_data_url || "";
+      organization.watermark_data_url = refs.watermark.files[0]
+        ? await fileAsDataUrl(refs.watermark.files[0])
+        : state.organization?.watermark_data_url || "";
       writeLocal({ organization, representatives });
     }
     state = { organization, representatives };
+    await loadAssetUrlsIfRemote(client);
+    refs.logo.value = "";
+    refs.watermark.value = "";
     onOrganizationUpdate?.(organization);
     refs.status.textContent = "Dados da empresa salvos com sucesso.";
     toast("Dados da empresa salvos.");
     render();
+  }
+
+  async function loadAssetUrlsIfRemote(client) {
+    if (client) await loadAssetUrls();
+    else {
+      assetUrls = {
+        logo: state.organization?.logo_data_url || "",
+        watermark: state.organization?.watermark_data_url || "",
+      };
+    }
   }
 
   async function showPage() {
@@ -243,6 +352,8 @@ export function createCompanyDataFeature(options) {
 
   function reset() {
     loaded = false;
+    revokeAssetUrls();
+    assetUrls = { logo: "", watermark: "" };
     state = { organization: null, representatives: [] };
   }
 
@@ -258,6 +369,12 @@ export function createCompanyDataFeature(options) {
   refs.representatives.addEventListener("click", (event) => {
     const button = event.target.closest("[data-remove-representative]");
     if (button) removeRepresentative(Number(button.dataset.removeRepresentative));
+  });
+  refs.logo.addEventListener("change", async () => {
+    if (refs.logo.files[0]) setImagePreview(refs.logoPreview, await fileAsDataUrl(refs.logo.files[0]));
+  });
+  refs.watermark.addEventListener("change", async () => {
+    if (refs.watermark.files[0]) setImagePreview(refs.watermarkPreview, await fileAsDataUrl(refs.watermark.files[0]));
   });
   refs.form.addEventListener("submit", (event) => runBusy(() => save(event), "Salvando dados da empresa…"));
 

@@ -45,6 +45,8 @@ O tema canônico é o GLL 2.0 que já prevalecia no fim de `styles.css`. Os alia
 
 Cada cor de estado possui uma superfície correspondente (`--color-*-surface`). Não use cor de estado apenas como decoração: associe texto, ícone ou label que comunique o significado.
 
+Status de edital: `--color-status-analysis` (em análise), `--color-status-approved` (aprovada), `--color-status-neutral` (descartada), `--color-complete` (faturado), `--color-status-disputed` (disputada) e `--color-status-rejected` (desclassificado). As variações correspondentes ficam centralizadas em `STATUS_TONES` e `COMPONENTS.statusBadge`.
+
 ### Tipografia
 
 - Família: `--font-family-sans` (`Inter`, `Segoe UI`, `Arial`, sans-serif).
@@ -87,15 +89,21 @@ O catálogo inicial documenta componentes que já aparecem no GLL ou representam
 - Input, Textarea, Select e FormField;
 - Checkbox, Radio e Switch;
 - Badge e Tag;
+- Badge de status com mapa semântico centralizado;
 - Card e Alert;
+- Toast com tons semânticos e inventário das mensagens em uso;
 - EmptyState, Loading e Skeleton;
 - PageHeader e Tabs;
 - Table;
-- Dialog de confirmação.
+- Dialog de confirmação com escala de tamanhos e inventário dos diálogos em uso.
+
+Os novos estados de edital usam `STATUS_TONES` em `components.js`; a cor sempre acompanha um rótulo legível. Toasts e diálogos em uso devem ser registrados nos catálogos `TOAST_CATALOG` e `DIALOG_CATALOG` e exibidos tanto no Design System interno quanto nas stories. Ao alterar qualquer componente compartilhado, atualize sua story na mesma mudança.
+
+Diálogos usam `--dialog-width-sm`, `--dialog-width-md`, `--dialog-width-lg` e `--dialog-width-xl`, além de `--dialog-shadow`; formulários e conteúdo longo podem escolher o tamanho pela tarefa, preservando a escala comum.
 
 As factories em `components.js` usam as classes reais da aplicação (`primary-action`, `quiet-action`, `danger-action`, `section-band`, `page-heading`, `tabs`, `table-wrap` etc.). Não mantenha uma cópia visual separada nas stories.
 
-Tooltip, Dropdown, Pagination, Breadcrumb e filtros compostos continuam como padrões candidatos. Eles devem ser consolidados quando houver uso real recorrente; não foram criados apenas para preencher o catálogo.
+Tooltip, Dropdown, Pagination e filtros compostos continuam como padrões candidatos. Breadcrumb já aparece na navegação de documentos e configurações; mantenha sua apresentação curta e ligada ao caminho da página. Esses padrões devem ser consolidados quando houver uso recorrente, sem criar componentes apenas para preencher o catálogo.
 
 ## Regras de estado e interação
 

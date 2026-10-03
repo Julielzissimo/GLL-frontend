@@ -2,8 +2,8 @@
 
 | Campo | Valor |
 |---|---|
-| Versão | 1.0 |
-| Data-base | 28/09/2026 |
+| Versão | 1.2 |
+| Data-base | 02/10/2026 |
 | Ambiente-alvo | `homolog` |
 | Aplicação | Gerenciador de Licitações Locais (GLL) |
 | Objetivo | Selecionar e executar somente a regressão proporcional às funcionalidades afetadas por cada implantação, sem perder a cobertura dos fluxos críticos. |
@@ -15,7 +15,8 @@
 3. Execute sempre a suíte `CORE`. Execute também todos os casos dos domínios marcados e os casos indicados na coluna **Regressão associada**.
 4. Para mudanças de banco, execute `DB`, `ACL` e os domínios que leem ou gravam as tabelas/funções afetadas. Para mudanças em componentes ou estilos compartilhados, execute `NAV`, `UX` e todos os módulos consumidores.
 5. Registre resultado, evidência e defeito por ID de caso. Um caso é `Aprovado`, `Reprovado`, `Bloqueado` ou `Não aplicável`, sempre com justificativa nos dois últimos estados.
-6. Não promova para produção enquanto houver falha P0/P1, migração não comprovada, divergência de manifesto ou caso selecionado sem resultado.
+6. Mantenha separado o resultado dos testes automatizados, das verificações de banco e da validação funcional manual. Testes com serviços simulados não comprovam RLS, Storage ou operação do Supabase real.
+7. Não promova para produção enquanto houver falha P0/P1, migração não comprovada, divergência de manifesto ou caso selecionado sem resultado.
 
 ### 1.1 Seleção rápida por tipo de alteração
 
@@ -34,6 +35,14 @@
 | Proposta comercial | `CORE`, `PROP`, `QTD`, `CAL`, `EMP`, `ACL`, `SYNC`, `UX` |
 | Migração, trigger, RPC, Storage ou schema | `CORE`, `DB`, `ACL` + todos os domínios consumidores |
 | Build, workflow ou publicação | `CORE`, `REL` + fumaça dos domínios incluídos na entrega |
+
+### 1.2 O que cada barreira comprova
+
+- `npm test` executa os testes automatizados do frontend. Eles usam serviços simulados e verificam regras e estados isolados; não substituem testes de integração com o Supabase real.
+- O workflow de publicação do frontend valida os commits do manifesto, executa `npm test`, gera os builds de produção e homologação, publica o Pages e confere o commit em `deployment.json`.
+- O workflow `Validar integridade da promoção` compara os manifestos e verifica commits e migrações; também executa os testes unitários do verificador. Isso não testa a interface nem substitui a validação funcional na URL.
+- Para alterações de banco, o workflow Supabase é acionado manualmente. O `dry-run`, aplicação, histórico de migrações e resposta do serviço devem constar na evidência. A resposta de saúde `200` ou `401` comprova disponibilidade do endpoint, não o funcionamento dos fluxos do GLL.
+- Storybook é uma verificação local complementar para mudanças de componentes/design system. Sua compilação não é uma barreira do workflow de publicação.
 
 ## 2. Criticidade e profundidade
 
@@ -68,7 +77,7 @@ Todo dado de teste deve ter prefixo identificável, por exemplo `HML-AAAAMMDD-`,
 - resultado esperado e observado;
 - captura de tela ou arquivo gerado quando houver interface/PDF/CSV;
 - consulta ou resposta sanitizada quando houver banco/RPC/RLS;
-- ID do defeito e severidade quando reprovado.
+- ID do defeito e severidade quando reprovado; nos casos de UX, tempo da tarefa, pedidos de ajuda, desvios/retornos e viewport usados.
 
 ## 4. Matriz de impacto funcional
 
@@ -94,7 +103,7 @@ Todo dado de teste deve ter prefixo identificável, por exemplo `HML-AAAAMMDD-`,
 | `SYNC` | Atualização entre clientes e recuperação de rede | Todos os agregados remotos | Domínio alterado |
 | `ACL` | Perfis, organização e RLS | Todas as tabelas/RPCs/Storage | Domínio alterado |
 | `DB` | Migrações, schema, integridade e rollback | Supabase | `ACL`, domínio alterado |
-| `UX` | Acessibilidade, responsividade e feedback | Design System | Telas alteradas |
+| `UX` | Descoberta de telas, conclusão das tarefas, conteúdo, feedback, acessibilidade e adaptação da interface | Todas as telas e o Design System | Telas alteradas e regressões associadas |
 | `REL` | Manifesto, testes, build e Pages | Frontend e backend | `CORE` |
 
 ## 5. Suíte obrigatória de fumaça
@@ -106,7 +115,7 @@ Todo dado de teste deve ter prefixo identificável, por exemplo `HML-AAAAMMDD-`,
 | CORE-03 | P1 | Abrir Visão geral, Licitações, Orçamento, Geração de Documentos, Fornecedores e Configurações. | Nenhuma tela quebra; carregamentos terminam e erros não aparecem no console. |
 | CORE-04 | P1 | Criar ou editar um registro do domínio alterado, salvar e recarregar. | Confirmação visível e dados persistidos sem duplicidade. |
 | CORE-05 | P0 | Sair e tentar voltar pela URL/histórico. | Sessão e dados em memória são limpos; tela protegida não reaparece. |
-| CORE-06 | P0 | Consultar `deployment.json` de homologação. | O commit publicado é exatamente o commit esperado da branch `homolog`. |
+| CORE-06 | P0 | Consultar `deployment.json` publicado em `/homolog/`. | O campo `commit` corresponde ao commit do frontend esperado na branch `homolog`; registre também o commit do backend e a execução Supabase quando houver migração. |
 
 ## 6. Autenticação, navegação e painel
 
@@ -157,6 +166,7 @@ Todo dado de teste deve ter prefixo identificável, por exemplo `HML-AAAAMMDD-`,
 | QTD-08 | P1 | Adicionar especificações completas, parciais e linha vazia. | Completas/parciais persistem; somente linha totalmente vazia é descartada. |
 | QTD-09 | P2 | Fechar modal com e sem alterações e testar texto longo/tela estreita. | Confirma descarte apenas quando sujo; modal rola internamente e tabela rola sem alargar a página. |
 | QTD-10 | P1 | Marcar vários itens vencidos nos status aplicáveis e recarregar. | Cada checkbox persiste imediatamente; linha destaca; em `Faturado` fica visível e bloqueado. |
+| QTD-11 | P1 | Abrir um edital ativo que já possuía itens legados e orçamento reparado pela migração; conferir edital, orçamento e itens antes/depois de recarregar. | O edital aponta para um orçamento próprio; cada item aparece uma vez, mantém número, descrição, quantidade e valores, e os dados continuam editáveis conforme status e permissões. |
 | CAL-01 | P1 | Usar valor final `150,00`, custo `100,00`, quantidade `3`. | Lucro do item = `(150 - 100) × 3` = `R$ 150,00`. |
 | CAL-02 | P1 | Usar valor final `150,00` e custo `100,00`. | Margem efetiva = `(150 - 100) / 150 × 100` = `33,3333%`. |
 | CAL-03 | P1 | Usar custo `100,00` e margem desejada `20%`; depois `100%`. | Valor com margem = `100 / (1 - 0,20)` = `R$ 125,00`; 100% ou mais não gera preço. |
@@ -244,29 +254,76 @@ Todo dado de teste deve ter prefixo identificável, por exemplo `HML-AAAAMMDD-`,
 | DB-03 | P0 | Aplicar em base com dados legados e em base vazia descartável. | Dados são preservados e schema final é equivalente. |
 | DB-04 | P0 | Reaplicar e simular falha transacional. | Reaplicação não tem pendência; falha não deixa objetos/dados parciais e permite recuperação. |
 | DB-05 | P1 | Conferir constraints, cascatas, unicidade, triggers e precisão do domínio alterado. | Banco rejeita invariantes inválidas mesmo sem frontend. |
+| DB-06 | P0 | Para reparo de editais legados, comparar inventário prévio com o resultado em base descartável ou evidência aprovada da migração: editais ativos com itens e sem vínculo, inclusive editais com números repetidos. | Cada edital elegível recebe orçamento próprio; itens e campos são copiados uma única vez, vínculos/status existentes não são alterados indevidamente e uma segunda execução não duplica dados. Não criar ou alterar registros legados diretamente na base compartilhada para simular o cenário. |
 
 ## 14. Experiência, acessibilidade e compatibilidade
 
+Apresente à pessoa que testa apenas o objetivo de cada procedimento, sem explicar onde clicar. Observe se ela encontra a tela, entende os rótulos e estados, conclui a tarefa e se recupera de erros sem ajuda. Registre tempo, pedidos de ajuda, desvios/retornos e qualquer ação ambígua. Considere aprovado quando a tarefa for concluída sem ação acidental, o resultado ficar claro e a pessoa conseguir corrigir entradas inválidas usando as orientações da interface.
+
+Execute os casos transversais e todos os casos de UX das telas afetadas. Associe cada caso aos domínios funcionais das seções anteriores; não repita a validação de regra de negócio quando outro caso já a cobre.
+
+### 14.1 Interação transversal
+
 | ID | P | Procedimento | Resultado esperado |
 |---|:---:|---|---|
-| UX-01 | P1 | Executar fluxo somente por teclado, inclusive modais e menu. | Ordem lógica, foco visível, foco preso no modal e retorno ao acionador. |
-| UX-02 | P1 | Inspecionar nomes acessíveis, rótulos, mensagens e contraste. | Controles têm nome/estado; erros usam texto e região viva; contraste AA. |
-| UX-03 | P2 | Testar 320 px, tablet e desktop com zoom de 200%. | Sem perda de conteúdo/ação; rolagem horizontal fica limitada a tabelas. |
-| UX-04 | P1 | Testar carregamento, sucesso, erro, vazio, confirmação e duplo clique. | Feedback bloqueia duplicidade, explica próximo passo e não deixa estado indefinido. |
-| UX-05 | P2 | Validar versões atuais de Chrome e Edge. | Fluxos selecionados e downloads funcionam de modo equivalente. |
-| UX-06 | P1 | Compilar Storybook e inspecionar componentes alterados, sem publicá-lo. | Catálogo compila; tokens/componentes são reutilizados; artefato Pages não contém Storybook. |
+| UX-01 | P1 | Percorrer os fluxos selecionados usando somente teclado, incluindo menu, abas, formulários, ordenação, diálogos e ações de voltar/fechar. | Ordem de foco acompanha a leitura; foco fica visível; diálogos mantêm o foco e o devolvem ao acionador; ações disponíveis por arraste também têm alternativa por teclado. |
+| UX-02 | P1 | Revisar os fluxos com leitor de tela ou inspetor de acessibilidade e verificar rótulos, nomes, estado, instruções e mensagens. | Controles têm nomes compreensíveis; foco, estado atual e erros são anunciados; mensagens não dependem apenas de cor ou ícone; contraste atende WCAG AA. |
+| UX-03 | P2 | Concluir tarefas selecionadas em 320 px, tablet, desktop e zoom de 200%. | Conteúdo e ações continuam encontráveis; rolagem horizontal fica restrita a tabelas ou áreas que precisam dela; diálogos e painéis não escondem ações essenciais. |
+| UX-04 | P1 | Em cada tela afetada, observar carregamento, sucesso, erro, vazio, confirmação e tentativa de duplo clique. | Estado e próximo passo ficam claros; ações em andamento evitam duplicidade; não há tela presa nem confirmação ambígua. |
+| UX-05 | P2 | Repetir fluxos selecionados nas versões atuais de Chrome e Edge. | Navegação, edição, diálogos e downloads funcionam de forma equivalente. |
+| UX-06 | P2 | Quando a alteração envolver Design System, compilar o Storybook e inspecionar os componentes alterados. | Catálogo compila e componentes/tokens seguem o padrão visual; esta checagem complementar não é barreira do workflow Pages. |
+
+### 14.2 Acesso, navegação e descoberta
+
+| ID | P | Procedimento | Resultado esperado |
+|---|:---:|---|---|
+| UX-07 | P1 | Na entrada, identificar como acessar o sistema; tentar enviar o formulário vazio e credenciais inválidas antes de entrar com perfil autorizado. | Campos obrigatórios e erro indicam como corrigir sem revelar detalhes técnicos; carregamento e confirmação de entrada são perceptíveis. |
+| UX-08 | P1 | Localizar Licitações, Orçamento, Fornecedores, Usuários e Configurações pelo menu; abrir uma tela de detalhe e usar o breadcrumb para voltar. | Rótulos refletem as áreas reais; item atual fica destacado; breadcrumb indica o contexto e retorna à área esperada sem ambiguidade. |
+| UX-09 | P2 | Recolher/expandir a navegação no desktop; em tela estreita abrir e fechar o menu, alternar Propostas/Declarações e localizar Dados da Empresa/Design System. | O menu informa seu estado, não encobre conteúdo sem saída e mantém as páginas agrupadas fáceis de encontrar; a navegação continua clara após alternar de área. |
+| UX-10 | P1 | Abrir uma página e um edital, recarregar, usar Voltar/Avançar e entrar novamente por um link direto suportado. | A URL, o breadcrumb e a tela apresentam o mesmo contexto; a navegação preserva parâmetros válidos e não deixa uma página protegida exposta após sair. |
+| UX-11 | P2 | Usando o painel, localizar editais próximos, pendências documentais e ações para continuar o trabalho. | Prioridades, datas, contadores e próximos passos podem ser identificados rapidamente e correspondem às telas de destino. |
+
+### 14.3 Operação diária e administração
+
+| ID | P | Procedimento | Resultado esperado |
+|---|:---:|---|---|
+| UX-12 | P1 | Nas listas de Licitações, Orçamento, Fornecedores, Usuários e Propostas, localizar um registro usando busca/filtros e depois limpar a busca. | Campos de busca e filtros são fáceis de distinguir; resultados, contagens e filtros ativos ficam visíveis; estado sem resultado explica como recomeçar. |
+| UX-13 | P1 | Criar ou editar um edital e um orçamento, primeiro enviando campos inválidos e depois corrigindo-os. | Campos obrigatórios e opcionais são distinguíveis; erros aparecem junto ao campo; a interface preserva entradas válidas e permite concluir sem repetir tudo. |
+| UX-14 | P1 | Iniciar e cancelar exclusão de edital, orçamento, anexo e saída da sessão; depois confirmar uma ação de teste. | Diálogo identifica claramente o registro e o efeito; cancelar não altera dados; confirmar executa uma única vez e informa a conclusão. |
+| UX-15 | P1 | Salvar uma alteração, provocar erro recuperável e tentar salvar duas vezes rapidamente. | Indicador de processamento, sucesso ou erro é perceptível; a mensagem aponta como agir; a interface não duplica a gravação nem perde os dados digitados. |
+| UX-16 | P1 | Abrir um edital e localizar dados principais, Orçamento, checklist/documentos, anexos e histórico; mudar o status com motivo e encontrar a área de falhas quando aplicável. | Seções e estado atual são fáceis de reconhecer; ações disponíveis e bloqueadas são distinguíveis; a pessoa entende como voltar ao edital e localizar a próxima tarefa. |
+| UX-17 | P1 | No editor de itens, localizar a ação de adicionar/editar, preencher um item com texto longo, fechar sem salvar e reabrir salvando. | A relação entre edital, orçamento e item é compreensível; campos extensos e ações cabem no modal; alterações não salvas são protegidas por confirmação clara. |
+| UX-18 | P2 | Na tela de Fornecedores, pesquisar por fornecedor/produto/tag, escolher filtros e ordenação, abrir um fornecedor e manter seus produtos. | Filtros globais e do detalhe não se confundem; o fornecedor selecionado e o contexto de seus produtos permanecem claros; estados vazios oferecem ação coerente. |
+| UX-19 | P1 | Como administrador, localizar a lista de usuários, abrir o cadastro, preencher os dados, alternar a visualização da senha, corrigir validações e cancelar uma tentativa. | O modal deixa claros os campos e requisitos; mostrar/ocultar senha é identificável; erros são associados aos campos; salvar/cancelar têm efeitos inequívocos. |
+| UX-20 | P1 | Atribuir acesso a um analista; depois abrir a revogação, conferir o usuário/motivo, cancelar e repetir confirmando; abrir o histórico. | A tela diferencia atribuir, revogar e remover usuário; confirma o efeito antes de agir; registra o motivo e apresenta o histórico em linguagem compreensível. |
+| UX-21 | P1 | Abrir Configurações > Dados da Empresa, consultar o cadastro como analista e como administrador, voltar e editar representantes/identidade visual como administrador. | Caminho e botão de retorno são previsíveis; somente leitura é comunicada; lista, representante principal e ativos visuais têm ações identificáveis e resultado confirmado. |
+| UX-22 | P2 | Abrir o Design System em Configurações e percorrer foundations, componentes e exemplos disponíveis. | A pessoa entende a finalidade do catálogo, identifica padrões e diferencia demonstração de controles operacionais do sistema. |
+
+### 14.4 Declarações e propostas comerciais
+
+| ID | P | Procedimento | Resultado esperado |
+|---|:---:|---|---|
+| UX-23 | P1 | Criar uma declaração avulsa e outra vinculada, avançando pelas áreas de identificação, introdução, seleção, ordem e texto manual. | Ordem de trabalho é compreensível; o contexto avulso/vinculado aparece; contagem e resumo acompanham as escolhas; a ação para abrir a biblioteca fica encontrável. |
+| UX-24 | P1 | Em campos de declaração, digitar `{{`, escolher uma variável e reorganizar blocos usando arraste e, depois, controles de teclado. | Sugestões aparecem perto do campo ativo, inserem a variável no local esperado e podem ser usadas sem mouse; a ordem final fica visível e previsível. |
+| UX-25 | P1 | Na biblioteca, localizar um modelo, filtrar por escopo, criar/editar um modelo e alternar configurações/histórico. | Escopo do modelo fica explícito; busca e filtros são distinguíveis; salvar, cancelar e trocar de área preservam ou descartam dados conforme informado. |
+| UX-26 | P1 | Tentar pré-visualizar uma declaração com variável sem valor, corrigir o dado, voltar do preview ao editor e gerar o PDF; localizar depois o histórico. | Falta de dados indica os campos pendentes; retorno ao editor mantém a composição; preview, geração e download são etapas distintas e o arquivo pode ser reencontrado. |
+| UX-27 | P1 | Na lista de Propostas Comerciais, alternar Todas, Rascunhos e Finalizadas; abrir proposta existente e iniciar uma nova para edital elegível. | Filtros e contadores deixam o estado da proposta claro; a relação com o edital é visível; ações de criar, abrir, visualizar e retomar são distinguíveis. |
+| UX-28 | P1 | Em uma proposta, seguir o indicador de etapas, avançar, voltar, abrir etapa concluída e retomar após salvar rascunho. | Nomes e andamento das etapas ajudam a prever o próximo passo; etapas indisponíveis não parecem clicáveis; voltar ou retomar preserva o que já foi preenchido. |
+| UX-29 | P1 | Selecionar itens, editar dados para a proposta, marcar um campo para gravação permanente no orçamento, salvar rascunho e cancelar outra edição. | A diferença entre ajuste da proposta e alteração permanente do orçamento é clara antes de salvar; itens selecionados e totais são fáceis de conferir; descarte exige decisão explícita. |
+| UX-30 | P2 | Personalizar colunas e seções do PDF: ativar, desativar, reordenar, ajustar largura, criar/reutilizar coluna e configurar texto reutilizável. | Opções, controles de ordem/largura e itens personalizados são compreensíveis; a prévia reflete a configuração; a pessoa consegue voltar a uma opção válida. |
+| UX-31 | P1 | Pré-visualizar, corrigir dados, finalizar uma proposta válida e localizar/baixar uma geração anterior. | A prévia corresponde à saída; requisitos pendentes são explicados; finalizar é distinto de salvar rascunho; histórico identifica cada geração e sua ação de download. |
 
 ## 15. Publicação e critérios de saída
 
 | ID | P | Procedimento | Resultado esperado |
 |---|:---:|---|---|
 | REL-01 | P0 | Comparar `.release/manifest.json` do frontend e backend. | Arquivos idênticos; branch `homolog`; commits/migrações existem e pertencem à branch. |
-| REL-02 | P1 | Executar testes automatizados, build de homologação e Storybook. | `npm test`, `npm run build:homolog` e `npm run build-storybook` concluem sem falha. |
-| REL-03 | P0 | Validar workflows da entrega. | Integridade, migração quando aplicável e Pages concluem com evidências. |
-| REL-04 | P0 | Comparar commit remoto, workflow e `deployment.json`; abrir a URL final. | Os três apontam para a entrega esperada e a aplicação está operacional. |
+| REL-02 | P0 | Conferir a execução do workflow Pages acionada pelo commit de `homolog`. | Validação do manifesto e `npm test` passam; os builds de ambos os ambientes concluem; Pages publica e valida `deployment.json`. Storybook não é requisito deste workflow. |
+| REL-03 | P0 | Conferir `Validar integridade da promoção` e, quando houver migração, `Supabase - Migrar produção` executado com `HOMOLOG`. | Integridade conclui; migração tem `dry-run`, histórico e serviço registrados; para mudança sem migração, registrar “não se aplica”. |
+| REL-04 | P0 | Comparar commit do frontend no workflow com `deployment.json`, abrir a URL final e conferir o Markdown/HTML do plano quando alterados. | URL `/homolog/` está acessível, metadado aponta ao commit esperado e as cópias web correspondem ao Markdown fonte. |
 | REL-05 | P1 | Arquivar relatório da rodada com casos selecionados e resultados. | Escopo, aprovações, falhas, evidências e risco residual ficam rastreáveis. |
 
-A rodada é aprovada quando: todos os casos selecionados foram executados; não há defeito P0/P1 aberto; P2/P3 possuem decisão registrada; testes/build/workflows passaram; migrações e RLS foram comprovadas quando aplicáveis; e o commit correto foi observado na URL de homologação.
+A rodada é aprovada quando: todos os casos selecionados foram executados; não há defeito P0/P1 aberto; P2/P3 possuem decisão registrada; os resultados automatizados, funcionais e de banco estão identificados separadamente; os workflows aplicáveis passaram; migrações e RLS foram comprovadas quando aplicáveis; e o commit correto foi observado na URL de homologação. Um endpoint saudável, isoladamente, não aprova a aplicação.
 
 ## 16. Modelo de relatório da rodada
 
@@ -274,6 +331,7 @@ A rodada é aprovada quando: todos os casos selecionados foram executados; não 
 Entrega:
 Data/hora:
 Responsável:
+Ambiente/URL:
 Frontend commit:
 Backend commit:
 Migrações:
@@ -281,7 +339,10 @@ Domínios afetados:
 Justificativa da seleção:
 Casos CORE executados:
 Casos de regressão executados:
-Resultados (aprovado/reprovado/bloqueado/N/A):
+Resultados por ID (aprovado/reprovado/bloqueado/N/A):
+Resultado de `npm test` e workflow Pages:
+Resultado de integridade/manifesta:
+Resultado de migração e endpoint, ou “não se aplica”:
 Defeitos e severidade:
 Evidências/URLs:
 Risco residual:
@@ -291,4 +352,4 @@ Aprovador:
 
 ## 17. Rastreabilidade da cobertura
 
-Este plano foi derivado do comportamento observável na branch `homolog`, incluindo `web/index.html`, `web/app.js`, `web/declarations.js`, `web/company-data.js`, `web/commercial-proposals.js`, testes automatizados, workflows, schema e migrações. Ele é deliberadamente independente da especificação de produção: funcionalidades exclusivas de homologação podem ser testadas aqui sem antecipar sua incorporação em `docs/especificacao-tecnica/ESPECIFICACAO_TECNICA_GLL.md`.
+Revisão de 02/10/2026 na branch `homolog`. A cobertura foi conferida contra as jornadas e telas da aplicação, incluindo navegação por breadcrumb, agrupamento de Configurações, cadastro/revogação de usuários, Design System e o fluxo atual de propostas comerciais; também foram conferidos testes, Storybook, builds, workflows, manifesto, schema e migrações. A suíte automatizada do frontend usa serviços simulados; os casos `ACL`, `DB` e a validação na URL exigem evidência própria. Os casos `UX` pedem observação de tarefa sem orientação passo a passo. Este plano é independente da especificação de produção: funcionalidades exclusivas de homologação podem ser testadas aqui sem antecipar sua incorporação em `docs/especificacao-tecnica/ESPECIFICACAO_TECNICA_GLL.md`.

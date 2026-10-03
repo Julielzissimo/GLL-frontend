@@ -58,6 +58,30 @@ test("cada arquivo do edital mantém o limite individual de 20 MB", () => {
   );
 });
 
+test("pesquisa dinâmica localiza edital por órgão, modalidade, número e prazo de entrega", () => {
+  const app = client();
+  const bid = app.normalizeBidRecord({
+    id: "internal-1",
+    edital_number: "PE 10/2026",
+    buyer_agency: "Município de São José",
+    bid_type: "Pregao Eletronico",
+    quotation_id: 1,
+  });
+  app.appState.quotations = [{ id: 1, delivery_deadline: "30 dias" }];
+
+  assert.equal(app.bidMatchesSearch(bid, "sao jose"), true);
+  assert.equal(app.bidMatchesSearch(bid, "pregao eletronico"), true);
+  assert.equal(app.bidMatchesSearch(bid, "10/2026"), true);
+  assert.equal(app.bidMatchesSearch(bid, "30 dias"), true);
+  assert.equal(app.bidMatchesSearch(bid, "45 dias"), false);
+  assert.equal(app.bidMatchesSearch(bid, ""), true);
+});
+
+test("campo da lista de licitações usa rótulo de pesquisa dinâmica e atualiza enquanto digita", () => {
+  assert.match(html, /Pesquisa dinâmica<input id="filterSearch" type="search"/);
+  assert.match(source, /refs\.filterSearch\.addEventListener\("input", renderBids\)/);
+});
+
 test("modal de orçamento exibe somente orçamentos ainda não vinculados a edital", () => {
   const app = client();
   const quotations = [{ id: 1 }, { id: 2 }, { id: 3 }];
@@ -165,7 +189,7 @@ function client(db = backend(), auth = { session: { user } }) {
     clearInterval: (id) => timers.delete(id),
   });
   vm.runInContext(application, context);
-  const api = vm.runInContext(`({ store, appState, restoreSession, logout, reloadData, refreshInBackground, startLiveUpdates, stopLiveUpdates, resetAuthenticatedView, scheduleLiveRefresh, calculateBidSummary, calculateLineTotal, calculateItemProfit, calculateProfitMargin, calculateValueWithMargin, parseDecimal, parseProfitMargin, money, formatDateTime, toDateTimeInputValue, fromDateTimeInputValue, readNavigationRoute, writeNavigationRoute, resolveAuthorizedPage, normalizeBidRecord, normalizeBidAttachments, validateEditalFiles, bidDisplayNumber, creatorName, creatorInitials, creatorTagMarkup, normalizeQuotationRecord, normalizeQuotationItemRecord, quotationItemToBidItem, bidItemToQuotationItem, normalizeTechnicalSpecifications, quotationSaveError, sessionPolicyStorageKey, enforceSessionPolicy, availableBidQuotations })`, context);
+  const api = vm.runInContext(`({ store, appState, restoreSession, logout, reloadData, refreshInBackground, startLiveUpdates, stopLiveUpdates, resetAuthenticatedView, scheduleLiveRefresh, calculateBidSummary, calculateLineTotal, calculateItemProfit, calculateProfitMargin, calculateValueWithMargin, parseDecimal, parseProfitMargin, money, formatDateTime, toDateTimeInputValue, fromDateTimeInputValue, readNavigationRoute, writeNavigationRoute, resolveAuthorizedPage, normalizeBidRecord, normalizeBidAttachments, validateEditalFiles, bidDisplayNumber, bidMatchesSearch, creatorName, creatorInitials, creatorTagMarkup, normalizeQuotationRecord, normalizeQuotationItemRecord, quotationItemToBidItem, bidItemToQuotationItem, normalizeTechnicalSpecifications, quotationSaveError, sessionPolicyStorageKey, enforceSessionPolicy, availableBidQuotations })`, context);
   vm.runInContext(`
     renderSuppliers = renderBids = renderDetails = renderQuotations = renderUsers = () => {};
     clearBidForm = clearQuotationForm = setPage = updateMainNavigationState = () => {};
@@ -174,6 +198,12 @@ function client(db = backend(), auth = { session: { user } }) {
   api.store.getUsers = async () => structuredClone(db.users);
   api.store.getUser = async () => db.users[0] || null;
   api.store.client = {
+    functions: {
+      invoke: async (name) => ({
+        data: name === "password-reset-status" ? { mustChangePassword: auth.mustChangePassword === true } : { ok: true },
+        error: null,
+      }),
+    },
     auth: {
       getSession: async () => ({ data: { session: auth.session }, error: null }),
       signOut: async ({ scope }) => { assert.equal(scope, "local"); auth.session = null; return { error: null }; },

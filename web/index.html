@@ -31,13 +31,56 @@
           E-mail
           <input id="loginEmail" name="email" type="email" autocomplete="username" required />
         </label>
-        <label>
-          Senha
-          <input id="loginPassword" name="password" type="password" autocomplete="current-password" required />
-        </label>
-        <p id="loginError" class="form-error" role="alert"></p>
+        <div class="password-field">
+          <label for="loginPassword">Senha</label>
+          <span class="password-input-wrap">
+            <input id="loginPassword" name="password" type="password" autocomplete="current-password" required />
+            <button class="password-visibility-toggle" type="button" data-password-toggle="loginPassword" aria-controls="loginPassword" aria-label="Mostrar senha" aria-pressed="false">
+              <svg class="password-eye-icon password-eye-open" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M2 12s3.5-6.5 10-6.5S22 12 22 12s-3.5 6.5-10 6.5S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg>
+              <svg class="password-eye-icon password-eye-closed" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M2 12s3.5-6.5 10-6.5S22 12 22 12s-3.5 6.5-10 6.5S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/><path d="m4 4 16 16"/></svg>
+            </button>
+          </span>
+        </div>
+        <p id="loginError" class="form-error" role="status" aria-live="polite"></p>
         <button class="primary-action full-action" type="submit">Entrar</button>
         <p id="loginHint" class="login-hint hidden">Modo local: demo@gll.local / gll-demo-local</p>
+      </form>
+    </main>
+
+    <main id="passwordResetView" class="login-view hidden">
+      <section class="login-brand" aria-label="Primeiro acesso ao sistema">
+        <span class="brand-mark">GLL</span>
+        <h1>Proteja seu acesso</h1>
+        <p>Esta é a primeira entrada com uma senha provisória. Defina uma senha pessoal para continuar.</p>
+      </section>
+      <form id="passwordResetForm" class="login-panel login-form">
+        <span class="eyebrow">PRIMEIRO ACESSO</span>
+        <h2>Redefina sua senha</h2>
+        <p>A senha provisória não permite acessar os dados do sistema.</p>
+        <label>Login<input id="passwordResetEmail" type="email" readonly /></label>
+        <div class="password-field">
+          <label for="newPassword">Nova senha</label>
+          <span class="password-input-wrap">
+            <input id="newPassword" type="password" autocomplete="new-password" minlength="8" required />
+            <button class="password-visibility-toggle" type="button" data-password-toggle="newPassword" aria-controls="newPassword" aria-label="Mostrar senha" aria-pressed="false">
+              <svg class="password-eye-icon password-eye-open" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M2 12s3.5-6.5 10-6.5S22 12 22 12s-3.5 6.5-10 6.5S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg>
+              <svg class="password-eye-icon password-eye-closed" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M2 12s3.5-6.5 10-6.5S22 12 22 12s-3.5 6.5-10 6.5S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/><path d="m4 4 16 16"/></svg>
+            </button>
+          </span>
+        </div>
+        <div class="password-field">
+          <label for="confirmNewPassword">Confirme a nova senha</label>
+          <span class="password-input-wrap">
+            <input id="confirmNewPassword" type="password" autocomplete="new-password" minlength="8" required />
+            <button class="password-visibility-toggle" type="button" data-password-toggle="confirmNewPassword" aria-controls="confirmNewPassword" aria-label="Mostrar senha" aria-pressed="false">
+              <svg class="password-eye-icon password-eye-open" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M2 12s3.5-6.5 10-6.5S22 12 22 12s-3.5 6.5-10 6.5S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg>
+              <svg class="password-eye-icon password-eye-closed" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M2 12s3.5-6.5 10-6.5S22 12 22 12s-3.5 6.5-10 6.5S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/><path d="m4 4 16 16"/></svg>
+            </button>
+          </span>
+        </div>
+        <p id="passwordResetError" class="form-error" role="alert"></p>
+        <button class="primary-action full-action" type="submit">Salvar nova senha</button>
+        <button id="passwordResetSignOutButton" class="quiet-action full-action" type="button">Sair</button>
       </form>
     </main>
 
@@ -48,26 +91,40 @@
           <strong>Licitações</strong>
         </button>
         <nav class="app-nav">
-          <button id="navHomeButton" class="nav-link active" type="button" data-navigation-page="home"><span aria-hidden="true">⌂</span>Visão geral</button>
-          <button id="navBidsButton" class="nav-link" type="button" data-navigation-page="bids"><span aria-hidden="true">▤</span>Licitações</button>
-          <button id="navQuotationsButton" class="nav-link" type="button" data-navigation-page="quotations"><span aria-hidden="true">▧</span>Orçamento</button>
+          <button id="navHomeButton" class="nav-link active" type="button" data-navigation-page="home"><span aria-hidden="true" data-gll-icon="home"></span>Visão geral</button>
+          <button id="navBidsButton" class="nav-link" type="button" data-navigation-page="bids"><span aria-hidden="true" data-gll-icon="bids"></span>Licitações</button>
+          <button id="navQuotationsButton" class="nav-link" type="button" data-navigation-page="quotations"><span aria-hidden="true" data-gll-icon="quotation"></span>Orçamento</button>
           <div id="documentsNavigationGroup" class="nav-group">
             <button id="navDocumentsButton" class="nav-link nav-group-toggle" type="button" aria-expanded="false" aria-controls="documentsNavigationItems">
-              <span aria-hidden="true">▤</span><span class="nav-group-label">Geração de Documentos</span>
+              <span aria-hidden="true" data-gll-icon="document"></span><span class="nav-group-label">Gerar Documentos</span>
               <svg class="nav-group-chevron" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="m9 18 6-6-6-6"></path>
               </svg>
             </button>
             <div id="documentsNavigationItems" class="nav-submenu" aria-hidden="true" inert>
               <div class="nav-submenu-inner">
-                <button id="navCommercialProposalsButton" class="nav-link nav-sublink" type="button" data-navigation-page="commercialProposals"><span class="nav-sublink-icon" aria-hidden="true">▤</span>Propostas Comerciais</button>
+                <button id="navCommercialProposalsButton" class="nav-link nav-sublink" type="button" data-navigation-page="commercialProposals"><span class="nav-sublink-icon" aria-hidden="true" data-gll-icon="document"></span>Proposta Comercial</button>
                 <button id="navDeclarationsButton" class="nav-link nav-sublink" type="button" data-navigation-page="declarations"><span class="nav-sublink-icon" aria-hidden="true">▥</span>Declarações</button>
               </div>
             </div>
           </div>
-          <button id="navSuppliersButton" class="nav-link" type="button" data-navigation-page="suppliers"><span aria-hidden="true">▦</span>Fornecedores</button>
-          <button id="navUsersButton" class="nav-link" type="button" data-navigation-page="users"><span aria-hidden="true">♙</span>Usuários</button>
-          <button id="navSettingsButton" class="nav-link" type="button" data-navigation-page="settings"><span aria-hidden="true">⚙</span>Configurações</button>
+          <button id="navSuppliersButton" class="nav-link" type="button" data-navigation-page="suppliers"><span aria-hidden="true" data-gll-icon="suppliers"></span>Fornecedores</button>
+          <button id="navUsersButton" class="nav-link" type="button" data-navigation-page="users"><span aria-hidden="true" data-gll-icon="users"></span>Usuários</button>
+          <div id="settingsNavigationGroup" class="nav-group">
+            <button id="navSettingsButton" class="nav-link nav-group-toggle" type="button" aria-expanded="false" aria-controls="settingsNavigationItems">
+              <span aria-hidden="true" data-gll-icon="settings"></span><span class="nav-group-label">Configurações</span>
+              <svg class="nav-group-chevron" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="m9 18 6-6-6-6"></path>
+              </svg>
+            </button>
+            <div id="settingsNavigationItems" class="nav-submenu" aria-hidden="true" inert>
+              <div class="nav-submenu-inner">
+                <button id="navSettingsGeneralButton" class="nav-link nav-sublink" type="button" data-navigation-page="settings">Geral</button>
+                <button id="navCompanyDataButton" class="nav-link nav-sublink" type="button" data-navigation-page="companyData">Dados da Empresa</button>
+                <button id="navDesignSystemButton" class="nav-link nav-sublink" type="button" data-navigation-page="designSystem">Design System</button>
+              </div>
+            </div>
+          </div>
         </nav>
         <div class="sidebar-footer">
           <span class="environment-dot" aria-hidden="true"></span>
@@ -90,12 +147,16 @@
               aria-expanded="true"
               title="Recolher menu"
             >☰</button>
-            <span id="breadcrumbLabel">Visão geral</span>
+            <nav class="breadcrumb-navigation" aria-label="Navegação estrutural">
+              <ol id="breadcrumbList" class="breadcrumb-list">
+                <li aria-current="page"><span class="breadcrumb-current">Visão geral</span></li>
+              </ol>
+            </nav>
           </div>
           <div class="topbar-actions">
             <div class="avatar" aria-hidden="true">AD</div>
             <div class="user-info"><strong id="currentUserName">Administrador</strong><small id="currentUserRole">Administrador</small></div>
-            <button id="logoutButton" class="icon-button logout-action" type="button" aria-label="Sair" title="Sair">↪</button>
+            <button id="logoutButton" class="icon-button logout-action" type="button" aria-label="Sair" title="Sair"><span data-gll-icon="logout" aria-hidden="true"></span></button>
           </div>
         </header>
 
@@ -142,7 +203,7 @@
                 <button class="primary-action" type="button" data-open-new>＋ Nova licitação</button>
               </div>
               <form id="filterForm" class="section-band filter-form">
-                <label>Órgão comprador<input id="filterAgency" type="search" placeholder="Pesquisar órgão..." /></label>
+                <label>Pesquisa dinâmica<input id="filterSearch" type="search" placeholder="Órgão, modalidade, edital ou prazo de entrega..." /></label>
                 <label>Data da sessão<input id="filterDate" type="date" /></label>
                 <label>Status<select id="filterStatus"></select></label>
                 <label class="checkbox-field filter-checkbox-field">
@@ -212,11 +273,21 @@
                   </span>
                 </div>
               </div>
-              <label>
-                Tipo
-                <select id="bidType"></select>
-              </label>
-              <label>
+              <fieldset id="bidTypeGroup" class="bid-type-field" aria-describedby="bidTypeHelp">
+                <legend>Tipo *</legend>
+                <div class="bid-type-options">
+                  <label class="bid-type-option" for="bidTypeElectronic">
+                    <input id="bidTypeElectronic" name="bidType" type="radio" value="Pregao Eletronico" required checked />
+                    <span>Pregão Eletrônico</span>
+                  </label>
+                  <label class="bid-type-option" for="bidTypeWaiver">
+                    <input id="bidTypeWaiver" name="bidType" type="radio" value="Dispensa" required />
+                    <span>Dispensa</span>
+                  </label>
+                </div>
+                <small id="bidTypeHelp">Selecione o tipo do edital.</small>
+              </fieldset>
+              <label class="bid-status-field">
                 Status
                 <select id="bidStatus"></select>
               </label>
@@ -260,7 +331,7 @@
                   <span class="eyebrow">VINCULAR ORÇAMENTO</span>
                   <h2 id="bidQuotationModalTitle">Localizar orçamento</h2>
                 </div>
-                <button id="closeBidQuotationModalButton" class="quotation-item-modal-close" type="button" aria-label="Fechar modal">×</button>
+                <button id="closeBidQuotationModalButton" class="quotation-item-modal-close" type="button" aria-label="Fechar modal"><span data-gll-icon="close" aria-hidden="true"></span></button>
               </div>
               <div class="bid-quotation-modal-content">
                 <div class="form-grid bid-quotation-filters">
@@ -700,7 +771,7 @@
                   <span class="eyebrow">ORÇAMENTO</span>
                   <h2 id="quotationItemModalTitle">Cadastrar item</h2>
                 </div>
-                <button id="closeQuotationItemModalButton" class="quotation-item-modal-close" type="button" aria-label="Fechar modal">×</button>
+                <button id="closeQuotationItemModalButton" class="quotation-item-modal-close" type="button" aria-label="Fechar modal"><span data-gll-icon="close" aria-hidden="true"></span></button>
               </div>
 
               <form id="quotationItemForm" class="quotation-item-modal-form">
@@ -835,7 +906,7 @@
           </div>
           <div class="users-hero-note">
             <span class="users-icon-tile" aria-hidden="true">ⓘ</span>
-            <p>Os logins são cadastrados no Supabase. Aqui você consulta os perfis e atribui editais aos analistas.</p>
+            <p>Cadastre os acessos da equipe e defina quais usuários poderão administrar a organização.</p>
           </div>
           <div class="users-total-card" aria-live="polite">
             <span aria-hidden="true">♟</span>
@@ -865,6 +936,7 @@
                 </select>
               </label>
               <span id="userCountLabel" class="users-visible-count">0 usuários</span>
+              <button id="userCreateOpenButton" class="primary-action user-create-trigger hidden" type="button"><span aria-hidden="true">＋</span>Cadastrar usuário</button>
             </div>
           </div>
           <div class="table-wrap users-table-wrap">
@@ -899,6 +971,93 @@
           </div>
         </section>
 
+        <dialog id="userCreateDialog" class="quotation-item-modal user-create-modal" aria-labelledby="userCreateModalTitle" aria-describedby="userCreateDescription">
+          <div class="quotation-item-modal-shell">
+            <div class="quotation-item-modal-header">
+              <div>
+                <span class="eyebrow">CADASTRO DE USUÁRIO</span>
+                <h2 id="userCreateModalTitle">Cadastrar novo usuário</h2>
+                <p id="userCreateDescription" class="user-create-description">A pessoa deverá criar uma senha pessoal no primeiro acesso.</p>
+              </div>
+              <button id="closeUserCreateDialogButton" class="quotation-item-modal-close" type="button" aria-label="Fechar modal"><span data-gll-icon="close" aria-hidden="true"></span></button>
+            </div>
+            <form id="userCreateForm" class="quotation-item-modal-form user-create-form">
+              <div class="form-grid three">
+                <label>Nome completo<input id="userCreateFullName" name="fullName" autocomplete="name" required /></label>
+                <label>Nome de exibição<input id="userCreateDisplayName" name="displayName" autocomplete="nickname" required /></label>
+                <label>Login (e-mail)<input id="userCreateEmail" name="email" type="email" autocomplete="email" required /></label>
+                <div class="password-field">
+                  <label for="userCreatePassword">Senha provisória</label>
+                  <span class="password-input-wrap">
+                    <input id="userCreatePassword" name="temporaryPassword" type="password" autocomplete="new-password" minlength="8" required />
+                    <button class="password-visibility-toggle" type="button" data-password-toggle="userCreatePassword" aria-controls="userCreatePassword" aria-label="Mostrar senha" aria-pressed="false">
+                      <svg class="password-eye-icon password-eye-open" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M2 12s3.5-6.5 10-6.5S22 12 22 12s-3.5 6.5-10 6.5S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg>
+                      <svg class="password-eye-icon password-eye-closed" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M2 12s3.5-6.5 10-6.5S22 12 22 12s-3.5 6.5-10 6.5S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/><path d="m4 4 16 16"/></svg>
+                    </button>
+                  </span>
+                </div>
+                <div class="password-field">
+                  <label for="userCreatePasswordConfirm">Confirme a senha provisória</label>
+                  <span class="password-input-wrap">
+                    <input id="userCreatePasswordConfirm" name="temporaryPasswordConfirm" type="password" autocomplete="new-password" minlength="8" required />
+                    <button class="password-visibility-toggle" type="button" data-password-toggle="userCreatePasswordConfirm" aria-controls="userCreatePasswordConfirm" aria-label="Mostrar senha" aria-pressed="false">
+                      <svg class="password-eye-icon password-eye-open" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M2 12s3.5-6.5 10-6.5S22 12 22 12s-3.5 6.5-10 6.5S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg>
+                      <svg class="password-eye-icon password-eye-closed" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M2 12s3.5-6.5 10-6.5S22 12 22 12s-3.5 6.5-10 6.5S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/><path d="m4 4 16 16"/></svg>
+                    </button>
+                  </span>
+                </div>
+                <label>Tipo de usuário
+                  <select id="userCreateRole" name="role" required>
+                    <option value="Analista">Analista</option>
+                    <option value="Administrador">Administrador</option>
+                  </select>
+                </label>
+              </div>
+              <p id="userCreateError" class="form-error" role="alert"></p>
+              <div class="button-row end">
+                <button id="cancelUserCreateButton" class="quiet-action" type="button">Cancelar</button>
+                <button class="primary-action" type="submit">Cadastrar usuário</button>
+              </div>
+            </form>
+          </div>
+        </dialog>
+
+        <dialog id="userAccessDialog" class="user-assignments-modal user-access-dialog" aria-labelledby="userAccessTitle" aria-describedby="userAccessDescription">
+          <form id="userAccessForm">
+            <div class="modal-header">
+              <div>
+                <span class="eyebrow">ACESSO DA CONTA</span>
+                <h2 id="userAccessTitle">Revogar acesso</h2>
+                <p id="userAccessDescription"></p>
+              </div>
+              <button id="closeUserAccessDialogButton" class="icon-button" type="button" aria-label="Fechar"><span data-gll-icon="close" aria-hidden="true"></span></button>
+            </div>
+            <label id="userAccessReasonField">Motivo<textarea id="userAccessReason" name="reason" rows="3" maxlength="1000" required></textarea></label>
+            <div id="userAccessPasswordField" class="user-access-password-fields hidden">
+              <label>Senha provisória<input id="userAccessPassword" name="temporaryPassword" type="password" autocomplete="new-password" minlength="8" maxlength="72" /></label>
+              <label>Confirme a senha provisória<input id="userAccessPasswordConfirm" name="temporaryPasswordConfirm" type="password" autocomplete="new-password" minlength="8" maxlength="72" /></label>
+            </div>
+            <p id="userAccessError" class="form-error" role="alert"></p>
+            <div class="button-row end">
+              <button id="cancelUserAccessButton" class="quiet-action" type="button">Cancelar</button>
+              <button id="submitUserAccessButton" class="danger-action" type="submit">Revogar acesso</button>
+            </div>
+          </form>
+        </dialog>
+
+        <dialog id="userAccessHistoryDialog" class="user-assignments-modal user-access-history-dialog" aria-labelledby="userAccessHistoryTitle">
+          <div>
+            <div class="modal-header">
+              <div>
+                <span class="eyebrow">TRILHA DE AUDITORIA</span>
+                <h2 id="userAccessHistoryTitle">Histórico de acesso</h2>
+              </div>
+              <button id="closeUserAccessHistoryButton" class="icon-button" type="button" aria-label="Fechar"><span data-gll-icon="close" aria-hidden="true"></span></button>
+            </div>
+            <ol id="userAccessHistoryList" class="user-access-history-list" aria-live="polite"></ol>
+          </div>
+        </dialog>
+
         <dialog id="userAssignmentsModal" class="modal-card user-assignments-modal">
           <form id="userAssignmentsForm" method="dialog">
             <div class="modal-header">
@@ -907,7 +1066,7 @@
                 <h2 id="userAssignmentsTitle">Configurar acessos</h2>
                 <p id="userAssignmentsDescription"></p>
               </div>
-              <button id="closeUserAssignmentsButton" class="icon-button" type="button" aria-label="Fechar">×</button>
+              <button id="closeUserAssignmentsButton" class="icon-button" type="button" aria-label="Fechar"><span data-gll-icon="close" aria-hidden="true"></span></button>
             </div>
             <div id="userAssignmentsList" class="user-assignments-list"></div>
             <p id="userAssignmentsError" class="form-error" role="alert"></p>
@@ -966,7 +1125,7 @@
 
         <dialog id="supplierModal" class="quotation-item-modal supplier-modal" aria-labelledby="supplierFormTitle">
           <div class="quotation-item-modal-shell">
-            <div class="quotation-item-modal-header"><div><span class="eyebrow">FORNECEDOR</span><h2 id="supplierFormTitle">Novo fornecedor</h2></div><button id="closeSupplierModalButton" class="quotation-item-modal-close" type="button" aria-label="Fechar modal">×</button></div>
+            <div class="quotation-item-modal-header"><div><span class="eyebrow">FORNECEDOR</span><h2 id="supplierFormTitle">Novo fornecedor</h2></div><button id="closeSupplierModalButton" class="quotation-item-modal-close" type="button" aria-label="Fechar modal"><span data-gll-icon="close" aria-hidden="true"></span></button></div>
             <form id="supplierForm" class="quotation-item-modal-form">
               <input id="supplierId" type="hidden" />
               <div class="form-grid">
@@ -983,7 +1142,7 @@
 
         <dialog id="supplierProductModal" class="quotation-item-modal" aria-labelledby="supplierProductModalTitle">
           <div class="quotation-item-modal-shell">
-            <div class="quotation-item-modal-header"><div><span class="eyebrow">PRODUTO DO FORNECEDOR</span><h2 id="supplierProductModalTitle">Cadastrar produto</h2></div><button id="closeSupplierProductModalButton" class="quotation-item-modal-close" type="button" aria-label="Fechar modal">×</button></div>
+            <div class="quotation-item-modal-header"><div><span class="eyebrow">PRODUTO DO FORNECEDOR</span><h2 id="supplierProductModalTitle">Cadastrar produto</h2></div><button id="closeSupplierProductModalButton" class="quotation-item-modal-close" type="button" aria-label="Fechar modal"><span data-gll-icon="close" aria-hidden="true"></span></button></div>
             <form id="supplierProductForm" class="quotation-item-modal-form">
               <input id="supplierProductId" type="hidden" />
               <div class="form-grid supplier-product-form-grid">
@@ -1080,7 +1239,7 @@
 
         <section id="declarationSettingsPanel" class="declaration-panel hidden">
           <form id="declarationSettingsForm">
-            <div class="declaration-panel-heading"><div><h2>Configurações dos documentos</h2><p>Dados e identidade visual compartilhados pela organização.</p></div><button class="primary-action" type="submit">Salvar configurações</button></div>
+            <div class="declaration-panel-heading"><div><h2>Configurações dos documentos</h2><p>Dados padrão e introdução usados na composição das declarações.</p></div><button class="primary-action" type="submit">Salvar configurações</button></div>
             <section class="section-band declaration-form-section"><h3>Dados da empresa</h3><div id="declarationCompanyFields" class="form-grid declaration-variable-grid">
               <label>Razão social <code>{{razao_social}}</code><input id="declarationLegalName" maxlength="240" /></label>
               <label>CNPJ <code>{{cnpj}}</code><input id="declarationCnpj" maxlength="30" /></label>
@@ -1096,10 +1255,7 @@
               <label>UF da assinatura<input id="declarationSignatureState" maxlength="2" /></label>
             </div></section>
             <section class="section-band declaration-form-section"><h3>Introdução padrão</h3><label class="variable-editor full-field">Texto<textarea id="declarationDefaultIntroduction" rows="7" data-variable-editor></textarea><span class="variable-help">Digite <code>{{</code> para pesquisar variáveis.</span></label></section>
-            <section class="section-band declaration-form-section"><h3>Identidade visual</h3><div class="declaration-assets-grid">
-              <label class="declaration-upload-card"><span>Logo</span><input id="declarationLogo" type="file" accept="image/png,image/jpeg,image/webp" /><small>PNG, JPG ou WebP, até 5 MB.</small><img id="declarationLogoPreview" class="hidden" alt="Pré-visualização da logo" /></label>
-              <label class="declaration-upload-card"><span>Marca-d'água</span><input id="declarationWatermark" type="file" accept="image/png,image/jpeg,image/webp" /><small>PNG, JPG ou WebP, até 5 MB.</small><img id="declarationWatermarkPreview" class="hidden" alt="Pré-visualização da marca-d'água" /></label>
-            </div><p id="declarationSettingsStatus" class="form-error" role="status"></p></section>
+            <p id="declarationSettingsStatus" class="form-error" role="status"></p>
           </form>
         </section>
 
@@ -1109,12 +1265,12 @@
         </section>
 
         <dialog id="declarationTemplateModal" class="quotation-item-modal" aria-labelledby="declarationTemplateModalTitle">
-          <div class="quotation-item-modal-shell"><div class="quotation-item-modal-header"><div><span class="eyebrow">BIBLIOTECA</span><h2 id="declarationTemplateModalTitle">Nova declaração</h2></div><button id="closeDeclarationTemplateModalButton" class="quotation-item-modal-close" type="button" aria-label="Fechar">×</button></div>
+          <div class="quotation-item-modal-shell"><div class="quotation-item-modal-header"><div><span class="eyebrow">BIBLIOTECA</span><h2 id="declarationTemplateModalTitle">Nova declaração</h2></div><button id="closeDeclarationTemplateModalButton" class="quotation-item-modal-close" type="button" aria-label="Fechar"><span data-gll-icon="close" aria-hidden="true"></span></button></div>
             <form id="declarationTemplateForm" class="quotation-item-modal-form"><input id="declarationTemplateId" type="hidden" /><div class="form-grid"><label class="full-field">Título *<input id="declarationTemplateTitle" maxlength="180" required /></label><label class="full-field">Escopo<select id="declarationTemplateScope"><option value="organization">Organização</option><option value="bid">Edital específico</option></select></label><label id="declarationTemplateBidField" class="full-field hidden">Edital *<select id="declarationTemplateBid"></select></label><label class="variable-editor full-field">Conteúdo *<textarea id="declarationTemplateContent" rows="10" required data-variable-editor></textarea><span class="variable-help">Digite <code>{{</code> para inserir uma variável.</span></label></div><p id="declarationTemplateError" class="form-error" role="alert"></p><div class="button-row end"><button id="deleteDeclarationTemplateButton" class="danger-action hidden" type="button">Excluir</button><button id="cancelDeclarationTemplateButton" class="quiet-action" type="button">Cancelar</button><button class="primary-action" type="submit">Salvar declaração</button></div></form>
           </div>
         </dialog>
 
-        <dialog id="declarationPreviewModal" class="declaration-preview-modal" aria-labelledby="declarationPreviewTitle"><div class="declaration-preview-shell"><div class="quotation-item-modal-header"><div><span class="eyebrow">PRÉ-VISUALIZAÇÃO A4</span><h2 id="declarationPreviewTitle">Conferir documento</h2></div><button id="closeDeclarationPreviewButton" class="quotation-item-modal-close" type="button" aria-label="Fechar">×</button></div><iframe id="declarationPreviewFrame" class="declaration-preview-frame" title="Pré-visualização do PDF"></iframe><div class="button-row end"><button id="closeDeclarationPreviewFooterButton" class="quiet-action" type="button">Voltar à edição</button><button id="generateDeclarationFromPreviewButton" class="primary-action" type="button">Gerar PDF</button></div></div></dialog>
+        <dialog id="declarationPreviewModal" class="declaration-preview-modal" aria-labelledby="declarationPreviewTitle"><div class="declaration-preview-shell"><div class="quotation-item-modal-header"><div><span class="eyebrow">PRÉ-VISUALIZAÇÃO A4</span><h2 id="declarationPreviewTitle">Conferir documento</h2></div><button id="closeDeclarationPreviewButton" class="quotation-item-modal-close" type="button" aria-label="Fechar"><span data-gll-icon="close" aria-hidden="true"></span></button></div><iframe id="declarationPreviewFrame" class="declaration-preview-frame" title="Pré-visualização do PDF"></iframe><div class="button-row end"><button id="closeDeclarationPreviewFooterButton" class="quiet-action" type="button">Voltar à edição</button><button id="generateDeclarationFromPreviewButton" class="primary-action" type="button">Gerar PDF</button></div></div></dialog>
 
         <dialog id="declarationValidationModal" class="quotation-item-discard-modal" aria-labelledby="declarationValidationTitle"><div class="quotation-item-discard-content"><h2 id="declarationValidationTitle">Não foi possível gerar a declaração</h2><p>Existem informações utilizadas no documento que ainda não foram preenchidas:</p><ul id="declarationMissingVariables"></ul><p>Preencha as informações indicadas antes de gerar o PDF.</p><div class="button-row end"><button id="closeDeclarationValidationButton" class="primary-action" type="button">Entendi</button></div></div></dialog>
         <div id="declarationVariableSuggestions" class="declaration-variable-suggestions hidden" role="listbox"></div>
@@ -1122,7 +1278,7 @@
 
       <section id="settingsPage" class="users-page settings-page hidden">
         <div class="page-heading">
-          <div><span class="eyebrow">SISTEMA</span><h1>Configurações</h1><p>Preferências do ambiente e manutenção da base demonstrativa.</p></div>
+          <div><span class="eyebrow">SISTEMA</span><h1>Configurações</h1></div>
         </div>
         <div class="settings-grid">
           <section class="section-band settings-access-card company-data-access-card">
@@ -1133,13 +1289,6 @@
             </div>
             <button id="openCompanyDataButton" class="primary-action" type="button">Abrir cadastro</button>
           </section>
-          <section class="section-band">
-            <h2>Ambiente</h2>
-            <div class="setting-row"><div><strong>Modo de persistência</strong><small>Os dados utilizam a configuração ativa deste ambiente.</small></div><span class="status-pill">IndexedDB / Supabase</span></div>
-            <div class="setting-row"><div><strong>Política de sessão</strong><small>A sessão termina ao atingir qualquer um dos limites.</small></div><strong id="sessionPolicyStatus">30 min inativa / 8 h total</strong></div>
-            <div class="setting-row"><div><strong>Cliente de autenticação</strong><small>Versão fixada para atualizações reproduzíveis.</small></div><strong id="authClientVersion">Supabase JS</strong></div>
-            <div class="setting-row"><div><strong>Interface</strong><small>Identidade visual do protótipo aprovado.</small></div><strong>GLL 2.0</strong></div>
-          </section>
           <section id="designSystemAccessCard" class="section-band design-system-access-card hidden">
             <span class="settings-icon" aria-hidden="true">◫</span>
             <div>
@@ -1147,11 +1296,6 @@
               <p>Consulte foundations, componentes reutilizáveis e padrões oficiais da interface.</p>
             </div>
             <button id="openDesignSystemButton" class="primary-action" type="button">Abrir catálogo</button>
-          </section>
-          <section class="section-band danger-zone">
-            <h2>Base de demonstração</h2>
-            <p>Restaure todos os registros locais para os valores iniciais. Esta ação não está disponível nos ambientes conectados ao Supabase.</p>
-            <button id="resetDataButton" class="danger-action" type="button">Restaurar base</button>
           </section>
         </div>
       </section>
@@ -1176,6 +1320,16 @@
             <div class="form-grid company-data-organization-grid">
               <label>Razão social *<input id="companyLegalName" maxlength="240" autocomplete="organization" required /></label>
               <label>CNPJ *<input id="companyCnpj" maxlength="18" inputmode="numeric" autocomplete="off" placeholder="00.000.000/0000-00" required /></label>
+            </div>
+          </section>
+
+          <section class="section-band company-data-section">
+            <div class="company-data-section-heading">
+              <div><h2>Identidade visual</h2><p>Logo e marca-d'água serão incluídas automaticamente nas propostas e declarações.</p></div>
+            </div>
+            <div class="declaration-assets-grid">
+              <label class="declaration-upload-card"><span>Logo</span><input id="companyLogo" type="file" accept="image/png,image/jpeg,image/webp" /><small>PNG, JPG ou WebP, até 5 MB.</small><img id="companyLogoPreview" class="hidden" alt="Pré-visualização da logo" /></label>
+              <label class="declaration-upload-card"><span>Marca-d'água</span><input id="companyWatermark" type="file" accept="image/png,image/jpeg,image/webp" /><small>PNG, JPG ou WebP, até 5 MB.</small><img id="companyWatermarkPreview" class="hidden" alt="Pré-visualização da marca-d'água" /></label>
             </div>
           </section>
 
@@ -1215,6 +1369,17 @@
       </div>
     </main>
 
+    <dialog id="logoutConfirmModal" class="quotation-item-discard-modal" aria-labelledby="logoutConfirmModalTitle" aria-describedby="logoutConfirmModalDescription">
+      <div class="quotation-item-discard-content">
+        <h2 id="logoutConfirmModalTitle">Deseja sair do sistema?</h2>
+        <p id="logoutConfirmModalDescription">Sua sessão será encerrada neste dispositivo. Você poderá entrar novamente quando quiser.</p>
+        <div class="button-row end">
+          <button id="cancelLogoutButton" class="quiet-action" type="button" autofocus>Cancelar</button>
+          <button id="confirmLogoutButton" class="primary-action" type="button">Sair</button>
+        </div>
+      </div>
+    </dialog>
+
     <dialog id="deleteBidModal" class="quotation-item-discard-modal" aria-labelledby="deleteBidModalTitle" aria-describedby="deleteBidModalDescription">
       <div class="quotation-item-discard-content">
         <h2 id="deleteBidModalTitle">Excluir edital?</h2>
@@ -1237,13 +1402,28 @@
       </div>
     </dialog>
 
+    <dialog id="deleteQuotationModal" class="quotation-item-discard-modal" aria-labelledby="deleteQuotationModalTitle" aria-describedby="deleteQuotationModalDescription">
+      <div class="quotation-item-discard-content">
+        <h2 id="deleteQuotationModalTitle">Excluir orçamento?</h2>
+        <p id="deleteQuotationModalDescription">Deseja excluir este orçamento? Ele deixará de aparecer no sistema, mas seus itens e demais dados permanecerão preservados.</p>
+        <div class="button-row end">
+          <button id="cancelDeleteQuotationButton" class="quiet-action" type="button" autofocus>Cancelar</button>
+          <button id="confirmDeleteQuotationButton" class="danger-action" type="button">Excluir orçamento</button>
+        </div>
+      </div>
+    </dialog>
+
     <dialog id="blockingLoadingModal" class="blocking-loading-modal" aria-labelledby="blockingLoadingMessage" aria-describedby="blockingLoadingDescription" aria-modal="true" tabindex="-1">
       <div class="blocking-loading-spinner" aria-hidden="true"></div>
       <h2 id="blockingLoadingMessage" role="status" aria-live="polite">Processando…</h2>
       <p id="blockingLoadingDescription">Aguarde a conclusão da operação. Não feche nem atualize esta página.</p>
     </dialog>
 
-    <div id="toast" class="toast" role="status" aria-live="polite"></div>
+    <div id="toast" class="toast" role="status" aria-live="polite" aria-atomic="true" data-tone="success">
+      <span id="toastIcon" class="toast-icon" aria-hidden="true"></span>
+      <span id="toastMessage" class="toast-message"></span>
+      <button id="toastDismissButton" class="toast-close" type="button" aria-label="Fechar mensagem"></button>
+    </div>
     <script src="./env.js"></script>
     <script src="./design-system/components.js"></script>
     <script type="module" src="./declarations.js"></script>
