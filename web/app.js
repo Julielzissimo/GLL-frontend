@@ -1678,7 +1678,7 @@ const companyDataFeature = createCompanyDataFeature({
   onOrganizationUpdate: (organization) => {
     appState.currentOrganizationName = organization.name;
     appState.currentOrganizationCnpj = organization.cnpj;
-    refs.usersOrganizationLabel.textContent = `${organization.name} · usuários vinculados no Supabase.`;
+    refs.usersOrganizationLabel.textContent = organization.name;
     void declarationsFeature.refresh().catch((error) => showToast(error.message, "error"));
   },
   toast: (message, tone) => showToast(message, tone),
@@ -1830,6 +1830,7 @@ function applyEnvironmentConfig() {
   refs.environmentLabel.textContent = GLL_CONFIG.description;
   refs.environmentBadge.textContent = GLL_CONFIG.label;
   refs.environmentBadge.dataset.environment = GLL_CONFIG.environment;
+  refs.environmentBadge.closest(".sidebar-footer").classList.toggle("hidden", GLL_CONFIG.environment === "production");
   refs.storageStatus.textContent = GLL_CONFIG.storageLabel;
   refs.loginHint.classList.toggle("hidden", hasSupabaseConfig());
   refs.userCreateOpenButton.classList.toggle("hidden", !hasSupabaseConfig());
@@ -2746,7 +2747,7 @@ function updateAccessInterface() {
   refs.navDesignSystemButton.setAttribute("aria-hidden", String(!showUserManagement));
   refs.designSystemAccessCard.classList.toggle("hidden", !showUserManagement);
   refs.designSystemAccessCard.setAttribute("aria-hidden", String(!showUserManagement));
-  refs.usersOrganizationLabel.textContent = `${appState.currentOrganizationName || "Organização"} · usuários vinculados no Supabase.`;
+  refs.usersOrganizationLabel.textContent = appState.currentOrganizationName || "Organização";
 }
 
 const DATA_KEYS = ["bids", "items", "documents", "failureHistory", "statusHistory", "quotations", "quotationItems", "users", "suppliers", "supplierProducts"];
