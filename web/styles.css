@@ -4781,6 +4781,49 @@ tr.item-won td {
   min-width: 860px;
 }
 
+.quotations-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: var(--z-sticky);
+  background: var(--color-surface-subtle);
+  box-shadow: 0 1px 0 var(--border);
+}
+
+.quotation-sort-button {
+  display: inline-flex;
+  min-height: 0;
+  align-items: center;
+  gap: var(--space-xs);
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-xs);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit;
+  text-align: inherit;
+}
+
+.quotation-sort-button:hover {
+  color: var(--color-text-primary);
+}
+
+.quotation-sort-button:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 3px;
+}
+
+.quotation-sort-indicator {
+  color: var(--color-primary);
+  font-size: 13px;
+  line-height: 1;
+}
+
+.quotations-table .numeric .quotation-sort-button {
+  width: 100%;
+  justify-content: flex-end;
+}
+
 .quotation-items-table-wrap {
   width: 100%;
   max-width: 100%;

@@ -113,6 +113,8 @@ const appState = {
   currentQuotationId: null,
   bidQuotationCreating: false,
   quotationListCollapsed: false,
+  quotationSortKey: "opening_date",
+  quotationSortDirection: "descending",
   currentQuotationItemId: null,
   quotationItemFormBaseline: "",
   supplierLinksDraft: [],
@@ -2083,6 +2085,7 @@ function bindEvents() {
   refs.bidStatus.addEventListener("change", handleBidStatusChange);
   refs.newQuotationButton.addEventListener("click", clearQuotationForm);
   refs.quotationsListToggle.addEventListener("click", () => setQuotationListCollapsed(!appState.quotationListCollapsed));
+  refs.quotationsListContent.querySelector("thead").addEventListener("click", handleQuotationSort);
   refs.quotationForm.addEventListener("submit", withBlockingLoading(saveQuotation, "Salvando orçamento…"));
   refs.clearQuotationButton.addEventListener("click", clearQuotationForm);
   refs.deleteQuotationButton.addEventListener("click", requestDeleteCurrentQuotation);
@@ -4610,21 +4613,85 @@ function renderQuotations() {
   refs.quotationCountLabel.textContent = `${count} ${count === 1 ? "orçamento" : "orçamentos"}`;
   refs.selectedQuotationSummary.textContent = quotation ? `Edital ${quotation.edital} selecionado` : "";
   setQuotationListCollapsed(appState.quotationListCollapsed);
+  renderQuotationList();
+  renderQuotationItems();
+}
+
+function handleQuotationSort(event) {
+  const button = event.target.closest("[data-quotation-sort]");
+  if (!button) return;
+
+  const sortKey = button.dataset.quotationSort;
+  if (appState.quotationSortKey === sortKey) {
+    appState.quotationSortDirection = appState.quotationSortDirection === "ascending" ? "descending" : "ascending";
+  } else {
+    appState.quotationSortKey = sortKey;
+    appState.quotationSortDirection = sortKey === "opening_date" ? "descending" : "ascending";
+  }
+
+  renderQuotationList();
+}
+
+function renderQuotationList() {
+  updateQuotationSortHeaders();
+  const count = appState.quotations.length;
+  const itemsByQuotation = new Map();
+  appState.quotationItems.forEach((item) => {
+    const quotationId = Number(item.quotation_id);
+    if (!itemsByQuotation.has(quotationId)) itemsByQuotation.set(quotationId, []);
+    itemsByQuotation.get(quotationId).push(item);
+  });
+  const quotations = appState.quotations.map((quotation, index) => {
+    const items = itemsByQuotation.get(Number(quotation.id)) || [];
+    const total = items.reduce((sum, item) => roundMoney(sum + Number(item.total || 0)), 0);
+    return {
+      quotation,
+      index,
+      openingDate: sortableQuotationDate(quotation.opening_date),
+      edital: quotation.edital,
+      location: [quotation.city, quotation.cep].filter(Boolean).join(" · "),
+      itemCount: items.length,
+      total,
+    };
+  });
+  const sortKey = appState.quotationSortKey;
+  const direction = appState.quotationSortDirection === "ascending" ? 1 : -1;
+  const sortValues = {
+    opening_date: "openingDate",
+    edital: "edital",
+    location: "location",
+    items_count: "itemCount",
+    total: "total",
+  };
+  quotations.sort((left, right) => {
+    const property = sortValues[sortKey] || sortValues.opening_date;
+    const leftValue = left[property];
+    const rightValue = right[property];
+    const leftEmpty = leftValue == null || (typeof leftValue === "string" && !leftValue.trim());
+    const rightEmpty = rightValue == null || (typeof rightValue === "string" && !rightValue.trim());
+    if (leftEmpty !== rightEmpty) return leftEmpty ? 1 : -1;
+
+    let comparison = 0;
+    if (!leftEmpty && typeof leftValue === "number" && typeof rightValue === "number") {
+      comparison = leftValue - rightValue;
+    } else if (!leftEmpty) {
+      comparison = String(leftValue).localeCompare(String(rightValue), "pt-BR", { numeric: true, sensitivity: "base" });
+    }
+    return comparison ? comparison * direction : left.index - right.index;
+  });
+
   if (!count) {
     refs.quotationsTableBody.innerHTML = `<tr><td colspan="5"><div class="empty-state compact-empty">Nenhum orçamento cadastrado.</div></td></tr>`;
   } else {
-    refs.quotationsTableBody.innerHTML = appState.quotations
-      .map((quotation) => {
-        const items = appState.quotationItems.filter((item) => Number(item.quotation_id) === Number(quotation.id));
-        const total = items.reduce((sum, item) => roundMoney(sum + Number(item.total || 0)), 0);
+    refs.quotationsTableBody.innerHTML = quotations
+      .map(({ quotation, itemCount, total, location }) => {
         const selected = Number(quotation.id) === Number(appState.currentQuotationId) ? " selected" : "";
-        const location = [quotation.city, quotation.cep].filter(Boolean).join(" · ") || "—";
         return `
           <tr class="selectable${selected}" tabindex="0" data-quotation-id="${quotation.id}">
             <td>${escapeHtml(formatDateOnly(quotation.opening_date) || "—")}</td>
             <td><strong>${escapeHtml(quotation.edital)}</strong></td>
-            <td>${escapeHtml(location)}</td>
-            <td class="numeric">${items.length}</td>
+            <td>${escapeHtml(location || "—")}</td>
+            <td class="numeric">${itemCount}</td>
             <td class="numeric"><strong>${money(total)}</strong></td>
           </tr>`;
       })
@@ -4641,7 +4708,25 @@ function renderQuotations() {
       }
     });
   });
-  renderQuotationItems();
+}
+
+function updateQuotationSortHeaders() {
+  refs.quotationsListContent.querySelectorAll("[data-quotation-sort]").forEach((button) => {
+    const sortKey = button.dataset.quotationSort;
+    const active = sortKey === appState.quotationSortKey;
+    const direction = active ? appState.quotationSortDirection : sortKey === "opening_date" ? "descending" : "ascending";
+    const label = button.dataset.sortLabel;
+    const header = button.closest("th");
+    if (active) header.setAttribute("aria-sort", direction);
+    else header.removeAttribute("aria-sort");
+    button.setAttribute("aria-label", `Ordenar ${label} em ordem ${direction === "descending" ? "decrescente" : "crescente"}`);
+    button.querySelector(".quotation-sort-indicator").textContent = active ? (direction === "descending" ? "↓" : "↑") : "↕";
+  });
+}
+
+function sortableQuotationDate(value) {
+  const match = String(value || "").match(/^(\d{4}-\d{2}-\d{2})(?:$|T)/);
+  return match ? match[1] : "";
 }
 
 function loadQuotation(quotationId, options = {}) {
