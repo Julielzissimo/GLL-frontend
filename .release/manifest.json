@@ -449,6 +449,14 @@
       ]
     },
     {
+      "id": "CABECALHO-EDITAIS-FIXO-001",
+      "backend_commits": [],
+      "frontend_commits": [
+        "dcb8deedd815b4609fdf2e668b1a50369c215ea6"
+      ],
+      "migrations": []
+    },
+    {
       "id": "PERFIL-USUARIO-RLS-DIAGNOSTICO-001",
       "backend_commits": [],
       "frontend_commits": [
