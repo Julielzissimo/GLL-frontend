@@ -216,10 +216,28 @@ test("o login de teste acessa somente a organização de teste", async ({ page }
     }
 
     await expect(page.locator("#editOwnProfileFooterButton")).toHaveCount(0);
+    await expect(page.locator(".topbar-actions > #logoutButton")).toHaveCount(0);
+    await page.locator("#profileMenuButton").click();
+    await expect(page.locator("#profileMenuButton")).toHaveAttribute("aria-expanded", "true");
+    await expect(page.locator("#profileDropdown")).toBeVisible();
+    await page.keyboard.press("Escape");
+    await expect(page.locator("#profileDropdown")).toBeHidden();
+    await page.locator("#profileMenuButton").press("ArrowDown");
+    await expect(page.locator("#editOwnProfileButton")).toBeFocused();
     await page.locator("#editOwnProfileButton").click();
     await expect(page.locator("#userProfilePage")).toBeVisible();
     await expect(page.locator("#userCreateForm")).toHaveAttribute("data-mode", "edit");
     await expect(page.locator("#userProfileAccessActions")).toBeHidden();
+    await expect(page.locator("#ownPasswordSection")).toBeVisible();
+    await expect(page.locator("#ownPasswordForm")).toBeHidden();
+    await page.locator("#toggleOwnPasswordButton").click();
+    await expect(page.locator("#ownPasswordForm")).toBeVisible();
+    await page.locator("#ownPasswordNew").fill("SenhaTeste123!");
+    await page.locator("#ownPasswordConfirm").fill("SenhaDiferente123!");
+    await page.locator("#ownPasswordForm button[type='submit']").click();
+    await expect(page.locator("#ownPasswordError")).toContainText("As senhas não coincidem.");
+    await page.locator("#cancelOwnPasswordButton").click();
+    await expect(page.locator("#ownPasswordForm")).toBeHidden();
     await expect(page).toHaveURL(/page=perfil/);
     await page.locator("#backFromUserProfileButton").click();
     await expect(page.locator("#usersPage")).toBeVisible();
@@ -229,6 +247,7 @@ test("o login de teste acessa somente a organização de teste", async ({ page }
     await expect(page.locator("#userProfilePage")).toBeVisible();
     await expect(page.locator("#userCreateForm")).toHaveAttribute("data-mode", "create");
     await expect(page.locator("#userProfileAccessActions")).toBeHidden();
+    await expect(page.locator("#ownPasswordSection")).toBeHidden();
     await expect(page).toHaveURL(/novo=1/);
     await page.locator("#cancelUserCreateButton").click();
     await expect(page.locator("#usersPage")).toBeVisible();
@@ -346,6 +365,7 @@ test("o login de teste acessa somente a organização de teste", async ({ page }
       (response) => new URL(response.url()).pathname.endsWith("/auth/v1/logout") && response.request().method() === "POST",
       { timeout: 15_000 },
     );
+    await page.locator("#profileMenuButton").click();
     await page.locator("#logoutButton").click();
     const confirmLogoutButton = page.locator("#confirmLogoutButton");
     if (await confirmLogoutButton.isVisible().catch(() => false)) await confirmLogoutButton.click();

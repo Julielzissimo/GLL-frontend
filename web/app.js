@@ -178,6 +178,9 @@ const refs = {
   navDesignSystemButton: $("navDesignSystemButton"),
   menuToggleButton: $("menuToggleButton"),
   breadcrumbList: $("breadcrumbList"),
+  profileMenuContainer: $("profileMenuContainer"),
+  profileMenuButton: $("profileMenuButton"),
+  profileDropdown: $("profileDropdown"),
   editOwnProfileButton: $("editOwnProfileButton"),
   currentUserAvatar: $("currentUserAvatar"),
   currentUserName: $("currentUserName"),
@@ -203,6 +206,13 @@ const refs = {
   currentBidAgency: $("currentBidAgency"),
   usersPage: $("usersPage"),
   userProfilePage: $("userProfilePage"),
+  ownPasswordSection: $("ownPasswordSection"),
+  toggleOwnPasswordButton: $("toggleOwnPasswordButton"),
+  ownPasswordForm: $("ownPasswordForm"),
+  ownPasswordNew: $("ownPasswordNew"),
+  ownPasswordConfirm: $("ownPasswordConfirm"),
+  ownPasswordError: $("ownPasswordError"),
+  cancelOwnPasswordButton: $("cancelOwnPasswordButton"),
   userProfileAccessActions: $("userProfileAccessActions"),
   configureUserAccessButton: $("configureUserAccessButton"),
   changeUserAccessButton: $("changeUserAccessButton"),
@@ -1177,6 +1187,12 @@ class SupabaseStore {
     await invokeSupabaseFunction(client, "change-password", { newPassword });
   }
 
+  async updateOwnPassword(newPassword) {
+    const client = await this.open();
+    const { error } = await client.auth.updateUser({ password: newPassword });
+    assertSupabase(error);
+  }
+
   async getAll(tableName) {
     const client = await this.open();
     const query = client.from(tableName).select("*");
@@ -2057,10 +2073,28 @@ function bindEvents() {
   refs.passwordResetForm.addEventListener("submit", withBlockingLoading(handlePasswordReset, "Atualizando sua senha…"));
   refs.passwordResetSignOutButton.addEventListener("click", logout);
   refs.userCreateOpenButton.addEventListener("click", openUserCreatePage);
-  refs.editOwnProfileButton.addEventListener("click", () => openUserProfilePage());
+  refs.profileMenuButton.addEventListener("click", () => setProfileMenuOpen(refs.profileDropdown.classList.contains("hidden")));
+  refs.profileMenuContainer.addEventListener("keydown", handleProfileMenuKeydown);
+  document.addEventListener("pointerdown", (event) => {
+    if (!refs.profileMenuContainer.contains(event.target)) setProfileMenuOpen(false);
+  });
+  document.addEventListener("focusin", (event) => {
+    if (!refs.profileMenuContainer.contains(event.target)) setProfileMenuOpen(false);
+  });
+  refs.editOwnProfileButton.addEventListener("click", () => {
+    setProfileMenuOpen(false);
+    openUserProfilePage(appState.currentUserAuthId, refs.profileMenuButton);
+  });
   refs.backFromUserProfileButton.addEventListener("click", closeUserProfilePage);
   refs.cancelUserCreateButton.addEventListener("click", closeUserProfilePage);
   refs.userCreateForm.addEventListener("submit", withBlockingLoading(handleUserCreate, "Salvando perfil…"));
+  refs.toggleOwnPasswordButton.addEventListener("click", () => setOwnPasswordEditorOpen(refs.ownPasswordForm.classList.contains("hidden")));
+  refs.cancelOwnPasswordButton.addEventListener("click", () => {
+    setOwnPasswordEditorOpen(false);
+    refs.toggleOwnPasswordButton.focus();
+  });
+  refs.ownPasswordConfirm.addEventListener("input", () => refs.ownPasswordConfirm.removeAttribute?.("aria-invalid"));
+  refs.ownPasswordForm.addEventListener("submit", withBlockingLoading(handleOwnPasswordChange, "Atualizando senha…"));
   refs.chooseUserProfilePhotoButton.addEventListener("click", () => refs.userProfilePhotoInput.click());
   refs.userProfilePhotoInput.addEventListener("change", handleProfilePhotoSelection);
   refs.clearUserProfilePhotoButton.addEventListener("click", clearProfilePhotoSelection);
@@ -2123,7 +2157,13 @@ function bindEvents() {
   refs.toggleSidebarButton.addEventListener("focus", previewSidebar);
   refs.toggleSidebarButton.addEventListener("blur", clearSidebarPreview);
   refs.sidebarPanel.addEventListener("click", collapseSidebarFromEmptyArea);
-  refs.logoutButton.addEventListener("click", () => refs.logoutConfirmModal.showModal());
+  refs.logoutButton.addEventListener("click", () => {
+    setProfileMenuOpen(false);
+    refs.logoutConfirmModal.showModal();
+  });
+  refs.logoutConfirmModal.addEventListener("close", () => {
+    if (appState.authenticated) refs.profileMenuButton.focus({ preventScroll: true });
+  });
   $("cancelLogoutButton").addEventListener("click", () => refs.logoutConfirmModal.close());
   $("confirmLogoutButton").addEventListener("click", () => {
     if (!refs.logoutConfirmModal.open) return;
@@ -2387,6 +2427,32 @@ async function returnToLoginAfterPasswordReset() {
   }
 }
 
+function setProfileMenuOpen(open) {
+  refs.profileDropdown.classList.toggle("hidden", !open);
+  refs.profileMenuButton.setAttribute("aria-expanded", String(open));
+  const name = refs.currentUserName.textContent.trim() || "usuário";
+  refs.profileMenuButton.setAttribute("aria-label", `${open ? "Fechar" : "Abrir"} menu do perfil de ${name}`);
+}
+
+function handleProfileMenuKeydown(event) {
+  if (event.key === "Escape" && !refs.profileDropdown.classList.contains("hidden")) {
+    event.preventDefault();
+    setProfileMenuOpen(false);
+    refs.profileMenuButton.focus();
+    return;
+  }
+  if (!["ArrowDown", "ArrowUp", "Home", "End"].includes(event.key)) return;
+  event.preventDefault();
+  setProfileMenuOpen(true);
+  const options = [refs.editOwnProfileButton, refs.logoutButton];
+  const currentIndex = options.indexOf(document.activeElement);
+  const nextIndex = event.key === "Home" ? 0
+    : event.key === "End" ? options.length - 1
+      : event.key === "ArrowDown" ? (currentIndex + 1) % options.length
+        : currentIndex < 0 ? options.length - 1 : (currentIndex + options.length - 1) % options.length;
+  options[nextIndex].focus();
+}
+
 function openUserCreatePage() {
   if (!isCurrentUserAdmin()) return;
   userProfileReturnPage = "users";
@@ -2403,10 +2469,11 @@ function canEditUserProfile(user) {
   return isCurrentUserAdmin() && user.organization_id === appState.currentOrganizationId;
 }
 
-function openUserProfilePage(targetAuthUserId = appState.currentUserAuthId, returnFocusTarget = refs.editOwnProfileButton) {
+function openUserProfilePage(targetAuthUserId = appState.currentUserAuthId, returnFocusTarget = refs.profileMenuButton) {
   const user = appState.users.find((candidate) => candidate.auth_user_id === targetAuthUserId);
   if (!canEditUserProfile(user)) {
     showToast("Você só pode editar seu próprio perfil.", "error");
+    if (returnFocusTarget?.isConnected) returnFocusTarget.focus({ preventScroll: true });
     return;
   }
   userProfileReturnPage = appState.activePage === "userProfile" ? userProfileReturnPage : appState.activePage;
@@ -2440,7 +2507,27 @@ function setUserFormMode(mode, user = null) {
   refs.userCreatePasswordConfirm.value = "";
   if (!editing) refs.userCreateRole.value = USER_ROLES.ANALYST;
   resetProfilePhotoEditor(editing ? user : null);
+  const editingOwnProfile = editing && user.auth_user_id === appState.currentUserAuthId && store instanceof SupabaseStore;
+  refs.ownPasswordSection.classList.toggle("hidden", !editingOwnProfile);
+  setOwnPasswordEditorOpen(false);
   updateUserProfileAccessActions();
+}
+
+function setOwnPasswordEditorOpen(open) {
+  if (open && refs.ownPasswordSection.classList.contains("hidden")) return;
+  refs.ownPasswordForm.classList.toggle("hidden", !open);
+  refs.toggleOwnPasswordButton.setAttribute("aria-expanded", String(open));
+  refs.toggleOwnPasswordButton.textContent = open ? "Ocultar alteração de senha" : "Alterar senha";
+  for (const field of [refs.ownPasswordNew, refs.ownPasswordConfirm]) {
+    field.disabled = !open;
+    field.required = open;
+  }
+  if (open) refs.ownPasswordNew.focus();
+  else {
+    refs.ownPasswordForm.reset();
+    refs.ownPasswordError.textContent = "";
+    refs.ownPasswordConfirm.removeAttribute?.("aria-invalid");
+  }
 }
 
 function editedUserProfile() {
@@ -2473,10 +2560,11 @@ function closeUserProfilePage() {
   refs.userCreateForm.reset();
   refs.userCreateError.textContent = "";
   resetProfilePhotoEditor();
+  setOwnPasswordEditorOpen(false);
   userProfileReturnFocusTarget = null;
   userProfileReturnPage = "home";
   setPage(returnPage === "userProfile" ? "home" : returnPage);
-  const fallbackTarget = wasEditing ? refs.editOwnProfileButton : refs.userCreateOpenButton;
+  const fallbackTarget = wasEditing ? refs.profileMenuButton : refs.userCreateOpenButton;
   const focusTarget = returnFocusTarget?.isConnected ? returnFocusTarget : fallbackTarget;
   if (focusTarget?.getClientRects().length) focusTarget.focus({ preventScroll: true });
 }
@@ -2556,6 +2644,30 @@ async function handleUserCreate(event) {
     showToast(`Usuário cadastrado. A troca de senha será obrigatória no primeiro acesso.${avatarSaveError}`);
   } catch (error) {
     refs.userCreateError.textContent = error.message;
+  }
+}
+
+async function handleOwnPasswordChange(event) {
+  event.preventDefault();
+  refs.ownPasswordError.textContent = "";
+  const user = editedUserProfile();
+  if (!(store instanceof SupabaseStore) || user?.auth_user_id !== appState.currentUserAuthId) {
+    refs.ownPasswordError.textContent = "Você só pode alterar a senha da sua própria conta.";
+    return;
+  }
+  const password = refs.ownPasswordNew.value;
+  if (password !== refs.ownPasswordConfirm.value) {
+    refs.ownPasswordError.textContent = "As senhas não coincidem.";
+    refs.ownPasswordConfirm.setAttribute("aria-invalid", "true");
+    return;
+  }
+  try {
+    await store.updateOwnPassword(password);
+    setOwnPasswordEditorOpen(false);
+    refs.toggleOwnPasswordButton.focus();
+    showToast("Senha atualizada.");
+  } catch (error) {
+    refs.ownPasswordError.textContent = error.message;
   }
 }
 
@@ -2932,6 +3044,9 @@ function resetAuthenticatedView() {
   for (const key of DATA_KEYS) appState[key] = [];
   userAvatarUrlCache.clear();
   resetProfilePhotoEditor();
+  setOwnPasswordEditorOpen(false);
+  refs.ownPasswordSection.classList.add("hidden");
+  setProfileMenuOpen(false);
   document.querySelectorAll("dialog[open]").forEach((dialog) => {
     if (dialog.id !== "blockingLoadingModal") dialog.close();
   });
@@ -5771,8 +5886,7 @@ function updateCurrentUserProfile() {
   refs.currentUserAvatar.innerHTML = user?.avatar_signed_url
     ? `<img src="${escapeHtml(user.avatar_signed_url)}" alt="" width="38" height="38" decoding="async" />`
     : escapeHtml(userInitials(name));
-  refs.editOwnProfileButton.setAttribute("aria-label", `Editar perfil de ${name}`);
-  refs.editOwnProfileButton.title = `Editar perfil de ${name}`;
+  setProfileMenuOpen(!refs.profileDropdown.classList.contains("hidden"));
 }
 
 function userInitials(value) {

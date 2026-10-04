@@ -2406,7 +2406,6 @@ textarea[aria-invalid="true"]:focus {
 }
 
 .nav-link [data-gll-icon] svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
-.logout-action [data-gll-icon] svg { display: block; width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 
 .nav-link .nav-group-label {
   display: block;
@@ -2616,6 +2615,10 @@ textarea[aria-invalid="true"]:focus {
   position: relative;
 }
 
+.profile-menu-container {
+  position: relative;
+}
+
 .topbar-profile-button {
   display: inline-flex;
   align-items: center;
@@ -2649,6 +2652,58 @@ textarea[aria-invalid="true"]:focus {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.profile-menu-chevron {
+  width: var(--space-lg);
+  height: var(--space-lg);
+  flex: none;
+  color: var(--color-text-secondary);
+}
+
+.profile-dropdown {
+  position: absolute;
+  top: calc(100% + var(--space-sm));
+  right: 0;
+  z-index: var(--z-dropdown);
+  display: grid;
+  width: max-content;
+  min-width: 100%;
+  max-width: calc(100vw - var(--space-2xl));
+  padding: var(--space-xs);
+  border: var(--border-default);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-md);
+}
+
+.profile-dropdown button {
+  width: 100%;
+  min-height: var(--control-height-md);
+  border: 0;
+  border-radius: var(--radius-sm);
+  padding: var(--space-sm) var(--space-md);
+  background: transparent;
+  color: var(--color-text-primary);
+  font: inherit;
+  text-align: left;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.profile-dropdown button:hover,
+.profile-dropdown button:focus-visible {
+  background: var(--color-surface-subtle);
+}
+
+.profile-dropdown button:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: -2px;
+}
+
+.profile-dropdown #logoutButton {
+  border-top: var(--border-default);
+  color: var(--color-danger);
 }
 
 .icon-button {
@@ -3964,6 +4019,7 @@ tr.item-won td {
 
 .user-profile-heading,
 .user-profile-panel,
+.user-profile-password,
 .user-profile-access {
   width: min(100%, var(--dialog-width-xl));
   align-self: center;
@@ -3971,6 +4027,36 @@ tr.item-won td {
 
 .user-profile-heading {
   margin-bottom: 0;
+}
+
+.user-profile-password {
+  display: grid;
+  gap: var(--space-xl);
+}
+
+.user-profile-password-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-lg);
+}
+
+.user-profile-password h2 {
+  margin: 0;
+  font-size: var(--font-size-xl);
+}
+
+.user-profile-password p:not(.form-error) {
+  margin: var(--space-xs) 0 0;
+  color: var(--color-text-secondary);
+}
+
+.user-profile-password-form {
+  display: grid;
+  gap: var(--space-lg);
+  padding-top: var(--space-lg);
+  border-top: var(--border-default);
 }
 
 .user-profile-access {

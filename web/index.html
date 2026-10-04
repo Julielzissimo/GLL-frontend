@@ -156,11 +156,17 @@
             </nav>
           </div>
           <div class="topbar-actions">
-            <button id="editOwnProfileButton" class="topbar-profile-button" type="button" aria-label="Editar meu perfil" title="Editar meu perfil">
-              <span id="currentUserAvatar" class="avatar" aria-hidden="true">AD</span>
-              <span class="user-info"><strong id="currentUserName">Administrador</strong><small id="currentUserRole">Administrador</small></span>
-            </button>
-            <button id="logoutButton" class="icon-button logout-action" type="button" aria-label="Sair" title="Sair"><span data-gll-icon="logout" aria-hidden="true"></span></button>
+            <div id="profileMenuContainer" class="profile-menu-container">
+              <button id="profileMenuButton" class="topbar-profile-button" type="button" aria-label="Abrir menu do perfil" aria-expanded="false" aria-controls="profileDropdown">
+                <span id="currentUserAvatar" class="avatar" aria-hidden="true">AD</span>
+                <span class="user-info"><strong id="currentUserName">Administrador</strong><small id="currentUserRole">Administrador</small></span>
+                <svg class="profile-menu-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg>
+              </button>
+              <div id="profileDropdown" class="profile-dropdown hidden">
+                <button id="editOwnProfileButton" type="button">Editar meu perfil</button>
+                <button id="logoutButton" type="button">Sair</button>
+              </div>
+            </div>
           </div>
         </header>
 
@@ -1065,6 +1071,44 @@
                 <button id="userCreateSubmitButton" class="primary-action" type="submit">Cadastrar usuário</button>
               </div>
             </form>
+        </section>
+        <section id="ownPasswordSection" class="section-band user-profile-password hidden" aria-labelledby="ownPasswordTitle">
+          <div class="user-profile-password-heading">
+            <div>
+              <h2 id="ownPasswordTitle">Senha da conta</h2>
+              <p>Altere sua senha quando desejar.</p>
+            </div>
+            <button id="toggleOwnPasswordButton" class="quiet-action" type="button" aria-expanded="false" aria-controls="ownPasswordForm">Alterar senha</button>
+          </div>
+          <form id="ownPasswordForm" class="user-profile-password-form hidden">
+            <div class="form-grid two">
+              <div class="password-field">
+                <label for="ownPasswordNew">Nova senha</label>
+                <span class="password-input-wrap">
+                  <input id="ownPasswordNew" type="password" autocomplete="new-password" minlength="8" maxlength="72" aria-describedby="ownPasswordError" disabled />
+                  <button class="password-visibility-toggle" type="button" data-password-toggle="ownPasswordNew" aria-controls="ownPasswordNew" aria-label="Mostrar senha" aria-pressed="false">
+                    <svg class="password-eye-icon password-eye-open" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M2 12s3.5-6.5 10-6.5S22 12 22 12s-3.5 6.5-10 6.5S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg>
+                    <svg class="password-eye-icon password-eye-closed" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M2 12s3.5-6.5 10-6.5S22 12 22 12s-3.5 6.5-10 6.5S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/><path d="m4 4 16 16"/></svg>
+                  </button>
+                </span>
+              </div>
+              <div class="password-field">
+                <label for="ownPasswordConfirm">Confirmar nova senha</label>
+                <span class="password-input-wrap">
+                  <input id="ownPasswordConfirm" type="password" autocomplete="new-password" minlength="8" maxlength="72" aria-describedby="ownPasswordError" disabled />
+                  <button class="password-visibility-toggle" type="button" data-password-toggle="ownPasswordConfirm" aria-controls="ownPasswordConfirm" aria-label="Mostrar senha" aria-pressed="false">
+                    <svg class="password-eye-icon password-eye-open" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M2 12s3.5-6.5 10-6.5S22 12 22 12s-3.5 6.5-10 6.5S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg>
+                    <svg class="password-eye-icon password-eye-closed" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M2 12s3.5-6.5 10-6.5S22 12 22 12s-3.5 6.5-10 6.5S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/><path d="m4 4 16 16"/></svg>
+                  </button>
+                </span>
+              </div>
+            </div>
+            <p id="ownPasswordError" class="form-error" role="alert"></p>
+            <div class="button-row end">
+              <button id="cancelOwnPasswordButton" class="quiet-action" type="button">Cancelar</button>
+              <button class="primary-action" type="submit">Salvar nova senha</button>
+            </div>
+          </form>
         </section>
         <section id="userProfileAccessActions" class="section-band user-profile-access hidden" aria-labelledby="userProfileAccessTitle">
           <div>

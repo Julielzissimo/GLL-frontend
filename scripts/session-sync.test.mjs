@@ -82,6 +82,19 @@ test("campo da lista de licitações usa rótulo de pesquisa dinâmica e atualiz
   assert.match(source, /refs\.filterSearch\.addEventListener\("input", renderBids\)/);
 });
 
+test("troca voluntária de senha atualiza apenas a conta autenticada pelo Auth", async () => {
+  const app = client();
+  const account = vm.runInContext("new SupabaseStore()", app.context);
+  let attributes;
+  account.client = { auth: { updateUser: async (value) => { attributes = value; return { error: null }; } } };
+
+  await account.updateOwnPassword("SenhaNova123!");
+
+  assert.equal(JSON.stringify(attributes), JSON.stringify({ password: "SenhaNova123!" }));
+  account.client.auth.updateUser = async () => ({ error: new Error("senha recusada") });
+  await assert.rejects(account.updateOwnPassword("SenhaNova123!"), /senha recusada/);
+});
+
 test("modal de orçamento exibe somente orçamentos ainda não vinculados a edital", () => {
   const app = client();
   const quotations = [{ id: 1 }, { id: 2 }, { id: 3 }];
