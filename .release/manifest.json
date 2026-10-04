@@ -447,6 +447,14 @@
       "migrations": [
         "supabase/migrations/20261003185624_user_profile_avatars_and_permissions.sql"
       ]
+    },
+    {
+      "id": "PERFIL-USUARIO-RLS-DIAGNOSTICO-001",
+      "backend_commits": [],
+      "frontend_commits": [
+        "7dcf06e7f89b5afdacad883b300b5a8eedb81f77"
+      ],
+      "migrations": []
     }
   ]
 }
