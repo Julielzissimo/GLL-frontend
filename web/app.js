@@ -3239,7 +3239,7 @@ function scrollBreadcrumbToCurrent() {
 function creatorName(record) {
   const storedName = String(record?.created_by_name || "").trim();
   const creator = appState.users.find((user) => user.auth_user_id === record?.created_by);
-  return storedName || (creator ? userDisplayName(creator) : "Usuário Removido");
+  return (creator ? userDisplayName(creator) : "") || storedName || "Usuário Removido";
 }
 
 function creatorInitials(record) {
