@@ -463,6 +463,14 @@
         "7dcf06e7f89b5afdacad883b300b5a8eedb81f77"
       ],
       "migrations": []
+    },
+    {
+      "id": "PERFIL-USUARIO-RLS-DETALHE-001",
+      "backend_commits": [],
+      "frontend_commits": [
+        "420055ae1b14b4d2d9824e51ece3a3b793d9827d"
+      ],
+      "migrations": []
     }
   ]
 }
