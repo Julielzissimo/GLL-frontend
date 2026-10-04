@@ -215,13 +215,26 @@ test("o login de teste acessa somente a organização de teste", async ({ page }
       throw new Error("A sessão não passou na verificação de isolamento das tabelas da organização.");
     }
 
-    for (const selector of ["#editOwnProfileButton", "#editOwnProfileFooterButton"]) {
-      await page.locator(selector).click();
-      await expect(page.locator("#userCreateDialog")).toBeVisible();
-      await expect(page.locator("#userCreateForm")).toHaveAttribute("data-mode", "edit");
-      await page.locator("#closeUserCreateDialogButton").click();
-      await expect(page.locator("#userCreateDialog")).not.toBeVisible();
-    }
+    await expect(page.locator("#editOwnProfileFooterButton")).toHaveCount(0);
+    await page.locator("#editOwnProfileButton").click();
+    await expect(page.locator("#userProfilePage")).toBeVisible();
+    await expect(page.locator("#userCreateForm")).toHaveAttribute("data-mode", "edit");
+    await expect(page).toHaveURL(/page=perfil/);
+    await page.locator("#backFromUserProfileButton").click();
+    await expect(page.locator("#usersPage")).toBeVisible();
+
+    await page.locator("#userCreateOpenButton").click();
+    await expect(page.locator("#userProfilePage")).toBeVisible();
+    await expect(page.locator("#userCreateForm")).toHaveAttribute("data-mode", "create");
+    await expect(page).toHaveURL(/novo=1/);
+    await page.locator("#cancelUserCreateButton").click();
+    await expect(page.locator("#usersPage")).toBeVisible();
+
+    await page.locator("#usersTableBody [data-edit-user]").first().click();
+    await expect(page.locator("#userProfilePage")).toBeVisible();
+    await expect(page.locator("#userCreateForm")).toHaveAttribute("data-mode", "edit");
+    await page.goBack();
+    await expect(page.locator("#usersPage")).toBeVisible();
 
     if (expectedEnvironment === "homolog") {
       const profileUpdate = await page.evaluate(async ({ supabaseUrl, anonKey, accessToken, authUserId }) => {

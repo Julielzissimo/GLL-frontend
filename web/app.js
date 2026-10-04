@@ -88,6 +88,7 @@ const PAGE_ROUTE_NAMES = {
   declarationSettings: "declaracoes/configuracoes",
   declarationHistory: "declaracoes/historico",
   users: "usuarios",
+  userProfile: "perfil",
   settings: "configuracoes",
   companyData: "configuracoes/dados-da-empresa",
   designSystem: "configuracoes/design-system",
@@ -179,10 +180,6 @@ const refs = {
   breadcrumbList: $("breadcrumbList"),
   editOwnProfileButton: $("editOwnProfileButton"),
   currentUserAvatar: $("currentUserAvatar"),
-  editOwnProfileFooterButton: $("editOwnProfileFooterButton"),
-  currentUserFooterAvatar: $("currentUserFooterAvatar"),
-  currentUserFooterName: $("currentUserFooterName"),
-  currentUserFooterRole: $("currentUserFooterRole"),
   currentUserName: $("currentUserName"),
   currentUserRole: $("currentUserRole"),
   toggleSidebarButton: $("toggleSidebarButton"),
@@ -205,13 +202,13 @@ const refs = {
   currentBidCreatorTag: $("currentBidCreatorTag"),
   currentBidAgency: $("currentBidAgency"),
   usersPage: $("usersPage"),
+  userProfilePage: $("userProfilePage"),
   userCreateOpenButton: $("userCreateOpenButton"),
-  userCreateDialog: $("userCreateDialog"),
   userCreateEyebrow: $("userCreateEyebrow"),
-  userCreateModalTitle: $("userCreateModalTitle"),
+  userProfilePageTitle: $("userProfilePageTitle"),
   userCreateDescription: $("userCreateDescription"),
   userCreateSubmitButton: $("userCreateSubmitButton"),
-  closeUserCreateDialogButton: $("closeUserCreateDialogButton"),
+  backFromUserProfileButton: $("backFromUserProfileButton"),
   cancelUserCreateButton: $("cancelUserCreateButton"),
   userCreateForm: $("userCreateForm"),
   userCreateFullName: $("userCreateFullName"),
@@ -470,6 +467,7 @@ const refs = {
 };
 
 const userAvatarUrlCache = new Map();
+let userProfileReturnPage = "home";
 let userProfileReturnFocusTarget = null;
 let profilePhotoState = {
   image: null,
@@ -2055,18 +2053,10 @@ function bindEvents() {
   refs.loginForm.addEventListener("submit", withBlockingLoading(handleLogin, "Entrando no sistema…"));
   refs.passwordResetForm.addEventListener("submit", withBlockingLoading(handlePasswordReset, "Atualizando sua senha…"));
   refs.passwordResetSignOutButton.addEventListener("click", logout);
-  refs.userCreateOpenButton.addEventListener("click", openUserCreateDialog);
-  refs.editOwnProfileButton.addEventListener("click", () => openUserProfileDialog());
-  refs.editOwnProfileFooterButton.addEventListener("click", () => openUserProfileDialog(appState.currentUserAuthId, refs.editOwnProfileFooterButton));
-  refs.closeUserCreateDialogButton.addEventListener("click", closeUserCreateDialog);
-  refs.cancelUserCreateButton.addEventListener("click", closeUserCreateDialog);
-  refs.userCreateDialog.addEventListener("cancel", (event) => {
-    event.preventDefault();
-    closeUserCreateDialog();
-  });
-  refs.userCreateDialog.addEventListener("click", (event) => {
-    if (event.target === refs.userCreateDialog) closeUserCreateDialog();
-  });
+  refs.userCreateOpenButton.addEventListener("click", openUserCreatePage);
+  refs.editOwnProfileButton.addEventListener("click", () => openUserProfilePage());
+  refs.backFromUserProfileButton.addEventListener("click", closeUserProfilePage);
+  refs.cancelUserCreateButton.addEventListener("click", closeUserProfilePage);
   refs.userCreateForm.addEventListener("submit", withBlockingLoading(handleUserCreate, "Salvando perfil…"));
   refs.chooseUserProfilePhotoButton.addEventListener("click", () => refs.userProfilePhotoInput.click());
   refs.userProfilePhotoInput.addEventListener("change", handleProfilePhotoSelection);
@@ -2386,11 +2376,13 @@ async function returnToLoginAfterPasswordReset() {
   }
 }
 
-function openUserCreateDialog() {
+function openUserCreatePage() {
+  if (!isCurrentUserAdmin()) return;
+  userProfileReturnPage = "users";
   userProfileReturnFocusTarget = refs.userCreateOpenButton;
   setUserFormMode("create");
   refs.userCreateError.textContent = "";
-  refs.userCreateDialog.showModal();
+  setPage("userProfile");
   refs.userCreateFullName.focus();
 }
 
@@ -2400,16 +2392,17 @@ function canEditUserProfile(user) {
   return isCurrentUserAdmin() && user.organization_id === appState.currentOrganizationId;
 }
 
-function openUserProfileDialog(targetAuthUserId = appState.currentUserAuthId, returnFocusTarget = refs.editOwnProfileButton) {
+function openUserProfilePage(targetAuthUserId = appState.currentUserAuthId, returnFocusTarget = refs.editOwnProfileButton) {
   const user = appState.users.find((candidate) => candidate.auth_user_id === targetAuthUserId);
   if (!canEditUserProfile(user)) {
     showToast("Você só pode editar seu próprio perfil.", "error");
     return;
   }
+  userProfileReturnPage = appState.activePage === "userProfile" ? userProfileReturnPage : appState.activePage;
   userProfileReturnFocusTarget = returnFocusTarget;
   setUserFormMode("edit", user);
   refs.userCreateError.textContent = "";
-  refs.userCreateDialog.showModal();
+  setPage("userProfile");
   refs.userCreateFullName.focus();
 }
 
@@ -2417,9 +2410,9 @@ function setUserFormMode(mode, user = null) {
   const editing = mode === "edit";
   refs.userCreateForm.dataset.mode = editing ? "edit" : "create";
   refs.userCreateForm.dataset.targetAuthUserId = editing ? user.auth_user_id : "";
-  refs.userCreateDialog.classList.toggle("is-profile-edit", editing);
+  refs.userProfilePage.classList.toggle("is-profile-edit", editing);
   refs.userCreateEyebrow.textContent = editing ? "PERFIL DE USUÁRIO" : "CADASTRO DE USUÁRIO";
-  refs.userCreateModalTitle.textContent = editing ? "Editar perfil" : "Cadastrar novo usuário";
+  refs.userProfilePageTitle.textContent = editing ? "Editar perfil" : "Cadastrar novo usuário";
   refs.userCreateDescription.textContent = editing
     ? "Atualize o nome e a foto usados nas páginas do GLL."
     : "A pessoa deverá criar uma senha pessoal no primeiro acesso.";
@@ -2438,14 +2431,16 @@ function setUserFormMode(mode, user = null) {
   resetProfilePhotoEditor(editing ? user : null);
 }
 
-function closeUserCreateDialog() {
+function closeUserProfilePage() {
   const wasEditing = refs.userCreateForm.dataset.mode === "edit";
   const returnFocusTarget = userProfileReturnFocusTarget;
+  const returnPage = userProfileReturnPage;
   refs.userCreateForm.reset();
   refs.userCreateError.textContent = "";
+  resetProfilePhotoEditor();
   userProfileReturnFocusTarget = null;
-  setUserFormMode("create");
-  if (refs.userCreateDialog.open) refs.userCreateDialog.close();
+  userProfileReturnPage = "home";
+  setPage(returnPage === "userProfile" ? "home" : returnPage);
   const fallbackTarget = wasEditing ? refs.editOwnProfileButton : refs.userCreateOpenButton;
   const focusTarget = returnFocusTarget?.isConnected ? returnFocusTarget : fallbackTarget;
   if (focusTarget?.getClientRects().length) focusTarget.focus({ preventScroll: true });
@@ -2470,7 +2465,7 @@ async function handleUserCreate(event) {
         avatarBlob,
         removeAvatar: profilePhotoState.removeExisting,
       });
-      closeUserCreateDialog();
+      closeUserProfilePage();
       try {
         await reloadData();
         showToast("Perfil atualizado.");
@@ -2485,6 +2480,10 @@ async function handleUserCreate(event) {
 
   if (refs.userCreatePassword.value !== refs.userCreatePasswordConfirm.value) {
     refs.userCreateError.textContent = "As senhas provisórias não coincidem.";
+    return;
+  }
+  if (!isCurrentUserAdmin()) {
+    refs.userCreateError.textContent = "Você não tem permissão para cadastrar usuários.";
     return;
   }
   try {
@@ -2514,11 +2513,11 @@ async function handleUserCreate(event) {
     try {
       await reloadData();
     } catch (error) {
-      closeUserCreateDialog();
+      closeUserProfilePage();
       showToast(`Usuário cadastrado, mas não foi possível atualizar a lista: ${error.message}`, "error");
       return;
     }
-    closeUserCreateDialog();
+    closeUserProfilePage();
     showToast(`Usuário cadastrado. A troca de senha será obrigatória no primeiro acesso.${avatarSaveError}`);
   } catch (error) {
     refs.userCreateError.textContent = error.message;
@@ -2695,7 +2694,7 @@ function prepareProfilePhotoBlob() {
 function handleUserManagementAction(event) {
   const profileButton = event.target.closest("[data-edit-user]");
   if (profileButton) {
-    openUserProfileDialog(profileButton.dataset.editUser, profileButton);
+    openUserProfilePage(profileButton.dataset.editUser, profileButton);
     return;
   }
   const accessButton = event.target.closest("[data-user-access-target]");
@@ -2912,9 +2911,8 @@ function resetAuthenticatedView() {
   refs.currentUserName.textContent = "";
   refs.currentUserRole.textContent = "";
   refs.currentUserAvatar.textContent = "";
-  refs.currentUserFooterName.textContent = "";
-  refs.currentUserFooterRole.textContent = "";
-  refs.currentUserFooterAvatar.textContent = "";
+  userProfileReturnPage = "home";
+  userProfileReturnFocusTarget = null;
   setSyncNotice("");
 }
 
@@ -2987,6 +2985,7 @@ function resolveAuthorizedPage(page) {
   if (page === "suppliers" && GLL_CONFIG.suppliersEnabled === false) return "home";
   if (page === "commercialProposals" && GLL_CONFIG.commercialProposalsEnabled === false) return "home";
   if (page === "users" && !isCurrentUserAdmin()) return "home";
+  if (page === "userProfile" && refs.userCreateForm.dataset.mode === "create" && !isCurrentUserAdmin()) return "home";
   if (page === "designSystem" && !isCurrentUserAdmin()) return "settings";
   return page;
 }
@@ -3019,6 +3018,11 @@ function breadcrumbItems(page) {
     return compact
       ? [{ label: "Licitações", page: "bids" }, { label: "Nova licitação" }]
       : [home, { label: "Licitações", page: "bids" }, { label: "Nova licitação" }];
+  }
+  if (page === "userProfile") {
+    const label = refs.userCreateForm.dataset.mode === "create" ? "Cadastrar usuário" : "Editar perfil";
+    if (isCurrentUserAdmin()) return compact ? [{ label: "Usuários", page: "users" }, { label }] : [home, { label: "Usuários", page: "users" }, { label }];
+    return compact ? [{ label }] : [home, { label }];
   }
   if (page === "commercialProposals") {
     return compact
@@ -3283,6 +3287,8 @@ function readNavigationRoute() {
     page,
     bidId: params.get("licitacao"),
     quotationId: params.get("orcamento"),
+    profileUserId: params.get("usuario"),
+    createProfile: params.get("novo") === "1",
   };
 }
 
@@ -3299,6 +3305,20 @@ function writeNavigationRoute(page, mode = "push") {
     params.set("orcamento", String(appState.currentQuotationId));
   } else {
     params.delete("orcamento");
+  }
+  if (page === "userProfile") {
+    if (refs.userCreateForm.dataset.mode === "create") {
+      params.set("novo", "1");
+      params.delete("usuario");
+    } else {
+      params.delete("novo");
+      const targetId = refs.userCreateForm.dataset.targetAuthUserId;
+      if (targetId && targetId !== appState.currentUserAuthId) params.set("usuario", targetId);
+      else params.delete("usuario");
+    }
+  } else {
+    params.delete("novo");
+    params.delete("usuario");
   }
   const nextUrl = `${window.location.pathname}?${params.toString()}${window.location.hash}`;
   const currentUrl = `${window.location.pathname}${window.location.search}${window.location.hash}`;
@@ -3317,6 +3337,17 @@ function applyNavigationRoute(options = {}) {
     const quotation = appState.quotations.find((row) => Number(row.id) === Number(route.quotationId));
     if (quotation) loadQuotation(quotation.id, { history: "none", scroll: false });
     else routeIsValid = false;
+  } else if (route.page === "userProfile") {
+    userProfileReturnPage = isCurrentUserAdmin() ? "users" : "home";
+    userProfileReturnFocusTarget = null;
+    if (route.createProfile && isCurrentUserAdmin()) {
+      setUserFormMode("create");
+    } else if (!route.createProfile) {
+      const targetId = route.profileUserId || appState.currentUserAuthId;
+      const user = appState.users.find((candidate) => candidate.auth_user_id === targetId);
+      if (canEditUserProfile(user)) setUserFormMode("edit", user);
+      else routeIsValid = false;
+    } else routeIsValid = false;
   }
   setPage(routeIsValid ? route.page : "home", { history: "none" });
   if (options.replaceInvalid || !routeIsValid) writeNavigationRoute(appState.activePage, "replace");
@@ -3352,6 +3383,7 @@ function setPage(page, options = {}) {
   }
   placeQuotationEditor(page);
   const showUsers = page === "users";
+  const showUserProfile = page === "userProfile";
   const showSettings = page === "settings";
   const showCompanyData = page === "companyData";
   const showDesignSystem = page === "designSystem";
@@ -3366,8 +3398,9 @@ function setPage(page, options = {}) {
   const showCatalog = page === "bids";
   const showEditor = page === "edit";
   const showDetail = detailPages.includes(page);
-  refs.bidsPage.classList.toggle("hidden", showUsers || showSettings || showCompanyData || showDesignSystem || showQuotations || showSuppliers || showDeclarations || showCommercialProposals);
+  refs.bidsPage.classList.toggle("hidden", showUsers || showUserProfile || showSettings || showCompanyData || showDesignSystem || showQuotations || showSuppliers || showDeclarations || showCommercialProposals);
   refs.usersPage.classList.toggle("hidden", !showUsers);
+  refs.userProfilePage.classList.toggle("hidden", !showUserProfile);
   refs.settingsPage.classList.toggle("hidden", !showSettings);
   refs.companyDataPage.classList.toggle("hidden", !showCompanyData);
   refs.designSystemPage.classList.toggle("hidden", !showDesignSystem);
@@ -3381,12 +3414,12 @@ function setPage(page, options = {}) {
   refs.itemsPanel.classList.toggle("hidden", page !== "items");
   refs.documentsPanel.classList.toggle("hidden", page !== "documents");
   refs.failuresPanel.classList.toggle("hidden", page !== "failures");
-  refs.appView.classList.toggle("users-active", showUsers || showSettings || showCompanyData || showDesignSystem || showQuotations || showSuppliers || showDeclarations || showCommercialProposals);
+  refs.appView.classList.toggle("users-active", showUsers || showUserProfile || showSettings || showCompanyData || showDesignSystem || showQuotations || showSuppliers || showDeclarations || showCommercialProposals);
   refs.itemsTabButton.classList.toggle("active", page === "items");
   refs.documentsTabButton.classList.toggle("active", page === "documents");
   refs.failuresTabButton.classList.toggle("active", page === "failures");
   refs.failuresTabButton.classList.toggle("hidden", !shouldShowFailureHistory());
-  const primaryPage = showCommercialProposals ? "commercialProposals" : showDeclarations ? "declarations" : showSuppliers ? "suppliers" : showUsers ? "users" : showSettings || showCompanyData || showDesignSystem ? "settings" : showQuotations ? "quotations" : showHome ? "home" : "bids";
+  const primaryPage = showCommercialProposals ? "commercialProposals" : showDeclarations ? "declarations" : showSuppliers ? "suppliers" : showUsers || (showUserProfile && isCurrentUserAdmin()) ? "users" : showSettings || showCompanyData || showDesignSystem ? "settings" : showQuotations ? "quotations" : showHome || showUserProfile ? "home" : "bids";
   const activeNavigationPage = ["settings", "companyData", "designSystem"].includes(page) ? page : primaryPage;
   renderBreadcrumb(page);
   document.querySelectorAll("[data-navigation-page]").forEach((button) => {
@@ -5725,16 +5758,11 @@ function updateCurrentUserProfile() {
   const name = user ? userDisplayName(user) : appState.currentUserName || appState.currentUserEmail || "Usuário";
   appState.currentUserName = name;
   refs.currentUserName.textContent = name;
-  refs.currentUserFooterName.textContent = name;
-  refs.currentUserFooterRole.textContent = appState.currentUserRole || "Editar perfil";
   refs.currentUserAvatar.innerHTML = user?.avatar_signed_url
     ? `<img src="${escapeHtml(user.avatar_signed_url)}" alt="" width="38" height="38" decoding="async" />`
     : escapeHtml(userInitials(name));
-  refs.currentUserFooterAvatar.innerHTML = refs.currentUserAvatar.innerHTML;
   refs.editOwnProfileButton.setAttribute("aria-label", `Editar perfil de ${name}`);
   refs.editOwnProfileButton.title = `Editar perfil de ${name}`;
-  refs.editOwnProfileFooterButton.setAttribute("aria-label", `Editar perfil de ${name}`);
-  refs.editOwnProfileFooterButton.title = `Editar perfil de ${name}`;
 }
 
 function userInitials(value) {

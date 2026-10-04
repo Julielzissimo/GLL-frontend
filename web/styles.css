@@ -2460,63 +2460,6 @@ textarea[aria-invalid="true"]:focus {
   border-top: 1px solid #29395b;
 }
 
-.sidebar-profile-button {
-  display: flex;
-  min-width: 0;
-  align-items: center;
-  gap: 10px;
-  padding: 8px;
-  border: 1px solid transparent;
-  border-radius: 12px;
-  background: transparent;
-  color: #dce5fb;
-  text-align: left;
-  cursor: pointer;
-}
-
-.sidebar-profile-button:hover {
-  border-color: #334566;
-  background: #21345b;
-}
-
-.sidebar-profile-button:focus-visible {
-  outline: 2px solid #93c5fd;
-  outline-offset: 2px;
-}
-
-.sidebar-profile-button .sidebar-profile-avatar {
-  flex: 0 0 38px;
-  border: 2px solid rgba(220, 229, 251, 0.88);
-  background: #305083;
-  color: #fff;
-}
-
-.sidebar-profile-copy {
-  display: grid;
-  min-width: 0;
-  flex: 1;
-  gap: 3px;
-}
-
-.sidebar-profile-copy strong,
-.sidebar-profile-copy small {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.sidebar-profile-copy strong {
-  color: #fff;
-  font-size: 13px;
-}
-
-.sidebar-profile-copy small {
-  margin: 0;
-  color: #aebbd7;
-  font-size: 11px;
-}
-
 .sidebar-environment {
   display: flex;
   align-items: center;
@@ -4019,8 +3962,14 @@ tr.item-won td {
   color: var(--color-text-secondary);
 }
 
-.user-create-modal {
-  width: min(var(--dialog-width-xl), calc(100vw - 32px));
+.user-profile-heading,
+.user-profile-panel {
+  width: min(100%, var(--dialog-width-xl));
+  align-self: center;
+}
+
+.user-profile-heading {
+  margin-bottom: 0;
 }
 
 .user-create-form {
@@ -4028,7 +3977,7 @@ tr.item-won td {
   gap: var(--space-lg);
 }
 
-.user-create-modal.is-profile-edit .user-create-form .form-grid.three {
+.user-profile-page.is-profile-edit .user-create-form .form-grid.three {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
@@ -4155,6 +4104,10 @@ tr.item-won td {
 }
 
 @media (max-width: 620px) {
+  .user-profile-page.is-profile-edit .user-create-form .form-grid.three {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
   .topbar-profile-button .user-info {
     display: grid;
     max-width: clamp(5rem, 25vw, 8rem);

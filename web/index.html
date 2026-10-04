@@ -127,10 +127,6 @@
           </div>
         </nav>
         <div class="sidebar-footer">
-          <button id="editOwnProfileFooterButton" class="sidebar-profile-button" type="button" aria-label="Editar meu perfil" title="Editar meu perfil">
-            <span id="currentUserFooterAvatar" class="avatar sidebar-profile-avatar" aria-hidden="true">AD</span>
-            <span class="sidebar-profile-copy"><strong id="currentUserFooterName">Administrador</strong><small id="currentUserFooterRole">Administrador</small></span>
-          </button>
           <div class="sidebar-environment">
             <span class="environment-dot" aria-hidden="true"></span>
             <div>
@@ -990,17 +986,19 @@
           </div>
         </section>
 
-        <dialog id="userCreateDialog" class="quotation-item-modal user-create-modal" aria-labelledby="userCreateModalTitle" aria-describedby="userCreateDescription">
-          <div class="quotation-item-modal-shell">
-            <div class="quotation-item-modal-header">
-              <div>
-                <span id="userCreateEyebrow" class="eyebrow">CADASTRO DE USUÁRIO</span>
-                <h2 id="userCreateModalTitle">Cadastrar novo usuário</h2>
-                <p id="userCreateDescription" class="user-create-description">A pessoa deverá criar uma senha pessoal no primeiro acesso.</p>
-              </div>
-              <button id="closeUserCreateDialogButton" class="quotation-item-modal-close" type="button" aria-label="Fechar modal"><span data-gll-icon="close" aria-hidden="true"></span></button>
-            </div>
-            <form id="userCreateForm" class="quotation-item-modal-form user-create-form">
+      </section>
+
+      <section id="userProfilePage" class="users-page user-profile-page hidden" aria-labelledby="userProfilePageTitle">
+        <div class="page-heading user-profile-heading">
+          <div>
+            <span id="userCreateEyebrow" class="eyebrow">CADASTRO DE USUÁRIO</span>
+            <h1 id="userProfilePageTitle">Cadastrar novo usuário</h1>
+            <p id="userCreateDescription" class="user-create-description">A pessoa deverá criar uma senha pessoal no primeiro acesso.</p>
+          </div>
+          <button id="backFromUserProfileButton" class="quiet-action" type="button">Voltar</button>
+        </div>
+        <section class="section-band user-profile-panel">
+            <form id="userCreateForm" class="user-create-form">
               <div class="form-grid three">
                 <label>Nome completo<input id="userCreateFullName" name="fullName" autocomplete="name" maxlength="160" required /></label>
                 <label>Nome de exibição<input id="userCreateDisplayName" name="displayName" autocomplete="nickname" maxlength="100" required /></label>
@@ -1067,8 +1065,8 @@
                 <button id="userCreateSubmitButton" class="primary-action" type="submit">Cadastrar usuário</button>
               </div>
             </form>
-          </div>
-        </dialog>
+        </section>
+      </section>
 
         <dialog id="userAccessDialog" class="user-assignments-modal user-access-dialog" aria-labelledby="userAccessTitle" aria-describedby="userAccessDescription">
           <form id="userAccessForm">
@@ -1111,7 +1109,6 @@
             </div>
           </form>
         </dialog>
-      </section>
 
       <section id="suppliersPage" class="users-page suppliers-page hidden">
         <div class="page-heading suppliers-heading"><div><span class="eyebrow">GESTÃO</span><h1>Fornecedores</h1><p>Cadastre e gerencie seus fornecedores e seus produtos.</p></div><button id="newSupplierButton" class="primary-action" type="button">＋ Novo fornecedor</button></div>
