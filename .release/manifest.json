@@ -483,6 +483,14 @@
       "migrations": [
         "supabase/migrations/20261004173000_secure_profile_avatar_storage_policies.sql"
       ]
+    },
+    {
+      "id": "PERFIL-PAGINA-SIDEBAR-001",
+      "backend_commits": [],
+      "frontend_commits": [
+        "5e4482b924a5d23041408e706adbe5f037a30b76"
+      ],
+      "migrations": []
     }
   ]
 }
