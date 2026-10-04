@@ -262,11 +262,20 @@ test("o login de teste acessa somente a organização de teste", async ({ page }
         const headers = { apikey: anonKey, Authorization: `Bearer ${accessToken}`, "Content-Type": "image/webp", "x-upsert": "false" };
         const objectUrl = `${supabaseUrl}/storage/v1/object/profile-avatars/${path.split("/").map(encodeURIComponent).join("/")}`;
         let uploaded = false;
-        let result = { passed: false, status: 0, cleanup: false };
+        let result = { passed: false, status: 0, cleanup: false, detail: "" };
         try {
           const uploadResponse = await fetch(objectUrl, { method: "POST", headers, body: imageBytes });
+          const uploadError = uploadResponse.ok ? null : await uploadResponse.json().catch(() => ({}));
           uploaded = uploadResponse.ok;
-          result = { passed: uploadResponse.ok, status: uploadResponse.status, cleanup: false };
+          const detail = String(uploadError?.message || uploadError?.error || uploadError?.statusCode || "");
+          const category = /row-level security|policy/i.test(detail)
+            ? "row-level security"
+            : /mime|content.?type/i.test(detail)
+              ? "tipo de arquivo"
+              : /bucket/i.test(detail)
+                ? "bucket"
+                : detail ? "erro do Storage" : "";
+          result = { passed: uploadResponse.ok, status: uploadResponse.status, cleanup: false, detail: category };
         } finally {
           if (uploaded) {
             const cleanupResponse = await fetch(`${supabaseUrl}/storage/v1/object/profile-avatars`, {
@@ -286,7 +295,8 @@ test("o login de teste acessa somente a organização de teste", async ({ page }
       });
       if (!avatarUpload.passed) {
         const phase = avatarUpload.cleanup ? "limpeza da foto de teste" : "envio da foto de perfil";
-        throw new Error(`A política do Storage rejeitou a ${phase} (HTTP ${avatarUpload.status}).`);
+        const detail = avatarUpload.detail ? `: ${avatarUpload.detail}` : "";
+        throw new Error(`A política do Storage rejeitou a ${phase} (HTTP ${avatarUpload.status}${detail}).`);
       }
     }
 
