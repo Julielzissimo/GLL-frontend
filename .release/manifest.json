@@ -499,6 +499,14 @@
         "8b64875d34b55d5b85c4968c95df48cb07252c51"
       ],
       "migrations": []
+    },
+    {
+      "id": "PERFIL-MENU-SENHA-001",
+      "backend_commits": [],
+      "frontend_commits": [
+        "657a859e7fe55f7358a0a424fd2b3c912d85fb60"
+      ],
+      "migrations": []
     }
   ]
 }
