@@ -3963,13 +3963,32 @@ tr.item-won td {
 }
 
 .user-profile-heading,
-.user-profile-panel {
+.user-profile-panel,
+.user-profile-access {
   width: min(100%, var(--dialog-width-xl));
   align-self: center;
 }
 
 .user-profile-heading {
   margin-bottom: 0;
+}
+
+.user-profile-access {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-lg);
+}
+
+.user-profile-access h2 {
+  margin: 0;
+  font-size: var(--font-size-xl);
+}
+
+.user-profile-access p {
+  margin: var(--space-xs) 0 0;
+  color: var(--color-text-secondary);
 }
 
 .user-create-form {

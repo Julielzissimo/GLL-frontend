@@ -203,6 +203,9 @@ const refs = {
   currentBidAgency: $("currentBidAgency"),
   usersPage: $("usersPage"),
   userProfilePage: $("userProfilePage"),
+  userProfileAccessActions: $("userProfileAccessActions"),
+  configureUserAccessButton: $("configureUserAccessButton"),
+  changeUserAccessButton: $("changeUserAccessButton"),
   userCreateOpenButton: $("userCreateOpenButton"),
   userCreateEyebrow: $("userCreateEyebrow"),
   userProfilePageTitle: $("userProfilePageTitle"),
@@ -2075,6 +2078,14 @@ function bindEvents() {
   });
   refs.userCreateFullName.addEventListener("input", updateProfilePhotoFallback);
   refs.userCreateDisplayName.addEventListener("input", updateProfilePhotoFallback);
+  refs.configureUserAccessButton.addEventListener("click", () => {
+    const user = editedUserProfile();
+    if (user && isCurrentUserAdmin() && normalizeUserRole(user.role) === USER_ROLES.ANALYST) openUserAssignments(user.auth_user_id);
+  });
+  refs.changeUserAccessButton.addEventListener("click", () => {
+    const user = editedUserProfile();
+    if (user && isCurrentUserAdmin() && user.auth_user_id !== appState.currentUserAuthId) openUserAccessDialog(user.auth_user_id);
+  });
   refs.closeUserAccessDialogButton.addEventListener("click", closeUserAccessDialog);
   refs.cancelUserAccessButton.addEventListener("click", closeUserAccessDialog);
   refs.userAccessDialog.addEventListener("cancel", (event) => {
@@ -2429,6 +2440,30 @@ function setUserFormMode(mode, user = null) {
   refs.userCreatePasswordConfirm.value = "";
   if (!editing) refs.userCreateRole.value = USER_ROLES.ANALYST;
   resetProfilePhotoEditor(editing ? user : null);
+  updateUserProfileAccessActions();
+}
+
+function editedUserProfile() {
+  if (refs.userCreateForm.dataset.mode !== "edit") return null;
+  const user = appState.users.find((candidate) => candidate.auth_user_id === refs.userCreateForm.dataset.targetAuthUserId);
+  return canEditUserProfile(user) ? user : null;
+}
+
+function updateUserProfileAccessActions() {
+  const user = editedUserProfile();
+  const canConfigure = isCurrentUserAdmin() && normalizeUserRole(user?.role) === USER_ROLES.ANALYST;
+  const canManageAccess = isCurrentUserAdmin() && store instanceof SupabaseStore && Boolean(user?.auth_user_id)
+    && user.auth_user_id !== appState.currentUserAuthId
+    && normalizeEmail(user.email) !== normalizeEmail(appState.currentUserEmail);
+  refs.userProfileAccessActions.classList.toggle("hidden", !canConfigure && !canManageAccess);
+  refs.configureUserAccessButton.classList.toggle("hidden", !canConfigure);
+  refs.changeUserAccessButton.classList.toggle("hidden", !canManageAccess);
+  if (canManageAccess) {
+    const action = user.pending_access_action || (user.access_revoked_at ? "reactivate" : "revoke");
+    refs.changeUserAccessButton.textContent = accessActionLabel(user);
+    refs.changeUserAccessButton.classList.toggle("danger-action", action === "revoke");
+    refs.changeUserAccessButton.classList.toggle("quiet-action", action !== "revoke");
+  }
 }
 
 function closeUserProfilePage() {
@@ -2695,12 +2730,6 @@ function handleUserManagementAction(event) {
   const profileButton = event.target.closest("[data-edit-user]");
   if (profileButton) {
     openUserProfilePage(profileButton.dataset.editUser, profileButton);
-    return;
-  }
-  const accessButton = event.target.closest("[data-user-access-target]");
-  if (accessButton) {
-    openUserAccessDialog(accessButton.dataset.userAccessTarget);
-    return;
   }
 }
 
@@ -2713,7 +2742,8 @@ function accessActionLabel(user) {
 function openUserAccessDialog(targetUserId) {
   if (!isCurrentUserAdmin() || !(store instanceof SupabaseStore)) return;
   const user = appState.users.find((candidate) => candidate.auth_user_id === targetUserId);
-  if (!user || normalizeEmail(user.email) === normalizeEmail(appState.currentUserEmail)) return;
+  if (!canEditUserProfile(user) || targetUserId === appState.currentUserAuthId
+    || normalizeEmail(user.email) === normalizeEmail(appState.currentUserEmail)) return;
 
   const mode = user.pending_access_action || (user.access_revoked_at ? "reactivate" : "revoke");
   const isRetry = Boolean(user.pending_access_action);
@@ -2749,12 +2779,10 @@ function openUserAccessDialog(targetUserId) {
 }
 
 function closeUserAccessDialog() {
-  const targetUserId = refs.userAccessForm.dataset.targetUserId;
   refs.userAccessForm.reset();
   refs.userAccessError.textContent = "";
   if (refs.userAccessDialog.open) refs.userAccessDialog.close();
-  const trigger = refs.usersTableBody.querySelector(`[data-user-access-target="${CSS.escape(targetUserId || "")}"]`);
-  trigger?.focus({ preventScroll: true });
+  if (!refs.changeUserAccessButton.classList.contains("hidden")) refs.changeUserAccessButton.focus({ preventScroll: true });
 }
 
 async function handleUserAccessChange(event) {
@@ -3270,6 +3298,7 @@ async function reloadData({ background = false } = {}) {
   }
   Object.assign(appState, next);
   updateCurrentUserProfile();
+  if (appState.activePage === "userProfile") updateUserProfileAccessActions();
   renderBids();
   renderDetails();
   renderQuotations();
@@ -5676,28 +5705,13 @@ function renderUsers() {
     .map((user) => {
       const isCurrent = normalizeEmail(user.email) === normalizeEmail(appState.currentUserEmail);
       const role = normalizeUserRole(user.role);
-      const canConfigure = role === USER_ROLES.ANALYST && Boolean(user.auth_user_id);
       const assignedBidCount = user.auth_user_id
         ? appState.bids.filter((bid) => bid.assigned_to === user.auth_user_id).length
         : 0;
       const displayName = userDisplayName(user);
       const initials = userInitials(displayName);
-      const canManageAccess = store instanceof SupabaseStore && Boolean(user.auth_user_id) && !isCurrent;
-      const actionButtons = [];
-      if (canEditUserProfile(user)) {
-        actionButtons.push(`<button class="quiet-action compact-action" type="button" data-edit-user="${escapeHtml(user.auth_user_id)}" aria-label="Editar perfil de ${escapeHtml(displayName)}">Editar perfil</button>`);
-      }
-      if (canConfigure) {
-        actionButtons.push(`<button class="quiet-action compact-action configure-user-action" type="button" data-configure-user="${escapeHtml(user.auth_user_id)}"><span aria-hidden="true">⚙</span> Configurar acessos</button>`);
-      }
-      if (canManageAccess) {
-        const label = accessActionLabel(user);
-        const accessAction = user.pending_access_action || (user.access_revoked_at ? "reactivate" : "revoke");
-        const actionClass = accessAction === "revoke" ? "danger-action" : "quiet-action";
-        actionButtons.push(`<button class="${actionClass} compact-action user-access-action" type="button" data-user-access-target="${escapeHtml(user.auth_user_id)}">${escapeHtml(label)}</button>`);
-      }
-      const action = actionButtons.length
-        ? `<div class="user-management-actions">${actionButtons.join("")}</div>`
+      const action = canEditUserProfile(user)
+        ? `<div class="user-management-actions"><button class="quiet-action compact-action" type="button" data-edit-user="${escapeHtml(user.auth_user_id)}" aria-label="Editar perfil de ${escapeHtml(displayName)}">Editar perfil</button></div>`
         : isCurrent
           ? `<span class="current-user-pill"><span aria-hidden="true">♙</span> Usuário atual</span>`
           : `<span class="muted-text">—</span>`;
@@ -5735,10 +5749,6 @@ function renderUsers() {
       `;
     })
     .join("");
-
-  refs.usersTableBody.querySelectorAll("[data-configure-user]").forEach((button) => {
-    button.addEventListener("click", () => openUserAssignments(button.dataset.configureUser));
-  });
 }
 
 function normalizeSearchText(value) {
@@ -5775,7 +5785,7 @@ function userInitials(value) {
 function openUserAssignments(analystId) {
   if (!isCurrentUserAdmin()) return;
   const analyst = appState.users.find((user) => user.auth_user_id === analystId && normalizeUserRole(user.role) === USER_ROLES.ANALYST);
-  if (!analyst) {
+  if (!canEditUserProfile(analyst)) {
     showToast("Analista não encontrado na organização.");
     return;
   }
@@ -5825,6 +5835,7 @@ function closeUserAssignments(event) {
   event?.preventDefault();
   if (refs.userAssignmentsModal.open) refs.userAssignmentsModal.close();
   delete refs.userAssignmentsModal.dataset.analystId;
+  if (!refs.configureUserAccessButton.classList.contains("hidden")) refs.configureUserAccessButton.focus({ preventScroll: true });
 }
 
 async function saveUserAssignments(event) {

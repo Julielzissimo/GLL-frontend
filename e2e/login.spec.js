@@ -219,13 +219,16 @@ test("o login de teste acessa somente a organização de teste", async ({ page }
     await page.locator("#editOwnProfileButton").click();
     await expect(page.locator("#userProfilePage")).toBeVisible();
     await expect(page.locator("#userCreateForm")).toHaveAttribute("data-mode", "edit");
+    await expect(page.locator("#userProfileAccessActions")).toBeHidden();
     await expect(page).toHaveURL(/page=perfil/);
     await page.locator("#backFromUserProfileButton").click();
     await expect(page.locator("#usersPage")).toBeVisible();
+    await expect(page.locator("#usersTableBody [data-configure-user], #usersTableBody [data-user-access-target]")).toHaveCount(0);
 
     await page.locator("#userCreateOpenButton").click();
     await expect(page.locator("#userProfilePage")).toBeVisible();
     await expect(page.locator("#userCreateForm")).toHaveAttribute("data-mode", "create");
+    await expect(page.locator("#userProfileAccessActions")).toBeHidden();
     await expect(page).toHaveURL(/novo=1/);
     await page.locator("#cancelUserCreateButton").click();
     await expect(page.locator("#usersPage")).toBeVisible();
@@ -235,6 +238,32 @@ test("o login de teste acessa somente a organização de teste", async ({ page }
     await expect(page.locator("#userCreateForm")).toHaveAttribute("data-mode", "edit");
     await page.goBack();
     await expect(page.locator("#usersPage")).toBeVisible();
+
+    const otherUser = await page.locator("#usersTableBody [data-edit-user]").evaluateAll(
+      (buttons, currentId) => {
+        const button = buttons.find((candidate) => candidate.dataset.editUser !== currentId);
+        return button ? { id: button.dataset.editUser, analyst: Boolean(button.closest("tr")?.querySelector(".user-role-pill.analyst")) } : null;
+      },
+      authSession.user.id,
+    );
+    if (otherUser) {
+      await page.locator(`#usersTableBody [data-edit-user="${otherUser.id}"]`).click();
+      await expect(page.locator("#userProfileAccessActions")).toBeVisible();
+      await expect(page.locator("#changeUserAccessButton")).toBeVisible();
+      if (otherUser.analyst) {
+        await expect(page.locator("#configureUserAccessButton")).toBeVisible();
+        await page.locator("#configureUserAccessButton").click();
+        await expect(page.locator("#userAssignmentsModal")).toBeVisible();
+        await page.locator("#cancelUserAssignmentsButton").click();
+      } else {
+        await expect(page.locator("#configureUserAccessButton")).toBeHidden();
+      }
+      await page.locator("#changeUserAccessButton").click();
+      await expect(page.locator("#userAccessDialog")).toBeVisible();
+      await page.locator("#cancelUserAccessButton").click();
+      await page.locator("#backFromUserProfileButton").click();
+      await expect(page.locator("#usersPage")).toBeVisible();
+    }
 
     if (expectedEnvironment === "homolog") {
       const profileUpdate = await page.evaluate(async ({ supabaseUrl, anonKey, accessToken, authUserId }) => {
