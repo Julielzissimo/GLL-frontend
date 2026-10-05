@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
-  "release_id": "2026-10-03-ordenacao-tabela-editais",
-  "environment": "homolog",
-  "target_branch": "homolog",
+  "release_id": "2026-10-05-promocao-homolog",
+  "environment": "production",
+  "target_branch": "main",
   "items": [
     {
       "id": "IMP-003",
