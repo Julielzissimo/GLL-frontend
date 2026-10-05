@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
-  "release_id": "2026-10-05-promocao-homolog",
-  "environment": "production",
-  "target_branch": "main",
+  "release_id": "2026-10-05-sync-main-homolog",
+  "environment": "homolog",
+  "target_branch": "homolog",
   "items": [
     {
       "id": "IMP-003",
