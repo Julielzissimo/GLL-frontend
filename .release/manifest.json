@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "release_id": "2026-10-03-promocao-homolog",
+  "release_id": "2026-10-05-promocao-homolog",
   "environment": "production",
   "target_branch": "main",
   "items": [
@@ -408,6 +408,111 @@
       "backend_commits": [],
       "frontend_commits": [
         "e0a55d2052a2a5c714c0ee72642609dac3816e0c"
+      ],
+      "migrations": []
+    },
+    {
+      "id": "RODAPE-AMBIENTE-PRODUCAO-001",
+      "backend_commits": [],
+      "frontend_commits": [
+        "48d14738be6218d2a3a1728d1b0cc9462e79cef5"
+      ],
+      "migrations": []
+    },
+    {
+      "id": "LUCRO-TOTAL-EDITAIS-001",
+      "backend_commits": [],
+      "frontend_commits": [
+        "aef6cebe548cfa018b98c235abba45ed694b97e1"
+      ],
+      "migrations": []
+    },
+    {
+      "id": "ORDENACAO-EDITAIS-001",
+      "backend_commits": [],
+      "frontend_commits": [
+        "0446b4012fe6bd8b00bffa0b9c17032a80bfec1c"
+      ],
+      "migrations": []
+    },
+    {
+      "id": "PERFIL-USUARIO-AVATAR-001",
+      "backend_commits": [
+        "3796933b91269396684af2e5fd2781eb409de603"
+      ],
+      "frontend_commits": [
+        "82e5d7e6ec9f7b4062fd1417587ad2b5fc3dd4b4",
+        "cea0248259413acc963fdb81d2ed6414d0bca20a"
+      ],
+      "migrations": [
+        "supabase/migrations/20261003185624_user_profile_avatars_and_permissions.sql"
+      ]
+    },
+    {
+      "id": "CABECALHO-EDITAIS-FIXO-001",
+      "backend_commits": [],
+      "frontend_commits": [
+        "dcb8deedd815b4609fdf2e668b1a50369c215ea6"
+      ],
+      "migrations": []
+    },
+    {
+      "id": "PERFIL-USUARIO-RLS-DIAGNOSTICO-001",
+      "backend_commits": [],
+      "frontend_commits": [
+        "7dcf06e7f89b5afdacad883b300b5a8eedb81f77"
+      ],
+      "migrations": []
+    },
+    {
+      "id": "PERFIL-USUARIO-RLS-DETALHE-001",
+      "backend_commits": [],
+      "frontend_commits": [
+        "420055ae1b14b4d2d9824e51ece3a3b793d9827d"
+      ],
+      "migrations": []
+    },
+    {
+      "id": "PERFIL-AVATAR-STORAGE-RLS-001",
+      "backend_commits": [
+        "fa01ad16651610b9762416913bebf5d29bbad56c"
+      ],
+      "frontend_commits": [
+        "420055ae1b14b4d2d9824e51ece3a3b793d9827d"
+      ],
+      "migrations": [
+        "supabase/migrations/20261004173000_secure_profile_avatar_storage_policies.sql"
+      ]
+    },
+    {
+      "id": "PERFIL-PAGINA-SIDEBAR-001",
+      "backend_commits": [],
+      "frontend_commits": [
+        "5e4482b924a5d23041408e706adbe5f037a30b76"
+      ],
+      "migrations": []
+    },
+    {
+      "id": "PERFIL-ACOES-ACESSO-001",
+      "backend_commits": [],
+      "frontend_commits": [
+        "8b64875d34b55d5b85c4968c95df48cb07252c51"
+      ],
+      "migrations": []
+    },
+    {
+      "id": "PERFIL-MENU-SENHA-001",
+      "backend_commits": [],
+      "frontend_commits": [
+        "657a859e7fe55f7358a0a424fd2b3c912d85fb60"
+      ],
+      "migrations": []
+    },
+    {
+      "id": "PERFIL-CREATED-BY-DISPLAY-NAME-001",
+      "backend_commits": [],
+      "frontend_commits": [
+        "a7d278f0bdafa873ec2d36b8b16c1074d56d1f09"
       ],
       "migrations": []
     }

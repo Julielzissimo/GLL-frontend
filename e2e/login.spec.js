@@ -1,4 +1,4 @@
-import { test } from "@playwright/test";
+import { expect, test } from "@playwright/test";
 
 function requiredSetting(name) {
   const value = process.env[name]?.trim();
@@ -215,10 +215,157 @@ test("o login de teste acessa somente a organização de teste", async ({ page }
       throw new Error("A sessão não passou na verificação de isolamento das tabelas da organização.");
     }
 
+    await expect(page.locator("#editOwnProfileFooterButton")).toHaveCount(0);
+    await expect(page.locator(".topbar-actions > #logoutButton")).toHaveCount(0);
+    await page.locator("#profileMenuButton").click();
+    await expect(page.locator("#profileMenuButton")).toHaveAttribute("aria-expanded", "true");
+    await expect(page.locator("#profileDropdown")).toBeVisible();
+    await page.keyboard.press("Escape");
+    await expect(page.locator("#profileDropdown")).toBeHidden();
+    await page.locator("#profileMenuButton").press("ArrowDown");
+    await expect(page.locator("#editOwnProfileButton")).toBeFocused();
+    await page.locator("#editOwnProfileButton").click();
+    await expect(page.locator("#userProfilePage")).toBeVisible();
+    await expect(page.locator("#userCreateForm")).toHaveAttribute("data-mode", "edit");
+    await expect(page.locator("#userProfileAccessActions")).toBeHidden();
+    await expect(page.locator("#ownPasswordSection")).toBeVisible();
+    await expect(page.locator("#ownPasswordForm")).toBeHidden();
+    await page.locator("#toggleOwnPasswordButton").click();
+    await expect(page.locator("#ownPasswordForm")).toBeVisible();
+    await page.locator("#ownPasswordNew").fill("SenhaTeste123!");
+    await page.locator("#ownPasswordConfirm").fill("SenhaDiferente123!");
+    await page.locator("#ownPasswordForm button[type='submit']").click();
+    await expect(page.locator("#ownPasswordError")).toContainText("As senhas não coincidem.");
+    await page.locator("#cancelOwnPasswordButton").click();
+    await expect(page.locator("#ownPasswordForm")).toBeHidden();
+    await expect(page).toHaveURL(/page=perfil/);
+    await page.locator("#backFromUserProfileButton").click();
+    await expect(page.locator("#usersPage")).toBeVisible();
+    await expect(page.locator("#usersTableBody [data-configure-user], #usersTableBody [data-user-access-target]")).toHaveCount(0);
+
+    await page.locator("#userCreateOpenButton").click();
+    await expect(page.locator("#userProfilePage")).toBeVisible();
+    await expect(page.locator("#userCreateForm")).toHaveAttribute("data-mode", "create");
+    await expect(page.locator("#userProfileAccessActions")).toBeHidden();
+    await expect(page.locator("#ownPasswordSection")).toBeHidden();
+    await expect(page).toHaveURL(/novo=1/);
+    await page.locator("#cancelUserCreateButton").click();
+    await expect(page.locator("#usersPage")).toBeVisible();
+
+    await page.locator("#usersTableBody [data-edit-user]").first().click();
+    await expect(page.locator("#userProfilePage")).toBeVisible();
+    await expect(page.locator("#userCreateForm")).toHaveAttribute("data-mode", "edit");
+    await page.goBack();
+    await expect(page.locator("#usersPage")).toBeVisible();
+
+    const otherUser = await page.locator("#usersTableBody [data-edit-user]").evaluateAll(
+      (buttons, currentId) => {
+        const button = buttons.find((candidate) => candidate.dataset.editUser !== currentId);
+        return button ? { id: button.dataset.editUser, analyst: Boolean(button.closest("tr")?.querySelector(".user-role-pill.analyst")) } : null;
+      },
+      authSession.user.id,
+    );
+    if (otherUser) {
+      await page.locator(`#usersTableBody [data-edit-user="${otherUser.id}"]`).click();
+      await expect(page.locator("#userProfileAccessActions")).toBeVisible();
+      await expect(page.locator("#changeUserAccessButton")).toBeVisible();
+      if (otherUser.analyst) {
+        await expect(page.locator("#configureUserAccessButton")).toBeVisible();
+        await page.locator("#configureUserAccessButton").click();
+        await expect(page.locator("#userAssignmentsModal")).toBeVisible();
+        await page.locator("#cancelUserAssignmentsButton").click();
+      } else {
+        await expect(page.locator("#configureUserAccessButton")).toBeHidden();
+      }
+      await page.locator("#changeUserAccessButton").click();
+      await expect(page.locator("#userAccessDialog")).toBeVisible();
+      await page.locator("#cancelUserAccessButton").click();
+      await page.locator("#backFromUserProfileButton").click();
+      await expect(page.locator("#usersPage")).toBeVisible();
+    }
+
+    if (expectedEnvironment === "homolog") {
+      const profileUpdate = await page.evaluate(async ({ supabaseUrl, anonKey, accessToken, authUserId }) => {
+        const headers = {
+          apikey: anonKey,
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json",
+          Prefer: "return=representation",
+        };
+        const query = new URLSearchParams({ select: "auth_user_id,name,full_name,display_name", auth_user_id: `eq.${authUserId}` });
+        const currentResponse = await fetch(`${supabaseUrl}/rest/v1/app_users?${query}`, { headers });
+        if (!currentResponse.ok) return { passed: false, stage: "read", status: currentResponse.status };
+        const rows = await currentResponse.json();
+        const profile = rows.find((row) => row.auth_user_id === authUserId);
+        if (!profile) return { passed: false, stage: "read", status: currentResponse.status };
+
+        const updateResponse = await fetch(`${supabaseUrl}/rest/v1/app_users?auth_user_id=eq.${encodeURIComponent(authUserId)}`, {
+          method: "PATCH",
+          headers,
+          body: JSON.stringify({ name: profile.name, full_name: profile.full_name, display_name: profile.display_name }),
+        });
+        if (!updateResponse.ok) return { passed: false, stage: "update", status: updateResponse.status };
+        const updatedRows = await updateResponse.json();
+        return { passed: updatedRows.some((row) => row.auth_user_id === authUserId), stage: "update", status: updateResponse.status };
+      }, {
+        supabaseUrl: runtime.supabaseUrl,
+        anonKey: runtime.supabaseAnonKey,
+        accessToken: authSession.access_token,
+        authUserId: authSession.user.id,
+      });
+      if (!profileUpdate.passed) {
+        throw new Error(`A política de edição do perfil rejeitou ${profileUpdate.stage} (HTTP ${profileUpdate.status}).`);
+      }
+
+      const avatarUpload = await page.evaluate(async ({ supabaseUrl, anonKey, accessToken, authUserId }) => {
+        const path = `${authUserId}/${crypto.randomUUID()}.webp`;
+        const imageBytes = Uint8Array.from(atob("UklGRiIAAABXRUJQVlA4IBYAAAAwAQCdASoBAAEALmk0mk0iIiIiIgBoSygABc6zbAAA"), (character) => character.charCodeAt(0));
+        const headers = { apikey: anonKey, Authorization: `Bearer ${accessToken}`, "Content-Type": "image/webp", "x-upsert": "false" };
+        const objectUrl = `${supabaseUrl}/storage/v1/object/profile-avatars/${path.split("/").map(encodeURIComponent).join("/")}`;
+        let uploaded = false;
+        let result = { passed: false, status: 0, cleanup: false, detail: "" };
+        try {
+          const uploadResponse = await fetch(objectUrl, { method: "POST", headers, body: imageBytes });
+          const uploadError = uploadResponse.ok ? null : await uploadResponse.json().catch(() => ({}));
+          uploaded = uploadResponse.ok;
+          const detail = String(uploadError?.message || uploadError?.error || uploadError?.statusCode || "");
+          const category = /row-level security|policy/i.test(detail)
+            ? "row-level security"
+            : /mime|content.?type/i.test(detail)
+              ? "tipo de arquivo"
+              : /bucket/i.test(detail)
+                ? "bucket"
+                : detail ? "erro do Storage" : "";
+          result = { passed: uploadResponse.ok, status: uploadResponse.status, cleanup: false, detail: category };
+        } finally {
+          if (uploaded) {
+            const cleanupResponse = await fetch(`${supabaseUrl}/storage/v1/object/profile-avatars`, {
+              method: "DELETE",
+              headers: { apikey: anonKey, Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+              body: JSON.stringify({ prefixes: [path] }),
+            });
+            result = { passed: result.passed && cleanupResponse.ok, status: cleanupResponse.status, cleanup: true };
+          }
+        }
+        return result;
+      }, {
+        supabaseUrl: runtime.supabaseUrl,
+        anonKey: runtime.supabaseAnonKey,
+        accessToken: authSession.access_token,
+        authUserId: authSession.user.id,
+      });
+      if (!avatarUpload.passed) {
+        const phase = avatarUpload.cleanup ? "limpeza da foto de teste" : "envio da foto de perfil";
+        const detail = avatarUpload.detail ? `: ${avatarUpload.detail}` : "";
+        throw new Error(`A política do Storage rejeitou a ${phase} (HTTP ${avatarUpload.status}${detail}).`);
+      }
+    }
+
     const logoutResponsePromise = page.waitForResponse(
       (response) => new URL(response.url()).pathname.endsWith("/auth/v1/logout") && response.request().method() === "POST",
       { timeout: 15_000 },
     );
+    await page.locator("#profileMenuButton").click();
     await page.locator("#logoutButton").click();
     const confirmLogoutButton = page.locator("#confirmLogoutButton");
     if (await confirmLogoutButton.isVisible().catch(() => false)) await confirmLogoutButton.click();

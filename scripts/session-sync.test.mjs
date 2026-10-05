@@ -82,6 +82,19 @@ test("campo da lista de licitações usa rótulo de pesquisa dinâmica e atualiz
   assert.match(source, /refs\.filterSearch\.addEventListener\("input", renderBids\)/);
 });
 
+test("troca voluntária de senha atualiza apenas a conta autenticada pelo Auth", async () => {
+  const app = client();
+  const account = vm.runInContext("new SupabaseStore()", app.context);
+  let attributes;
+  account.client = { auth: { updateUser: async (value) => { attributes = value; return { error: null }; } } };
+
+  await account.updateOwnPassword("SenhaNova123!");
+
+  assert.equal(JSON.stringify(attributes), JSON.stringify({ password: "SenhaNova123!" }));
+  account.client.auth.updateUser = async () => ({ error: new Error("senha recusada") });
+  await assert.rejects(account.updateOwnPassword("SenhaNova123!"), /senha recusada/);
+});
+
 test("modal de orçamento exibe somente orçamentos ainda não vinculados a edital", () => {
   const app = client();
   const quotations = [{ id: 1 }, { id: 2 }, { id: 3 }];
@@ -331,17 +344,32 @@ test("quotation normalization preserves creator and analyst assignment", () => {
   assert.equal(quotation.assigned_to, "analyst-id");
 });
 
-test("creator tag prioritizes the editable stored name", () => {
+test("creator tag uses the current profile name before the stored creator snapshot", () => {
   const app = client();
-  app.appState.users = [{ auth_user_id: "creator-id", name: "Maria Silva" }];
-  assert.equal(app.creatorName({ created_by: "creator-id", created_by_name: "Nome ajustado" }), "Nome ajustado");
-  assert.equal(app.creatorInitials({ created_by: "creator-id", created_by_name: "Nome ajustado" }), "NA");
-  assert.equal(app.creatorName({ created_by: "creator-id" }), "Maria Silva");
-  assert.equal(app.creatorInitials({ created_by: "creator-id" }), "MS");
-  assert.match(app.creatorTagMarkup({ created_by: "creator-id" }), /creator-avatar[^>]*>MS<.*Criado por.*Maria Silva/s);
+  app.appState.users = [{ auth_user_id: "creator-id", name: "Maria Silva", display_name: "Nome atualizado" }];
+  assert.equal(app.creatorName({ created_by: "creator-id", created_by_name: "Nome anterior" }), "Nome atualizado");
+  assert.equal(app.creatorInitials({ created_by: "creator-id", created_by_name: "Nome anterior" }), "NA");
+  assert.equal(app.creatorName({ created_by: "creator-id" }), "Nome atualizado");
+  assert.equal(app.creatorInitials({ created_by: "creator-id" }), "NA");
+  assert.match(app.creatorTagMarkup({ created_by: "creator-id", created_by_name: "Nome anterior" }), /creator-avatar[^>]*>NA<.*Criado por.*Nome atualizado/s);
+  assert.equal(app.creatorName({ created_by: "unknown-creator-id", created_by_name: "Nome salvo" }), "Nome salvo");
   assert.equal(app.creatorName({ created_by: "removed-user-id" }), "Usuário Removido");
   assert.equal(app.creatorInitials({ created_by: "removed-user-id" }), "UR");
   assert.match(app.creatorTagMarkup({ created_by: "removed-user-id" }), /creator-avatar[^>]*>UR<.*Criado por.*Usuário Removido/s);
+});
+
+test("creator cards show the edited display name after profile data reloads", async () => {
+  const db = backend();
+  db.users = [{ ...user, auth_user_id: "creator-id", name: "Nome antigo", display_name: "Nome antigo", role: "Administrador", organization_id: "org-1" }];
+  db.tables.bids[0].created_by = "creator-id";
+  db.tables.bids[0].created_by_name = "Nome antigo";
+  const app = client(db);
+  await app.restoreSession();
+
+  db.users[0].display_name = "Nome atualizado";
+  await app.reloadData();
+
+  assert.match(app.creatorTagMarkup(app.appState.bids[0]), /Criado por.*Nome atualizado/s);
 });
 
 test("quotation item normalization and bid synchronization preserve the minimum bid", () => {

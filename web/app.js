@@ -88,6 +88,7 @@ const PAGE_ROUTE_NAMES = {
   declarationSettings: "declaracoes/configuracoes",
   declarationHistory: "declaracoes/historico",
   users: "usuarios",
+  userProfile: "perfil",
   settings: "configuracoes",
   companyData: "configuracoes/dados-da-empresa",
   designSystem: "configuracoes/design-system",
@@ -113,6 +114,10 @@ const appState = {
   currentQuotationId: null,
   bidQuotationCreating: false,
   quotationListCollapsed: false,
+  quotationSortKey: "opening_date",
+  quotationSortDirection: "descending",
+  bidSortKey: "session_datetime",
+  bidSortDirection: "descending",
   currentQuotationItemId: null,
   quotationItemFormBaseline: "",
   supplierLinksDraft: [],
@@ -173,6 +178,11 @@ const refs = {
   navDesignSystemButton: $("navDesignSystemButton"),
   menuToggleButton: $("menuToggleButton"),
   breadcrumbList: $("breadcrumbList"),
+  profileMenuContainer: $("profileMenuContainer"),
+  profileMenuButton: $("profileMenuButton"),
+  profileDropdown: $("profileDropdown"),
+  editOwnProfileButton: $("editOwnProfileButton"),
+  currentUserAvatar: $("currentUserAvatar"),
   currentUserName: $("currentUserName"),
   currentUserRole: $("currentUserRole"),
   toggleSidebarButton: $("toggleSidebarButton"),
@@ -195,9 +205,23 @@ const refs = {
   currentBidCreatorTag: $("currentBidCreatorTag"),
   currentBidAgency: $("currentBidAgency"),
   usersPage: $("usersPage"),
+  userProfilePage: $("userProfilePage"),
+  ownPasswordSection: $("ownPasswordSection"),
+  toggleOwnPasswordButton: $("toggleOwnPasswordButton"),
+  ownPasswordForm: $("ownPasswordForm"),
+  ownPasswordNew: $("ownPasswordNew"),
+  ownPasswordConfirm: $("ownPasswordConfirm"),
+  ownPasswordError: $("ownPasswordError"),
+  cancelOwnPasswordButton: $("cancelOwnPasswordButton"),
+  userProfileAccessActions: $("userProfileAccessActions"),
+  configureUserAccessButton: $("configureUserAccessButton"),
+  changeUserAccessButton: $("changeUserAccessButton"),
   userCreateOpenButton: $("userCreateOpenButton"),
-  userCreateDialog: $("userCreateDialog"),
-  closeUserCreateDialogButton: $("closeUserCreateDialogButton"),
+  userCreateEyebrow: $("userCreateEyebrow"),
+  userProfilePageTitle: $("userProfilePageTitle"),
+  userCreateDescription: $("userCreateDescription"),
+  userCreateSubmitButton: $("userCreateSubmitButton"),
+  backFromUserProfileButton: $("backFromUserProfileButton"),
   cancelUserCreateButton: $("cancelUserCreateButton"),
   userCreateForm: $("userCreateForm"),
   userCreateFullName: $("userCreateFullName"),
@@ -207,6 +231,15 @@ const refs = {
   userCreatePasswordConfirm: $("userCreatePasswordConfirm"),
   userCreateRole: $("userCreateRole"),
   userCreateError: $("userCreateError"),
+  userProfilePhotoInput: $("userProfilePhotoInput"),
+  chooseUserProfilePhotoButton: $("chooseUserProfilePhotoButton"),
+  clearUserProfilePhotoButton: $("clearUserProfilePhotoButton"),
+  userProfilePhotoCurrent: $("userProfilePhotoCurrent"),
+  userProfilePhotoCanvas: $("userProfilePhotoCanvas"),
+  userProfilePhotoFallback: $("userProfilePhotoFallback"),
+  userProfilePhotoZoom: $("userProfilePhotoZoom"),
+  userProfilePhotoZoomValue: $("userProfilePhotoZoomValue"),
+  userProfilePhotoCropControls: $("userProfilePhotoCropControls"),
   userAccessDialog: $("userAccessDialog"),
   userAccessForm: $("userAccessForm"),
   userAccessTitle: $("userAccessTitle"),
@@ -220,10 +253,6 @@ const refs = {
   userAccessSubmitButton: $("submitUserAccessButton"),
   closeUserAccessDialogButton: $("closeUserAccessDialogButton"),
   cancelUserAccessButton: $("cancelUserAccessButton"),
-  userAccessHistoryDialog: $("userAccessHistoryDialog"),
-  userAccessHistoryTitle: $("userAccessHistoryTitle"),
-  userAccessHistoryList: $("userAccessHistoryList"),
-  closeUserAccessHistoryButton: $("closeUserAccessHistoryButton"),
   settingsPage: $("settingsPage"),
   companyDataPage: $("companyDataPage"),
   designSystemPage: $("designSystemPage"),
@@ -448,6 +477,22 @@ const refs = {
   toastIcon: $("toastIcon"),
   toastMessage: $("toastMessage"),
   toastDismissButton: $("toastDismissButton"),
+};
+
+const userAvatarUrlCache = new Map();
+let userProfileReturnPage = "home";
+let userProfileReturnFocusTarget = null;
+let profilePhotoState = {
+  image: null,
+  objectUrl: "",
+  existingPath: "",
+  existingUrl: "",
+  selected: false,
+  removeExisting: false,
+  centerX: 0,
+  centerY: 0,
+  zoom: 1,
+  drag: null,
 };
 
 function createStore() {
@@ -1142,6 +1187,12 @@ class SupabaseStore {
     await invokeSupabaseFunction(client, "change-password", { newPassword });
   }
 
+  async updateOwnPassword(newPassword) {
+    const client = await this.open();
+    const { error } = await client.auth.updateUser({ password: newPassword });
+    assertSupabase(error);
+  }
+
   async getAll(tableName) {
     const client = await this.open();
     const query = client.from(tableName).select("*");
@@ -1163,6 +1214,94 @@ class SupabaseStore {
     const { data, error } = await client.from("app_users").select("*, organization:organizations(name, cnpj)").eq("email", normalizeEmail(email)).maybeSingle();
     assertSupabase(error);
     return data;
+  }
+
+  async addSignedAvatarUrls(users) {
+    const now = Date.now();
+    const paths = [...new Set(users.map((user) => user.avatar_path).filter(Boolean))];
+    const pathsToSign = paths.filter((path) => {
+      const cached = userAvatarUrlCache.get(path);
+      return !cached || cached.expiresAt <= now + 60_000;
+    });
+
+    if (pathsToSign.length) {
+      const client = await this.open();
+      const { data, error } = await client.storage.from("profile-avatars").createSignedUrls(pathsToSign, 3600);
+      if (error) {
+        console.warn("Não foi possível carregar algumas fotos de perfil.");
+      } else {
+        (data || []).forEach((entry, index) => {
+          if (!entry.signedUrl || entry.error) return;
+          const path = entry.path || pathsToSign[index];
+          userAvatarUrlCache.set(path, { url: entry.signedUrl, expiresAt: now + 3_000_000 });
+        });
+      }
+    }
+
+    return users.map((user) => {
+      const cached = user.avatar_path ? userAvatarUrlCache.get(user.avatar_path) : null;
+      return {
+        ...user,
+        avatar_signed_url: cached && cached.expiresAt > Date.now() ? cached.url : "",
+      };
+    });
+  }
+
+  async updateUserProfile({ targetAuthUserId, fullName, displayName, avatarBlob, removeAvatar = false }) {
+    const client = await this.open();
+    const { data: currentProfile, error: currentError } = await client
+      .from("app_users")
+      .select("avatar_path")
+      .eq("auth_user_id", targetAuthUserId)
+      .maybeSingle();
+    assertSupabase(currentError);
+    if (!currentProfile) throw new Error("Perfil não encontrado nesta organização.");
+
+    const bucket = client.storage.from("profile-avatars");
+    let newAvatarPath = "";
+    const update = {
+      name: displayName.trim(),
+      full_name: fullName.trim(),
+      display_name: displayName.trim(),
+    };
+
+    if (avatarBlob) {
+      newAvatarPath = `${targetAuthUserId}/${crypto.randomUUID()}.webp`;
+      const { error: uploadError } = await bucket.upload(newAvatarPath, avatarBlob, {
+        cacheControl: "3600",
+        contentType: "image/webp",
+        upsert: false,
+      });
+      assertSupabase(uploadError);
+      update.avatar_path = newAvatarPath;
+    } else if (removeAvatar) {
+      update.avatar_path = null;
+    }
+
+    try {
+      const { data, error } = await client
+        .from("app_users")
+        .update(update)
+        .eq("auth_user_id", targetAuthUserId)
+        .select("auth_user_id, name, full_name, display_name, avatar_path")
+        .maybeSingle();
+      assertSupabase(error);
+      if (!data) throw new Error("Não foi possível salvar este perfil. Confira seu nível de acesso.");
+
+      const oldAvatarPath = currentProfile.avatar_path;
+      if (oldAvatarPath && oldAvatarPath !== data.avatar_path) {
+        const { error: removeError } = await bucket.remove([oldAvatarPath]);
+        if (removeError) console.warn("A foto anterior permaneceu armazenada após a atualização do perfil.");
+        userAvatarUrlCache.delete(oldAvatarPath);
+      }
+      return data;
+    } catch (error) {
+      if (newAvatarPath) {
+        const { error: cleanupError } = await bucket.remove([newAvatarPath]);
+        if (cleanupError) console.warn("Não foi possível remover uma foto enviada durante uma atualização incompleta.");
+      }
+      throw error;
+    }
   }
 
   async seedIfEmpty(seedData) {
@@ -1224,17 +1363,6 @@ class SupabaseStore {
       reason,
       temporaryPassword,
     });
-  }
-
-  async getUserAccessHistory(targetUserId) {
-    const client = await this.open();
-    const { data, error } = await client
-      .from("user_access_history")
-      .select("*")
-      .eq("target_auth_user_id", targetUserId)
-      .order("changed_at", { ascending: false });
-    assertSupabase(error);
-    return data || [];
   }
 
   async assignAccessToAnalyst(analystId, selectedBidIds, selectedQuotationIds) {
@@ -1678,7 +1806,7 @@ const companyDataFeature = createCompanyDataFeature({
   onOrganizationUpdate: (organization) => {
     appState.currentOrganizationName = organization.name;
     appState.currentOrganizationCnpj = organization.cnpj;
-    refs.usersOrganizationLabel.textContent = `${organization.name} · usuários vinculados no Supabase.`;
+    refs.usersOrganizationLabel.textContent = organization.name;
     void declarationsFeature.refresh().catch((error) => showToast(error.message, "error"));
   },
   toast: (message, tone) => showToast(message, tone),
@@ -1830,6 +1958,7 @@ function applyEnvironmentConfig() {
   refs.environmentLabel.textContent = GLL_CONFIG.description;
   refs.environmentBadge.textContent = GLL_CONFIG.label;
   refs.environmentBadge.dataset.environment = GLL_CONFIG.environment;
+  refs.environmentBadge.closest(".sidebar-environment").classList.toggle("hidden", GLL_CONFIG.environment === "production");
   refs.storageStatus.textContent = GLL_CONFIG.storageLabel;
   refs.loginHint.classList.toggle("hidden", hasSupabaseConfig());
   refs.userCreateOpenButton.classList.toggle("hidden", !hasSupabaseConfig());
@@ -1943,17 +2072,54 @@ function bindEvents() {
   refs.loginForm.addEventListener("submit", withBlockingLoading(handleLogin, "Entrando no sistema…"));
   refs.passwordResetForm.addEventListener("submit", withBlockingLoading(handlePasswordReset, "Atualizando sua senha…"));
   refs.passwordResetSignOutButton.addEventListener("click", logout);
-  refs.userCreateOpenButton.addEventListener("click", openUserCreateDialog);
-  refs.closeUserCreateDialogButton.addEventListener("click", closeUserCreateDialog);
-  refs.cancelUserCreateButton.addEventListener("click", closeUserCreateDialog);
-  refs.userCreateDialog.addEventListener("cancel", (event) => {
-    event.preventDefault();
-    closeUserCreateDialog();
+  refs.userCreateOpenButton.addEventListener("click", openUserCreatePage);
+  refs.profileMenuButton.addEventListener("click", () => setProfileMenuOpen(refs.profileDropdown.classList.contains("hidden")));
+  refs.profileMenuContainer.addEventListener("keydown", handleProfileMenuKeydown);
+  document.addEventListener("pointerdown", (event) => {
+    if (!refs.profileMenuContainer.contains(event.target)) setProfileMenuOpen(false);
   });
-  refs.userCreateDialog.addEventListener("click", (event) => {
-    if (event.target === refs.userCreateDialog) closeUserCreateDialog();
+  document.addEventListener("focusin", (event) => {
+    if (!refs.profileMenuContainer.contains(event.target)) setProfileMenuOpen(false);
   });
-  refs.userCreateForm.addEventListener("submit", withBlockingLoading(handleUserCreate, "Cadastrando usuário…"));
+  refs.editOwnProfileButton.addEventListener("click", () => {
+    setProfileMenuOpen(false);
+    openUserProfilePage(appState.currentUserAuthId, refs.profileMenuButton);
+  });
+  refs.backFromUserProfileButton.addEventListener("click", closeUserProfilePage);
+  refs.cancelUserCreateButton.addEventListener("click", closeUserProfilePage);
+  refs.userCreateForm.addEventListener("submit", withBlockingLoading(handleUserCreate, "Salvando perfil…"));
+  refs.toggleOwnPasswordButton.addEventListener("click", () => setOwnPasswordEditorOpen(refs.ownPasswordForm.classList.contains("hidden")));
+  refs.cancelOwnPasswordButton.addEventListener("click", () => {
+    setOwnPasswordEditorOpen(false);
+    refs.toggleOwnPasswordButton.focus();
+  });
+  refs.ownPasswordConfirm.addEventListener("input", () => refs.ownPasswordConfirm.removeAttribute?.("aria-invalid"));
+  refs.ownPasswordForm.addEventListener("submit", withBlockingLoading(handleOwnPasswordChange, "Atualizando senha…"));
+  refs.chooseUserProfilePhotoButton.addEventListener("click", () => refs.userProfilePhotoInput.click());
+  refs.userProfilePhotoInput.addEventListener("change", handleProfilePhotoSelection);
+  refs.clearUserProfilePhotoButton.addEventListener("click", clearProfilePhotoSelection);
+  refs.userProfilePhotoZoom.addEventListener("input", () => {
+    profilePhotoState.zoom = Number(refs.userProfilePhotoZoom.value);
+    clampProfilePhotoCenter();
+    updateProfilePhotoEditor();
+  });
+  refs.userProfilePhotoCanvas.addEventListener("pointerdown", startProfilePhotoDrag);
+  refs.userProfilePhotoCanvas.addEventListener("pointermove", moveProfilePhotoDrag);
+  refs.userProfilePhotoCanvas.addEventListener("pointerup", endProfilePhotoDrag);
+  refs.userProfilePhotoCanvas.addEventListener("pointercancel", endProfilePhotoDrag);
+  document.querySelectorAll("[data-profile-photo-pan]").forEach((button) => {
+    button.addEventListener("click", () => moveProfilePhoto(button.dataset.profilePhotoPan));
+  });
+  refs.userCreateFullName.addEventListener("input", updateProfilePhotoFallback);
+  refs.userCreateDisplayName.addEventListener("input", updateProfilePhotoFallback);
+  refs.configureUserAccessButton.addEventListener("click", () => {
+    const user = editedUserProfile();
+    if (user && isCurrentUserAdmin() && normalizeUserRole(user.role) === USER_ROLES.ANALYST) openUserAssignments(user.auth_user_id);
+  });
+  refs.changeUserAccessButton.addEventListener("click", () => {
+    const user = editedUserProfile();
+    if (user && isCurrentUserAdmin() && user.auth_user_id !== appState.currentUserAuthId) openUserAccessDialog(user.auth_user_id);
+  });
   refs.closeUserAccessDialogButton.addEventListener("click", closeUserAccessDialog);
   refs.cancelUserAccessButton.addEventListener("click", closeUserAccessDialog);
   refs.userAccessDialog.addEventListener("cancel", (event) => {
@@ -1964,10 +2130,6 @@ function bindEvents() {
     if (event.target === refs.userAccessDialog) closeUserAccessDialog();
   });
   refs.userAccessForm.addEventListener("submit", withBlockingLoading(handleUserAccessChange, "Atualizando acesso…"));
-  refs.closeUserAccessHistoryButton.addEventListener("click", () => refs.userAccessHistoryDialog.close());
-  refs.userAccessHistoryDialog.addEventListener("click", (event) => {
-    if (event.target === refs.userAccessHistoryDialog) refs.userAccessHistoryDialog.close();
-  });
   refs.usersTableBody.addEventListener("click", handleUserManagementAction);
   window.addEventListener("popstate", () => {
     if (appState.authenticated) applyNavigationRoute();
@@ -1995,13 +2157,20 @@ function bindEvents() {
   refs.toggleSidebarButton.addEventListener("focus", previewSidebar);
   refs.toggleSidebarButton.addEventListener("blur", clearSidebarPreview);
   refs.sidebarPanel.addEventListener("click", collapseSidebarFromEmptyArea);
-  refs.logoutButton.addEventListener("click", () => refs.logoutConfirmModal.showModal());
+  refs.logoutButton.addEventListener("click", () => {
+    setProfileMenuOpen(false);
+    refs.logoutConfirmModal.showModal();
+  });
+  refs.logoutConfirmModal.addEventListener("close", () => {
+    if (appState.authenticated) refs.profileMenuButton.focus({ preventScroll: true });
+  });
   $("cancelLogoutButton").addEventListener("click", () => refs.logoutConfirmModal.close());
   $("confirmLogoutButton").addEventListener("click", () => {
     if (!refs.logoutConfirmModal.open) return;
     refs.logoutConfirmModal.close();
     withBlockingLoading(logout, "Saindo do sistema…")();
   });
+  refs.bidList.closest("table").querySelector("thead").addEventListener("click", handleBidSort);
   refs.filterForm.addEventListener("submit", (event) => {
     event.preventDefault();
     renderBids();
@@ -2083,6 +2252,7 @@ function bindEvents() {
   refs.bidStatus.addEventListener("change", handleBidStatusChange);
   refs.newQuotationButton.addEventListener("click", clearQuotationForm);
   refs.quotationsListToggle.addEventListener("click", () => setQuotationListCollapsed(!appState.quotationListCollapsed));
+  refs.quotationsListContent.querySelector("thead").addEventListener("click", handleQuotationSort);
   refs.quotationForm.addEventListener("submit", withBlockingLoading(saveQuotation, "Salvando orçamento…"));
   refs.clearQuotationButton.addEventListener("click", clearQuotationForm);
   refs.deleteQuotationButton.addEventListener("click", requestDeleteCurrentQuotation);
@@ -2257,29 +2427,190 @@ async function returnToLoginAfterPasswordReset() {
   }
 }
 
-function openUserCreateDialog() {
+function setProfileMenuOpen(open) {
+  refs.profileDropdown.classList.toggle("hidden", !open);
+  refs.profileMenuButton.setAttribute("aria-expanded", String(open));
+  const name = refs.currentUserName.textContent.trim() || "usuário";
+  refs.profileMenuButton.setAttribute("aria-label", `${open ? "Fechar" : "Abrir"} menu do perfil de ${name}`);
+}
+
+function handleProfileMenuKeydown(event) {
+  if (event.key === "Escape" && !refs.profileDropdown.classList.contains("hidden")) {
+    event.preventDefault();
+    setProfileMenuOpen(false);
+    refs.profileMenuButton.focus();
+    return;
+  }
+  if (!["ArrowDown", "ArrowUp", "Home", "End"].includes(event.key)) return;
+  event.preventDefault();
+  setProfileMenuOpen(true);
+  const options = [refs.editOwnProfileButton, refs.logoutButton];
+  const currentIndex = options.indexOf(document.activeElement);
+  const nextIndex = event.key === "Home" ? 0
+    : event.key === "End" ? options.length - 1
+      : event.key === "ArrowDown" ? (currentIndex + 1) % options.length
+        : currentIndex < 0 ? options.length - 1 : (currentIndex + options.length - 1) % options.length;
+  options[nextIndex].focus();
+}
+
+function openUserCreatePage() {
+  if (!isCurrentUserAdmin()) return;
+  userProfileReturnPage = "users";
+  userProfileReturnFocusTarget = refs.userCreateOpenButton;
+  setUserFormMode("create");
   refs.userCreateError.textContent = "";
-  refs.userCreateDialog.showModal();
+  setPage("userProfile");
   refs.userCreateFullName.focus();
 }
 
-function closeUserCreateDialog() {
+function canEditUserProfile(user) {
+  if (!(store instanceof SupabaseStore) || !user?.auth_user_id) return false;
+  if (user.auth_user_id === appState.currentUserAuthId) return true;
+  return isCurrentUserAdmin() && user.organization_id === appState.currentOrganizationId;
+}
+
+function openUserProfilePage(targetAuthUserId = appState.currentUserAuthId, returnFocusTarget = refs.profileMenuButton) {
+  const user = appState.users.find((candidate) => candidate.auth_user_id === targetAuthUserId);
+  if (!canEditUserProfile(user)) {
+    showToast("Você só pode editar seu próprio perfil.", "error");
+    if (returnFocusTarget?.isConnected) returnFocusTarget.focus({ preventScroll: true });
+    return;
+  }
+  userProfileReturnPage = appState.activePage === "userProfile" ? userProfileReturnPage : appState.activePage;
+  userProfileReturnFocusTarget = returnFocusTarget;
+  setUserFormMode("edit", user);
+  refs.userCreateError.textContent = "";
+  setPage("userProfile");
+  refs.userCreateFullName.focus();
+}
+
+function setUserFormMode(mode, user = null) {
+  const editing = mode === "edit";
+  refs.userCreateForm.dataset.mode = editing ? "edit" : "create";
+  refs.userCreateForm.dataset.targetAuthUserId = editing ? user.auth_user_id : "";
+  refs.userProfilePage.classList.toggle("is-profile-edit", editing);
+  refs.userCreateEyebrow.textContent = editing ? "PERFIL DE USUÁRIO" : "CADASTRO DE USUÁRIO";
+  refs.userProfilePageTitle.textContent = editing ? "Editar perfil" : "Cadastrar novo usuário";
+  refs.userCreateDescription.textContent = editing
+    ? "Atualize o nome e a foto usados nas páginas do GLL."
+    : "A pessoa deverá criar uma senha pessoal no primeiro acesso.";
+  refs.userCreateSubmitButton.textContent = editing ? "Salvar perfil" : "Cadastrar usuário";
+  refs.userCreateSubmitButton.disabled = false;
+  refs.userCreateForm.querySelectorAll(".user-create-only").forEach((field) => field.classList.toggle("hidden", editing));
+  for (const field of [refs.userCreateEmail, refs.userCreatePassword, refs.userCreatePasswordConfirm, refs.userCreateRole]) {
+    field.disabled = editing;
+  }
+  refs.userCreateFullName.value = editing ? user.full_name || user.name || "" : "";
+  refs.userCreateDisplayName.value = editing ? userDisplayName(user) : "";
+  refs.userCreateEmail.value = editing ? user.email || "" : "";
+  refs.userCreatePassword.value = "";
+  refs.userCreatePasswordConfirm.value = "";
+  if (!editing) refs.userCreateRole.value = USER_ROLES.ANALYST;
+  resetProfilePhotoEditor(editing ? user : null);
+  const editingOwnProfile = editing && user.auth_user_id === appState.currentUserAuthId && store instanceof SupabaseStore;
+  refs.ownPasswordSection.classList.toggle("hidden", !editingOwnProfile);
+  setOwnPasswordEditorOpen(false);
+  updateUserProfileAccessActions();
+}
+
+function setOwnPasswordEditorOpen(open) {
+  if (open && refs.ownPasswordSection.classList.contains("hidden")) return;
+  refs.ownPasswordForm.classList.toggle("hidden", !open);
+  refs.toggleOwnPasswordButton.setAttribute("aria-expanded", String(open));
+  refs.toggleOwnPasswordButton.textContent = open ? "Ocultar alteração de senha" : "Alterar senha";
+  for (const field of [refs.ownPasswordNew, refs.ownPasswordConfirm]) {
+    field.disabled = !open;
+    field.required = open;
+  }
+  if (open) refs.ownPasswordNew.focus();
+  else {
+    refs.ownPasswordForm.reset();
+    refs.ownPasswordError.textContent = "";
+    refs.ownPasswordConfirm.removeAttribute?.("aria-invalid");
+  }
+}
+
+function editedUserProfile() {
+  if (refs.userCreateForm.dataset.mode !== "edit") return null;
+  const user = appState.users.find((candidate) => candidate.auth_user_id === refs.userCreateForm.dataset.targetAuthUserId);
+  return canEditUserProfile(user) ? user : null;
+}
+
+function updateUserProfileAccessActions() {
+  const user = editedUserProfile();
+  const canConfigure = isCurrentUserAdmin() && normalizeUserRole(user?.role) === USER_ROLES.ANALYST;
+  const canManageAccess = isCurrentUserAdmin() && store instanceof SupabaseStore && Boolean(user?.auth_user_id)
+    && user.auth_user_id !== appState.currentUserAuthId
+    && normalizeEmail(user.email) !== normalizeEmail(appState.currentUserEmail);
+  refs.userProfileAccessActions.classList.toggle("hidden", !canConfigure && !canManageAccess);
+  refs.configureUserAccessButton.classList.toggle("hidden", !canConfigure);
+  refs.changeUserAccessButton.classList.toggle("hidden", !canManageAccess);
+  if (canManageAccess) {
+    const action = user.pending_access_action || (user.access_revoked_at ? "reactivate" : "revoke");
+    refs.changeUserAccessButton.textContent = accessActionLabel(user);
+    refs.changeUserAccessButton.classList.toggle("danger-action", action === "revoke");
+    refs.changeUserAccessButton.classList.toggle("quiet-action", action !== "revoke");
+  }
+}
+
+function closeUserProfilePage() {
+  const wasEditing = refs.userCreateForm.dataset.mode === "edit";
+  const returnFocusTarget = userProfileReturnFocusTarget;
+  const returnPage = userProfileReturnPage;
   refs.userCreateForm.reset();
   refs.userCreateError.textContent = "";
-  if (refs.userCreateDialog.open) refs.userCreateDialog.close();
-  if (refs.userCreateOpenButton.getClientRects().length) {
-    refs.userCreateOpenButton.focus({ preventScroll: true });
-  }
+  resetProfilePhotoEditor();
+  setOwnPasswordEditorOpen(false);
+  userProfileReturnFocusTarget = null;
+  userProfileReturnPage = "home";
+  setPage(returnPage === "userProfile" ? "home" : returnPage);
+  const fallbackTarget = wasEditing ? refs.profileMenuButton : refs.userCreateOpenButton;
+  const focusTarget = returnFocusTarget?.isConnected ? returnFocusTarget : fallbackTarget;
+  if (focusTarget?.getClientRects().length) focusTarget.focus({ preventScroll: true });
 }
 
 async function handleUserCreate(event) {
   event.preventDefault();
   refs.userCreateError.textContent = "";
+  if (refs.userCreateForm.dataset.mode === "edit") {
+    const targetAuthUserId = refs.userCreateForm.dataset.targetAuthUserId;
+    const user = appState.users.find((candidate) => candidate.auth_user_id === targetAuthUserId);
+    if (!canEditUserProfile(user)) {
+      refs.userCreateError.textContent = "Você não tem permissão para editar este perfil.";
+      return;
+    }
+    try {
+      const avatarBlob = await prepareProfilePhotoBlob();
+      await store.updateUserProfile({
+        targetAuthUserId,
+        fullName: refs.userCreateFullName.value,
+        displayName: refs.userCreateDisplayName.value,
+        avatarBlob,
+        removeAvatar: profilePhotoState.removeExisting,
+      });
+      closeUserProfilePage();
+      try {
+        await reloadData();
+        showToast("Perfil atualizado.");
+      } catch (error) {
+        showToast(`Perfil salvo, mas não foi possível atualizar os dados na tela: ${error.message}`, "error");
+      }
+    } catch (error) {
+      refs.userCreateError.textContent = error.message;
+    }
+    return;
+  }
+
   if (refs.userCreatePassword.value !== refs.userCreatePasswordConfirm.value) {
     refs.userCreateError.textContent = "As senhas provisórias não coincidem.";
     return;
   }
+  if (!isCurrentUserAdmin()) {
+    refs.userCreateError.textContent = "Você não tem permissão para cadastrar usuários.";
+    return;
+  }
   try {
+    const avatarBlob = await prepareProfilePhotoBlob();
     await store.saveUser({
       email: refs.userCreateEmail.value,
       fullName: refs.userCreateFullName.value,
@@ -2287,26 +2618,231 @@ async function handleUserCreate(event) {
       temporaryPassword: refs.userCreatePassword.value,
       role: refs.userCreateRole.value,
     });
-    closeUserCreateDialog();
-    showToast("Usuário cadastrado. A troca de senha será obrigatória no primeiro acesso.");
+    let avatarSaveError = "";
+    if (avatarBlob && store instanceof SupabaseStore) {
+      try {
+        const createdUser = await store.getUser(refs.userCreateEmail.value);
+        if (!createdUser?.auth_user_id) throw new Error("O usuário foi criado, mas o perfil ainda não está disponível.");
+        await store.updateUserProfile({
+          targetAuthUserId: createdUser.auth_user_id,
+          fullName: refs.userCreateFullName.value,
+          displayName: refs.userCreateDisplayName.value,
+          avatarBlob,
+        });
+      } catch (error) {
+        avatarSaveError = ` O usuário foi cadastrado, mas a foto não pôde ser salva: ${error.message}`;
+      }
+    }
     try {
       await reloadData();
     } catch (error) {
+      closeUserProfilePage();
       showToast(`Usuário cadastrado, mas não foi possível atualizar a lista: ${error.message}`, "error");
+      return;
     }
+    closeUserProfilePage();
+    showToast(`Usuário cadastrado. A troca de senha será obrigatória no primeiro acesso.${avatarSaveError}`);
   } catch (error) {
     refs.userCreateError.textContent = error.message;
   }
 }
 
-function handleUserManagementAction(event) {
-  const accessButton = event.target.closest("[data-user-access-target]");
-  if (accessButton) {
-    openUserAccessDialog(accessButton.dataset.userAccessTarget);
+async function handleOwnPasswordChange(event) {
+  event.preventDefault();
+  refs.ownPasswordError.textContent = "";
+  const user = editedUserProfile();
+  if (!(store instanceof SupabaseStore) || user?.auth_user_id !== appState.currentUserAuthId) {
+    refs.ownPasswordError.textContent = "Você só pode alterar a senha da sua própria conta.";
     return;
   }
-  const historyButton = event.target.closest("[data-user-access-history]");
-  if (historyButton) void openUserAccessHistory(historyButton.dataset.userAccessHistory);
+  const password = refs.ownPasswordNew.value;
+  if (password !== refs.ownPasswordConfirm.value) {
+    refs.ownPasswordError.textContent = "As senhas não coincidem.";
+    refs.ownPasswordConfirm.setAttribute("aria-invalid", "true");
+    return;
+  }
+  try {
+    await store.updateOwnPassword(password);
+    setOwnPasswordEditorOpen(false);
+    refs.toggleOwnPasswordButton.focus();
+    showToast("Senha atualizada.");
+  } catch (error) {
+    refs.ownPasswordError.textContent = error.message;
+  }
+}
+
+function profilePhotoCropSize() {
+  if (!profilePhotoState.image) return 0;
+  return Math.min(profilePhotoState.image.naturalWidth, profilePhotoState.image.naturalHeight) / profilePhotoState.zoom;
+}
+
+function clampProfilePhotoCenter() {
+  if (!profilePhotoState.image) return;
+  const cropSize = profilePhotoCropSize();
+  const image = profilePhotoState.image;
+  profilePhotoState.centerX = Math.max(cropSize / 2, Math.min(image.naturalWidth - cropSize / 2, profilePhotoState.centerX));
+  profilePhotoState.centerY = Math.max(cropSize / 2, Math.min(image.naturalHeight - cropSize / 2, profilePhotoState.centerY));
+}
+
+function drawProfilePhoto(canvas, size = 256) {
+  if (!profilePhotoState.image) return;
+  clampProfilePhotoCenter();
+  canvas.width = size;
+  canvas.height = size;
+  const context = canvas.getContext("2d");
+  const cropSize = profilePhotoCropSize();
+  context.clearRect(0, 0, size, size);
+  context.drawImage(
+    profilePhotoState.image,
+    profilePhotoState.centerX - cropSize / 2,
+    profilePhotoState.centerY - cropSize / 2,
+    cropSize,
+    cropSize,
+    0,
+    0,
+    size,
+    size,
+  );
+}
+
+function updateProfilePhotoEditor() {
+  const hasSelectedPhoto = Boolean(profilePhotoState.image && profilePhotoState.selected);
+  const hasExistingPhoto = Boolean(profilePhotoState.existingPath && !profilePhotoState.removeExisting);
+  refs.userProfilePhotoCanvas.classList.toggle("hidden", !hasSelectedPhoto);
+  refs.userProfilePhotoCurrent.classList.toggle("hidden", hasSelectedPhoto || !hasExistingPhoto || !profilePhotoState.existingUrl);
+  refs.userProfilePhotoFallback.classList.toggle("hidden", hasSelectedPhoto || (hasExistingPhoto && Boolean(profilePhotoState.existingUrl)));
+  refs.userProfilePhotoCropControls.classList.toggle("hidden", !hasSelectedPhoto);
+  refs.clearUserProfilePhotoButton.classList.toggle("hidden", !hasSelectedPhoto && (!profilePhotoState.existingPath || profilePhotoState.removeExisting));
+  refs.chooseUserProfilePhotoButton.textContent = hasSelectedPhoto || hasExistingPhoto ? "Alterar foto" : "Escolher foto";
+  refs.userProfilePhotoZoom.value = String(profilePhotoState.zoom);
+  refs.userProfilePhotoZoomValue.value = `${Number(profilePhotoState.zoom).toFixed(1)}×`;
+  refs.userProfilePhotoZoomValue.textContent = `${Number(profilePhotoState.zoom).toFixed(1)}×`;
+  updateProfilePhotoFallback();
+  if (hasSelectedPhoto) drawProfilePhoto(refs.userProfilePhotoCanvas);
+}
+
+function updateProfilePhotoFallback() {
+  const name = refs.userCreateDisplayName.value.trim() || refs.userCreateFullName.value.trim() || "Usuário";
+  refs.userProfilePhotoFallback.textContent = userInitials(name);
+}
+
+function resetProfilePhotoEditor(user = null) {
+  if (profilePhotoState.objectUrl) URL.revokeObjectURL(profilePhotoState.objectUrl);
+  profilePhotoState = {
+    image: null,
+    objectUrl: "",
+    existingPath: user?.avatar_path || "",
+    existingUrl: user?.avatar_signed_url || "",
+    selected: false,
+    removeExisting: false,
+    centerX: 0,
+    centerY: 0,
+    zoom: 1,
+    drag: null,
+  };
+  refs.userProfilePhotoInput.value = "";
+  refs.userProfilePhotoCurrent.onerror = () => {
+    refs.userProfilePhotoCurrent.classList.add("hidden");
+    refs.userProfilePhotoFallback.classList.remove("hidden");
+  };
+  if (profilePhotoState.existingUrl) refs.userProfilePhotoCurrent.src = profilePhotoState.existingUrl;
+  else refs.userProfilePhotoCurrent.removeAttribute?.("src");
+  updateProfilePhotoEditor();
+}
+
+function handleProfilePhotoSelection() {
+  refs.userCreateError.textContent = "";
+  const file = refs.userProfilePhotoInput.files?.[0];
+  if (!file) return;
+  if (!(["image/jpeg", "image/png", "image/webp"].includes(file.type)) || file.size > 10 * 1024 * 1024) {
+    refs.userCreateError.textContent = "Escolha uma foto JPG, PNG ou WebP de até 10 MB.";
+    refs.userProfilePhotoInput.value = "";
+    return;
+  }
+
+  if (profilePhotoState.objectUrl) URL.revokeObjectURL(profilePhotoState.objectUrl);
+  const objectUrl = URL.createObjectURL(file);
+  const image = new Image();
+  image.onload = () => {
+    profilePhotoState.image = image;
+    profilePhotoState.objectUrl = objectUrl;
+    profilePhotoState.selected = true;
+    profilePhotoState.removeExisting = false;
+    profilePhotoState.centerX = image.naturalWidth / 2;
+    profilePhotoState.centerY = image.naturalHeight / 2;
+    profilePhotoState.zoom = 1;
+    updateProfilePhotoEditor();
+  };
+  image.onerror = () => {
+    URL.revokeObjectURL(objectUrl);
+    refs.userCreateError.textContent = "Não foi possível abrir essa imagem. Escolha outro arquivo JPG, PNG ou WebP.";
+  };
+  image.src = objectUrl;
+}
+
+function clearProfilePhotoSelection() {
+  if (profilePhotoState.objectUrl) URL.revokeObjectURL(profilePhotoState.objectUrl);
+  profilePhotoState.image = null;
+  profilePhotoState.objectUrl = "";
+  profilePhotoState.selected = false;
+  profilePhotoState.removeExisting = Boolean(profilePhotoState.existingPath);
+  refs.userProfilePhotoInput.value = "";
+  updateProfilePhotoEditor();
+}
+
+function moveProfilePhoto(direction) {
+  if (!profilePhotoState.image) return;
+  const distance = profilePhotoCropSize() * 0.12;
+  if (direction === "left") profilePhotoState.centerX -= distance;
+  if (direction === "right") profilePhotoState.centerX += distance;
+  if (direction === "up") profilePhotoState.centerY -= distance;
+  if (direction === "down") profilePhotoState.centerY += distance;
+  drawProfilePhoto(refs.userProfilePhotoCanvas);
+}
+
+function startProfilePhotoDrag(event) {
+  if (!profilePhotoState.image) return;
+  event.preventDefault();
+  profilePhotoState.drag = { x: event.clientX, y: event.clientY };
+  refs.userProfilePhotoCanvas.setPointerCapture(event.pointerId);
+}
+
+function moveProfilePhotoDrag(event) {
+  if (!profilePhotoState.drag || !profilePhotoState.image) return;
+  const bounds = refs.userProfilePhotoCanvas.getBoundingClientRect();
+  const cropSize = profilePhotoCropSize();
+  profilePhotoState.centerX -= ((event.clientX - profilePhotoState.drag.x) / bounds.width) * cropSize;
+  profilePhotoState.centerY -= ((event.clientY - profilePhotoState.drag.y) / bounds.height) * cropSize;
+  profilePhotoState.drag = { x: event.clientX, y: event.clientY };
+  drawProfilePhoto(refs.userProfilePhotoCanvas);
+}
+
+function endProfilePhotoDrag() {
+  profilePhotoState.drag = null;
+}
+
+function prepareProfilePhotoBlob() {
+  if (!profilePhotoState.selected || !profilePhotoState.image) return Promise.resolve(null);
+  const output = document.createElement("canvas");
+  drawProfilePhoto(output, 512);
+  return new Promise((resolve, reject) => {
+    output.toBlob((blob) => {
+      if (!blob || blob.type !== "image/webp") {
+        reject(new Error("Este navegador não conseguiu otimizar a foto. Atualize o navegador e tente novamente."));
+      } else if (blob.size > 3 * 1024 * 1024) {
+        reject(new Error("A foto otimizada excede 3 MB. Escolha uma imagem menor ou reduza o zoom."));
+      } else {
+        resolve(blob);
+      }
+    }, "image/webp", 0.86);
+  });
+}
+
+function handleUserManagementAction(event) {
+  const profileButton = event.target.closest("[data-edit-user]");
+  if (profileButton) {
+    openUserProfilePage(profileButton.dataset.editUser, profileButton);
+  }
 }
 
 function accessActionLabel(user) {
@@ -2318,7 +2854,8 @@ function accessActionLabel(user) {
 function openUserAccessDialog(targetUserId) {
   if (!isCurrentUserAdmin() || !(store instanceof SupabaseStore)) return;
   const user = appState.users.find((candidate) => candidate.auth_user_id === targetUserId);
-  if (!user || normalizeEmail(user.email) === normalizeEmail(appState.currentUserEmail)) return;
+  if (!canEditUserProfile(user) || targetUserId === appState.currentUserAuthId
+    || normalizeEmail(user.email) === normalizeEmail(appState.currentUserEmail)) return;
 
   const mode = user.pending_access_action || (user.access_revoked_at ? "reactivate" : "revoke");
   const isRetry = Boolean(user.pending_access_action);
@@ -2354,12 +2891,10 @@ function openUserAccessDialog(targetUserId) {
 }
 
 function closeUserAccessDialog() {
-  const targetUserId = refs.userAccessForm.dataset.targetUserId;
   refs.userAccessForm.reset();
   refs.userAccessError.textContent = "";
   if (refs.userAccessDialog.open) refs.userAccessDialog.close();
-  const trigger = refs.usersTableBody.querySelector(`[data-user-access-target="${CSS.escape(targetUserId || "")}"]`);
-  trigger?.focus({ preventScroll: true });
+  if (!refs.changeUserAccessButton.classList.contains("hidden")) refs.changeUserAccessButton.focus({ preventScroll: true });
 }
 
 async function handleUserAccessChange(event) {
@@ -2399,37 +2934,6 @@ async function handleUserAccessChange(event) {
       // Mantém a mensagem da operação de revogação/reativação.
     }
     refs.userAccessError.textContent = error.message;
-  }
-}
-
-async function openUserAccessHistory(targetUserId) {
-  if (!isCurrentUserAdmin() || !(store instanceof SupabaseStore)) return;
-  const user = appState.users.find((candidate) => candidate.auth_user_id === targetUserId);
-  refs.userAccessHistoryTitle.textContent = `Histórico de acesso · ${user ? userDisplayName(user) : "Usuário"}`;
-  refs.userAccessHistoryList.innerHTML = '<li class="user-access-history-empty" role="status">Carregando histórico…</li>';
-  refs.userAccessHistoryDialog.showModal();
-  try {
-    const history = await store.getUserAccessHistory(targetUserId);
-    if (!history.length) {
-      refs.userAccessHistoryList.innerHTML = '<li class="user-access-history-empty">Nenhuma alteração de acesso registrada.</li>';
-      return;
-    }
-    refs.userAccessHistoryList.innerHTML = history.map((entry) => {
-      const actionLabel = entry.action === "revoked" ? "Acesso revogado" : "Acesso reativado";
-      const statusLabel = entry.auth_status === "completed"
-        ? "Concluído"
-        : entry.auth_status === "failed" ? "Falha na autenticação" : "Pendente";
-      return `
-        <li class="user-access-history-entry">
-          <div class="user-access-history-heading"><strong>${escapeHtml(actionLabel)}</strong><span class="user-access-history-status ${escapeHtml(entry.auth_status)}">${escapeHtml(statusLabel)}</span></div>
-          <p>${escapeHtml(entry.reason)}</p>
-          <small>${escapeHtml(entry.actor_name)} · ${escapeHtml(entry.actor_email)} · ${escapeHtml(formatDateTime(entry.changed_at))}</small>
-          ${entry.auth_error ? `<small class="user-access-history-error">${escapeHtml(entry.auth_error)}</small>` : ""}
-        </li>
-      `;
-    }).join("");
-  } catch (error) {
-    refs.userAccessHistoryList.innerHTML = `<li class="user-access-history-empty" role="alert">${escapeHtml(error.message)}</li>`;
   }
 }
 
@@ -2484,7 +2988,7 @@ async function enterAuthenticatedView(user) {
     updateAccessInterface();
     await reloadData();
     if (epoch !== sessionEpoch) return;
-    refs.currentUserName.textContent = userDisplayName(user);
+    updateCurrentUserProfile();
     refs.currentUserRole.textContent = appState.currentUserRole;
     refs.loginView.classList.add("hidden");
     refs.passwordResetView.classList.add("hidden");
@@ -2538,12 +3042,20 @@ function resetAuthenticatedView() {
   refs.appView.classList.remove("mobile-nav-open");
   updateMainNavigationState();
   for (const key of DATA_KEYS) appState[key] = [];
+  userAvatarUrlCache.clear();
+  resetProfilePhotoEditor();
+  setOwnPasswordEditorOpen(false);
+  refs.ownPasswordSection.classList.add("hidden");
+  setProfileMenuOpen(false);
   document.querySelectorAll("dialog[open]").forEach((dialog) => {
     if (dialog.id !== "blockingLoadingModal") dialog.close();
   });
   document.querySelectorAll("#appView form").forEach((form) => form.reset());
   refs.currentUserName.textContent = "";
   refs.currentUserRole.textContent = "";
+  refs.currentUserAvatar.textContent = "";
+  userProfileReturnPage = "home";
+  userProfileReturnFocusTarget = null;
   setSyncNotice("");
 }
 
@@ -2616,6 +3128,7 @@ function resolveAuthorizedPage(page) {
   if (page === "suppliers" && GLL_CONFIG.suppliersEnabled === false) return "home";
   if (page === "commercialProposals" && GLL_CONFIG.commercialProposalsEnabled === false) return "home";
   if (page === "users" && !isCurrentUserAdmin()) return "home";
+  if (page === "userProfile" && refs.userCreateForm.dataset.mode === "create" && !isCurrentUserAdmin()) return "home";
   if (page === "designSystem" && !isCurrentUserAdmin()) return "settings";
   return page;
 }
@@ -2648,6 +3161,11 @@ function breadcrumbItems(page) {
     return compact
       ? [{ label: "Licitações", page: "bids" }, { label: "Nova licitação" }]
       : [home, { label: "Licitações", page: "bids" }, { label: "Nova licitação" }];
+  }
+  if (page === "userProfile") {
+    const label = refs.userCreateForm.dataset.mode === "create" ? "Cadastrar usuário" : "Editar perfil";
+    if (isCurrentUserAdmin()) return compact ? [{ label: "Usuários", page: "users" }, { label }] : [home, { label: "Usuários", page: "users" }, { label }];
+    return compact ? [{ label }] : [home, { label }];
   }
   if (page === "commercialProposals") {
     return compact
@@ -2720,9 +3238,8 @@ function scrollBreadcrumbToCurrent() {
 
 function creatorName(record) {
   const storedName = String(record?.created_by_name || "").trim();
-  if (storedName) return storedName;
   const creator = appState.users.find((user) => user.auth_user_id === record?.created_by);
-  return creator?.name || "Usuário Removido";
+  return (creator ? userDisplayName(creator) : "") || storedName || "Usuário Removido";
 }
 
 function creatorInitials(record) {
@@ -2734,7 +3251,11 @@ function creatorInitials(record) {
 
 function creatorTagMarkup(record) {
   const name = creatorName(record);
-  return `<span class="creator-avatar" aria-hidden="true">${escapeHtml(creatorInitials(record))}</span><span class="creator-tag-copy"><span>Criado por</span><strong>${escapeHtml(name)}</strong></span>`;
+  const creator = appState.users.find((user) => user.auth_user_id === record?.created_by);
+  const avatar = creator?.avatar_signed_url
+    ? `<img src="${escapeHtml(creator.avatar_signed_url)}" alt="" width="42" height="42" loading="lazy" decoding="async" />`
+    : escapeHtml(creatorInitials(record));
+  return `<span class="creator-avatar" aria-hidden="true">${avatar}</span><span class="creator-tag-copy"><span>Criado por</span><strong>${escapeHtml(name)}</strong></span>`;
 }
 
 function updateAccessInterface() {
@@ -2746,7 +3267,7 @@ function updateAccessInterface() {
   refs.navDesignSystemButton.setAttribute("aria-hidden", String(!showUserManagement));
   refs.designSystemAccessCard.classList.toggle("hidden", !showUserManagement);
   refs.designSystemAccessCard.setAttribute("aria-hidden", String(!showUserManagement));
-  refs.usersOrganizationLabel.textContent = `${appState.currentOrganizationName || "Organização"} · usuários vinculados no Supabase.`;
+  refs.usersOrganizationLabel.textContent = appState.currentOrganizationName || "Organização";
 }
 
 const DATA_KEYS = ["bids", "items", "documents", "failureHistory", "statusHistory", "quotations", "quotationItems", "users", "suppliers", "supplierProducts"];
@@ -2883,12 +3404,16 @@ async function reloadData({ background = false } = {}) {
     setLoginMessage("Seu acesso não está mais disponível. Entre novamente ou contate o administrador.");
     return;
   }
+  if (store instanceof SupabaseStore) next.users = await store.addSignedAvatarUrls(next.users);
+  if (epoch !== sessionEpoch || request !== dataRequest || !appState.authenticated) return;
   const changed = DATA_KEYS.some((key) => dataSignature(appState[key]) !== dataSignature(next[key]));
   if (background && !changed) return;
   if (background && selectedDataSignature(appState) !== selectedDataSignature(next)) {
     setSyncNotice("O registro aberto foi alterado ou excluído em outra sessão. Seu formulário foi preservado. Reabra o registro pela lista para conferir a versão atual antes de salvar.");
   }
   Object.assign(appState, next);
+  updateCurrentUserProfile();
+  if (appState.activePage === "userProfile") updateUserProfileAccessActions();
   renderBids();
   renderDetails();
   renderQuotations();
@@ -2906,6 +3431,8 @@ function readNavigationRoute() {
     page,
     bidId: params.get("licitacao"),
     quotationId: params.get("orcamento"),
+    profileUserId: params.get("usuario"),
+    createProfile: params.get("novo") === "1",
   };
 }
 
@@ -2922,6 +3449,20 @@ function writeNavigationRoute(page, mode = "push") {
     params.set("orcamento", String(appState.currentQuotationId));
   } else {
     params.delete("orcamento");
+  }
+  if (page === "userProfile") {
+    if (refs.userCreateForm.dataset.mode === "create") {
+      params.set("novo", "1");
+      params.delete("usuario");
+    } else {
+      params.delete("novo");
+      const targetId = refs.userCreateForm.dataset.targetAuthUserId;
+      if (targetId && targetId !== appState.currentUserAuthId) params.set("usuario", targetId);
+      else params.delete("usuario");
+    }
+  } else {
+    params.delete("novo");
+    params.delete("usuario");
   }
   const nextUrl = `${window.location.pathname}?${params.toString()}${window.location.hash}`;
   const currentUrl = `${window.location.pathname}${window.location.search}${window.location.hash}`;
@@ -2940,6 +3481,17 @@ function applyNavigationRoute(options = {}) {
     const quotation = appState.quotations.find((row) => Number(row.id) === Number(route.quotationId));
     if (quotation) loadQuotation(quotation.id, { history: "none", scroll: false });
     else routeIsValid = false;
+  } else if (route.page === "userProfile") {
+    userProfileReturnPage = isCurrentUserAdmin() ? "users" : "home";
+    userProfileReturnFocusTarget = null;
+    if (route.createProfile && isCurrentUserAdmin()) {
+      setUserFormMode("create");
+    } else if (!route.createProfile) {
+      const targetId = route.profileUserId || appState.currentUserAuthId;
+      const user = appState.users.find((candidate) => candidate.auth_user_id === targetId);
+      if (canEditUserProfile(user)) setUserFormMode("edit", user);
+      else routeIsValid = false;
+    } else routeIsValid = false;
   }
   setPage(routeIsValid ? route.page : "home", { history: "none" });
   if (options.replaceInvalid || !routeIsValid) writeNavigationRoute(appState.activePage, "replace");
@@ -2975,6 +3527,7 @@ function setPage(page, options = {}) {
   }
   placeQuotationEditor(page);
   const showUsers = page === "users";
+  const showUserProfile = page === "userProfile";
   const showSettings = page === "settings";
   const showCompanyData = page === "companyData";
   const showDesignSystem = page === "designSystem";
@@ -2989,8 +3542,9 @@ function setPage(page, options = {}) {
   const showCatalog = page === "bids";
   const showEditor = page === "edit";
   const showDetail = detailPages.includes(page);
-  refs.bidsPage.classList.toggle("hidden", showUsers || showSettings || showCompanyData || showDesignSystem || showQuotations || showSuppliers || showDeclarations || showCommercialProposals);
+  refs.bidsPage.classList.toggle("hidden", showUsers || showUserProfile || showSettings || showCompanyData || showDesignSystem || showQuotations || showSuppliers || showDeclarations || showCommercialProposals);
   refs.usersPage.classList.toggle("hidden", !showUsers);
+  refs.userProfilePage.classList.toggle("hidden", !showUserProfile);
   refs.settingsPage.classList.toggle("hidden", !showSettings);
   refs.companyDataPage.classList.toggle("hidden", !showCompanyData);
   refs.designSystemPage.classList.toggle("hidden", !showDesignSystem);
@@ -3004,12 +3558,12 @@ function setPage(page, options = {}) {
   refs.itemsPanel.classList.toggle("hidden", page !== "items");
   refs.documentsPanel.classList.toggle("hidden", page !== "documents");
   refs.failuresPanel.classList.toggle("hidden", page !== "failures");
-  refs.appView.classList.toggle("users-active", showUsers || showSettings || showCompanyData || showDesignSystem || showQuotations || showSuppliers || showDeclarations || showCommercialProposals);
+  refs.appView.classList.toggle("users-active", showUsers || showUserProfile || showSettings || showCompanyData || showDesignSystem || showQuotations || showSuppliers || showDeclarations || showCommercialProposals);
   refs.itemsTabButton.classList.toggle("active", page === "items");
   refs.documentsTabButton.classList.toggle("active", page === "documents");
   refs.failuresTabButton.classList.toggle("active", page === "failures");
   refs.failuresTabButton.classList.toggle("hidden", !shouldShowFailureHistory());
-  const primaryPage = showCommercialProposals ? "commercialProposals" : showDeclarations ? "declarations" : showSuppliers ? "suppliers" : showUsers ? "users" : showSettings || showCompanyData || showDesignSystem ? "settings" : showQuotations ? "quotations" : showHome ? "home" : "bids";
+  const primaryPage = showCommercialProposals ? "commercialProposals" : showDeclarations ? "declarations" : showSuppliers ? "suppliers" : showUsers || (showUserProfile && isCurrentUserAdmin()) ? "users" : showSettings || showCompanyData || showDesignSystem ? "settings" : showQuotations ? "quotations" : showHome || showUserProfile ? "home" : "bids";
   const activeNavigationPage = ["settings", "companyData", "designSystem"].includes(page) ? page : primaryPage;
   renderBreadcrumb(page);
   document.querySelectorAll("[data-navigation-page]").forEach((button) => {
@@ -3143,19 +3697,81 @@ function bidMatchesSearch(bid, query) {
   ].some((value) => normalizeSearchText(value).includes(normalizedQuery));
 }
 
+function handleBidSort(event) {
+  const button = event.target.closest("[data-bid-sort]");
+  if (!button) return;
+
+  const sortKey = button.dataset.bidSort;
+  if (appState.bidSortKey === sortKey) {
+    appState.bidSortDirection = appState.bidSortDirection === "ascending" ? "descending" : "ascending";
+  } else {
+    appState.bidSortKey = sortKey;
+    appState.bidSortDirection = sortKey === "session_datetime" ? "descending" : "ascending";
+  }
+
+  renderBids();
+}
+
+function updateBidSortHeaders() {
+  refs.bidList.closest("table").querySelectorAll("[data-bid-sort]").forEach((button) => {
+    const sortKey = button.dataset.bidSort;
+    const active = sortKey === appState.bidSortKey;
+    const currentDirection = active ? appState.bidSortDirection : sortKey === "session_datetime" ? "descending" : "ascending";
+    const nextDirection = active ? (currentDirection === "ascending" ? "descending" : "ascending") : currentDirection;
+    const header = button.closest("th");
+    if (active) header.setAttribute("aria-sort", currentDirection);
+    else header.removeAttribute("aria-sort");
+    button.setAttribute("aria-label", "Ordenar " + button.dataset.sortLabel + " em ordem " + (nextDirection === "descending" ? "decrescente" : "crescente"));
+    button.querySelector(".bid-sort-indicator").textContent = active ? (currentDirection === "descending" ? "↓" : "↑") : "↕";
+  });
+}
+
 function renderBids() {
+  updateBidSortHeaders();
   renderHomeSummary();
   const searchFilter = refs.filterSearch.value;
   const dateFilter = refs.filterDate.value;
   const statusFilter = refs.filterStatus.value;
   const guaranteeDepositFilter = refs.filterGuaranteeDeposit.checked;
-  const rows = appState.bids.filter((bid) => {
+  const filteredRows = appState.bids.filter((bid) => {
     const matchesSearch = bidMatchesSearch(bid, searchFilter);
     const matchesDate = !dateFilter || toDateInputValue(bid.session_datetime) === dateFilter;
     const matchesStatus = statusFilter === "Todos" || bid.status === statusFilter;
     const matchesGuaranteeDeposit = !guaranteeDepositFilter || bid.has_guarantee_deposit;
     return matchesSearch && matchesDate && matchesStatus && matchesGuaranteeDeposit;
   });
+  const sortKey = appState.bidSortKey;
+  const direction = appState.bidSortDirection === "ascending" ? 1 : -1;
+  const rows = filteredRows
+    .map((bid, index) => {
+      const summary = calculateBidSummary(bid.id);
+      const totalProfit = calculateLinkedQuotationProfit(bid);
+      const sortValues = {
+        bid_number: bidDisplayNumber(bid),
+        buyer_agency: bid.buyer_agency,
+        session_datetime: parseStoredDateTime(bid.session_datetime).getTime(),
+        status: statusDisplay(bid.status),
+        item_count: summary.itemCount,
+        total: summary.totalFinal,
+        total_profit: totalProfit,
+      };
+      return { bid, index, summary, totalProfit, sortValue: sortValues[sortKey] };
+    })
+    .sort((left, right) => {
+      const leftValue = left.sortValue;
+      const rightValue = right.sortValue;
+      const leftEmpty = leftValue == null || (typeof leftValue === "string" && !leftValue.trim()) || (typeof leftValue === "number" && !Number.isFinite(leftValue));
+      const rightEmpty = rightValue == null || (typeof rightValue === "string" && !rightValue.trim()) || (typeof rightValue === "number" && !Number.isFinite(rightValue));
+      if (leftEmpty !== rightEmpty) return leftEmpty ? 1 : -1;
+
+      let comparison = 0;
+      if (!leftEmpty && typeof leftValue === "number" && typeof rightValue === "number") {
+        comparison = leftValue - rightValue;
+      } else if (!leftEmpty) {
+        comparison = String(leftValue).localeCompare(String(rightValue), "pt-BR", { numeric: true, sensitivity: "base" });
+      }
+      return comparison ? comparison * direction : left.index - right.index;
+    });
 
   if (!rows.length) {
     refs.bidList.innerHTML = `<tr><td colspan="8" class="empty-state">Nenhuma licitação encontrada.</td></tr>`;
@@ -3163,18 +3779,17 @@ function renderBids() {
   }
 
   refs.bidList.innerHTML = rows
-    .map((bid) => {
-      const summary = calculateBidSummary(bid.id);
+    .map(({ bid, summary, totalProfit }) => {
       const active = bid.id === appState.currentBidId ? " active" : "";
       return `
         <tr class="selectable bid-row${active}" data-bid-id="${escapeHtml(bid.id)}" tabindex="0">
           <td><div class="bid-number-cell"><strong class="table-link">${escapeHtml(bidDisplayNumber(bid))}</strong><span class="creator-tag compact">${creatorTagMarkup(bid)}</span></div></td>
           <td>${escapeHtml(bid.buyer_agency || "")}</td>
           <td>${formatDateTime(bid.session_datetime)}</td>
-          <td>${escapeHtml(bidTypeLabel(bid.bid_type))}</td>
           <td>${GLLDesignSystem.COMPONENTS.statusBadge({ status: normalizeBidStatus(bid.status), label: statusDisplay(bid.status) })}</td>
           <td class="numeric">${summary.itemCount}</td>
           <td class="numeric"><strong>${money(summary.totalFinal)}</strong></td>
+          <td class="numeric">${totalProfit === null ? "—" : `<strong>${money(totalProfit)}</strong>`}</td>
           <td><button class="icon-button row-action" type="button" aria-label="Abrir ${escapeHtml(bidDisplayNumber(bid))}">→</button></td>
         </tr>
       `;
@@ -4610,21 +5225,85 @@ function renderQuotations() {
   refs.quotationCountLabel.textContent = `${count} ${count === 1 ? "orçamento" : "orçamentos"}`;
   refs.selectedQuotationSummary.textContent = quotation ? `Edital ${quotation.edital} selecionado` : "";
   setQuotationListCollapsed(appState.quotationListCollapsed);
+  renderQuotationList();
+  renderQuotationItems();
+}
+
+function handleQuotationSort(event) {
+  const button = event.target.closest("[data-quotation-sort]");
+  if (!button) return;
+
+  const sortKey = button.dataset.quotationSort;
+  if (appState.quotationSortKey === sortKey) {
+    appState.quotationSortDirection = appState.quotationSortDirection === "ascending" ? "descending" : "ascending";
+  } else {
+    appState.quotationSortKey = sortKey;
+    appState.quotationSortDirection = sortKey === "opening_date" ? "descending" : "ascending";
+  }
+
+  renderQuotationList();
+}
+
+function renderQuotationList() {
+  updateQuotationSortHeaders();
+  const count = appState.quotations.length;
+  const itemsByQuotation = new Map();
+  appState.quotationItems.forEach((item) => {
+    const quotationId = Number(item.quotation_id);
+    if (!itemsByQuotation.has(quotationId)) itemsByQuotation.set(quotationId, []);
+    itemsByQuotation.get(quotationId).push(item);
+  });
+  const quotations = appState.quotations.map((quotation, index) => {
+    const items = itemsByQuotation.get(Number(quotation.id)) || [];
+    const total = items.reduce((sum, item) => roundMoney(sum + Number(item.total || 0)), 0);
+    return {
+      quotation,
+      index,
+      openingDate: sortableQuotationDate(quotation.opening_date),
+      edital: quotation.edital,
+      location: [quotation.city, quotation.cep].filter(Boolean).join(" · "),
+      itemCount: items.length,
+      total,
+    };
+  });
+  const sortKey = appState.quotationSortKey;
+  const direction = appState.quotationSortDirection === "ascending" ? 1 : -1;
+  const sortValues = {
+    opening_date: "openingDate",
+    edital: "edital",
+    location: "location",
+    items_count: "itemCount",
+    total: "total",
+  };
+  quotations.sort((left, right) => {
+    const property = sortValues[sortKey] || sortValues.opening_date;
+    const leftValue = left[property];
+    const rightValue = right[property];
+    const leftEmpty = leftValue == null || (typeof leftValue === "string" && !leftValue.trim());
+    const rightEmpty = rightValue == null || (typeof rightValue === "string" && !rightValue.trim());
+    if (leftEmpty !== rightEmpty) return leftEmpty ? 1 : -1;
+
+    let comparison = 0;
+    if (!leftEmpty && typeof leftValue === "number" && typeof rightValue === "number") {
+      comparison = leftValue - rightValue;
+    } else if (!leftEmpty) {
+      comparison = String(leftValue).localeCompare(String(rightValue), "pt-BR", { numeric: true, sensitivity: "base" });
+    }
+    return comparison ? comparison * direction : left.index - right.index;
+  });
+
   if (!count) {
     refs.quotationsTableBody.innerHTML = `<tr><td colspan="5"><div class="empty-state compact-empty">Nenhum orçamento cadastrado.</div></td></tr>`;
   } else {
-    refs.quotationsTableBody.innerHTML = appState.quotations
-      .map((quotation) => {
-        const items = appState.quotationItems.filter((item) => Number(item.quotation_id) === Number(quotation.id));
-        const total = items.reduce((sum, item) => roundMoney(sum + Number(item.total || 0)), 0);
+    refs.quotationsTableBody.innerHTML = quotations
+      .map(({ quotation, itemCount, total, location }) => {
         const selected = Number(quotation.id) === Number(appState.currentQuotationId) ? " selected" : "";
-        const location = [quotation.city, quotation.cep].filter(Boolean).join(" · ") || "—";
         return `
           <tr class="selectable${selected}" tabindex="0" data-quotation-id="${quotation.id}">
             <td>${escapeHtml(formatDateOnly(quotation.opening_date) || "—")}</td>
             <td><strong>${escapeHtml(quotation.edital)}</strong></td>
-            <td>${escapeHtml(location)}</td>
-            <td class="numeric">${items.length}</td>
+            <td>${escapeHtml(location || "—")}</td>
+            <td class="numeric">${itemCount}</td>
             <td class="numeric"><strong>${money(total)}</strong></td>
           </tr>`;
       })
@@ -4641,7 +5320,25 @@ function renderQuotations() {
       }
     });
   });
-  renderQuotationItems();
+}
+
+function updateQuotationSortHeaders() {
+  refs.quotationsListContent.querySelectorAll("[data-quotation-sort]").forEach((button) => {
+    const sortKey = button.dataset.quotationSort;
+    const active = sortKey === appState.quotationSortKey;
+    const direction = active ? appState.quotationSortDirection : sortKey === "opening_date" ? "descending" : "ascending";
+    const label = button.dataset.sortLabel;
+    const header = button.closest("th");
+    if (active) header.setAttribute("aria-sort", direction);
+    else header.removeAttribute("aria-sort");
+    button.setAttribute("aria-label", `Ordenar ${label} em ordem ${direction === "descending" ? "decrescente" : "crescente"}`);
+    button.querySelector(".quotation-sort-indicator").textContent = active ? (direction === "descending" ? "↓" : "↑") : "↕";
+  });
+}
+
+function sortableQuotationDate(value) {
+  const match = String(value || "").match(/^(\d{4}-\d{2}-\d{2})(?:$|T)/);
+  return match ? match[1] : "";
 }
 
 function loadQuotation(quotationId, options = {}) {
@@ -5123,28 +5820,13 @@ function renderUsers() {
     .map((user) => {
       const isCurrent = normalizeEmail(user.email) === normalizeEmail(appState.currentUserEmail);
       const role = normalizeUserRole(user.role);
-      const canConfigure = role === USER_ROLES.ANALYST && Boolean(user.auth_user_id);
       const assignedBidCount = user.auth_user_id
         ? appState.bids.filter((bid) => bid.assigned_to === user.auth_user_id).length
         : 0;
       const displayName = userDisplayName(user);
       const initials = userInitials(displayName);
-      const canManageAccess = store instanceof SupabaseStore && Boolean(user.auth_user_id) && !isCurrent;
-      const actionButtons = [];
-      if (canConfigure) {
-        actionButtons.push(`<button class="quiet-action compact-action configure-user-action" type="button" data-configure-user="${escapeHtml(user.auth_user_id)}"><span aria-hidden="true">⚙</span> Configurar acessos</button>`);
-      }
-      if (canManageAccess) {
-        const label = accessActionLabel(user);
-        const accessAction = user.pending_access_action || (user.access_revoked_at ? "reactivate" : "revoke");
-        const actionClass = accessAction === "revoke" ? "danger-action" : "quiet-action";
-        actionButtons.push(`<button class="${actionClass} compact-action user-access-action" type="button" data-user-access-target="${escapeHtml(user.auth_user_id)}">${escapeHtml(label)}</button>`);
-      }
-      if (store instanceof SupabaseStore && user.auth_user_id) {
-        actionButtons.push(`<button class="quiet-action compact-action user-access-history-action" type="button" data-user-access-history="${escapeHtml(user.auth_user_id)}">Histórico</button>`);
-      }
-      const action = actionButtons.length
-        ? `<div class="user-management-actions">${actionButtons.join("")}</div>`
+      const action = canEditUserProfile(user)
+        ? `<div class="user-management-actions"><button class="quiet-action compact-action" type="button" data-edit-user="${escapeHtml(user.auth_user_id)}" aria-label="Editar perfil de ${escapeHtml(displayName)}">Editar perfil</button></div>`
         : isCurrent
           ? `<span class="current-user-pill"><span aria-hidden="true">♙</span> Usuário atual</span>`
           : `<span class="muted-text">—</span>`;
@@ -5173,7 +5855,7 @@ function renderUsers() {
         : user.access_revoked_at ? "revoked" : "active";
       return `
         <tr>
-          <td><div class="user-identity"><span class="user-avatar" aria-hidden="true">${escapeHtml(initials)}</span><span><strong>${escapeHtml(displayName)}</strong><small>${escapeHtml(role === USER_ROLES.ADMIN ? "Conta principal" : role)}</small></span></div></td>
+          <td><div class="user-identity"><span class="user-avatar" aria-hidden="true">${user.avatar_signed_url ? `<img src="${escapeHtml(user.avatar_signed_url)}" alt="" width="48" height="48" loading="lazy" decoding="async" />` : escapeHtml(initials)}</span><span><strong>${escapeHtml(displayName)}</strong><small>${escapeHtml(role === USER_ROLES.ADMIN ? "Conta principal" : role)}</small></span></div></td>
           <td>${escapeHtml(user.email || "")}</td>
           <td><span class="user-role-pill ${role === USER_ROLES.ADMIN ? "admin" : "analyst"}"><span aria-hidden="true">${role === USER_ROLES.ADMIN ? "♢" : "♙"}</span> ${escapeHtml(role)}</span><small class="user-access-status ${accessStatusClass}" title="${escapeHtml(accessDetails)}">${escapeHtml(accessStatus)}</small></td>
           <td>${assignedBids}</td>
@@ -5182,10 +5864,6 @@ function renderUsers() {
       `;
     })
     .join("");
-
-  refs.usersTableBody.querySelectorAll("[data-configure-user]").forEach((button) => {
-    button.addEventListener("click", () => openUserAssignments(button.dataset.configureUser));
-  });
 }
 
 function normalizeSearchText(value) {
@@ -5200,6 +5878,17 @@ function userDisplayName(user) {
   return String(user?.display_name || user?.name || user?.email || "").trim();
 }
 
+function updateCurrentUserProfile() {
+  const user = appState.users.find((profile) => profile.auth_user_id === appState.currentUserAuthId);
+  const name = user ? userDisplayName(user) : appState.currentUserName || appState.currentUserEmail || "Usuário";
+  appState.currentUserName = name;
+  refs.currentUserName.textContent = name;
+  refs.currentUserAvatar.innerHTML = user?.avatar_signed_url
+    ? `<img src="${escapeHtml(user.avatar_signed_url)}" alt="" width="38" height="38" decoding="async" />`
+    : escapeHtml(userInitials(name));
+  setProfileMenuOpen(!refs.profileDropdown.classList.contains("hidden"));
+}
+
 function userInitials(value) {
   const parts = String(value || "?").trim().split(/\s+/).filter(Boolean);
   if (!parts.length) return "?";
@@ -5210,7 +5899,7 @@ function userInitials(value) {
 function openUserAssignments(analystId) {
   if (!isCurrentUserAdmin()) return;
   const analyst = appState.users.find((user) => user.auth_user_id === analystId && normalizeUserRole(user.role) === USER_ROLES.ANALYST);
-  if (!analyst) {
+  if (!canEditUserProfile(analyst)) {
     showToast("Analista não encontrado na organização.");
     return;
   }
@@ -5260,6 +5949,7 @@ function closeUserAssignments(event) {
   event?.preventDefault();
   if (refs.userAssignmentsModal.open) refs.userAssignmentsModal.close();
   delete refs.userAssignmentsModal.dataset.analystId;
+  if (!refs.configureUserAccessButton.classList.contains("hidden")) refs.configureUserAccessButton.focus({ preventScroll: true });
 }
 
 async function saveUserAssignments(event) {
@@ -5309,6 +5999,16 @@ function calculateBidSummary(bidId) {
         return acc;
       },
       { totalFinal: 0, totalEstimated: 0, itemCount: 0 }
+    );
+}
+
+function calculateLinkedQuotationProfit(bid) {
+  if (!bid?.quotation_id) return null;
+  return appState.quotationItems
+    .filter((item) => Number(item.quotation_id) === Number(bid.quotation_id))
+    .reduce(
+      (total, item) => roundMoney(total + calculateItemProfit(item.final_bid, item.supplier_cost, item.quantity)),
+      0
     );
 }
 
