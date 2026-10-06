@@ -9,6 +9,7 @@
     <link rel="stylesheet" href="./design-system/tokens.css" />
     <link rel="stylesheet" href="./styles.css" />
     <link rel="stylesheet" href="./design-system/design-system.css" />
+    <link rel="stylesheet" href="./project-management/project-management.css">
   </head>
   <body>
     <main id="loginView" class="login-view">
@@ -121,6 +122,7 @@
               <div class="nav-submenu-inner">
                 <button id="navSettingsGeneralButton" class="nav-link nav-sublink" type="button" data-navigation-page="settings">Geral</button>
                 <button id="navCompanyDataButton" class="nav-link nav-sublink" type="button" data-navigation-page="companyData">Dados da Empresa</button>
+                <button id="navProjectManagementButton" class="nav-link nav-sublink hidden" type="button" data-navigation-page="projectManagement">Gestão do Projeto</button>
                 <button id="navDesignSystemButton" class="nav-link nav-sublink" type="button" data-navigation-page="designSystem">Design System</button>
               </div>
             </div>
@@ -1375,6 +1377,7 @@
             </div>
             <button id="openCompanyDataButton" class="primary-action" type="button">Abrir cadastro</button>
           </section>
+          <section id="projectManagementAccessCard" class="section-band settings-access-card hidden"><div><h2>Gestão do Projeto</h2><p>Acompanhe demandas, homologação e releases do GLL.</p></div><button id="openProjectManagementButton" class="primary-action" type="button">Abrir gestão</button></section>
           <section id="designSystemAccessCard" class="section-band design-system-access-card hidden">
             <span class="settings-icon" aria-hidden="true">◫</span>
             <div>
@@ -1437,6 +1440,7 @@
         </form>
       </section>
 
+      <section id="projectManagementPage" class="users-page hidden" aria-label="Gestão do Projeto"></section>
       <section id="designSystemPage" class="users-page design-system-page hidden" aria-labelledby="designSystemTitle">
         <div class="page-heading">
           <div>
@@ -1515,6 +1519,9 @@
     <script type="module" src="./declarations.js"></script>
     <script type="module" src="./company-data.js"></script>
     <script type="module" src="./commercial-proposals.js"></script>
+    <script src="./project-management/model.js"></script>
+    <script src="./project-management/components.js"></script>
+    <script src="./project-management/index.js"></script>
     <script type="module" src="./app.js"></script>
   </body>
 </html>
