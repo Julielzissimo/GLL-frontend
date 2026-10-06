@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "release_id": "2026-10-06-gestao-projeto-homolog",
+  "release_id": "2026-10-05-sync-main-homolog",
   "environment": "homolog",
   "target_branch": "homolog",
   "items": [
@@ -515,20 +515,6 @@
         "a7d278f0bdafa873ec2d36b8b16c1074d56d1f09"
       ],
       "migrations": []
-    },
-    {
-      "id": "GESTAO-PROJETO",
-      "backend_commits": [
-        "199ade95b9c1a9b458d20fa667286c6eb779b6f2",
-        "34222011fd79192508b37152cec7f740a6583ee5"
-      ],
-      "frontend_commits": [
-        "673d47809ddc2cfd9c0a4b2fd39a9c81db3fb168",
-        "8925392b8de633735b64c4f26bd46a70c433613e"
-      ],
-      "migrations": [
-        "supabase/migrations/20261006023543_project_management.sql"
-      ]
     }
   ]
 }
