@@ -4,6 +4,14 @@
 
 Toda alteração solicitada deve ser publicada e validada no ambiente `homolog`. Não considere a tarefa concluída apenas com validação local.
 
+## Release temporária Front 2.0 - Reformulação visual
+
+Enquanto o [marco Front 2.0 - Reformulação visual](https://github.com/Julielzissimo/GLL-frontend/milestone/1) estiver aberto, pergunte se cada nova alteração entra na release quando a usuária não tiver informado isso antecipadamente. Registre no marco somente os itens que ela incluir; não presuma que uma mudança visual pertença à release.
+
+Implemente e publique cada item em `homolog`, mantendo seus commits separáveis. A branch `codex/release-front-2.0-reformulacao-visual` reúne somente os itens da release sobre uma base de `main`. Itens fora dela podem ser promovidos separadamente, após solicitação e validação, sem promover a branch `homolog` inteira nem carregar itens da release por dependência. Siga o procedimento de manifestos, documentação e sincronização dos dois repositórios em `GLL-backend/docs/PROCESSO_DE_PUBLICACAO.md`.
+
+Quando a usuária solicitar a promoção da release, promova todos os seus itens juntos. Depois da validação em produção e da sincronização de `main` com `homolog` nos dois repositórios, feche os marcos e retire esta regra temporária dos documentos operacionais.
+
 ## UI / UX e Design System
 
 Antes de criar ou modificar qualquer interface:
