@@ -92,7 +92,6 @@ const PAGE_ROUTE_NAMES = {
   settings: "configuracoes",
   companyData: "configuracoes/dados-da-empresa",
   designSystem: "configuracoes/design-system",
-  projectManagement: "configuracoes/gestao-projeto",
 };
 const ROUTE_PAGE_NAMES = Object.fromEntries(Object.entries(PAGE_ROUTE_NAMES).map(([page, route]) => [route, page]));
 
@@ -1781,11 +1780,6 @@ class SupabaseStore {
 }
 
 const store = createStore();
-const projectManagementFeature = (window.GLLProjectManagement?.createProjectManagement || (() => ({ showPage: async () => undefined, reset: () => undefined })))({
-  container: $("projectManagementPage"),
-  getClient: () => (store.requiresAuthenticationBeforeData ? store.client : null),
-  isAdmin: () => isCurrentUserAdmin(),
-});
 const declarationsFeature = createDeclarationsFeature({
   getClient: () => (store.requiresAuthenticationBeforeData ? store.client : null),
   getContext: () => ({
@@ -2146,7 +2140,6 @@ function bindEvents() {
   });
   refs.navDocumentsButton.addEventListener("click", toggleDocumentsNavigation);
   refs.navSettingsButton.addEventListener("click", toggleSettingsNavigation);
-  $("openProjectManagementButton").addEventListener("click", () => setPage("projectManagement"));
   $("openDesignSystemButton").addEventListener("click", () => setPage("designSystem"));
   $("openCompanyDataButton").addEventListener("click", () => setPage("companyData"));
   $("backToSettingsButton").addEventListener("click", () => setPage("settings"));
@@ -3046,7 +3039,6 @@ function resetAuthenticatedView() {
   declarationsFeature.reset();
   commercialProposalsFeature.reset();
   companyDataFeature.reset();
-  projectManagementFeature.reset();
   refs.appView.classList.remove("mobile-nav-open");
   updateMainNavigationState();
   for (const key of DATA_KEYS) appState[key] = [];
@@ -3138,7 +3130,6 @@ function resolveAuthorizedPage(page) {
   if (page === "users" && !isCurrentUserAdmin()) return "home";
   if (page === "userProfile" && refs.userCreateForm.dataset.mode === "create" && !isCurrentUserAdmin()) return "home";
   if (page === "designSystem" && !isCurrentUserAdmin()) return "settings";
-  if (page === "projectManagement" && !isCurrentUserAdmin()) return "settings";
   return page;
 }
 
@@ -3154,7 +3145,6 @@ function breadcrumbItems(page) {
     declarationHistory: "Histórico",
     companyData: "Dados da Empresa",
     designSystem: "Design System",
-    projectManagement: "Gestão do Projeto",
   };
 
   if (["items", "documents", "failures"].includes(page)) {
@@ -3196,7 +3186,7 @@ function breadcrumbItems(page) {
       { label: pageLabels[page] },
     ];
   }
-  if (["companyData", "designSystem", "projectManagement"].includes(page)) {
+  if (["companyData", "designSystem"].includes(page)) {
     if (compact) return [{ label: "Configurações", page: "settings" }, { label: pageLabels[page] }];
     return [home, { label: "Configurações", page: "settings" }, { label: pageLabels[page] }];
   }
@@ -3275,8 +3265,6 @@ function updateAccessInterface() {
   refs.navUsersButton.setAttribute("aria-hidden", String(!showUserManagement));
   refs.navDesignSystemButton.classList.toggle("hidden", !showUserManagement);
   refs.navDesignSystemButton.setAttribute("aria-hidden", String(!showUserManagement));
-  $("projectManagementAccessCard").classList.toggle("hidden", !showUserManagement);
-  $("navProjectManagementButton").classList.toggle("hidden", !showUserManagement);
   refs.designSystemAccessCard.classList.toggle("hidden", !showUserManagement);
   refs.designSystemAccessCard.setAttribute("aria-hidden", String(!showUserManagement));
   refs.usersOrganizationLabel.textContent = appState.currentOrganizationName || "Organização";
@@ -3534,7 +3522,7 @@ function setPage(page, options = {}) {
   if (["commercialProposals", ...declarationPages].includes(page)) {
     appState.documentsNavigationExpanded = true;
   }
-  if (["settings", "companyData", "designSystem", "projectManagement"].includes(page)) {
+  if (["settings", "companyData", "designSystem"].includes(page)) {
     appState.settingsNavigationExpanded = true;
   }
   placeQuotationEditor(page);
@@ -3543,8 +3531,6 @@ function setPage(page, options = {}) {
   const showSettings = page === "settings";
   const showCompanyData = page === "companyData";
   const showDesignSystem = page === "designSystem";
-  const showProjectManagement = page === "projectManagement";
-  $("projectManagementPage").classList.toggle("hidden", !showProjectManagement);
   const showSuppliers = page === "suppliers";
   const showDeclarations = declarationPages.includes(page);
   const showCommercialProposals = page === "commercialProposals";
@@ -3556,7 +3542,7 @@ function setPage(page, options = {}) {
   const showCatalog = page === "bids";
   const showEditor = page === "edit";
   const showDetail = detailPages.includes(page);
-  refs.bidsPage.classList.toggle("hidden", showUsers || showUserProfile || showSettings || showCompanyData || showDesignSystem || showProjectManagement || showQuotations || showSuppliers || showDeclarations || showCommercialProposals);
+  refs.bidsPage.classList.toggle("hidden", showUsers || showUserProfile || showSettings || showCompanyData || showDesignSystem || showQuotations || showSuppliers || showDeclarations || showCommercialProposals);
   refs.usersPage.classList.toggle("hidden", !showUsers);
   refs.userProfilePage.classList.toggle("hidden", !showUserProfile);
   refs.settingsPage.classList.toggle("hidden", !showSettings);
@@ -3572,13 +3558,13 @@ function setPage(page, options = {}) {
   refs.itemsPanel.classList.toggle("hidden", page !== "items");
   refs.documentsPanel.classList.toggle("hidden", page !== "documents");
   refs.failuresPanel.classList.toggle("hidden", page !== "failures");
-  refs.appView.classList.toggle("users-active", showUsers || showUserProfile || showSettings || showCompanyData || showDesignSystem || showProjectManagement || showQuotations || showSuppliers || showDeclarations || showCommercialProposals);
+  refs.appView.classList.toggle("users-active", showUsers || showUserProfile || showSettings || showCompanyData || showDesignSystem || showQuotations || showSuppliers || showDeclarations || showCommercialProposals);
   refs.itemsTabButton.classList.toggle("active", page === "items");
   refs.documentsTabButton.classList.toggle("active", page === "documents");
   refs.failuresTabButton.classList.toggle("active", page === "failures");
   refs.failuresTabButton.classList.toggle("hidden", !shouldShowFailureHistory());
-  const primaryPage = showCommercialProposals ? "commercialProposals" : showDeclarations ? "declarations" : showSuppliers ? "suppliers" : showUsers || (showUserProfile && isCurrentUserAdmin()) ? "users" : showSettings || showCompanyData || showDesignSystem || showProjectManagement ? "settings" : showQuotations ? "quotations" : showHome || showUserProfile ? "home" : "bids";
-  const activeNavigationPage = ["settings", "companyData", "designSystem", "projectManagement"].includes(page) ? page : primaryPage;
+  const primaryPage = showCommercialProposals ? "commercialProposals" : showDeclarations ? "declarations" : showSuppliers ? "suppliers" : showUsers || (showUserProfile && isCurrentUserAdmin()) ? "users" : showSettings || showCompanyData || showDesignSystem ? "settings" : showQuotations ? "quotations" : showHome || showUserProfile ? "home" : "bids";
+  const activeNavigationPage = ["settings", "companyData", "designSystem"].includes(page) ? page : primaryPage;
   renderBreadcrumb(page);
   document.querySelectorAll("[data-navigation-page]").forEach((button) => {
     button.classList.toggle("active", button.dataset.navigationPage === activeNavigationPage);
@@ -3597,7 +3583,6 @@ function setPage(page, options = {}) {
   if (showCommercialProposals) void commercialProposalsFeature.showPage().catch((error) => showToast(error.message, "error"));
   if (showCompanyData) void companyDataFeature.showPage().catch((error) => showToast(error.message, "error"));
   if (showDesignSystem) window.GLLDesignSystem?.mountCatalog(refs.designSystemCatalog);
-  if (showProjectManagement) void projectManagementFeature.showPage();
   writeNavigationRoute(page, options.history || "push");
 }
 

@@ -84,10 +84,6 @@ const assetVersion = createHash("sha256")
   .update(await readFile(resolve(sourceDir, "design-system", "tokens.css")))
   .update(await readFile(resolve(sourceDir, "design-system", "design-system.css")))
   .update(await readFile(resolve(sourceDir, "design-system", "components.js")))
-  .update(await readFile(resolve(sourceDir, "project-management/model.js")))
-  .update(await readFile(resolve(sourceDir, "project-management/components.js")))
-  .update(await readFile(resolve(sourceDir, "project-management/index.js")))
-  .update(await readFile(resolve(sourceDir, "project-management/project-management.css")))
   .digest("hex")
   .slice(0, 12);
 const outputIndexPath = resolve(outputDir, "index.html");
@@ -102,10 +98,6 @@ await writeFile(
     .replace('./declarations.js', `./declarations.js?v=${assetVersion}`)
     .replace('./company-data.js', `./company-data.js?v=${assetVersion}`)
     .replace('./commercial-proposals.js', `./commercial-proposals.js?v=${assetVersion}`)
-    .replace('./project-management/model.js', `./project-management/model.js?v=${assetVersion}`)
-    .replace('./project-management/components.js', `./project-management/components.js?v=${assetVersion}`)
-    .replace('./project-management/index.js', `./project-management/index.js?v=${assetVersion}`)
-    .replace('./project-management/project-management.css', `./project-management/project-management.css?v=${assetVersion}`)
     .replace('./app.js', `./app.js?v=${assetVersion}`),
   "utf8",
 );
