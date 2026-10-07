@@ -646,6 +646,18 @@
         "8f15fc6300daf0aa9c134d9fca952fbd11caf9ab"
       ],
       "migrations": []
+    },
+    {
+      "id": "FRONT-2.0-CHAT-INTERACOES-001",
+      "backend_commits": [
+        "9c0cc2b4402818d08cffd815d5788e76266e068c"
+      ],
+      "frontend_commits": [
+        "3ba3bc8e4778362de6cc61f36967c5168f56372d"
+      ],
+      "migrations": [
+        "supabase/migrations/20261007204101_organization_message_interactions.sql"
+      ]
     }
   ]
 }
