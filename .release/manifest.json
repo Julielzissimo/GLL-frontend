@@ -589,6 +589,14 @@
         "5688677deda4a73aa270bc84df8b0461ceaf1288"
       ],
       "migrations": []
+    },
+    {
+      "id": "FRONT-2.0-USUARIOS-RESPONSIVIDADE-001",
+      "backend_commits": [],
+      "frontend_commits": [
+        "5f3e9bf619ff19d26b57252e37d14e195b61ab82"
+      ],
+      "migrations": []
     }
   ]
 }
