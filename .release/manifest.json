@@ -529,7 +529,8 @@
       "id": "USERS-INFO-001",
       "backend_commits": [],
       "frontend_commits": [
-        "4461efe7a1b67cf402a034a7dad63bbc50f9da98"
+        "4461efe7a1b67cf402a034a7dad63bbc50f9da98",
+        "1c9e1bb1ad03e75b0fe2aa72eb640c81dc7baf6f"
       ],
       "migrations": []
     }
