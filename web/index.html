@@ -5,7 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net; connect-src 'self' https://*.supabase.co wss://*.supabase.co; img-src 'self' data: blob: https://*.supabase.co; frame-src 'self' blob:; style-src 'self'; font-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'; upgrade-insecure-requests" />
     <title>GLL Web</title>
-    <link rel="icon" type="image/svg+xml" href="./assets/favicon.svg" />
+    <link rel="icon" type="image/svg+xml" href="./assets/favicon.svg?v=20261007" sizes="any" />
+    <link rel="icon" type="image/png" sizes="32x32" href="./assets/favicon-32.png?v=20261007" />
+    <link rel="shortcut icon" href="./assets/favicon.ico?v=20261007" />
     <link rel="stylesheet" href="./design-system/tokens.css" />
     <link rel="stylesheet" href="./styles.css" />
     <link rel="stylesheet" href="./design-system/design-system.css" />
@@ -89,8 +91,8 @@
       <aside id="appSidebar" class="app-sidebar" aria-label="Navegação principal">
         <div class="app-brand-row">
           <button id="homeIconButton" class="app-logo" type="button" aria-label="Ir para a visão geral">
-            <span class="brand-mark" aria-hidden="true">GLL</span>
-            <span class="brand-copy"><strong>GLL</strong><small>GESTÃO DE LICITAÇÕES</small></span>
+            <img class="app-logo-image app-logo-image--full" src="./assets/gll-brand.svg" alt="" aria-hidden="true" />
+            <img class="app-logo-image app-logo-image--mark" src="./assets/gll-mark.svg" alt="" aria-hidden="true" />
           </button>
           <button id="closeMobileSidebarButton" class="mobile-nav-close" type="button" aria-label="Fechar menu"><span aria-hidden="true" data-gll-icon="close"></span></button>
         </div>
