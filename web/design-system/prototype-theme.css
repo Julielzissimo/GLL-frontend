@@ -1,0 +1,597 @@
+/*
+ * Camada de compatibilidade visual para os componentes HTML legados do GLL.
+ * Os valores de cor, fonte, forma e elevação vêm de tokens.css; esta camada
+ * converte as classes já usadas pelas páginas para a linguagem do protótipo.
+ */
+html {
+  background: var(--gll-canvas);
+  scroll-behavior: smooth;
+}
+
+body {
+  background: var(--gll-canvas);
+  color: var(--gll-ink);
+  font-family: var(--gll-font-body);
+  font-size: var(--gll-text-md);
+  line-height: 1.5;
+}
+
+button,
+input,
+select,
+textarea {
+  font-family: var(--gll-font-body);
+}
+
+button {
+  min-height: var(--gll-control-height);
+  border-radius: var(--gll-radius-md);
+  color: inherit;
+  transition: background-color 150ms ease, border-color 150ms ease, color 150ms ease;
+}
+
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+a:focus-visible,
+[tabindex="0"]:focus-visible {
+  outline: 2px solid var(--gll-focus);
+  outline-offset: 3px;
+}
+
+input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="range"]),
+select,
+textarea {
+  min-height: var(--gll-control-height);
+  border: 1px solid var(--gll-line-strong);
+  border-radius: var(--gll-radius-md);
+  background: var(--gll-paper);
+  color: var(--gll-ink);
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  border-color: var(--gll-focus);
+  box-shadow: 0 0 0 3px var(--color-focus-ring);
+}
+
+input:disabled,
+select:disabled,
+textarea:disabled {
+  border-color: var(--gll-line);
+  background: var(--gll-paper-muted);
+  color: var(--gll-ink-soft);
+}
+
+input[type="checkbox"],
+input[type="radio"] {
+  accent-color: var(--gll-forest);
+}
+
+input[aria-invalid="true"],
+select[aria-invalid="true"],
+textarea[aria-invalid="true"] {
+  border-color: var(--gll-danger);
+}
+
+input[aria-invalid="true"]:focus,
+select[aria-invalid="true"]:focus,
+textarea[aria-invalid="true"]:focus {
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--gll-danger) 18%, transparent);
+}
+
+::selection {
+  background: var(--gll-selection-bg);
+  color: var(--gll-selection-ink);
+}
+
+/* Login uses the same paper-and-forest palette without a decorative gradient. */
+.login-view {
+  background: var(--gll-canvas);
+}
+
+.login-brand {
+  background: var(--gll-forest);
+  color: var(--gll-on-forest);
+}
+
+.login-brand .brand-mark {
+  color: var(--gll-brand-mark);
+}
+
+.login-panel {
+  border-color: var(--gll-line);
+  border-radius: var(--gll-radius-lg);
+  background: var(--gll-paper);
+  box-shadow: var(--gll-shadow-sm);
+  color: var(--gll-ink);
+}
+
+.eyebrow,
+.workspace-kicker {
+  color: var(--gll-focus);
+}
+
+/* Main navigation and shared page header. */
+.app-sidebar {
+  background: var(--gll-forest);
+  color: var(--gll-on-forest);
+}
+
+.app-logo,
+.app-logo:hover,
+.mobile-nav-close {
+  color: var(--gll-on-forest);
+}
+
+.app-logo .brand-mark {
+  border-radius: var(--gll-radius-md);
+  background: var(--gll-accent);
+  color: var(--gll-forest);
+}
+
+.brand-copy small,
+.nav-section-label,
+.sidebar-footer small {
+  color: var(--gll-forest-muted);
+}
+
+.workspace-summary {
+  border-color: var(--gll-forest-divider);
+  border-radius: var(--gll-radius-md);
+  background: var(--gll-forest-hover-surface);
+  color: var(--gll-on-forest);
+}
+
+.workspace-avatar {
+  border-color: transparent;
+  background: var(--gll-accent);
+  color: var(--gll-forest);
+}
+
+.workspace-copy strong {
+  color: var(--gll-on-forest);
+}
+
+.workspace-copy small,
+.workspace-chevron {
+  color: var(--gll-forest-muted);
+}
+
+.nav-link {
+  min-height: var(--gll-control-height);
+  border-radius: var(--gll-radius-md);
+  color: var(--gll-on-forest);
+}
+
+.nav-link:hover,
+.nav-link:focus-visible {
+  background: var(--gll-forest-hover-surface);
+  color: var(--gll-paper);
+}
+
+.nav-link.active,
+.nav-link.active:hover,
+.nav-sublink.active {
+  background: var(--gll-selection-bg);
+  color: var(--gll-selection-ink);
+  font-weight: 600;
+}
+
+.nav-link:focus-visible,
+.mobile-nav-close:focus-visible,
+.topbar-icon-button:focus-visible,
+.topbar-profile-button:focus-visible {
+  outline-color: var(--gll-focus);
+}
+
+.nav-submenu-inner {
+  border-color: var(--gll-forest-divider);
+}
+
+.nav-link-disabled,
+.nav-link-disabled:hover,
+.nav-link-disabled:focus-visible,
+.nav-link-disabled:hover .nav-disabled-icon,
+.nav-link-disabled:focus-visible .nav-disabled-icon {
+  color: color-mix(in srgb, var(--gll-on-forest) 56%, transparent);
+}
+
+.nav-link-disabled:hover,
+.nav-link-disabled:focus-visible,
+.mobile-nav-close:hover,
+.mobile-nav-close:focus-visible {
+  background: var(--gll-forest-hover-surface);
+}
+
+.sidebar-environment,
+.sidebar-environment strong,
+.sidebar-environment small {
+  color: var(--gll-on-forest);
+}
+
+.environment-dot,
+.notification-indicator {
+  background: var(--gll-accent);
+}
+
+.topbar {
+  border-color: var(--gll-line);
+  background: color-mix(in srgb, var(--gll-paper) 96%, transparent);
+}
+
+.topbar-profile-button:hover,
+.topbar-icon-button:hover {
+  background: var(--gll-paper-muted);
+  color: var(--gll-forest);
+}
+
+.ds-catalog-nav a:hover,
+.ds-catalog-nav a:focus-visible {
+  background: var(--gll-selection-bg);
+  color: var(--gll-selection-ink);
+}
+
+.breadcrumb-link:hover,
+.breadcrumb-link:focus-visible {
+  color: var(--gll-forest);
+}
+
+.page-heading h1,
+.workspace-header h2 {
+  color: var(--gll-ink);
+  font-family: var(--gll-font-display);
+  font-size: var(--gll-text-display);
+  font-weight: 500;
+  line-height: 1.13;
+}
+
+.page-heading p,
+.workspace-header p,
+.panel-heading p {
+  color: var(--gll-ink-soft);
+}
+
+/* Action variants, surfaces, badges, tabs and table components. */
+.primary-action {
+  border-color: var(--gll-forest);
+  background: var(--gll-forest);
+  color: var(--gll-paper);
+}
+
+.primary-action:hover:not(:disabled) {
+  border-color: var(--gll-forest-hover);
+  background: var(--gll-forest-hover);
+}
+
+.quiet-action {
+  border-color: var(--gll-line-strong);
+  background: var(--gll-paper);
+  color: var(--gll-forest);
+}
+
+.quiet-action:hover:not(:disabled),
+.icon-button:hover:not(:disabled),
+.text-action:hover:not(:disabled) {
+  border-color: var(--gll-line-strong);
+  background: var(--gll-paper-muted);
+  color: var(--gll-forest);
+}
+
+.danger-action {
+  border-color: var(--gll-danger);
+  background: var(--gll-danger);
+  color: var(--gll-paper);
+}
+
+.danger-action:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--gll-danger) 82%, var(--gll-ink));
+  background: color-mix(in srgb, var(--gll-danger) 82%, var(--gll-ink));
+}
+
+.compact-action,
+.nav-sublink,
+.topbar-icon-button {
+  min-height: var(--control-height-sm);
+}
+
+.declaration-order-actions button,
+.supplier-product-icon-action {
+  min-width: var(--control-height-sm);
+  min-height: var(--control-height-sm);
+}
+
+.section-band,
+.filter-form,
+.home-status-card,
+.user-card,
+.supplier-card,
+.declaration-pick-card,
+.declaration-upload-card,
+.commercial-builder-section,
+.commercial-proposal-summary-card {
+  border-color: var(--gll-line);
+  border-radius: var(--gll-radius-md);
+  background-color: var(--gll-paper);
+  box-shadow: var(--gll-shadow-sm);
+  color: var(--gll-ink);
+}
+
+.section-band,
+.filter-form {
+  border-style: solid;
+}
+
+.section-band h2,
+.section-band h3,
+.panel-heading h2,
+.section-title h2,
+.filter-form h2 {
+  color: var(--gll-ink);
+  font-family: var(--gll-font-display);
+  font-weight: 500;
+}
+
+.home-status-card:hover,
+.home-status-card.active,
+.bid-row:hover,
+.bid-row.active,
+.declaration-pick-card:hover,
+.declaration-pick-card.selected,
+.commercial-proposal-item-row.selected {
+  border-color: var(--gll-line-strong);
+  background-color: var(--gll-selection-bg);
+  color: var(--gll-selection-ink);
+  box-shadow: var(--gll-shadow-sm);
+}
+
+.home-status-card.active,
+.bid-row.active,
+.declaration-pick-card.selected,
+.commercial-proposal-item-row.selected {
+  border-color: var(--gll-forest);
+}
+
+.status-pill,
+.ds-badge {
+  border: 1px solid transparent;
+  border-radius: var(--gll-radius-sm);
+  font-family: var(--gll-font-body);
+  font-weight: 600;
+}
+
+.status-pill.analysis,
+.ds-badge-warning {
+  border-color: color-mix(in srgb, var(--gll-warning) 22%, var(--gll-warning-bg));
+  background: var(--gll-warning-bg);
+  color: var(--gll-warning);
+}
+
+.status-pill.approved,
+.status-pill.billed,
+.ds-badge-success {
+  border-color: color-mix(in srgb, var(--gll-success) 20%, var(--gll-success-bg));
+  background: var(--gll-success-bg);
+  color: var(--gll-success);
+}
+
+.status-pill.discarded,
+.ds-badge,
+.status-pill:not(.analysis):not(.approved):not(.billed):not(.disputed):not(.rejected) {
+  border-color: var(--gll-line);
+  background: var(--gll-paper-muted);
+  color: var(--gll-ink-soft);
+}
+
+.status-pill.disputed,
+.ds-badge-info {
+  border-color: color-mix(in srgb, var(--gll-info) 22%, var(--gll-info-bg));
+  background: var(--gll-info-bg);
+  color: var(--gll-info);
+}
+
+.status-pill.rejected,
+.ds-badge-danger {
+  border-color: color-mix(in srgb, var(--gll-danger) 22%, var(--gll-danger-bg));
+  background: var(--gll-danger-bg);
+  color: var(--gll-danger);
+}
+
+.status-pill::before {
+  background: currentColor;
+}
+
+.tabs,
+.declarations-tabs {
+  border-color: var(--gll-line);
+  background: var(--gll-paper);
+}
+
+.tab,
+.declarations-tabs button {
+  color: var(--gll-ink-soft);
+}
+
+.tab.active,
+.declarations-tabs button.active {
+  border-bottom-color: var(--gll-forest);
+  background: var(--gll-selection-bg);
+  color: var(--gll-forest);
+}
+
+.tab:hover:not(.active),
+.declarations-tabs button:hover:not(.active) {
+  background: var(--gll-paper-muted);
+  color: var(--gll-ink);
+}
+
+table thead th,
+.table-wrap thead th {
+  background: var(--gll-paper-muted);
+  color: var(--gll-ink-soft);
+  font-size: 0.8125rem;
+}
+
+table td,
+.table-wrap td {
+  border-color: var(--gll-line);
+  color: var(--gll-ink);
+  font-size: var(--gll-text-sm);
+}
+
+table tbody tr:hover,
+.table-wrap tbody tr:hover {
+  background: var(--gll-paper-muted);
+}
+
+.check-line:has(input[type="radio"]) {
+  min-height: var(--gll-control-height);
+  padding: 4px 12px;
+  border: 1px solid transparent;
+  border-radius: var(--gll-radius-md);
+  transition: background-color 150ms ease, border-color 150ms ease;
+}
+
+.check-line:has(input[type="radio"]):hover:not(:has(input[type="radio"]:checked)) {
+  background: var(--gll-paper-muted);
+}
+
+.check-line:has(input[type="radio"]:checked),
+.gll-choice:has(input[type="radio"]:checked) {
+  border-color: color-mix(in srgb, var(--gll-forest) 14%, var(--gll-selection-bg));
+  border-radius: var(--gll-radius-md);
+  background: var(--gll-selection-bg);
+  color: var(--gll-selection-ink);
+}
+
+.declaration-pick-card > input[type="checkbox"] {
+  accent-color: var(--gll-forest);
+}
+
+/* Feedback, dropdowns, tooltips and dialogs use the same semantic states. */
+.ds-alert-info,
+.gll-alert--info,
+.declaration-info,
+.inline-info {
+  border-color: var(--gll-info);
+  background: var(--gll-info-bg);
+  color: var(--gll-info);
+}
+
+.ds-alert-warning,
+.gll-alert--warning {
+  border-color: var(--gll-warning);
+  background: var(--gll-warning-bg);
+  color: var(--gll-warning);
+}
+
+.ds-alert-danger,
+.gll-alert--danger {
+  border-color: var(--gll-danger);
+  background: var(--gll-danger-bg);
+  color: var(--gll-danger);
+}
+
+.ds-alert-success,
+.gll-alert--success {
+  border-color: var(--gll-success);
+  background: var(--gll-success-bg);
+  color: var(--gll-success);
+}
+
+.toast,
+.ds-toast {
+  border-color: var(--gll-line);
+  border-radius: var(--gll-radius-md);
+  background: var(--gll-paper);
+  box-shadow: var(--gll-shadow-md);
+  color: var(--gll-ink);
+}
+
+.toast[data-tone="success"],
+.ds-toast-success { border-left-color: var(--gll-success); }
+.toast[data-tone="warning"],
+.ds-toast-warning { border-left-color: var(--gll-warning); }
+.toast[data-tone="error"],
+.ds-toast-danger,
+.ds-toast-error { border-left-color: var(--gll-danger); }
+.toast[data-tone="info"],
+.ds-toast-info { border-left-color: var(--gll-info); }
+
+.notification-dropdown,
+.profile-menu,
+.gll-dropdown,
+.declaration-variable-suggestions {
+  border-color: var(--gll-line);
+  border-radius: var(--gll-radius-md);
+  background: var(--gll-paper);
+  box-shadow: var(--gll-shadow-md);
+}
+
+.notification-menu-item:hover,
+.profile-menu-item:hover,
+.declaration-variable-suggestions button:hover {
+  background: var(--gll-paper-muted);
+  color: var(--gll-forest);
+}
+
+dialog,
+.ds-modal-card,
+.modal-content {
+  border-color: var(--gll-line);
+  border-radius: var(--gll-radius-lg);
+  background: var(--gll-paper);
+  box-shadow: var(--gll-shadow-overlay);
+  color: var(--gll-ink);
+}
+
+dialog::backdrop,
+.ds-modal-preview {
+  background: var(--color-overlay);
+}
+
+.empty-state,
+.ds-empty-state,
+.ds-loading {
+  color: var(--gll-ink-soft);
+}
+
+.ds-spinner {
+  border-color: var(--gll-line-strong);
+  border-right-color: transparent;
+  border-top-color: var(--gll-forest);
+}
+
+.ds-skeleton span {
+  background: linear-gradient(90deg, var(--gll-paper-muted), var(--gll-line), var(--gll-paper-muted));
+}
+
+.toast-icon,
+.ds-toast-success > svg { color: var(--gll-success); }
+.ds-toast-warning > svg { color: var(--gll-warning); }
+.ds-toast-danger > svg,
+.ds-toast-error > svg { color: var(--gll-danger); }
+.ds-toast-info > svg { color: var(--gll-info); }
+
+@media (max-width: 780px) {
+  .mobile-nav-close {
+    display: grid;
+  }
+
+  .mobile-navigation-scrim {
+    background: rgb(10 30 24 / 62%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

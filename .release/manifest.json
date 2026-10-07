@@ -541,6 +541,14 @@
         "ae6b0793569dea5a9b0a12592c203993042d0b12"
       ],
       "migrations": []
+    },
+    {
+      "id": "FRONT-2.0-DESIGN-SYSTEM-001",
+      "backend_commits": [],
+      "frontend_commits": [
+        "cc5cb399ecf2ac2f4c3fd9bde5805973ec3d51c3"
+      ],
+      "migrations": []
     }
   ]
 }

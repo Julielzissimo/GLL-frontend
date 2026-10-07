@@ -33,8 +33,11 @@ test("uses the prototype navigation groups, Lucide icons and existing GLL palett
   assert.match(story, /Primary Navigation/);
   assert.match(styles, /--color-primary/);
 
-  assert.match(tokens, /--color-primary:\s*#2458d3/);
-  assert.match(tokens, /--color-secondary:\s*#111b32/);
-  assert.match(tokens, /--color-background:\s*#f4f6f9/);
-  assert.match(tokens, /--sidebar-width:\s*300px/);
+  assert.match(tokens, /--color-primary:\s*var\(--gll-forest\)/);
+  assert.match(tokens, /--color-secondary:\s*var\(--gll-forest\)/);
+  assert.match(tokens, /--color-background:\s*var\(--gll-canvas\)/);
+  assert.match(tokens, /--sidebar-width:\s*var\(--gll-sidebar-width\)/);
+  assert.match(tokens, /--gll-sidebar-width:\s*258px/);
+  assert.match(tokens, /--gll-forest:\s*#183d35/);
+  assert.match(tokens, /--gll-selection-bg:\s*#e8eee4/);
 });

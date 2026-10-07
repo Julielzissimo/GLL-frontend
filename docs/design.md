@@ -1,6 +1,6 @@
 # Design System GLL
 
-Este documento é a referência oficial de UI/UX do frontend GLL. O Design System organiza a identidade visual que já existe no produto; ele não introduz uma segunda identidade nem autoriza um redesign geral.
+Este documento é a referência oficial de UI/UX do frontend GLL. O Design System aplica à interface real a identidade visual aprovada no protótipo, preservando as rotas, os dados, as permissões e os fluxos existentes.
 
 ## Princípios
 
@@ -14,13 +14,14 @@ Este documento é a referência oficial de UI/UX do frontend GLL. O Design Syste
 ## Arquitetura
 
 - `web/design-system/tokens.css`: fonte central de tokens e aliases compatíveis com o CSS legado.
+- `web/design-system/prototype-theme.css`: adaptação dos componentes HTML atuais à linguagem visual aprovada; é carregado no produto e no Storybook.
 - `web/design-system/components.js`: componentes e exemplos reutilizados pelo catálogo interno e pelo Storybook.
 - `web/design-system/design-system.css`: estilos exclusivos do catálogo e dos novos componentes documentados.
 - `stories/`: stories organizadas em Foundations, Components e Patterns.
 - `.storybook/`: configuração do Storybook para HTML/Vite, acessibilidade e viewports.
-- `web/styles.css`: estilos da aplicação existente. Valores legados ainda não consolidados devem ser migrados apenas quando o componente correspondente for trabalhado e validado.
+- `web/styles.css`: estrutura e estilos específicos das páginas. A camada compatível aplica o mesmo tema aos componentes compartilhados sem alterar seus comportamentos.
 
-O tema canônico é o GLL 2.0 que já prevalecia no fim de `styles.css`. Os aliases `--bg`, `--panel`, `--primary` e equivalentes foram preservados para evitar regressão visual enquanto o código legado é migrado gradualmente.
+`--gll-*` é a fonte canônica de cor, tipografia, escala, forma e elevação. Os aliases existentes (`--bg`, `--panel`, `--primary` e equivalentes) apontam para esses tokens para manter as telas atuais compatíveis.
 
 ## Design Tokens
 
@@ -28,30 +29,32 @@ O tema canônico é o GLL 2.0 que já prevalecia no fim de `styles.css`. Os alia
 
 | Token | Valor | Uso |
 | --- | --- | --- |
-| `--color-primary` | `#2458d3` | Ações principais, links ativos e foco |
-| `--color-primary-hover` | `#1846b5` | Hover e ênfase da cor primária |
-| `--color-secondary` | `#111b32` | Sidebar e contraste estrutural |
-| `--color-background` | `#f4f6f9` | Fundo da aplicação |
-| `--color-surface` | `#ffffff` | Cards, tabelas, painéis e modais |
-| `--color-surface-subtle` | `#f7f8fa` | Superfícies secundárias |
-| `--color-border` | `#e5e7eb` | Bordas padrão |
-| `--color-border-strong` | `#d6dbe5` | Bordas com maior contraste |
-| `--color-text-primary` | `#172033` | Títulos e texto principal |
-| `--color-text-secondary` | `#6b7280` | Texto auxiliar |
-| `--color-success` | `#1b8f5a` | Sucesso e confirmação |
-| `--color-warning` | `#bd7700` | Atenção e pendência |
-| `--color-danger` | `#c53d3d` | Erro e ação destrutiva |
-| `--color-info` | `#3875d7` | Informação neutra |
+| `--gll-ink` | `#182923` | Texto principal |
+| `--gll-ink-soft` | `#4c5d55` | Texto auxiliar e metadados |
+| `--gll-forest` | `#183d35` | Navegação e ações principais |
+| `--gll-forest-hover` | `#28564a` | Hover das ações principais |
+| `--gll-accent` | `#b57b43` | Acento âmbar |
+| `--gll-canvas` | `#f5f3ed` | Fundo da aplicação |
+| `--gll-paper` | `#fffefa` | Cards, tabelas, painéis e diálogos |
+| `--gll-paper-muted` | `#efeee7` | Superfícies secundárias |
+| `--gll-line` | `#d9dcd2` | Divisórias e bordas |
+| `--gll-line-strong` | `#b8c2b5` | Contornos de controles |
+| `--gll-success` / `--gll-success-bg` | `#256a4f` / `#e4f1e8` | Sucesso e confirmação |
+| `--gll-warning` / `--gll-warning-bg` | `#895a1a` / `#f6ebd5` | Atenção e pendência |
+| `--gll-danger` / `--gll-danger-bg` | `#9c4c42` / `#f7e9e5` | Erro e ação destrutiva |
+| `--gll-info` / `--gll-info-bg` | `#35647c` / `#e6eef1` | Informação |
+| `--gll-selection-bg` | `#e8eee4` | Navegação e opções selecionadas |
+| `--gll-focus` | `#ad7237` | Foco de teclado |
 
-Cada cor de estado possui uma superfície correspondente (`--color-*-surface`). Não use cor de estado apenas como decoração: associe texto, ícone ou label que comunique o significado.
+Os tons auxiliares da navegação (texto `#edf3ea`, texto secundário `#a9c0b2`, divisória branca translúcida) também estão centralizados em `tokens.css`. Cada cor de estado tem uma superfície correspondente. Associe o estado a um rótulo legível.
 
 Status de edital: `--color-status-analysis` (em análise), `--color-status-approved` (aprovada), `--color-status-neutral` (descartada), `--color-complete` (faturado), `--color-status-disputed` (disputada) e `--color-status-rejected` (desclassificado). As variações correspondentes ficam centralizadas em `STATUS_TONES` e `COMPONENTS.statusBadge`.
 
 ### Tipografia
 
-- Família: `--font-family-sans` (`Inter`, `Segoe UI`, `Arial`, sans-serif).
-- Tamanhos: `xs`, `sm`, `md`, `lg`, `xl`, `2xl` e `3xl`.
-- Pesos: regular (`400`), medium (`600`), bold (`700`) e extrabold (`800`).
+- Família: IBM Plex Sans para interface, IBM Plex Serif para títulos e IBM Plex Mono para dados numéricos. Os arquivos OFL locais estão em `web/assets/fonts/`.
+- Texto principal: 16 px; ações e campos: 14 px; labels: 13 px; ajuda e legenda: 12 px.
+- Pesos: regular (`400`), medium (`500`), semibold (`600`) e bold (`700`).
 - Line-height: tight (`1.2`), normal (`1.5`) e relaxed (`1.65`).
 
 Use headings em ordem semântica. Labels de formulário devem permanecer visíveis; placeholder não substitui label.
@@ -62,20 +65,21 @@ A escala usa base de 4 px:
 
 | Token | Valor |
 | --- | --- |
-| `--space-xs` | 4 px |
-| `--space-sm` | 8 px |
-| `--space-md` | 12 px |
-| `--space-lg` | 16 px |
-| `--space-xl` | 24 px |
-| `--space-2xl` | 32 px |
-| `--space-3xl` | 48 px |
+| `--gll-space-1` | 4 px |
+| `--gll-space-2` | 8 px |
+| `--gll-space-3` | 12 px |
+| `--gll-space-4` | 16 px |
+| `--gll-space-6` | 24 px |
+| `--gll-space-8` | 32 px |
+| `--gll-space-12` | 48 px |
 
 ### Radius, bordas e sombras
 
-- Radius: `xs` (6 px), `sm` (8 px), `md` (10 px), `lg` (14 px), `xl` (20 px) e `pill`.
+- Radius oficial: `sm` (4 px), `md` (8 px) e `lg` (12 px). `pill` é reservado a avatares e indicadores circulares.
 - Bordas: `--border-default` e `--border-strong`.
-- Sombras: `--shadow-sm`, `--shadow-md` e `--shadow-lg`.
-- Foco: `--shadow-focus` ou outline equivalente com `--color-focus-ring`.
+- Sombras: `--gll-shadow-sm` (2 px / 8 px / 5%), `--gll-shadow-md` (14 px / 34 px / 12%) e `--gll-shadow-overlay` (30 px / 70 px / 22%).
+- Sidebar: 258 px. Controles principais: altura mínima de 44 px.
+- Foco: contorno âmbar com `--gll-focus`.
 
 ### Z-index
 
@@ -107,7 +111,7 @@ Tooltip, Dropdown, Pagination e filtros compostos continuam como padrões candid
 
 ## Navegação principal
 
-A navegação principal segue o padrão validado no protótipo e mantém a paleta canônica GLL 2.0. O fundo da barra continua em `--sidebar` (`--color-secondary`), e os estados ativos usam o tratamento azul-marinho já existente. Não introduza uma paleta paralela para a navegação.
+A navegação principal usa fundo verde floresta (`--gll-forest`) e texto claro. O item ativo tem fundo verde claro (`--gll-selection-bg`) e texto verde floresta; o hover usa uma superfície branca translúcida. A seleção, os botões, os campos, os badges e os estados de feedback usam os mesmos tokens semânticos.
 
 As áreas são agrupadas em **Área de trabalho** (Visão geral, Licitações e Orçamentos), **Documentos** (Propostas comerciais e Declarações) e **Administração** (Fornecedores, Usuários, Configurações e Design System). Usuários e Design System seguem a regra atual de acesso de Administrador. Configurações mantém o submenu de Geral e Dados da Empresa.
 
