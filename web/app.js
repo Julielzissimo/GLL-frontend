@@ -128,7 +128,6 @@ const appState = {
   currentSupplierProductId: null,
   sidebarCollapsed: false,
   appNavigationCollapsed: false,
-  documentsNavigationExpanded: false,
   settingsNavigationExpanded: false,
   bids: [],
   items: [],
@@ -164,11 +163,12 @@ const refs = {
   storageStatus: $("storageStatus"),
   appSidebar: $("appSidebar"),
   homeIconButton: $("homeIconButton"),
+  workspaceInitial: $("workspaceInitial"),
+  workspaceName: $("workspaceName"),
   navHomeButton: $("navHomeButton"),
   navBidsButton: $("navBidsButton"),
+  navBidsCount: $("navBidsCount"),
   navQuotationsButton: $("navQuotationsButton"),
-  navDocumentsButton: $("navDocumentsButton"),
-  documentsNavigationItems: $("documentsNavigationItems"),
   navCommercialProposalsButton: $("navCommercialProposalsButton"),
   navSuppliersButton: $("navSuppliersButton"),
   navDeclarationsButton: $("navDeclarationsButton"),
@@ -177,6 +177,13 @@ const refs = {
   settingsNavigationItems: $("settingsNavigationItems"),
   navDesignSystemButton: $("navDesignSystemButton"),
   menuToggleButton: $("menuToggleButton"),
+  closeMobileSidebarButton: $("closeMobileSidebarButton"),
+  mobileNavigationScrim: $("mobileNavigationScrim"),
+  searchNavigationButton: $("searchNavigationButton"),
+  notificationsContainer: $("notificationsContainer"),
+  notificationsButton: $("notificationsButton"),
+  notificationsMenu: $("notificationsMenu"),
+  notificationIndicator: $("notificationIndicator"),
   breadcrumbList: $("breadcrumbList"),
   profileMenuContainer: $("profileMenuContainer"),
   profileMenuButton: $("profileMenuButton"),
@@ -2138,7 +2145,6 @@ function bindEvents() {
   document.querySelectorAll("[data-navigation-page]").forEach((button) => {
     button.addEventListener("click", () => setPage(button.dataset.navigationPage));
   });
-  refs.navDocumentsButton.addEventListener("click", toggleDocumentsNavigation);
   refs.navSettingsButton.addEventListener("click", toggleSettingsNavigation);
   $("openDesignSystemButton").addEventListener("click", () => setPage("designSystem"));
   $("openCompanyDataButton").addEventListener("click", () => setPage("companyData"));
@@ -2149,6 +2155,23 @@ function bindEvents() {
   });
   refs.viewAllBidsButton.addEventListener("click", () => setPage("bids"));
   refs.menuToggleButton.addEventListener("click", toggleMainNavigation);
+  refs.closeMobileSidebarButton.addEventListener("click", closeMobileNavigation);
+  refs.mobileNavigationScrim.addEventListener("click", closeMobileNavigation);
+  refs.searchNavigationButton.addEventListener("click", () => {
+    setPage("bids");
+    requestAnimationFrame(() => refs.filterSearch.focus());
+  });
+  refs.notificationsButton.addEventListener("click", () => {
+    setNotificationsMenuOpen(refs.notificationsMenu.classList.contains("hidden"));
+  });
+  refs.notificationsContainer.addEventListener("keydown", handleNotificationsKeydown);
+  refs.notificationsMenu.addEventListener("click", handleNotificationClick);
+  document.addEventListener("pointerdown", (event) => {
+    if (!refs.notificationsContainer.contains(event.target)) setNotificationsMenuOpen(false);
+  });
+  document.addEventListener("focusin", (event) => {
+    if (!refs.notificationsContainer.contains(event.target)) setNotificationsMenuOpen(false);
+  });
   window.addEventListener("resize", updateMainNavigationState);
   window.addEventListener("resize", () => renderBreadcrumb(appState.activePage));
   refs.toggleSidebarButton.addEventListener("click", toggleSidebar);
@@ -3054,6 +3077,11 @@ function resetAuthenticatedView() {
   refs.currentUserName.textContent = "";
   refs.currentUserRole.textContent = "";
   refs.currentUserAvatar.textContent = "";
+  refs.workspaceName.textContent = "Organização";
+  refs.workspaceInitial.textContent = "G";
+  refs.navBidsCount.textContent = "0";
+  setNotificationsMenuOpen(false);
+  updateNotificationsIndicator();
   userProfileReturnPage = "home";
   userProfileReturnFocusTarget = null;
   setSyncNotice("");
@@ -3080,29 +3108,29 @@ function updateMainNavigationState() {
   const isExpanded = isMobile
     ? refs.appView.classList.contains("mobile-nav-open")
     : !appState.appNavigationCollapsed;
-  const actionLabel = isExpanded ? "Recolher menu" : "Expandir menu";
+  const actionLabel = isMobile
+    ? isExpanded ? "Fechar menu" : "Abrir menu"
+    : isExpanded ? "Recolher menu" : "Expandir menu";
   refs.menuToggleButton.setAttribute("aria-expanded", String(isExpanded));
   refs.menuToggleButton.setAttribute("aria-label", actionLabel);
   refs.menuToggleButton.title = actionLabel;
   refs.appSidebar.setAttribute("aria-hidden", String(!isExpanded));
   refs.appSidebar.inert = !isExpanded;
+  refs.mobileNavigationScrim.hidden = !isMobile || !isExpanded;
 }
 
-function toggleDocumentsNavigation() {
-  appState.documentsNavigationExpanded = !appState.documentsNavigationExpanded;
-  updateDocumentsNavigation();
-}
-
-function updateDocumentsNavigation() {
-  const isExpanded = appState.documentsNavigationExpanded;
-  refs.navDocumentsButton.setAttribute("aria-expanded", String(isExpanded));
-  refs.navDocumentsButton.classList.remove("active");
-  refs.documentsNavigationItems.classList.toggle("is-expanded", isExpanded);
-  refs.documentsNavigationItems.setAttribute("aria-hidden", String(!isExpanded));
-  refs.documentsNavigationItems.inert = !isExpanded;
+function closeMobileNavigation() {
+  if (!isMobileNavigation()) return;
+  refs.appView.classList.remove("mobile-nav-open");
+  updateMainNavigationState();
+  refs.menuToggleButton.focus({ preventScroll: true });
 }
 
 function toggleSettingsNavigation() {
+  if (window.matchMedia("(min-width: 621px) and (max-width: 820px)").matches) {
+    setPage("settings");
+    return;
+  }
   appState.settingsNavigationExpanded = !appState.settingsNavigationExpanded;
   updateSettingsNavigation();
 }
@@ -3114,6 +3142,87 @@ function updateSettingsNavigation() {
   refs.settingsNavigationItems.classList.toggle("is-expanded", isExpanded);
   refs.settingsNavigationItems.setAttribute("aria-hidden", String(!isExpanded));
   refs.settingsNavigationItems.inert = !isExpanded;
+}
+
+function organizationInitials(name) {
+  const parts = String(name || "").trim().split(/\s+/).filter(Boolean);
+  if (!parts.length) return "G";
+  return (parts.length === 1 ? parts[0][0] : `${parts[0][0]}${parts.at(-1)[0]}`).toLocaleUpperCase("pt-BR");
+}
+
+function navigationNotifications() {
+  const now = Date.now();
+  const endOfWeek = new Date();
+  endOfWeek.setDate(endOfWeek.getDate() + ((7 - endOfWeek.getDay()) % 7));
+  endOfWeek.setHours(23, 59, 59, 999);
+
+  const pendingDocuments = appState.documents
+    .filter((document) => !document.has_document)
+    .map((document) => ({ document, bid: appState.bids.find((row) => row.id === document.bid_id) }))
+    .filter(({ bid }) => bid)
+    .slice(0, 3);
+  const upcomingBids = appState.bids
+    .filter((bid) => {
+      const sessionTime = parseStoredDateTime(bid.session_datetime).getTime();
+      return sessionTime >= now && sessionTime <= endOfWeek.getTime();
+    })
+    .sort((a, b) => parseStoredDateTime(a.session_datetime) - parseStoredDateTime(b.session_datetime))
+    .slice(0, 3);
+
+  return [
+    ...pendingDocuments.map(({ document, bid }) => ({
+      bidId: bid.id,
+      page: "documents",
+      icon: "fileText",
+      title: `Documento pendente · ${document.document_type || "Documento"}`,
+      description: bidDisplayNumber(bid),
+    })),
+    ...upcomingBids.map((bid) => ({
+      bidId: bid.id,
+      page: "items",
+      icon: "briefcaseBusiness",
+      title: `Sessão prevista · ${bidDisplayNumber(bid)}`,
+      description: formatDateTime(bid.session_datetime),
+    })),
+  ];
+}
+
+function updateNotificationsIndicator() {
+  const count = navigationNotifications().length;
+  refs.notificationIndicator.hidden = count === 0;
+  refs.notificationsButton.setAttribute("aria-label", count ? `Notificações, ${count} itens pendentes` : "Notificações");
+}
+
+function setNotificationsMenuOpen(open) {
+  if (open) {
+    const notifications = navigationNotifications();
+    refs.notificationsMenu.innerHTML = notifications.length
+      ? `<div class="notification-menu-heading">Notificações</div>${notifications.map((notification) => `
+          <button class="notification-menu-item" type="button" data-notification-bid="${escapeHtml(notification.bidId)}" data-notification-page="${escapeHtml(notification.page)}">
+            <span class="notification-menu-icon" aria-hidden="true">${GLLDesignSystem.iconMarkup(notification.icon)}</span>
+            <span><strong>${escapeHtml(notification.title)}</strong><small>${escapeHtml(notification.description)}</small></span>
+          </button>`).join("")}`
+      : `<div class="notification-menu-heading">Notificações</div><p class="notification-menu-empty" role="status">Nenhuma notificação nova.</p>`;
+  }
+  refs.notificationsMenu.classList.toggle("hidden", !open);
+  refs.notificationsButton.setAttribute("aria-expanded", String(open));
+}
+
+function handleNotificationClick(event) {
+  const button = event.target.closest("[data-notification-bid]");
+  if (!button) return;
+  const bidId = button.dataset.notificationBid;
+  const page = button.dataset.notificationPage;
+  setNotificationsMenuOpen(false);
+  loadBid(bidId);
+  if (page === "documents") setPage("documents");
+}
+
+function handleNotificationsKeydown(event) {
+  if (event.key !== "Escape" || refs.notificationsMenu.classList.contains("hidden")) return;
+  event.preventDefault();
+  setNotificationsMenuOpen(false);
+  refs.notificationsButton.focus();
 }
 
 function normalizeUserRole(role) {
@@ -3169,35 +3278,35 @@ function breadcrumbItems(page) {
   }
   if (page === "commercialProposals") {
     return compact
-      ? [{ label: "Documentos" }, { label: "Proposta Comercial" }]
-      : [home, { label: "Gerar Documentos" }, { label: "Proposta Comercial" }];
+      ? [{ label: "Propostas comerciais" }]
+      : [home, { label: "Propostas comerciais" }];
   }
   if (page === "declarations") {
     return compact
       ? [{ label: "Declarações" }]
-      : [home, { label: "Gerar Documentos" }, { label: "Declarações" }];
+      : [home, { label: "Declarações" }];
   }
   if (["declarationLibrary", "declarationSettings", "declarationHistory"].includes(page)) {
     if (compact) return [{ label: "Declarações", page: "declarations" }, { label: pageLabels[page] }];
     return [
       home,
-      { label: "Gerar Documentos" },
       { label: "Declarações", page: "declarations" },
       { label: pageLabels[page] },
     ];
   }
-  if (["companyData", "designSystem"].includes(page)) {
+  if (page === "companyData") {
     if (compact) return [{ label: "Configurações", page: "settings" }, { label: pageLabels[page] }];
     return [home, { label: "Configurações", page: "settings" }, { label: pageLabels[page] }];
   }
   const topLevelLabels = {
     home: "Visão geral",
     bids: "Licitações",
-    quotations: "Orçamento",
-    commercialProposals: "Proposta Comercial",
+    quotations: "Orçamentos",
+    commercialProposals: "Propostas comerciais",
     suppliers: "Fornecedores",
     users: "Usuários",
     settings: "Configurações",
+    designSystem: "Design System",
   };
   if (compact || page === "home") return [{ label: topLevelLabels[page] || topLevelLabels.home }];
   return [home, { label: topLevelLabels[page] || topLevelLabels.home }];
@@ -3207,6 +3316,13 @@ function renderBreadcrumb(page) {
   const items = breadcrumbItems(page);
   const nodes = items.map((item, index) => {
     const listItem = document.createElement("li");
+    if (index > 0) {
+      const separator = document.createElement("span");
+      separator.className = "breadcrumb-separator";
+      separator.setAttribute("aria-hidden", "true");
+      separator.innerHTML = GLLDesignSystem.iconMarkup("chevronRight");
+      listItem.append(separator);
+    }
     if (index === items.length - 1) {
       listItem.setAttribute("aria-current", "page");
       const current = document.createElement("span");
@@ -3268,6 +3384,8 @@ function updateAccessInterface() {
   refs.designSystemAccessCard.classList.toggle("hidden", !showUserManagement);
   refs.designSystemAccessCard.setAttribute("aria-hidden", String(!showUserManagement));
   refs.usersOrganizationLabel.textContent = appState.currentOrganizationName || "Organização";
+  refs.workspaceName.textContent = appState.currentOrganizationName || "Organização";
+  refs.workspaceInitial.textContent = organizationInitials(appState.currentOrganizationName);
 }
 
 const DATA_KEYS = ["bids", "items", "documents", "failureHistory", "statusHistory", "quotations", "quotationItems", "users", "suppliers", "supplierProducts"];
@@ -3412,6 +3530,8 @@ async function reloadData({ background = false } = {}) {
     setSyncNotice("O registro aberto foi alterado ou excluído em outra sessão. Seu formulário foi preservado. Reabra o registro pela lista para conferir a versão atual antes de salvar.");
   }
   Object.assign(appState, next);
+  refs.navBidsCount.textContent = String(next.bids.length);
+  updateNotificationsIndicator();
   updateCurrentUserProfile();
   if (appState.activePage === "userProfile") updateUserProfileAccessActions();
   renderBids();
@@ -3519,9 +3639,6 @@ function setPage(page, options = {}) {
     return;
   }
   appState.activePage = page;
-  if (["commercialProposals", ...declarationPages].includes(page)) {
-    appState.documentsNavigationExpanded = true;
-  }
   if (["settings", "companyData", "designSystem"].includes(page)) {
     appState.settingsNavigationExpanded = true;
   }
@@ -3569,7 +3686,6 @@ function setPage(page, options = {}) {
   document.querySelectorAll("[data-navigation-page]").forEach((button) => {
     button.classList.toggle("active", button.dataset.navigationPage === activeNavigationPage);
   });
-  updateDocumentsNavigation();
   updateSettingsNavigation();
   refs.appView.classList.remove("mobile-nav-open");
   updateMainNavigationState();

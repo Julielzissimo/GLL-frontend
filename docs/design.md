@@ -105,6 +105,33 @@ As factories em `components.js` usam as classes reais da aplicação (`primary-a
 
 Tooltip, Dropdown, Pagination e filtros compostos continuam como padrões candidatos. Breadcrumb já aparece na navegação de documentos e configurações; mantenha sua apresentação curta e ligada ao caminho da página. Esses padrões devem ser consolidados quando houver uso recorrente, sem criar componentes apenas para preencher o catálogo.
 
+## Navegação principal
+
+A navegação principal segue o padrão validado no protótipo e mantém a paleta canônica GLL 2.0. O fundo da barra continua em `--sidebar` (`--color-secondary`), e os estados ativos usam o tratamento azul-marinho já existente. Não introduza uma paleta paralela para a navegação.
+
+As áreas são agrupadas em **Área de trabalho** (Visão geral, Licitações e Orçamentos), **Documentos** (Propostas comerciais e Declarações) e **Administração** (Fornecedores, Usuários, Configurações e Design System). Usuários e Design System seguem a regra atual de acesso de Administrador. Configurações mantém o submenu de Geral e Dados da Empresa.
+
+| Área | Ícone Lucide usado | Chave centralizada |
+| --- | --- | --- |
+| Visão geral | Layout Dashboard | `layoutDashboard` |
+| Licitações | Briefcase Business | `briefcaseBusiness` |
+| Orçamentos | Clipboard List | `clipboardList` |
+| Propostas comerciais | File Text | `fileText` |
+| Declarações | File Check 2 | `fileCheck2` |
+| Fornecedores | Package | `package` |
+| Usuários | Users | `lucideUsers` |
+| Configurações | Settings 2 | `settings2` |
+| Design System | Book Open | `bookOpen` |
+| Abrir menu | Menu | `menu` |
+| Breadcrumb | Chevron Right | `chevronRight` |
+| Notificações | Bell | `bell` |
+| Pesquisa | Search | `search` |
+| Fechar menu / expandir workspace | X / Chevron Down | `close` / `chevronDown` |
+
+Todos os SVGs são fornecidos pelo registro central `GLLDesignSystem.ICONS` em `web/design-system/components.js`; não se adicionam dependências ou desenhos de ícone avulsos. A story [Navigation.stories.js](../stories/patterns/Navigation.stories.js) registra os grupos, os ícones e o estado ativo.
+
+O espaço de trabalho e suas iniciais vêm da organização da sessão autenticada. A contagem da navegação reflete a quantidade de licitações carregadas. Pesquisa abre a lista de licitações e foca seu campo de busca. O menu de notificações é calculado a partir de documentos pendentes e sessões próximas já carregados pelo GLL. A versão mobile abre a barra em painel lateral, com botão de fechar, scrim e fechamento por Escape nas notificações; em telas compactas de tablet a navegação reduz para ícones e mantém uma forma de abrir Configurações.
+
 ## Regras de estado e interação
 
 - Hover não pode ser o único indicador de uma ação.
