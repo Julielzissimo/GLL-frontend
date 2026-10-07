@@ -122,7 +122,13 @@ function createOrganizationChat({ getClient, getOrganizationId, getOrganizationN
   function createButton(label, action, extra = {}) {
     const button = document.createElement("button");
     button.type = "button";
-    button.textContent = label;
+    if (extra.icon) {
+      button.innerHTML = window.GLLDesignSystem.iconMarkup(extra.icon);
+      button.setAttribute("aria-label", label);
+      button.title = label;
+    } else {
+      button.textContent = label;
+    }
     button.dataset.chatAction = action;
     if (extra.emoji) button.dataset.emoji = extra.emoji;
     if (extra.pressed !== undefined) button.setAttribute("aria-pressed", String(extra.pressed));
@@ -162,6 +168,10 @@ function createOrganizationChat({ getClient, getOrganizationId, getOrganizationN
     article.append(memberAvatar(row.sender_id));
     const content = document.createElement("div");
     content.className = "organization-chat-message-content";
+    if (!pending) {
+      content.tabIndex = 0;
+      content.setAttribute("aria-label", `Mensagem de ${own ? "você" : displayName(members.get(row.sender_id))}: ${row.body}`);
+    }
     const meta = document.createElement("div");
     meta.className = "organization-chat-message-meta";
     const author = document.createElement("strong");
@@ -212,7 +222,10 @@ function createOrganizationChat({ getClient, getOrganizationId, getOrganizationN
       if (chips.childElementCount) content.append(chips);
       const actions = document.createElement("div");
       actions.className = "organization-chat-actions";
-      actions.append(createButton("Responder", "reply"), createButton("Reagir", "picker"));
+      actions.append(
+        createButton("Reagir à mensagem", "picker", { icon: "smilePlus" }),
+        createButton("Responder à mensagem", "reply", { icon: "messageReply" }),
+      );
       content.append(actions);
       if (pickerMessageId === row.id) {
         const picker = document.createElement("div");
@@ -404,11 +417,15 @@ function createOrganizationChat({ getClient, getOrganizationId, getOrganizationN
     if (!row) return;
     if (action === "reply") {
       replyTo = row;
+      pickerMessageId = null;
+      renderMessages();
       renderReplyPreview();
       byId("organizationChatInput").focus();
     } else if (action === "picker") {
       pickerMessageId = pickerMessageId === messageId ? null : messageId;
       renderMessages();
+      if (pickerMessageId) byId("organizationChatMessages").querySelector(`[data-message-id="${messageId}"] .organization-chat-picker button`)?.focus();
+      else byId("organizationChatMessages").querySelector(`[data-message-id="${messageId}"] [data-chat-action="picker"]`)?.focus();
     } else if (action === "react") {
       void toggleReaction(messageId, button.dataset.emoji);
     }
