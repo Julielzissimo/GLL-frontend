@@ -470,7 +470,6 @@ const refs = {
   userSearchInput: $("userSearchInput"),
   userRoleFilter: $("userRoleFilter"),
   usersTableBody: $("usersTableBody"),
-  usersOrganizationLabel: $("usersOrganizationLabel"),
   userAssignmentsModal: $("userAssignmentsModal"),
   userAssignmentsForm: $("userAssignmentsForm"),
   userAssignmentsTitle: $("userAssignmentsTitle"),
@@ -1812,7 +1811,6 @@ const companyDataFeature = createCompanyDataFeature({
   onOrganizationUpdate: (organization) => {
     appState.currentOrganizationName = organization.name;
     appState.currentOrganizationCnpj = organization.cnpj;
-    refs.usersOrganizationLabel.textContent = organization.name;
     void declarationsFeature.refresh().catch((error) => showToast(error.message, "error"));
   },
   toast: (message, tone) => showToast(message, tone),
@@ -3381,7 +3379,6 @@ function updateAccessInterface() {
   refs.navDesignSystemButton.setAttribute("aria-hidden", String(!showUserManagement));
   refs.designSystemAccessCard.classList.toggle("hidden", !showUserManagement);
   refs.designSystemAccessCard.setAttribute("aria-hidden", String(!showUserManagement));
-  refs.usersOrganizationLabel.textContent = appState.currentOrganizationName || "Organização";
   refs.workspaceName.textContent = appState.currentOrganizationName || "Organização";
   refs.workspaceInitial.textContent = organizationInitials(appState.currentOrganizationName);
 }
