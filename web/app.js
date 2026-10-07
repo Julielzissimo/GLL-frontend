@@ -1787,6 +1787,12 @@ class SupabaseStore {
 }
 
 const store = createStore();
+const organizationChat = (window.GLLOrganizationChat?.createOrganizationChat || (() => ({ bind() {}, close() {} })))({
+  getClient: () => (store.requiresAuthenticationBeforeData ? store.client : null),
+  getOrganizationId: () => appState.currentOrganizationId,
+  getOrganizationName: () => appState.currentOrganizationName,
+  getUserId: () => appState.currentUserAuthId,
+});
 const declarationsFeature = createDeclarationsFeature({
   getClient: () => (store.requiresAuthenticationBeforeData ? store.client : null),
   getContext: () => ({
@@ -2038,6 +2044,7 @@ function withBlockingLoading(operation, message) {
 }
 
 function bindEvents() {
+  organizationChat.bind();
   bindPasswordVisibility();
   refs.toastDismissButton.innerHTML = GLLDesignSystem.ICONS.close;
   refs.toastDismissButton.addEventListener("click", () => {
@@ -3041,6 +3048,7 @@ async function logout() {
 }
 
 function resetAuthenticatedView() {
+  organizationChat.close();
   sessionEpoch += 1;
   stopSessionPolicyMonitoring();
   window.localStorage.removeItem(sessionPolicyStorageKey);

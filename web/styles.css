@@ -5981,6 +5981,36 @@ html.is-loading { overflow: hidden; }
   outline-offset: 2px;
 }
 
+.organization-chat-dialog {
+  width: min(640px, calc(100vw - 24px));
+  max-height: min(760px, calc(100dvh - 24px));
+  padding: 0;
+  border: 1px solid var(--gll-line);
+  border-radius: var(--gll-radius-lg);
+  background: var(--gll-paper);
+  color: var(--gll-ink);
+  box-shadow: 0 30px 70px rgb(10 30 24 / 22%);
+}
+
+.organization-chat-dialog::backdrop { background: rgb(10 30 24 / 45%); }
+.organization-chat-shell { display: flex; flex-direction: column; min-height: min(600px, calc(100dvh - 24px)); max-height: min(760px, calc(100dvh - 24px)); }
+.organization-chat-header { display: flex; align-items: start; justify-content: space-between; gap: var(--space-md); padding: var(--space-lg); border-bottom: 1px solid var(--gll-line); }
+.organization-chat-header h2 { margin: var(--space-xs) 0; }
+.organization-chat-header p { margin: 0; color: var(--gll-ink-soft); }
+.organization-chat-messages { display: flex; flex: 1; flex-direction: column; gap: var(--space-md); min-height: 0; overflow-y: auto; padding: var(--space-lg); }
+.organization-chat-empty { margin: auto; color: var(--gll-ink-soft); text-align: center; }
+.organization-chat-message { max-width: 85%; padding: var(--space-sm) var(--space-md); border: 1px solid var(--gll-line); border-radius: var(--gll-radius-lg); background: var(--gll-paper-muted); }
+.organization-chat-message.is-own { align-self: flex-end; background: var(--gll-selection-bg); }
+.organization-chat-message-meta { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--space-sm); font-size: var(--font-size-xs); }
+.organization-chat-message-meta time { color: var(--gll-ink-soft); }
+.organization-chat-message p { margin: var(--space-xs) 0 0; overflow-wrap: anywhere; white-space: pre-wrap; }
+.organization-chat-error { margin: 0 var(--space-lg); }
+.organization-chat-form { padding: var(--space-md) var(--space-lg) var(--space-lg); border-top: 1px solid var(--gll-line); }
+.organization-chat-form label { display: block; margin-bottom: var(--space-xs); }
+.organization-chat-compose { display: flex; align-items: end; gap: var(--space-sm); }
+.organization-chat-compose textarea { flex: 1; min-width: 0; resize: vertical; }
+@media (max-width: 520px) { .organization-chat-compose { align-items: stretch; flex-direction: column; } }
+
 .notification-menu-container {
   position: relative;
 }
