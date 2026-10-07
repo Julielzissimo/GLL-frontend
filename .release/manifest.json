@@ -533,6 +533,14 @@
         "b5e65a89a0189fafda9bceb42e6dfd3efb542527"
       ],
       "migrations": []
+    },
+    {
+      "id": "FRONT-2.0-ATIVIDADE-RECENTE-001",
+      "backend_commits": [],
+      "frontend_commits": [
+        "ae6b0793569dea5a9b0a12592c203993042d0b12"
+      ],
+      "migrations": []
     }
   ]
 }
