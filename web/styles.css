@@ -1161,6 +1161,12 @@ th.numeric {
   box-shadow: var(--shadow-sm);
 }
 
+#currentBidCreatorTag {
+  width: min(210px, 100%);
+  justify-content: flex-start;
+  border-radius: var(--radius-md);
+}
+
 .creator-avatar {
   display: inline-grid;
   width: 42px;

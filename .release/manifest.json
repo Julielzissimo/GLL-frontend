@@ -549,6 +549,14 @@
         "8727ae96701bab05109db48d6ec0cdfd521d00f6"
       ],
       "migrations": []
+    },
+    {
+      "id": "FRONT-2.0-CREATOR-TAG-001",
+      "backend_commits": [],
+      "frontend_commits": [
+        "e8602807a475940e1f260c8b4dc3d88943843ac8"
+      ],
+      "migrations": []
     }
   ]
 }
