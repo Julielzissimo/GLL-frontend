@@ -8,6 +8,17 @@ const html = await readFile(new URL("../web/index.html", import.meta.url), "utf8
 const application = source.slice(0, source.lastIndexOf('withBlockingLoading(main, "Verificando sessão…")'));
 const user = { email: "test@example.test", name: "Teste" };
 
+test("feed descreve alterações específicas do edital e do orçamento", () => {
+  const { bidActivityDescription } = client();
+  const event = { bid_id: "bid-1", edital_number: "10/2026", buyer_agency: "Prefeitura", detail: "3", previous_value: "Em Analise", next_value: "Aprovada" };
+  assert.equal(bidActivityDescription({ ...event, event_type: "bid_updated" }), "atualizou o edital 10/2026 de Prefeitura");
+  assert.equal(bidActivityDescription({ ...event, event_type: "quotation_item_updated" }), "alterou o item 3 do orçamento do edital 10/2026 de Prefeitura");
+  assert.equal(bidActivityDescription({ ...event, event_type: "file_added" }), "adicionou o arquivo “3” ao edital 10/2026 de Prefeitura");
+  assert.equal(bidActivityDescription({ ...event, event_type: "file_removed" }), "excluiu o arquivo “3” do edital 10/2026 de Prefeitura");
+  assert.equal(bidActivityDescription({ ...event, event_type: "status_changed" }), "alterou o status do edital 10/2026 de Prefeitura de Em Analise para Aprovada");
+  assert.equal(bidActivityDescription({ ...event, event_type: "item_won" }), "marcou o item 3 como vencido no edital 10/2026 de Prefeitura");
+});
+
 test("número do edital é separado do identificador interno e aceita repetição", () => {
   const app = client();
   const first = app.normalizeBidRecord({ id: "internal-1", edital_number: "10/2026" });
@@ -202,12 +213,13 @@ function client(db = backend(), auth = { session: { user } }) {
     clearInterval: (id) => timers.delete(id),
   });
   vm.runInContext(application, context);
-  const api = vm.runInContext(`({ store, appState, restoreSession, logout, reloadData, refreshInBackground, startLiveUpdates, stopLiveUpdates, resetAuthenticatedView, scheduleLiveRefresh, calculateBidSummary, calculateLineTotal, calculateItemProfit, calculateProfitMargin, calculateValueWithMargin, parseDecimal, parseProfitMargin, money, formatDateTime, toDateTimeInputValue, fromDateTimeInputValue, readNavigationRoute, writeNavigationRoute, resolveAuthorizedPage, normalizeBidRecord, normalizeBidAttachments, validateEditalFiles, bidDisplayNumber, bidMatchesSearch, creatorName, creatorInitials, creatorTagMarkup, normalizeQuotationRecord, normalizeQuotationItemRecord, quotationItemToBidItem, bidItemToQuotationItem, normalizeTechnicalSpecifications, quotationSaveError, sessionPolicyStorageKey, enforceSessionPolicy, availableBidQuotations })`, context);
+  const api = vm.runInContext(`({ store, appState, restoreSession, logout, reloadData, refreshInBackground, startLiveUpdates, stopLiveUpdates, resetAuthenticatedView, scheduleLiveRefresh, calculateBidSummary, calculateLineTotal, calculateItemProfit, calculateProfitMargin, calculateValueWithMargin, parseDecimal, parseProfitMargin, money, formatDateTime, toDateTimeInputValue, fromDateTimeInputValue, readNavigationRoute, writeNavigationRoute, resolveAuthorizedPage, normalizeBidRecord, normalizeBidAttachments, validateEditalFiles, bidDisplayNumber, bidMatchesSearch, bidActivityDescription, creatorName, creatorInitials, creatorTagMarkup, normalizeQuotationRecord, normalizeQuotationItemRecord, quotationItemToBidItem, bidItemToQuotationItem, normalizeTechnicalSpecifications, quotationSaveError, sessionPolicyStorageKey, enforceSessionPolicy, availableBidQuotations })`, context);
   vm.runInContext(`
     renderSuppliers = renderBids = renderDetails = renderQuotations = renderUsers = () => {};
     clearBidForm = clearQuotationForm = setPage = updateMainNavigationState = () => {};
   `, context);
   api.store.getAll = async (table) => structuredClone(db.tables[table]);
+  api.store.getBidActivity = async () => structuredClone(db.tables.bid_activity || []);
   api.store.getUsers = async () => structuredClone(db.users);
   api.store.getUser = async () => db.users[0] || null;
   api.store.client = {

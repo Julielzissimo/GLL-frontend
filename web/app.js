@@ -134,6 +134,7 @@ const appState = {
   documents: [],
   failureHistory: [],
   statusHistory: [],
+  bidActivity: [],
   quotations: [],
   quotationItems: [],
   users: [],
@@ -677,6 +678,8 @@ class IndexedDbStore {
     return this.request(db.transaction(storeName).objectStore(storeName).getAll());
   }
 
+  async getBidActivity() { return []; }
+
   async authTx(storeName, mode, callback) {
     const db = await this.openAuth();
     return new Promise((resolve, reject) => {
@@ -1206,6 +1209,14 @@ class SupabaseStore {
     const query = client.from(tableName).select("*");
     const { data, error } = ["bids", "quotations"].includes(tableName) ? await query.is("deleted_at", null) : await query;
     if (tableName === "failure_history" && isMissingFailureHistoryTableError(error)) return [];
+    assertSupabase(error);
+    return data || [];
+  }
+
+  async getBidActivity() {
+    const client = await this.open();
+    const { data, error } = await client.from("bid_activity").select("*")
+      .order("created_at", { ascending: false }).order("id", { ascending: false }).limit(30);
     assertSupabase(error);
     return data || [];
   }
@@ -3428,7 +3439,7 @@ if (typeof ResizeObserver === "function") {
   workspaceNameResizeObserver.observe(refs.workspaceName);
 }
 
-const DATA_KEYS = ["bids", "items", "documents", "failureHistory", "statusHistory", "quotations", "quotationItems", "users", "suppliers", "supplierProducts"];
+const DATA_KEYS = ["bids", "items", "documents", "failureHistory", "statusHistory", "bidActivity", "quotations", "quotationItems", "users", "suppliers", "supplierProducts"];
 let sessionEpoch = 0;
 let dataRequest = 0;
 let liveChannel = null;
@@ -3521,7 +3532,7 @@ async function reloadData({ background = false } = {}) {
   const rows = await Promise.all([
     store.getAll("bids"), store.getAll("items"), store.getAll("documents"),
     store.getAll("failure_history"), store.getAll("quotations"), store.getAll("quotation_items"),
-    store.getUsers(), store.getAll("suppliers"), store.getAll("supplier_products"), store.getAll("bid_status_history"),
+    store.getUsers(), store.getAll("suppliers"), store.getAll("supplier_products"), store.getAll("bid_status_history"), store.getBidActivity(),
   ]);
   // Discard stale responses after logout, another login, or a newer refresh.
   if (epoch !== sessionEpoch || request !== dataRequest || !appState.authenticated) return;
@@ -3547,6 +3558,7 @@ async function reloadData({ background = false } = {}) {
     .map(normalizeStatusHistoryRecord)
     .filter((entry) => visibleBidIds.has(entry.bid_id))
     .sort((a, b) => String(b.changed_at).localeCompare(String(a.changed_at)));
+  next.bidActivity = (rows[10] || []).filter((entry) => visibleBidIds.has(entry.bid_id));
   next.quotations = rows[4]
     .map(normalizeQuotationRecord)
     .filter((quotation) => !quotation.deleted_at)
@@ -4095,6 +4107,23 @@ function loadBid(bidId, options = {}) {
   if (["home", "bids", "edit"].includes(appState.activePage)) setPage("items", { history: options.history });
 }
 
+function bidActivityDescription(entry) {
+  const edital = `edital ${entry.edital_number || entry.bid_id} de ${entry.buyer_agency || "órgão comprador não informado"}`;
+  return {
+    bid_created: `cadastrou o ${edital}`,
+    bid_updated: `atualizou o ${edital}`,
+    bid_deleted: `excluiu o ${edital}`,
+    file_added: `adicionou o arquivo “${entry.detail || "sem nome"}” ao ${edital}`,
+    file_removed: `excluiu o arquivo “${entry.detail || "sem nome"}” do ${edital}`,
+    status_changed: `alterou o status do ${edital} de ${entry.previous_value || "—"} para ${entry.next_value || "—"}`,
+    quotation_item_added: `adicionou o item ${entry.detail || "—"} ao orçamento do ${edital}`,
+    quotation_item_updated: `alterou o item ${entry.detail || "—"} do orçamento do ${edital}`,
+    quotation_item_removed: `excluiu o item ${entry.detail || "—"} do orçamento do ${edital}`,
+    item_won: `marcou o item ${entry.detail || "—"} como vencido no ${edital}`,
+    item_unwon: `removeu a marcação de vencido do item ${entry.detail || "—"} no ${edital}`,
+  }[entry.event_type] || `atualizou o ${edital}`;
+}
+
 function renderHomeSummary() {
   const counts = appState.bids.reduce(
     (acc, bid) => {
@@ -4151,16 +4180,21 @@ function renderHomeSummary() {
     });
   });
 
-  const recentBids = [...appState.bids]
-    .sort((a, b) => bidActivityTimestamp(b) - bidActivityTimestamp(a))
-    .slice(0, 3);
-  refs.homeRecentActivitiesList.innerHTML = recentBids.length
-    ? recentBids.map((bid) => `<button class="home-recent-card" type="button" data-recent-activity-bid="${escapeHtml(bid.id)}">
-        <span class="home-recent-icon">${GLLDesignSystem.iconMarkup("fileText")}</span>
-        <span class="home-recent-copy"><strong>${escapeHtml(bidDisplayNumber(bid))}</strong><small>${escapeHtml(bid.buyer_agency || "Órgão comprador não informado")}</small></span>
-        ${GLLDesignSystem.COMPONENTS.statusBadge({ status: normalizeBidStatus(bid.status), label: statusDisplay(bid.status) })}
-      </button>`).join("")
-    : `<div class="empty-state compact-empty">Nenhuma atividade recente.</div>`;
+  refs.homeRecentActivitiesList.innerHTML = appState.bidActivity.length
+    ? appState.bidActivity.map((entry) => {
+        const actor = entry.actor_name || "Usuário";
+        const initials = actor.trim().split(/\s+/).filter(Boolean).map((part) => part[0]).filter(Boolean);
+        const user = appState.users.find((profile) => profile.auth_user_id === entry.actor_id);
+        const avatar = user?.avatar_signed_url
+          ? `<img src="${escapeHtml(user.avatar_signed_url)}" alt="" loading="lazy" decoding="async" />`
+          : escapeHtml((initials.length > 1 ? `${initials[0]}${initials.at(-1)}` : initials[0] || "?").toLocaleUpperCase("pt-BR"));
+        const action = bidActivityDescription(entry);
+        return `<button class="home-activity-entry" type="button" data-recent-activity-bid="${escapeHtml(entry.bid_id)}">
+          <span class="home-activity-avatar" aria-hidden="true">${avatar}</span>
+          <span class="home-activity-copy"><span><strong>${escapeHtml(actor)}</strong> ${escapeHtml(action)}</span><time datetime="${escapeHtml(entry.created_at)}">${escapeHtml(formatDateTime(entry.created_at))}</time></span>
+        </button>`;
+      }).join("")
+    : `<div class="empty-state compact-empty">Ainda não há atualizações de editais disponíveis.</div>`;
   refs.homeRecentActivitiesList.querySelectorAll("[data-recent-activity-bid]").forEach((button) => {
     button.addEventListener("click", () => loadBid(button.dataset.recentActivityBid));
   });
