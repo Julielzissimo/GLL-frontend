@@ -167,7 +167,6 @@ const refs = {
   workspaceName: $("workspaceName"),
   navHomeButton: $("navHomeButton"),
   navBidsButton: $("navBidsButton"),
-  navBidsCount: $("navBidsCount"),
   navQuotationsButton: $("navQuotationsButton"),
   navCommercialProposalsButton: $("navCommercialProposalsButton"),
   navSuppliersButton: $("navSuppliersButton"),
@@ -3079,7 +3078,6 @@ function resetAuthenticatedView() {
   refs.currentUserAvatar.textContent = "";
   refs.workspaceName.textContent = "Organização";
   refs.workspaceInitial.textContent = "G";
-  refs.navBidsCount.textContent = "0";
   setNotificationsMenuOpen(false);
   updateNotificationsIndicator();
   userProfileReturnPage = "home";
@@ -3530,7 +3528,6 @@ async function reloadData({ background = false } = {}) {
     setSyncNotice("O registro aberto foi alterado ou excluído em outra sessão. Seu formulário foi preservado. Reabra o registro pela lista para conferir a versão atual antes de salvar.");
   }
   Object.assign(appState, next);
-  refs.navBidsCount.textContent = String(next.bids.length);
   updateNotificationsIndicator();
   updateCurrentUserProfile();
   if (appState.activePage === "userProfile") updateUserProfileAccessActions();
