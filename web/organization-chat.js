@@ -448,7 +448,11 @@ function createOrganizationChat({ getClient, getOrganizationId, getOrganizationN
   function bind() {
     byId("organizationChatButton").addEventListener("click", () => { void open(); });
     byId("closeOrganizationChatButton").addEventListener("click", close);
-    byId("organizationChatDialog").addEventListener("close", close);
+    const dialog = byId("organizationChatDialog");
+    dialog.addEventListener("click", (event) => {
+      if (event.target === dialog) close();
+    });
+    dialog.addEventListener("close", close);
     byId("organizationChatMessages").addEventListener("click", handleMessageClick);
     byId("organizationChatCancelReplyButton").addEventListener("click", () => { replyTo = null; renderReplyPreview(); });
     byId("organizationChatForm").addEventListener("submit", (event) => {
