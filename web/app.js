@@ -3018,6 +3018,7 @@ async function enterAuthenticatedView(user) {
     refs.loginView.classList.add("hidden");
     refs.passwordResetView.classList.add("hidden");
     refs.appView.classList.remove("hidden");
+    truncateWorkspaceName();
     refs.loginPassword.value = "";
     clearBidForm({ history: "none" });
     clearQuotationForm();
@@ -3392,6 +3393,31 @@ function updateWorkspaceSummary() {
   refs.workspaceSummary.title = organizationName;
   refs.workspaceSummary.setAttribute("aria-label", `Espaço de trabalho: ${organizationName}`);
   refs.workspaceInitial.textContent = organizationInitials(appState.currentOrganizationName);
+  truncateWorkspaceName();
+}
+
+function truncateWorkspaceName() {
+  const nameElement = refs.workspaceName;
+  const fullName = appState.currentOrganizationName || "Organização";
+  const suffix = "...";
+  nameElement.textContent = fullName;
+  if (!Number.isFinite(nameElement.clientWidth) || nameElement.clientWidth <= 0 || nameElement.scrollWidth <= nameElement.clientWidth) return;
+
+  const characters = Array.from(fullName);
+  let low = 0;
+  let high = characters.length;
+  while (low < high) {
+    const middle = Math.ceil((low + high) / 2);
+    nameElement.textContent = `${characters.slice(0, middle).join("").trimEnd()}${suffix}`;
+    if (nameElement.scrollWidth <= nameElement.clientWidth) low = middle;
+    else high = middle - 1;
+  }
+  nameElement.textContent = `${characters.slice(0, low).join("").trimEnd()}${suffix}`;
+}
+
+if (typeof ResizeObserver === "function") {
+  const workspaceNameResizeObserver = new ResizeObserver(truncateWorkspaceName);
+  workspaceNameResizeObserver.observe(refs.workspaceName);
 }
 
 const DATA_KEYS = ["bids", "items", "documents", "failureHistory", "statusHistory", "quotations", "quotationItems", "users", "suppliers", "supplierProducts"];

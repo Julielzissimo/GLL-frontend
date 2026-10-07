@@ -54,5 +54,7 @@ test("salvamento central usa função transacional e sincroniza a organização"
 test("salvar a razão social atualiza a navbar e expõe o nome completo no tooltip", () => {
   assert.match(app, /onOrganizationUpdate: \(organization\) => \{[\s\S]*?updateWorkspaceSummary\(\);/);
   assert.match(app, /function updateWorkspaceSummary\(\)[\s\S]*?refs\.workspaceName\.textContent = organizationName;[\s\S]*?refs\.workspaceSummary\.title = organizationName;[\s\S]*?refs\.workspaceSummary\.setAttribute\("aria-label", `Espaço de trabalho: \$\{organizationName\}`\)/);
-  assert.match(styles, /\.workspace-copy strong \{[\s\S]*?text-overflow: ellipsis;[\s\S]*?text-overflow: "\.\.\.";/);
+  assert.match(app, /function truncateWorkspaceName\(\)[\s\S]*?const suffix = "\.\.\.";[\s\S]*?nameElement\.scrollWidth <= nameElement\.clientWidth/);
+  assert.match(app, /new ResizeObserver\(truncateWorkspaceName\)/);
+  assert.match(styles, /\.workspace-copy strong \{[\s\S]*?text-overflow: ellipsis;/);
 });
