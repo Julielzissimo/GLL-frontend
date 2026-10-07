@@ -66,27 +66,30 @@
 
   const TOKENS = Object.freeze({
     colors: [
-      ["primary", "--color-primary", "Ações principais, links ativos e foco"],
-      ["secondary", "--color-secondary", "Navegação principal e contraste estrutural"],
-      ["background", "--color-background", "Fundo global da aplicação"],
-      ["surface", "--color-surface", "Cards, painéis, tabelas e modais"],
-      ["border", "--color-border", "Divisórias e contornos padrão"],
-      ["text-primary", "--color-text-primary", "Títulos e conteúdo principal"],
-      ["text-secondary", "--color-text-secondary", "Textos auxiliares e legendas"],
-      ["success", "--color-success", "Confirmação e status positivos"],
-      ["warning", "--color-warning", "Atenção e pendências"],
-      ["danger", "--color-danger", "Erros e ações destrutivas"],
-      ["info", "--color-info", "Informações e status neutros"],
-      ["complete", "--color-complete", "Encerramento faturado"],
-      ["status-neutral", "--color-status-neutral", "Status descartado"],
-      ["status-approved", "--color-status-approved", "Licitação aprovada"],
-      ["status-analysis", "--color-status-analysis", "Licitação em análise"],
-      ["status-disputed", "--color-status-disputed", "Licitação disputada"],
-      ["status-rejected", "--color-status-rejected", "Licitação desclassificada"],
+      ["ink", "--gll-ink", "Texto principal"],
+      ["ink-soft", "--gll-ink-soft", "Texto auxiliar e metadados"],
+      ["forest", "--gll-forest", "Navegação e ações principais"],
+      ["forest-hover", "--gll-forest-hover", "Hover das ações principais"],
+      ["accent", "--gll-accent", "Acento âmbar"],
+      ["canvas", "--gll-canvas", "Fundo geral da aplicação"],
+      ["paper", "--gll-paper", "Cards, tabelas e diálogos"],
+      ["paper-muted", "--gll-paper-muted", "Superfícies secundárias"],
+      ["line", "--gll-line", "Divisórias e bordas"],
+      ["line-strong", "--gll-line-strong", "Contornos de controles"],
+      ["success", "--gll-success", "Confirmações e estados positivos"],
+      ["success-bg", "--gll-success-bg", "Superfície de sucesso"],
+      ["warning", "--gll-warning", "Atenção e pendências"],
+      ["warning-bg", "--gll-warning-bg", "Superfície de aviso"],
+      ["danger", "--gll-danger", "Erros e ações destrutivas"],
+      ["danger-bg", "--gll-danger-bg", "Superfície de erro"],
+      ["info", "--gll-info", "Informação"],
+      ["info-bg", "--gll-info-bg", "Superfície informativa"],
+      ["selection", "--gll-selection-bg", "Seleção de navegação e opções"],
+      ["focus", "--gll-focus", "Foco de teclado"],
     ],
-    spacing: ["xs", "sm", "md", "lg", "xl", "2xl", "3xl"],
-    radius: ["xs", "sm", "md", "lg", "xl", "pill"],
-    shadows: ["sm", "md", "lg"],
+    spacing: ["1", "2", "3", "4", "6", "8", "12"],
+    radius: ["sm", "md", "lg"],
+    shadows: ["sm", "md", "overlay"],
   });
 
   function escapeHtml(value) {
@@ -205,13 +208,13 @@
 
   function foundationsMarkup() {
     const colors = TOKENS.colors.map(([name, variable, usage]) => `<article class="ds-color-card"><span data-color="${name}" aria-hidden="true"></span><strong>${name}</strong><code>${variable}</code><small>${escapeHtml(tokenValue(variable))}</small><p>${escapeHtml(usage)}</p></article>`).join("");
-    const spacing = TOKENS.spacing.map((name) => `<div class="ds-scale-row"><code>--space-${name}</code><span data-space="${name}" aria-hidden="true"></span><small>${escapeHtml(tokenValue(`--space-${name}`))}</small></div>`).join("");
+    const spacing = TOKENS.spacing.map((name) => `<div class="ds-scale-row"><code>--gll-space-${name}</code><span data-space="${name}" aria-hidden="true"></span><small>${escapeHtml(tokenValue(`--gll-space-${name}`))}</small></div>`).join("");
     const radius = TOKENS.radius.map((name) => `<div class="ds-radius-sample" data-radius="${name}"><code>${name}</code></div>`).join("");
     const shadows = TOKENS.shadows.map((name) => `<div class="ds-shadow-sample" data-shadow="${name}"><code>shadow-${name}</code></div>`).join("");
     const icons = Object.entries(ICONS).map(([name, markup]) => `<div class="ds-icon-sample">${markup}<code>${name}</code></div>`).join("");
     return `
-      <section class="ds-doc-section" id="ds-colors"><div class="ds-section-heading"><span class="eyebrow">FOUNDATIONS</span><h2>Cores</h2><p>Paleta semântica oficial extraída da interface GLL 2.0.</p></div><div class="ds-color-grid">${colors}</div></section>
-      <section class="ds-doc-section" id="ds-typography"><div class="ds-section-heading"><h2>Tipografia</h2><p>Inter quando disponível, com Segoe UI e Arial como fallbacks.</p></div><div class="ds-type-stack"><h1>Heading 1 · 32 px</h1><h2>Heading 2 · 24 px</h2><h3>Heading 3 · 20 px</h3><p>Body · 14 px / line-height 1.5 — textos de interface e conteúdo.</p><label>Label · 13 px / semibold</label><small>Caption · 12 px — metadados e ajuda contextual.</small></div></section>
+      <section class="ds-doc-section" id="ds-colors"><div class="ds-section-heading"><span class="eyebrow">FOUNDATIONS</span><h2>Cores</h2><p>Paleta semântica do GLL, igual à referência validada no protótipo.</p></div><div class="ds-color-grid">${colors}</div></section>
+      <section class="ds-doc-section" id="ds-typography"><div class="ds-section-heading"><h2>Tipografia</h2><p>IBM Plex Sans, IBM Plex Serif e IBM Plex Mono. Texto principal de 16 px.</p></div><div class="ds-type-stack"><h1>Heading 1 · IBM Plex Serif</h1><h2>Heading 2 · IBM Plex Serif</h2><h3>Heading 3 · IBM Plex Serif</h3><p>Body · 16 px / line-height 1.5 — textos de interface e conteúdo.</p><label>Label · 13 px / semibold</label><small>Caption · 12 px — metadados e ajuda contextual.</small><code>Monospace · IBM Plex Mono</code></div></section>
       <section class="ds-doc-section" id="ds-spacing"><div class="ds-section-heading"><h2>Espaçamento</h2><p>Escala base de 4 px para composições previsíveis.</p></div><div class="ds-scale-list">${spacing}</div></section>
       <section class="ds-doc-section" id="ds-radius"><div class="ds-section-heading"><h2>Radius</h2></div><div class="ds-sample-grid">${radius}</div></section>
       <section class="ds-doc-section" id="ds-shadows"><div class="ds-section-heading"><h2>Sombras</h2></div><div class="ds-sample-grid">${shadows}</div></section>
