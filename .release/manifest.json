@@ -598,6 +598,14 @@
         "b77062c77c013ca08eb4ed48a673104b636d5998"
       ],
       "migrations": []
+    },
+    {
+      "id": "FRONT-2.0-CABECALHOS-LICITACOES-001",
+      "backend_commits": [],
+      "frontend_commits": [
+        "0f8dd011a3bf4a1444128c60d453b8016b4344e5"
+      ],
+      "migrations": []
     }
   ]
 }
