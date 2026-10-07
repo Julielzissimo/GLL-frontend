@@ -23,7 +23,7 @@ test("uses the prototype navigation groups, Lucide icons and existing GLL palett
   for (const iconName of ["layoutDashboard", "briefcaseBusiness", "clipboardList", "fileText", "fileCheck2", "package", "lucideUsers", "settings2", "bookOpen", "menu", "chevronRight", "chevronDown", "bell", "search"]) {
     assert.match(icons, new RegExp(`\\b${iconName}: icon\\(`));
   }
-  assert.match(app, /workspaceName\.textContent = appState\.currentOrganizationName/);
+  assert.match(app, /function updateWorkspaceSummary\(\)[\s\S]*?refs\.workspaceName\.textContent = organizationName/);
   assert.doesNotMatch(html, /navBidsCount|class="nav-count"/);
   assert.doesNotMatch(app, /navBidsCount/);
   assert.doesNotMatch(story, /class="nav-count"/);

@@ -165,6 +165,7 @@ const refs = {
   storageStatus: $("storageStatus"),
   appSidebar: $("appSidebar"),
   homeIconButton: $("homeIconButton"),
+  workspaceSummary: $("workspaceSummary"),
   workspaceInitial: $("workspaceInitial"),
   workspaceName: $("workspaceName"),
   navHomeButton: $("navHomeButton"),
@@ -1832,6 +1833,7 @@ const companyDataFeature = createCompanyDataFeature({
   onOrganizationUpdate: (organization) => {
     appState.currentOrganizationName = organization.name;
     appState.currentOrganizationCnpj = organization.cnpj;
+    updateWorkspaceSummary();
     void declarationsFeature.refresh().catch((error) => showToast(error.message, "error"));
   },
   toast: (message, tone) => showToast(message, tone),
@@ -3098,8 +3100,7 @@ function resetAuthenticatedView() {
   refs.currentUserName.textContent = "";
   refs.currentUserRole.textContent = "";
   refs.currentUserAvatar.textContent = "";
-  refs.workspaceName.textContent = "Organização";
-  refs.workspaceInitial.textContent = "G";
+  updateWorkspaceSummary();
   setNotificationsMenuOpen(false);
   updateNotificationsIndicator();
   userProfileReturnPage = "home";
@@ -3407,7 +3408,14 @@ function updateAccessInterface() {
   refs.navDesignSystemButton.setAttribute("aria-disabled", String(!showDesignSystemAccess));
   refs.designSystemAccessCard.classList.toggle("hidden", !showDesignSystemAccess);
   refs.designSystemAccessCard.setAttribute("aria-hidden", String(!showDesignSystemAccess));
-  refs.workspaceName.textContent = appState.currentOrganizationName || "Organização";
+  updateWorkspaceSummary();
+}
+
+function updateWorkspaceSummary() {
+  const organizationName = appState.currentOrganizationName || "Organização";
+  refs.workspaceName.textContent = organizationName;
+  refs.workspaceSummary.title = organizationName;
+  refs.workspaceSummary.setAttribute("aria-label", `Espaço de trabalho: ${organizationName}`);
   refs.workspaceInitial.textContent = organizationInitials(appState.currentOrganizationName);
 }
 
