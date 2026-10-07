@@ -557,6 +557,14 @@
         "e8602807a475940e1f260c8b4dc3d88943843ac8"
       ],
       "migrations": []
+    },
+    {
+      "id": "FRONT-2.0-IDENTIDADE-VISUAL-GLL-001",
+      "backend_commits": [],
+      "frontend_commits": [
+        "946f7607447b490318d7e5b9c42fe45e517913f1"
+      ],
+      "migrations": []
     }
   ]
 }
