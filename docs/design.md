@@ -115,6 +115,8 @@ A navegação principal usa fundo verde floresta (`--gll-forest`) e texto claro.
 
 As áreas são agrupadas em **Área de trabalho** (Visão geral, Licitações e Orçamentos), **Documentos** (Propostas comerciais e Declarações) e **Administração** (Fornecedores, Usuários, Configurações e Design System). Usuários e Design System seguem a regra atual de acesso de Administrador. Configurações mantém o submenu de Geral e Dados da Empresa.
 
+A marca da barra lateral usa o lockup vetorial `web/assets/gll-brand.svg` e, na navegação compacta, o emblema `web/assets/gll-mark.svg`. A aba do navegador usa o mesmo selo de integridade em `web/assets/favicon.svg`, com PNG e ICO como alternativas para navegadores compatíveis.
+
 | Área | Ícone Lucide usado | Chave centralizada |
 | --- | --- | --- |
 | Visão geral | Layout Dashboard | `layoutDashboard` |
