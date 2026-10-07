@@ -515,6 +515,14 @@
         "a7d278f0bdafa873ec2d36b8b16c1074d56d1f09"
       ],
       "migrations": []
+    },
+    {
+      "id": "FRONT-2.0-NAVBAR-001",
+      "backend_commits": [],
+      "frontend_commits": [
+        "e2e10b67dc539403f238f59bfc45e00e482730e3"
+      ],
+      "migrations": []
     }
   ]
 }
