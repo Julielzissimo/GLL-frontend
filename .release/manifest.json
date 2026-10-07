@@ -631,6 +631,14 @@
       "migrations": [
         "supabase/migrations/20261007210000_bid_activity_feed.sql"
       ]
+    },
+    {
+      "id": "FRONT-2.0-USUARIOS-CABECALHO-001",
+      "backend_commits": [],
+      "frontend_commits": [
+        "16d0c5a8c85afb4d074335045cff8c663fee7460"
+      ],
+      "migrations": []
     }
   ]
 }
