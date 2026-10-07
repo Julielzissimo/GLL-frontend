@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "release_id": "2026-10-07-front-2-creator-tag",
+  "release_id": "2026-10-07-organization-chat",
   "environment": "homolog",
   "target_branch": "homolog",
   "items": [
@@ -607,6 +607,18 @@
         "5d6658bcffe2679ce8329e8414653d3bdfee8175"
       ],
       "migrations": []
+    },
+    {
+      "id": "FRONT-2.0-CHAT-ORGANIZACAO-001",
+      "backend_commits": [
+        "c9cd8cf4dc6fd9417055e969fdcb3010fa4db676"
+      ],
+      "frontend_commits": [
+        "bebf27dece9adf090185dc262f484d37db8caefa"
+      ],
+      "migrations": [
+        "supabase/migrations/20261007185817_organization_messages.sql"
+      ]
     }
   ]
 }
