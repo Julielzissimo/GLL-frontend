@@ -3487,7 +3487,7 @@ tr.item-won td {
 
 .metric-copy > span {
   display: block;
-  color: var(--gll-ink-soft);
+  color: var(--gll-paper);
   font-size: 10px;
   font-weight: 700;
   text-transform: uppercase;
