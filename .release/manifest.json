@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "release_id": "2026-10-07-organization-chat",
+  "release_id": "2026-10-07-chat-interactions",
   "environment": "homolog",
   "target_branch": "homolog",
   "items": [
@@ -630,6 +630,18 @@
       ],
       "migrations": [
         "supabase/migrations/20261007210000_bid_activity_feed.sql"
+      ]
+    },
+    {
+      "id": "FRONT-2.0-CHAT-INTERACOES-001",
+      "backend_commits": [
+        "d93e7baba63d38493762bd77d7e62c3b21c1342f"
+      ],
+      "frontend_commits": [
+        "a83ff1853d2d9d595abeb1fb806d8ab65f308aa2"
+      ],
+      "migrations": [
+        "supabase/migrations/20261007204101_organization_message_interactions.sql"
       ]
     }
   ]
