@@ -113,6 +113,8 @@ Tooltip, Dropdown, Pagination e filtros compostos continuam como padrões candid
 
 A navegação principal usa fundo verde floresta (`--gll-forest`) e texto claro. O item ativo tem fundo verde claro (`--gll-selection-bg`) e texto verde floresta; o hover usa uma superfície branca translúcida. A seleção, os botões, os campos, os badges e os estados de feedback usam os mesmos tokens semânticos.
 
+A marca no cabeçalho da sidebar usa o SVG `web/assets/gll-selo-integridade.svg`, com as cores de navegação já definidas em `tokens.css`. Quando a sidebar se reduz a ícones em tablets, use `web/assets/gll-selo-integridade-marca.svg`; ambos mantêm a ação do botão de voltar à visão geral e não substituem os ícones de navegação do registro central.
+
 As áreas são agrupadas em **Área de trabalho** (Visão geral, Licitações e Orçamentos), **Documentos** (Propostas comerciais e Declarações) e **Administração** (Fornecedores, Usuários, Configurações e Design System). Usuários e Design System seguem a regra atual de acesso de Administrador. Configurações mantém o submenu de Geral e Dados da Empresa.
 
 | Área | Ícone Lucide usado | Chave centralizada |
