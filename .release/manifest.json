@@ -559,10 +559,43 @@
       "migrations": []
     },
     {
+      "id": "FRONT-2.0-IDENTIDADE-VISUAL-GLL-001",
+      "backend_commits": [],
+      "frontend_commits": [
+        "946f7607447b490318d7e5b9c42fe45e517913f1"
+      ],
+      "migrations": []
+    },
+    {
       "id": "FRONT-2.0-SELO-INTEGRIDADE-001",
       "backend_commits": [],
       "frontend_commits": [
+        "946f7607447b490318d7e5b9c42fe45e517913f1",
         "36095ae05c428b57baae06ad7f5e76556047fd4f"
+      ],
+      "migrations": []
+    },
+    {
+      "id": "FRONT-2.0-DESIGN-SYSTEM-RULES-001",
+      "backend_commits": [
+        "4e22684f14ffe1b0214569bec23a1bf4bb8a5998"
+      ],
+      "frontend_commits": [],
+      "migrations": []
+    },
+    {
+      "id": "FRONT-2.0-ASSINATURA-LOGO-GLL-001",
+      "backend_commits": [],
+      "frontend_commits": [
+        "d561015f05d324a035386fb8387d8110f47d65a3"
+      ],
+      "migrations": []
+    },
+    {
+      "id": "FRONT-2.0-CARDS-STATUS-001",
+      "backend_commits": [],
+      "frontend_commits": [
+        "b77062c77c013ca08eb4ed48a673104b636d5998"
       ],
       "migrations": []
     }

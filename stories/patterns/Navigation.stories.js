@@ -1,3 +1,6 @@
+import gllBrand from "../../web/assets/gll-brand.svg";
+import gllMark from "../../web/assets/gll-mark.svg";
+
 const icon = (name) => window.GLLDesignSystem.ICONS[name];
 
 export default {
@@ -9,9 +12,9 @@ const navigation = (active = "bids") => `
   <div class="navigation-story-shell" style="width: min(300px, 100%); height: 680px; overflow: hidden; border: 1px solid var(--color-border); border-radius: var(--radius-md);">
     <aside class="app-sidebar" aria-label="Navegação principal" style="position: relative; width: 100%; height: 100%; min-height: 0; box-sizing: border-box;">
       <div class="app-brand-row">
-        <div class="app-logo" aria-label="GLL">
-          <span class="brand-mark" aria-hidden="true">GLL</span>
-          <span class="brand-copy"><strong>GLL</strong><small>GESTÃO DE LICITAÇÕES</small></span>
+        <div class="app-logo" role="img" aria-label="GLL">
+          <img class="app-logo-image app-logo-image--full" src="${gllBrand}" alt="" aria-hidden="true" />
+          <img class="app-logo-image app-logo-image--mark" src="${gllMark}" alt="" aria-hidden="true" />
         </div>
         <button class="mobile-nav-close" type="button" aria-label="Fechar menu"><span data-gll-icon="close" aria-hidden="true">${icon("close")}</span></button>
       </div>

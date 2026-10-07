@@ -4074,10 +4074,6 @@ function renderHomeSummary() {
   refs.homeBilledBids.textContent = String(counts.billed);
   refs.homeDisqualifiedBids.textContent = String(counts.disqualified);
   refs.homeDisputedBids.textContent = String(counts.disputed);
-  document.querySelectorAll("[data-home-status]").forEach((button) => {
-    button.classList.toggle("active", refs.filterStatus.value === button.dataset.homeStatus);
-  });
-
   const upcoming = appState.bids
     .filter((bid) => parseStoredDateTime(bid.session_datetime).getTime() >= Date.now() - 86400000)
     .sort((a, b) => parseStoredDateTime(a.session_datetime) - parseStoredDateTime(b.session_datetime))
