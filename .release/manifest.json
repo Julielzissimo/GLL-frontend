@@ -602,7 +602,7 @@
       "id": "RAZAO-SOCIAL-NAVBAR-001",
       "backend_commits": [],
       "frontend_commits": [
-        "c89173a05e696131b4d96d977a3a6dc5c13d7682",
+        "c89173a4ea609bc3b955ae5fd3b89e769c3f7bc7",
         "cc9de98ab57ad0c2074073ed848b4a8cfc1a510e"
       ],
       "migrations": []
