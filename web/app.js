@@ -470,7 +470,6 @@ const refs = {
   quotationItemsTableBody: $("quotationItemsTableBody"),
   quotationItemWonHeader: $("quotationItemWonHeader"),
   userCountLabel: $("userCountLabel"),
-  usersTotalLabel: $("usersTotalLabel"),
   userSearchInput: $("userSearchInput"),
   userRoleFilter: $("userRoleFilter"),
   usersTableBody: $("usersTableBody"),
@@ -6003,7 +6002,6 @@ function renderUsers() {
     const searchableText = normalizeSearchText(`${displayName} ${user.full_name || ""} ${user.email || ""}`);
     return matchesRole && (!query || searchableText.includes(query));
   });
-  refs.usersTotalLabel.textContent = totalLabel;
   refs.userCountLabel.textContent = query || roleFilter !== "all"
     ? `${visibleUsers.length} de ${totalLabel}`
     : totalLabel;

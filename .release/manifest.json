@@ -633,6 +633,14 @@
       ]
     },
     {
+      "id": "FRONT-2.0-USUARIOS-CABECALHO-001",
+      "backend_commits": [],
+      "frontend_commits": [
+        "16d0c5a8c85afb4d074335045cff8c663fee7460"
+      ],
+      "migrations": []
+    },
+    {
       "id": "FRONT-2.0-CHAT-INTERACOES-001",
       "backend_commits": [
         "d93e7baba63d38493762bd77d7e62c3b21c1342f"
