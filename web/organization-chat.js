@@ -122,7 +122,13 @@ function createOrganizationChat({ getClient, getOrganizationId, getOrganizationN
   function createButton(label, action, extra = {}) {
     const button = document.createElement("button");
     button.type = "button";
-    button.textContent = label;
+    if (extra.icon) {
+      button.innerHTML = window.GLLDesignSystem.iconMarkup(extra.icon);
+      button.setAttribute("aria-label", label);
+      button.title = label;
+    } else {
+      button.textContent = label;
+    }
     button.dataset.chatAction = action;
     if (extra.emoji) button.dataset.emoji = extra.emoji;
     if (extra.pressed !== undefined) button.setAttribute("aria-pressed", String(extra.pressed));
@@ -231,10 +237,6 @@ function createOrganizationChat({ getClient, getOrganizationId, getOrganizationN
       footer.append(status);
       if (row.status === "failed") footer.append(createButton("Tentar novamente", "retry", { title: "Tentar reenviar a mensagem" }));
     } else {
-      const actions = document.createElement("div");
-      actions.className = "organization-chat-actions";
-      actions.append(createButton("Responder", "reply"), createButton("Reagir", "picker"));
-      footer.append(actions);
       if (own) {
         const recipients = [...members.values()].filter((member) => member.auth_user_id !== getUserId() && !member.access_revoked_at);
         const receipt = reads.filter((entry) => entry.message_id === row.id && recipients.some((member) => member.auth_user_id === entry.reader_id));
@@ -250,6 +252,16 @@ function createOrganizationChat({ getClient, getOrganizationId, getOrganizationN
       }
     }
     return footer.childElementCount ? footer : null;
+  }
+
+  function renderMessageActions() {
+    const actions = document.createElement("div");
+    actions.className = "organization-chat-actions";
+    actions.append(
+      createButton("Reagir à mensagem", "picker", { icon: "smilePlus" }),
+      createButton("Responder à mensagem", "reply", { icon: "messageReply" }),
+    );
+    return actions;
   }
 
   function renderMessage(row, pending = false, { showHeader = true, showAvatar = true } = {}) {
@@ -268,10 +280,15 @@ function createOrganizationChat({ getClient, getOrganizationId, getOrganizationN
 
     const content = document.createElement("div");
     content.className = "organization-chat-message-content";
+    if (!pending) {
+      content.tabIndex = 0;
+      content.setAttribute("aria-label", `Mensagem de ${own ? "você" : displayName(members.get(row.sender_id))}: ${row.body}`);
+    }
     if (showHeader) content.append(renderMessageHeader(row, own));
     content.append(renderMessageBubble(row, own, pending));
     const footer = renderMessageFooter(row, own, pending);
     if (footer) content.append(footer);
+    if (!pending) content.append(renderMessageActions());
     article.append(content);
     return article;
   }
@@ -461,11 +478,15 @@ function createOrganizationChat({ getClient, getOrganizationId, getOrganizationN
     if (!row) return;
     if (action === "reply") {
       replyTo = row;
+      pickerMessageId = null;
+      renderMessages();
       renderReplyPreview();
       byId("organizationChatInput").focus();
     } else if (action === "picker") {
       pickerMessageId = pickerMessageId === messageId ? null : messageId;
       renderMessages();
+      if (pickerMessageId) byId("organizationChatMessages").querySelector(`[data-message-id="${messageId}"] .organization-chat-picker button`)?.focus();
+      else byId("organizationChatMessages").querySelector(`[data-message-id="${messageId}"] [data-chat-action="picker"]`)?.focus();
     } else if (action === "react") {
       void toggleReaction(messageId, button.dataset.emoji);
     }
