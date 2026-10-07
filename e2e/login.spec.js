@@ -126,7 +126,7 @@ test("o login de teste acessa somente a organização de teste", async ({ page }
 
     await page.locator("#navUsersButton").click();
     await page.locator("#usersPage").waitFor({ state: "visible" });
-    const organizationLabel = (await page.locator("#usersOrganizationLabel").textContent())?.split("·")[0]?.trim();
+    const organizationLabel = (await page.locator("#workspaceName").textContent())?.split("·")[0]?.trim();
     const organizationQuery = await page.evaluate(async ({ supabaseUrl, anonKey, accessToken }) => {
       const response = await fetch(`${supabaseUrl}/rest/v1/organizations?select=name`, {
         headers: {
