@@ -626,6 +626,18 @@
       "migrations": [
         "supabase/migrations/20261007185817_organization_messages.sql"
       ]
+    },
+    {
+      "id": "FRONT-2.0-FEED-EDITAIS-001",
+      "backend_commits": [
+        "68745f57d1b4f9a16c6f28546886644e81448fa4"
+      ],
+      "frontend_commits": [
+        "c2ad0f3232029f70ca65271ca13e383e0ea98e58"
+      ],
+      "migrations": [
+        "supabase/migrations/20261007210000_bid_activity_feed.sql"
+      ]
     }
   ]
 }
