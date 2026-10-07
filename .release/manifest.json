@@ -524,6 +524,14 @@
         "6734398466260ca63af58410104692911a4e57a3"
       ],
       "migrations": []
+    },
+    {
+      "id": "USERS-INFO-001",
+      "backend_commits": [],
+      "frontend_commits": [
+        "11b192a393534e24f71055539305c3e951c13e6c"
+      ],
+      "migrations": []
     }
   ]
 }
