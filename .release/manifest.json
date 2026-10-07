@@ -614,7 +614,8 @@
         "c9cd8cf4dc6fd9417055e969fdcb3010fa4db676"
       ],
       "frontend_commits": [
-        "bebf27dece9adf090185dc262f484d37db8caefa"
+        "bebf27dece9adf090185dc262f484d37db8caefa",
+        "263ec07b839df2eddd0524b2d2f7944cb46b9126"
       ],
       "migrations": [
         "supabase/migrations/20261007185817_organization_messages.sql"
