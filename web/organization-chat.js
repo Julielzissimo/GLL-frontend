@@ -153,27 +153,19 @@ function createOrganizationChat({ getClient, getOrganizationId, getOrganizationN
     indicator.append(text);
   }
 
-  function renderMessage(row, pending = false) {
-    const own = row.sender_id === getUserId();
-    const article = document.createElement("article");
-    article.className = `organization-chat-message${own ? " is-own" : ""}${pending ? " is-pending" : ""}`;
-    if (!pending) article.dataset.messageId = String(row.id);
-    else if (row.failedId) article.dataset.failedId = row.failedId;
-    article.append(memberAvatar(row.sender_id));
-    const content = document.createElement("div");
-    content.className = "organization-chat-message-content";
-    const meta = document.createElement("div");
-    meta.className = "organization-chat-message-meta";
+  function renderMessageHeader(row, own) {
+    const header = document.createElement("div");
+    header.className = "organization-chat-message-header";
     const author = document.createElement("strong");
+    author.className = "organization-chat-message-author";
     author.textContent = own ? "Você" : displayName(members.get(row.sender_id));
-    meta.append(author);
-    if (row.created_at) {
-      const time = document.createElement("time");
-      time.dateTime = row.created_at;
-      time.textContent = formatTime(row.created_at);
-      meta.append(time);
-    }
-    content.append(meta);
+    header.append(author);
+    return header;
+  }
+
+  function renderMessageBubble(row, own, pending) {
+    const bubble = document.createElement("div");
+    bubble.className = `organization-chat-bubble${own ? " is-own" : ""}`;
     const parent = row.reply_to_id && (messages.find((message) => message.id === row.reply_to_id) || parentMessages.get(row.reply_to_id));
     if (parent) {
       const quote = document.createElement("blockquote");
@@ -183,19 +175,15 @@ function createOrganizationChat({ getClient, getOrganizationId, getOrganizationN
       const body = document.createElement("span");
       body.textContent = parent.body;
       quote.append(name, body);
-      content.append(quote);
+      bubble.append(quote);
     }
-    const body = document.createElement("p");
-    body.textContent = row.body;
-    content.append(body);
 
-    if (pending) {
-      const status = document.createElement("div");
-      status.className = `organization-chat-status${row.status === "failed" ? " is-failed" : ""}`;
-      status.textContent = row.status === "failed" ? "Falha ao enviar" : "Enviando…";
-      if (row.status === "failed") status.append(createButton("Tentar novamente", "retry", { title: "Tentar reenviar a mensagem" }));
-      content.append(status);
-    } else {
+    const body = document.createElement("p");
+    body.className = "organization-chat-message-body";
+    body.textContent = row.body;
+    bubble.append(body);
+
+    if (!pending) {
       const messageReactions = reactions.filter((reaction) => reaction.message_id === row.id);
       const chips = document.createElement("div");
       chips.className = "organization-chat-reactions";
@@ -209,11 +197,7 @@ function createOrganizationChat({ getClient, getOrganizationId, getOrganizationN
         chip.className = "organization-chat-reaction";
         chips.append(chip);
       }
-      if (chips.childElementCount) content.append(chips);
-      const actions = document.createElement("div");
-      actions.className = "organization-chat-actions";
-      actions.append(createButton("Responder", "reply"), createButton("Reagir", "picker"));
-      content.append(actions);
+      if (chips.childElementCount) bubble.append(chips);
       if (pickerMessageId === row.id) {
         const picker = document.createElement("div");
         picker.className = "organization-chat-picker";
@@ -223,12 +207,38 @@ function createOrganizationChat({ getClient, getOrganizationId, getOrganizationN
           const option = createButton(emoji, "react", { emoji, pressed: mine, title: `Reagir com ${emoji}` });
           picker.append(option);
         }
-        content.append(picker);
+        bubble.append(picker);
       }
+    }
+    return bubble;
+  }
+
+  function renderMessageFooter(row, own, pending) {
+    const footer = document.createElement("div");
+    footer.className = "organization-chat-message-footer";
+    if (row.created_at) {
+      const time = document.createElement("time");
+      time.className = "organization-chat-message-time";
+      time.dateTime = row.created_at;
+      time.textContent = formatTime(row.created_at);
+      footer.append(time);
+    }
+
+    if (pending) {
+      const status = document.createElement("span");
+      status.className = `organization-chat-status${row.status === "failed" ? " is-failed" : ""}`;
+      status.textContent = row.status === "failed" ? "Falha ao enviar" : "Enviando…";
+      footer.append(status);
+      if (row.status === "failed") footer.append(createButton("Tentar novamente", "retry", { title: "Tentar reenviar a mensagem" }));
+    } else {
+      const actions = document.createElement("div");
+      actions.className = "organization-chat-actions";
+      actions.append(createButton("Responder", "reply"), createButton("Reagir", "picker"));
+      footer.append(actions);
       if (own) {
         const recipients = [...members.values()].filter((member) => member.auth_user_id !== getUserId() && !member.access_revoked_at);
         const receipt = reads.filter((entry) => entry.message_id === row.id && recipients.some((member) => member.auth_user_id === entry.reader_id));
-        const status = document.createElement("div");
+        const status = document.createElement("span");
         status.className = "organization-chat-status";
         status.textContent = recipients.length && receipt.length === recipients.length ? "Lida" : "Enviada";
         if (receipt.length) {
@@ -236,11 +246,46 @@ function createOrganizationChat({ getClient, getOrganizationId, getOrganizationN
           const latest = receipt.map((entry) => entry.read_at).sort().at(-1);
           if (receipt.length === recipients.length && latest) status.title += ` · ${formatTime(latest)}`;
         }
-        content.append(status);
+        footer.append(status);
       }
     }
+    return footer.childElementCount ? footer : null;
+  }
+
+  function renderMessage(row, pending = false, { showHeader = true, showAvatar = true } = {}) {
+    const own = row.sender_id === getUserId();
+    const article = document.createElement("article");
+    article.className = `organization-chat-message${own ? " is-own" : ""}${pending ? " is-pending" : ""}`;
+    if (!pending) article.dataset.messageId = String(row.id);
+    else if (row.failedId) article.dataset.failedId = row.failedId;
+
+    const avatar = showAvatar ? memberAvatar(row.sender_id) : document.createElement("span");
+    if (!showAvatar) {
+      avatar.className = "organization-chat-avatar organization-chat-avatar-placeholder";
+      avatar.setAttribute("aria-hidden", "true");
+    }
+    article.append(avatar);
+
+    const content = document.createElement("div");
+    content.className = "organization-chat-message-content";
+    if (showHeader) content.append(renderMessageHeader(row, own));
+    content.append(renderMessageBubble(row, own, pending));
+    const footer = renderMessageFooter(row, own, pending);
+    if (footer) content.append(footer);
     article.append(content);
     return article;
+  }
+
+  function renderMessageGroup(group) {
+    const wrapper = document.createElement("div");
+    wrapper.className = `organization-chat-message-group${group.senderId === getUserId() ? " is-own" : ""}`;
+    group.entries.forEach((entry, index) => {
+      wrapper.append(renderMessage(entry.row, entry.pending, {
+        showHeader: index === 0,
+        showAvatar: index === group.entries.length - 1,
+      }));
+    });
+    return wrapper;
   }
 
   function renderMessages() {
@@ -258,9 +303,21 @@ function createOrganizationChat({ getClient, getOrganizationId, getOrganizationN
       empty.textContent = "Nenhuma mensagem ainda. Inicie a conversa com sua equipe.";
       list.append(empty);
     }
-    for (const row of messages) list.append(renderMessage(row));
-    for (const row of failedMessages) list.append(renderMessage(row, true));
-    if (sendingMessage) list.append(renderMessage(sendingMessage, true));
+    const entries = [
+      ...messages.map((row) => ({ row, pending: false })),
+      ...failedMessages.map((row) => ({ row, pending: true })),
+      ...(sendingMessage ? [{ row: sendingMessage, pending: true }] : []),
+    ];
+    const groups = [];
+    for (const entry of entries) {
+      const lastGroup = groups.at(-1);
+      if (!entry.pending && lastGroup && !lastGroup.pending && lastGroup.senderId === entry.row.sender_id) {
+        lastGroup.entries.push(entry);
+      } else {
+        groups.push({ senderId: entry.row.sender_id, pending: entry.pending, entries: [entry] });
+      }
+    }
+    for (const group of groups) list.append(renderMessageGroup(group));
     if (atBottom) list.scrollTop = list.scrollHeight;
     renderReplyPreview();
     renderTyping();
