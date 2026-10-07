@@ -10,10 +10,11 @@ import {
 } from "../web/company-data.js";
 
 const root = new URL("../", import.meta.url);
-const [html, app, feature] = await Promise.all([
+const [html, app, feature, styles] = await Promise.all([
   readFile(new URL("web/index.html", root), "utf8"),
   readFile(new URL("web/app.js", root), "utf8"),
   readFile(new URL("web/company-data.js", root), "utf8"),
+  readFile(new URL("web/styles.css", root), "utf8"),
 ]);
 
 test("documentos brasileiros são formatados sem perder os dígitos", () => {
@@ -48,4 +49,10 @@ test("salvamento central usa função transacional e sincroniza a organização"
   assert.match(feature, /select\("id,name,cnpj,logo_path,watermark_path"\)/);
   assert.match(feature, /from\(COMPANY_ASSET_BUCKET\)\.upload/);
   assert.match(feature, /\.update\(branding\)/);
+});
+
+test("salvar a razão social atualiza a navbar e expõe o nome completo no tooltip", () => {
+  assert.match(app, /onOrganizationUpdate: \(organization\) => \{[\s\S]*?updateWorkspaceSummary\(\);/);
+  assert.match(app, /function updateWorkspaceSummary\(\)[\s\S]*?refs\.workspaceName\.textContent = organizationName;[\s\S]*?refs\.workspaceSummary\.title = organizationName;[\s\S]*?refs\.workspaceSummary\.setAttribute\("aria-label", `Espaço de trabalho: \$\{organizationName\}`\)/);
+  assert.match(styles, /\.workspace-copy strong \{[\s\S]*?text-overflow: ellipsis;[\s\S]*?text-overflow: "\.\.\.";/);
 });
