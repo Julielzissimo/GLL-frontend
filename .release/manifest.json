@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "release_id": "2026-10-05-promocao-homolog",
+  "release_id": "2026-10-06-front-2.0-reformulacao-visual",
   "environment": "production",
   "target_branch": "main",
   "items": [
@@ -513,6 +513,23 @@
       "backend_commits": [],
       "frontend_commits": [
         "a7d278f0bdafa873ec2d36b8b16c1074d56d1f09"
+      ],
+      "migrations": []
+    },
+    {
+      "id": "FRONT-2.0-NAVBAR-001",
+      "backend_commits": [],
+      "frontend_commits": [
+        "c793dad2a8b9f31b13e2fdd432646531f029714b",
+        "8c9cda088f743364a3d24ebac8bf1a713f52014a"
+      ],
+      "migrations": []
+    },
+    {
+      "id": "USERS-INFO-001",
+      "backend_commits": [],
+      "frontend_commits": [
+        "4461efe7a1b67cf402a034a7dad63bbc50f9da98"
       ],
       "migrations": []
     }
