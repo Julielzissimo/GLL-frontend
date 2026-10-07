@@ -666,6 +666,14 @@
         "06d00d613633b8a58bba7b0cee9d9791a25d4806"
       ],
       "migrations": []
+    },
+    {
+      "id": "FRONT-2.0-CHAT-ACOES-HOVER-001",
+      "backend_commits": [],
+      "frontend_commits": [
+        "396bcfef14faf376a27defb86f4d1d6defa914c2"
+      ],
+      "migrations": []
     }
   ]
 }
