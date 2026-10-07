@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "release_id": "2026-10-06-front-2.0-reformulacao-visual",
+  "release_id": "2026-10-07-front-2.0-reformulacao-visual",
   "environment": "production",
   "target_branch": "main",
   "items": [
@@ -555,6 +555,14 @@
       "backend_commits": [],
       "frontend_commits": [
         "e8602807a475940e1f260c8b4dc3d88943843ac8"
+      ],
+      "migrations": []
+    },
+    {
+      "id": "FRONT-2.0-SELO-INTEGRIDADE-001",
+      "backend_commits": [],
+      "frontend_commits": [
+        "36095ae05c428b57baae06ad7f5e76556047fd4f"
       ],
       "migrations": []
     }
