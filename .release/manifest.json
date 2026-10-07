@@ -573,6 +573,14 @@
         "55b499d558da320f6272a066f010ace418731ec3"
       ],
       "migrations": []
+    },
+    {
+      "id": "FRONT-2.0-CARDS-STATUS-001",
+      "backend_commits": [],
+      "frontend_commits": [
+        "9cfe440069bd2e81a971e362780eee0a161289c1"
+      ],
+      "migrations": []
     }
   ]
 }
