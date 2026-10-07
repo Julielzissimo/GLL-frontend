@@ -3990,57 +3990,6 @@ tr.item-won td {
   box-shadow: 0 10px 30px rgb(24 41 35 / 5%);
 }
 
-.users-hero {
-  display: grid;
-  grid-template-columns: minmax(320px, 1.25fr) minmax(340px, 1fr) auto;
-  align-items: center;
-  gap: 28px;
-  padding: 28px 30px;
-}
-
-.users-hero-title h1 {
-  margin: 8px 0 4px;
-  color: var(--gll-ink);
-  line-height: 1.1;
-}
-
-.users-hero-title h1 {
-  font-size: 30px;
-}
-
-.users-hero-title p,
-.users-hero-note p {
-  margin: 0;
-  color: var(--gll-ink-soft);
-}
-
-.users-kicker {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  border-radius: 999px;
-  padding: 6px 12px;
-  background: var(--gll-selection-bg);
-  color: var(--gll-forest-hover);
-}
-
-.users-kicker > span {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--gll-forest-hover);
-}
-
-.users-hero-note {
-  display: grid;
-  grid-template-columns: 54px minmax(0, 1fr);
-  align-items: center;
-  gap: 16px;
-  min-height: 72px;
-  border-left: 1px solid var(--gll-line);
-  padding-left: 28px;
-}
-
 .users-icon-tile {
   display: grid;
   place-items: center;
@@ -4055,25 +4004,6 @@ tr.item-won td {
 .users-icon-tile {
   width: 48px;
   height: 48px;
-}
-
-.users-total-card {
-  min-width: 154px;
-  min-height: 66px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-  border: 1px solid var(--gll-line);
-  border-radius: var(--gll-radius-lg);
-  padding: 14px 18px;
-  background: var(--gll-selection-bg);
-  color: var(--gll-ink);
-}
-
-.users-total-card > span {
-  color: var(--gll-forest-hover);
-  font-size: 22px;
 }
 
 .users-list-panel {
@@ -4392,17 +4322,25 @@ tr.item-won td {
 }
 
 .users-list-toolbar {
-  flex-wrap: wrap;
-  justify-content: space-between;
-  gap: 20px;
-  margin-bottom: 20px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--space-lg);
+  margin-bottom: var(--space-xl);
+}
+
+.users-list-heading {
+  grid-column: 1 / -1;
+}
+
+.users-list-toolbar > .user-create-trigger {
+  justify-self: end;
 }
 
 .users-list-heading {
   gap: 14px;
 }
 
-.users-list-heading h2 {
+.users-list-heading h1 {
   margin: 0;
   color: var(--gll-ink);
   font-size: 22px;
@@ -4411,7 +4349,7 @@ tr.item-won td {
 .users-list-controls {
   min-width: 0;
   flex-wrap: wrap;
-  justify-content: flex-end;
+  justify-content: flex-start;
   gap: 12px;
 }
 
@@ -4603,21 +4541,7 @@ tr.item-won td {
 }
 
 @media (max-width: 1100px) {
-  .users-hero {
-    grid-template-columns: 1fr 1fr;
-  }
-
-  .users-total-card {
-    grid-column: 1 / -1;
-  }
-
-  .users-list-toolbar {
-    align-items: flex-start;
-    flex-direction: column;
-  }
-
   .users-list-controls {
-    width: 100%;
     flex-wrap: wrap;
   }
 
@@ -4633,19 +4557,8 @@ tr.item-won td {
 }
 
 @media (max-width: 700px) {
-  .users-hero {
-    grid-template-columns: 1fr;
-    gap: 20px;
-  }
-
-  .users-hero-note {
-    border-top: 1px solid var(--gll-line);
-    border-left: 0;
-    padding: 20px 0 0;
-  }
-
-  .users-total-card {
-    grid-column: auto;
+  .users-list-toolbar {
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .users-list-controls {
@@ -4657,6 +4570,11 @@ tr.item-won td {
   .users-filter-control,
   .users-filter-control select {
     width: 100%;
+  }
+
+  .users-search-control,
+  .users-filter-control {
+    flex-basis: auto;
   }
 
   .users-visible-count {
