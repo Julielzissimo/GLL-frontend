@@ -651,6 +651,14 @@
       "migrations": [
         "supabase/migrations/20261007204101_organization_message_interactions.sql"
       ]
+    },
+    {
+      "id": "FRONT-2.0-CHAT-FECHAMENTO-EXTERNO-001",
+      "backend_commits": [],
+      "frontend_commits": [
+        "39ea96dc108f44128c892fd198b95b7e052731fe"
+      ],
+      "migrations": []
     }
   ]
 }
