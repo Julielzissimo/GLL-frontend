@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "release_id": "2026-10-05-sync-main-homolog",
+  "release_id": "2026-10-07-front-2-creator-tag",
   "environment": "homolog",
   "target_branch": "homolog",
   "items": [
@@ -547,6 +547,14 @@
       "backend_commits": [],
       "frontend_commits": [
         "cc5cb399ecf2ac2f4c3fd9bde5805973ec3d51c3"
+      ],
+      "migrations": []
+    },
+    {
+      "id": "FRONT-2.0-CREATOR-TAG-001",
+      "backend_commits": [],
+      "frontend_commits": [
+        "1ee0b1ed34de98ebe670baaabfcabc5c5d282655"
       ],
       "migrations": []
     }
