@@ -77,6 +77,7 @@ await writeFile(
 
 const assetVersion = createHash("sha256")
   .update(await readFile(resolve(sourceDir, "app.js")))
+  .update(await readFile(resolve(sourceDir, "organization-chat.js")))
   .update(await readFile(resolve(sourceDir, "declarations.js")))
   .update(await readFile(resolve(sourceDir, "company-data.js")))
   .update(await readFile(resolve(sourceDir, "commercial-proposals.js")))

@@ -164,6 +164,7 @@
           </div>
           <div class="topbar-actions">
             <button id="searchNavigationButton" class="icon-button topbar-icon-button" type="button" aria-label="Pesquisar licitações" title="Pesquisar licitações"><span aria-hidden="true" data-gll-icon="search"></span></button>
+            <button id="organizationChatButton" class="icon-button topbar-icon-button" type="button" aria-label="Mensagens da organização" title="Mensagens da organização"><span aria-hidden="true" data-gll-icon="messageCircle"></span></button>
             <div id="notificationsContainer" class="notification-menu-container">
               <button id="notificationsButton" class="icon-button topbar-icon-button" type="button" aria-label="Notificações" aria-expanded="false" aria-controls="notificationsMenu" title="Notificações">
                 <span aria-hidden="true" data-gll-icon="bell"></span><span id="notificationIndicator" class="notification-indicator" aria-hidden="true" hidden></span>
@@ -1461,6 +1462,15 @@
       </div>
     </main>
 
+    <dialog id="organizationChatDialog" class="organization-chat-dialog" aria-labelledby="organizationChatTitle">
+      <div class="organization-chat-shell">
+        <header class="organization-chat-header"><div><span class="eyebrow">CONVERSA EM GRUPO</span><h2 id="organizationChatTitle">Mensagens da organização</h2><p id="organizationChatSubtitle"></p></div><button id="closeOrganizationChatButton" class="icon-button" type="button" aria-label="Fechar mensagens"><span aria-hidden="true" data-gll-icon="close"></span></button></header>
+        <div id="organizationChatMessages" class="organization-chat-messages" role="log" aria-live="polite" aria-relevant="additions text"></div>
+        <p id="organizationChatError" class="form-error organization-chat-error" role="alert"></p>
+        <form id="organizationChatForm" class="organization-chat-form"><label for="organizationChatInput">Mensagem</label><div class="organization-chat-compose"><textarea id="organizationChatInput" rows="2" maxlength="2000" placeholder="Escreva uma mensagem para a equipe" required></textarea><button id="organizationChatSendButton" class="primary-action" type="submit">Enviar</button></div></form>
+      </div>
+    </dialog>
+
     <dialog id="logoutConfirmModal" class="quotation-item-discard-modal" aria-labelledby="logoutConfirmModalTitle" aria-describedby="logoutConfirmModalDescription">
       <div class="quotation-item-discard-content">
         <h2 id="logoutConfirmModalTitle">Deseja sair do sistema?</h2>
@@ -1521,6 +1531,7 @@
     <script type="module" src="./declarations.js"></script>
     <script type="module" src="./company-data.js"></script>
     <script type="module" src="./commercial-proposals.js"></script>
+    <script src="./organization-chat.js"></script>
     <script type="module" src="./app.js"></script>
   </body>
 </html>
