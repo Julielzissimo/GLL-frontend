@@ -520,7 +520,8 @@
       "id": "FRONT-2.0-NAVBAR-001",
       "backend_commits": [],
       "frontend_commits": [
-        "e2e10b67dc539403f238f59bfc45e00e482730e3"
+        "e2e10b67dc539403f238f59bfc45e00e482730e3",
+        "6734398466260ca63af58410104692911a4e57a3"
       ],
       "migrations": []
     }
