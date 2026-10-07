@@ -198,7 +198,9 @@ const refs = {
   bidCatalogPage: $("bidCatalogPage"),
   upcomingBidsList: $("upcomingBidsList"),
   pendingDocumentsList: $("pendingDocumentsList"),
+  homeRecentActivitiesList: $("homeRecentActivitiesList"),
   viewAllBidsButton: $("viewAllBidsButton"),
+  viewRecentBidsButton: $("viewRecentBidsButton"),
   homeTotalBids: $("homeTotalBids"),
   homeAnalysisBids: $("homeAnalysisBids"),
   homeDiscardedBids: $("homeDiscardedBids"),
@@ -2151,6 +2153,7 @@ function bindEvents() {
     button.addEventListener("click", () => clearBidForm({ openEditor: true }));
   });
   refs.viewAllBidsButton.addEventListener("click", () => setPage("bids"));
+  refs.viewRecentBidsButton.addEventListener("click", () => setPage("bids"));
   refs.menuToggleButton.addEventListener("click", toggleMainNavigation);
   refs.closeMobileSidebarButton.addEventListener("click", closeMobileNavigation);
   refs.mobileNavigationScrim.addEventListener("click", closeMobileNavigation);
@@ -4108,6 +4111,20 @@ function renderHomeSummary() {
       loadBid(button.dataset.pendingBid);
       setPage("documents");
     });
+  });
+
+  const recentBids = [...appState.bids]
+    .sort((a, b) => bidActivityTimestamp(b) - bidActivityTimestamp(a))
+    .slice(0, 3);
+  refs.homeRecentActivitiesList.innerHTML = recentBids.length
+    ? recentBids.map((bid) => `<button class="home-recent-card" type="button" data-recent-activity-bid="${escapeHtml(bid.id)}">
+        <span class="home-recent-icon">${GLLDesignSystem.iconMarkup("fileText")}</span>
+        <span class="home-recent-copy"><strong>${escapeHtml(bidDisplayNumber(bid))}</strong><small>${escapeHtml(bid.buyer_agency || "Órgão comprador não informado")}</small></span>
+        ${GLLDesignSystem.COMPONENTS.statusBadge({ status: normalizeBidStatus(bid.status), label: statusDisplay(bid.status) })}
+      </button>`).join("")
+    : `<div class="empty-state compact-empty">Nenhuma atividade recente.</div>`;
+  refs.homeRecentActivitiesList.querySelectorAll("[data-recent-activity-bid]").forEach((button) => {
+    button.addEventListener("click", () => loadBid(button.dataset.recentActivityBid));
   });
 }
 
@@ -6398,6 +6415,10 @@ function attachmentMetadata(attachment) {
 
 function bidDisplayNumber(bid) {
   return String(bid?.edital_number || bid?.id || "").trim();
+}
+
+function bidActivityTimestamp(bid) {
+  return Date.parse(bid?.updated_at || bid?.created_at || "") || 0;
 }
 
 function normalizeItemRecord(record) {
