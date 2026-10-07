@@ -130,7 +130,7 @@ As áreas são agrupadas em **Área de trabalho** (Visão geral, Licitações e 
 
 Todos os SVGs são fornecidos pelo registro central `GLLDesignSystem.ICONS` em `web/design-system/components.js`; não se adicionam dependências ou desenhos de ícone avulsos. A story [Navigation.stories.js](../stories/patterns/Navigation.stories.js) registra os grupos, os ícones e o estado ativo.
 
-O espaço de trabalho e suas iniciais vêm da organização da sessão autenticada. A contagem da navegação reflete a quantidade de licitações carregadas. Pesquisa abre a lista de licitações e foca seu campo de busca. O menu de notificações é calculado a partir de documentos pendentes e sessões próximas já carregados pelo GLL. A versão mobile abre a barra em painel lateral, com botão de fechar, scrim e fechamento por Escape nas notificações; em telas compactas de tablet a navegação reduz para ícones e mantém uma forma de abrir Configurações.
+O espaço de trabalho e suas iniciais vêm da organização da sessão autenticada. A navegação não apresenta uma contagem numérica junto a Licitações. Pesquisa abre a lista de licitações e foca seu campo de busca. O menu de notificações é calculado a partir de documentos pendentes e sessões próximas já carregados pelo GLL. A versão mobile abre a barra em painel lateral, com botão de fechar, scrim e fechamento por Escape nas notificações; em telas compactas de tablet a navegação reduz para ícones e mantém uma forma de abrir Configurações.
 
 ## Regras de estado e interação
 

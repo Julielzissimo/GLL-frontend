@@ -24,7 +24,7 @@ const navigation = (active = "bids") => `
         <div class="nav-section">
           <span class="nav-section-label">ÁREA DE TRABALHO</span>
           <button class="nav-link ${active === "home" ? "active" : ""}" type="button"><span class="nav-icon" aria-hidden="true">${icon("layoutDashboard")}</span><span class="nav-link-label">Visão geral</span></button>
-          <button class="nav-link ${active === "bids" ? "active" : ""}" type="button"><span class="nav-icon" aria-hidden="true">${icon("briefcaseBusiness")}</span><span class="nav-link-label">Licitações</span><span class="nav-count">12</span></button>
+          <button class="nav-link ${active === "bids" ? "active" : ""}" type="button"><span class="nav-icon" aria-hidden="true">${icon("briefcaseBusiness")}</span><span class="nav-link-label">Licitações</span></button>
           <button class="nav-link ${active === "quotations" ? "active" : ""}" type="button"><span class="nav-icon" aria-hidden="true">${icon("clipboardList")}</span><span class="nav-link-label">Orçamentos</span></button>
         </div>
         <div class="nav-section">

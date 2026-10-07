@@ -24,7 +24,9 @@ test("uses the prototype navigation groups, Lucide icons and existing GLL palett
     assert.match(icons, new RegExp(`\\b${iconName}: icon\\(`));
   }
   assert.match(app, /workspaceName\.textContent = appState\.currentOrganizationName/);
-  assert.match(app, /navBidsCount\.textContent = String\(next\.bids\.length\)/);
+  assert.doesNotMatch(html, /navBidsCount|class="nav-count"/);
+  assert.doesNotMatch(app, /navBidsCount/);
+  assert.doesNotMatch(story, /class="nav-count"/);
   assert.match(app, /updateNotificationsIndicator\(\)/);
   assert.match(app, /iconMarkup\("chevronRight"\)/);
   assert.match(app, /mobileNavigationScrim\.hidden = !isMobile \|\| !isExpanded/);

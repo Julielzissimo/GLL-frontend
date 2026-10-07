@@ -5836,21 +5836,6 @@ html.is-loading { overflow: hidden; }
   outline-offset: 2px;
 }
 
-.nav-count {
-  display: inline-grid;
-  min-width: 26px;
-  min-height: 24px;
-  flex: 0 0 auto;
-  place-items: center;
-  border-radius: var(--radius-pill);
-  padding: 0 var(--space-sm);
-  background: #192946;
-  color: #dce5fb;
-  font-size: var(--font-size-xs);
-  font-weight: var(--font-weight-bold);
-  line-height: 1;
-}
-
 .nav-group {
   gap: var(--space-xs);
 }
@@ -6062,7 +6047,6 @@ html.is-loading { overflow: hidden; }
   .workspace-chevron,
   .nav-section-label,
   .nav-link-label,
-  .nav-count,
   .nav-group-chevron,
   .sidebar-footer > div {
     display: none !important;
