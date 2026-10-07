@@ -1065,8 +1065,7 @@ th.numeric {
   transition: transform 140ms ease, border-color 140ms ease, background 140ms ease;
 }
 
-.home-status-card:hover,
-.home-status-card.active {
+.home-status-card:hover {
   transform: translateY(-2px);
   border-color: var(--primary);
   background: var(--gll-paper);
@@ -2858,8 +2857,7 @@ textarea[aria-invalid="true"]:focus {
   white-space: normal;
 }
 
-.home-status-card:hover,
-.home-status-card.active {
+.home-status-card:hover {
   border-color: var(--gll-line-strong);
   border-top-color: var(--primary);
   background: var(--gll-selection-bg);
