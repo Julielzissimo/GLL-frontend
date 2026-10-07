@@ -3459,7 +3459,7 @@ tr.item-won td {
   gap: 0;
   padding: 15px 18px;
   border-radius: var(--radius);
-  background: var(--gll-ink);
+  background: var(--gll-forest);
   color: var(--gll-paper);
 }
 
