@@ -4410,6 +4410,7 @@ tr.item-won td {
 }
 
 .users-list-toolbar {
+  flex-wrap: wrap;
   justify-content: space-between;
   gap: 20px;
   margin-bottom: 20px;
@@ -4426,6 +4427,8 @@ tr.item-won td {
 }
 
 .users-list-controls {
+  min-width: 0;
+  flex-wrap: wrap;
   justify-content: flex-end;
   gap: 12px;
 }
@@ -4452,7 +4455,7 @@ tr.item-won td {
   width: min(280px, 34vw);
 }
 
-.users-search-control input,
+.users-search-control input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="range"]),
 .users-filter-control select {
   min-height: 40px;
   border: 0;
