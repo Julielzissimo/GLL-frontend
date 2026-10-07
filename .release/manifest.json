@@ -565,6 +565,14 @@
         "946f7607447b490318d7e5b9c42fe45e517913f1"
       ],
       "migrations": []
+    },
+    {
+      "id": "FRONT-2.0-ASSINATURA-LOGO-GLL-001",
+      "backend_commits": [],
+      "frontend_commits": [
+        "d561015c17c0a4383fc5e0eb3aef2f4c59b50342"
+      ],
+      "migrations": []
     }
   ]
 }
