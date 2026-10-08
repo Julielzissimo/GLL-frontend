@@ -3567,7 +3567,7 @@ function selectedDataSignature(data) {
 
 function scheduleLiveRefresh() {
   if (!appState.authenticated || liveDebounce) return;
-  if (!document.hidden) void organizationChat.refreshUnreadCount({ animateIncrease: true });
+  if (!document.hidden) void organizationChat.refreshUnreadCount();
   liveDebounce = setTimeout(() => {
     liveDebounce = null;
     void refreshInBackground();

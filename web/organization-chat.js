@@ -24,14 +24,9 @@ function createOrganizationChat({ getClient, getOrganizationId, getOrganizationN
   let parentMessages = new Map();
   let lastRenderSignature = "";
   let unreadCount = 0;
-  let unreadCountReady = false;
   let unreadTrackingEnabled = false;
   let unreadRefreshRequest = 0;
   let unreadRefreshTimer = null;
-  let unreadAnimationTimer = null;
-  let unreadCounterAnimationTimer = null;
-  let unreadAnimationFrame = null;
-  let unreadCounterAnimationFrame = null;
   const handledIncomingMessageIds = new Set();
 
   const formatTime = (value) => new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short" }).format(new Date(value));
@@ -39,45 +34,7 @@ function createOrganizationChat({ getClient, getOrganizationId, getOrganizationN
   const displayName = (member) => member?.display_name || member?.full_name || member?.name || "Integrante";
   const ownName = () => displayName(members.get(getUserId()));
 
-  function clearUnreadAnimations() {
-    const button = byId("organizationChatButton");
-    const counter = byId("organizationChatUnreadCount");
-    clearTimeout(unreadAnimationTimer);
-    clearTimeout(unreadCounterAnimationTimer);
-    unreadAnimationTimer = unreadCounterAnimationTimer = null;
-    if (unreadAnimationFrame !== null) cancelAnimationFrame(unreadAnimationFrame);
-    if (unreadCounterAnimationFrame !== null) cancelAnimationFrame(unreadCounterAnimationFrame);
-    unreadAnimationFrame = unreadCounterAnimationFrame = null;
-    button?.classList.remove("is-notifying");
-    counter?.classList.remove("is-bumping");
-  }
-
-  function animateUnreadArrival() {
-    if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return;
-    const button = byId("organizationChatButton");
-    const counter = byId("organizationChatUnreadCount");
-    if (!button || !counter) return;
-    clearUnreadAnimations();
-    unreadAnimationFrame = requestAnimationFrame(() => {
-      button.classList.add("is-notifying");
-      unreadAnimationFrame = null;
-    });
-    unreadCounterAnimationFrame = requestAnimationFrame(() => {
-      counter.classList.add("is-bumping");
-      unreadCounterAnimationFrame = null;
-    });
-    unreadAnimationTimer = setTimeout(() => {
-      button.classList.remove("is-notifying");
-      unreadAnimationTimer = null;
-    }, 1800);
-    unreadCounterAnimationTimer = setTimeout(() => {
-      counter.classList.remove("is-bumping");
-      unreadCounterAnimationTimer = null;
-    }, 300);
-  }
-
-  function setUnreadCount(value, { animate = false } = {}) {
-    const previous = unreadCount;
+  function setUnreadCount(value) {
     unreadCount = Math.max(0, Number(value) || 0);
     const button = byId("organizationChatButton");
     const counter = byId("organizationChatUnreadCount");
@@ -91,9 +48,11 @@ function createOrganizationChat({ getClient, getOrganizationId, getOrganizationN
     if (counter) {
       counter.hidden = unreadCount === 0;
       counter.textContent = unreadCount > 99 ? "99+" : String(unreadCount);
-      if (animate && unreadCount > previous) animateUnreadArrival();
     }
-    if (unreadCount === 0) clearUnreadAnimations();
+    for (const element of [button, counter]) {
+      if (unreadCount > 0) element?.classList.add("has-unread");
+      else element?.classList.remove("has-unread");
+    }
   }
 
   function queueUnreadCountRefresh() {
@@ -104,18 +63,16 @@ function createOrganizationChat({ getClient, getOrganizationId, getOrganizationN
     }, 100);
   }
 
-  async function refreshUnreadCount({ animateIncrease = false } = {}) {
+  async function refreshUnreadCount() {
     if (!unreadTrackingEnabled) return;
     const client = getClient();
     const organizationId = getOrganizationId();
     const userId = getUserId();
     if (!client || !organizationId || !userId) {
-      unreadCountReady = false;
       setUnreadCount(0);
       return;
     }
     const request = ++unreadRefreshRequest;
-    const previous = unreadCount;
     try {
       const [messageResult, readResult] = await Promise.all([
         client.from("organization_messages").select("id", { count: "exact", head: true })
@@ -127,9 +84,7 @@ function createOrganizationChat({ getClient, getOrganizationId, getOrganizationN
       if (readResult.error) throw readResult.error;
       if (request !== unreadRefreshRequest || client !== getClient() || organizationId !== getOrganizationId() || userId !== getUserId()) return;
       const next = Math.max(0, (messageResult.count || 0) - (readResult.count || 0));
-      const shouldAnimate = unreadCountReady && animateIncrease && next > previous;
-      unreadCountReady = true;
-      setUnreadCount(next, { animate: shouldAnimate });
+      setUnreadCount(next);
     } catch (error) {
       if (request === unreadRefreshRequest) console.warn(error.message || "Não foi possível atualizar as mensagens não lidas.");
     }
@@ -149,14 +104,13 @@ function createOrganizationChat({ getClient, getOrganizationId, getOrganizationN
       void refresh();
       return;
     }
-    setUnreadCount(unreadCount + 1, { animate: true });
+    setUnreadCount(unreadCount + 1);
     queueUnreadCountRefresh();
   }
 
   function startUnreadTracking() {
     unreadTrackingEnabled = true;
     handledIncomingMessageIds.clear();
-    unreadCountReady = false;
     return refreshUnreadCount();
   }
 
@@ -166,7 +120,6 @@ function createOrganizationChat({ getClient, getOrganizationId, getOrganizationN
     clearTimeout(unreadRefreshTimer);
     unreadRefreshTimer = null;
     handledIncomingMessageIds.clear();
-    unreadCountReady = false;
     setUnreadCount(0);
   }
 
