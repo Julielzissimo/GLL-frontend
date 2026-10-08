@@ -673,7 +673,8 @@
       "id": "FRONT-2.0-CHAT-NAO-LIDAS-001",
       "backend_commits": [],
       "frontend_commits": [
-        "3206278feed2a01c595f49efc02185474e029eca"
+        "3206278feed2a01c595f49efc02185474e029eca",
+        "784f73f6c1ffa0ee22d68b1a9accf6e353c7451b"
       ],
       "migrations": []
     },
