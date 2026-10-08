@@ -692,6 +692,16 @@
         "508237459ae0527b39d96827071ef9b8814e1fde"
       ],
       "migrations": []
+    },
+    {
+      "id": "FRONT-2.0-CHAT-REALTIME-001",
+      "backend_commits": [
+        "b9c3c22cb7223cab1e809e6226d5a4f402fd31fb"
+      ],
+      "frontend_commits": [],
+      "migrations": [
+        "supabase/migrations/20261008234851_chat_organization_messages_realtime.sql"
+      ]
     }
   ]
 }
