@@ -684,6 +684,14 @@
         "3e54326f0a4183f94e0166704e6bd1dc3e76433e"
       ],
       "migrations": []
+    },
+    {
+      "id": "FRONT-2.0-CHAT-COMPOSER-001",
+      "backend_commits": [],
+      "frontend_commits": [
+        "508237459ae0527b39d96827071ef9b8814e1fde"
+      ],
+      "migrations": []
     }
   ]
 }
