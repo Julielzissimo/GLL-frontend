@@ -676,6 +676,18 @@
         "3206278feed2a01c595f49efc02185474e029eca"
       ],
       "migrations": []
+    },
+    {
+      "id": "LIMPAR-NOTIFICACOES-POR-PERFIL-001",
+      "backend_commits": [
+        "7e062a11a1b512654fb567637a61742da635cd41"
+      ],
+      "frontend_commits": [
+        "9c56937acf27758f677ea08f92a033b831bfe2be"
+      ],
+      "migrations": [
+        "supabase/migrations/20261008121716_user_notification_states.sql"
+      ]
     }
   ]
 }
