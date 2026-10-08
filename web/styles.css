@@ -5977,6 +5977,7 @@ html.is-loading { overflow: hidden; }
 .organization-chat-avatar-placeholder { visibility: hidden; }
 .organization-chat-online { position: absolute; right: -1px; bottom: -1px; width: 11px; height: 11px; border: 2px solid var(--gll-paper); border-radius: 50%; background: var(--gll-success); }
 .organization-chat-message-content { position: relative; display: grid; min-width: 0; max-width: 100%; gap: var(--space-xs); }
+.organization-chat-message.is-own .organization-chat-message-content { justify-items: end; }
 .organization-chat-message-header { display: flex; align-items: baseline; gap: var(--space-sm); color: var(--gll-ink-soft); font-size: var(--font-size-xs); }
 .organization-chat-message-author { color: var(--gll-ink); font-weight: 600; }
 .organization-chat-bubble { width: fit-content; max-width: 100%; padding: var(--space-sm) var(--space-md); border: 1px solid var(--gll-line); border-radius: var(--gll-radius-lg); background: var(--gll-paper-muted); color: var(--gll-ink); }
