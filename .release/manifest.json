@@ -689,6 +689,14 @@
       "migrations": [
         "supabase/migrations/20261008121716_user_notification_states.sql"
       ]
+    },
+    {
+      "id": "FRONT-2.0-CHAT-COMPOSER-001",
+      "backend_commits": [],
+      "frontend_commits": [
+        "2588c05e90859984159354b1ff58c2bdb09e7985"
+      ],
+      "migrations": []
     }
   ]
 }
