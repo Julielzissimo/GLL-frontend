@@ -5877,6 +5877,79 @@ html.is-loading { overflow: hidden; }
   outline-offset: 2px;
 }
 
+.organization-chat-button {
+  isolation: isolate;
+}
+
+.organization-chat-button::before,
+.organization-chat-button::after {
+  position: absolute;
+  z-index: 0;
+  top: 50%;
+  left: 50%;
+  width: 22px;
+  height: 22px;
+  border: 1px solid var(--color-primary);
+  border-radius: 50%;
+  content: "";
+  opacity: 0;
+  pointer-events: none;
+  transform: translate(-50%, -50%) scale(.75);
+}
+
+.organization-chat-button > [data-gll-icon] {
+  position: relative;
+  z-index: 1;
+}
+
+.organization-chat-button.is-notifying::before {
+  animation: organization-chat-wave 1.2s ease-out 1 both;
+}
+
+.organization-chat-button.is-notifying::after {
+  animation: organization-chat-wave 1.2s ease-out .3s 1 both;
+}
+
+.organization-chat-unread-count {
+  position: absolute;
+  z-index: 2;
+  top: 1px;
+  right: 1px;
+  display: grid;
+  min-width: 19px;
+  height: 19px;
+  box-sizing: border-box;
+  place-items: center;
+  padding: 0 4px;
+  border: 2px solid var(--color-surface);
+  border-radius: var(--radius-pill);
+  background: var(--color-danger);
+  color: var(--color-surface);
+  font-size: 10px;
+  font-weight: var(--font-weight-bold);
+  line-height: 1;
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+.organization-chat-unread-count[hidden] {
+  display: none !important;
+}
+
+.organization-chat-unread-count.is-bumping {
+  animation: organization-chat-counter-bump 300ms ease-out 1 both;
+}
+
+@keyframes organization-chat-wave {
+  0% { opacity: .5; transform: translate(-50%, -50%) scale(.75); }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(2.5); }
+}
+
+@keyframes organization-chat-counter-bump {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.25); }
+}
+
 .organization-chat-dialog {
   width: min(640px, calc(100vw - 24px));
   max-height: min(760px, calc(100dvh - 24px));
@@ -6157,6 +6230,9 @@ html.is-loading { overflow: hidden; }
 @keyframes blocking-loading-spin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) {
   .blocking-loading-spinner { animation: none; }
+  .organization-chat-button.is-notifying::before,
+  .organization-chat-button.is-notifying::after,
+  .organization-chat-unread-count.is-bumping { animation: none; }
 }
 .sync-notice {
   position: fixed;

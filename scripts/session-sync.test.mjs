@@ -235,7 +235,11 @@ function client(db = backend(), auth = { session: { user } }) {
     },
     channel: () => {
       const channel = {
-        on: (_type, _filter, handler) => { channel.receive = handler; return channel; },
+        on: (type, _filter, handler) => {
+          if (type === "broadcast") channel.receive = handler;
+          else if (type === "postgres_changes") channel.receivePostgresChange = handler;
+          return channel;
+        },
         subscribe: (callback) => { db.channels.add(channel); callback("SUBSCRIBED"); return channel; },
         send: async (message) => {
           assert.deepEqual(Object.keys(message.payload), []);

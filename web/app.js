@@ -1797,7 +1797,9 @@ class SupabaseStore {
 }
 
 const store = createStore();
-const organizationChat = (window.GLLOrganizationChat?.createOrganizationChat || (() => ({ bind() {}, close() {} })))({
+const organizationChat = (window.GLLOrganizationChat?.createOrganizationChat || (() => ({
+  bind() {}, close() {}, handleIncomingMessage() {}, refreshUnreadCount() {}, startUnreadTracking() {}, stopUnreadTracking() {},
+})))({
   getClient: () => (store.requiresAuthenticationBeforeData ? store.client : null),
   getOrganizationId: () => appState.currentOrganizationId,
   getOrganizationName: () => appState.currentOrganizationName,
@@ -3445,6 +3447,7 @@ function selectedDataSignature(data) {
 
 function scheduleLiveRefresh() {
   if (!appState.authenticated || liveDebounce) return;
+  if (!document.hidden) void organizationChat.refreshUnreadCount({ animateIncrease: true });
   liveDebounce = setTimeout(() => {
     liveDebounce = null;
     void refreshInBackground();
@@ -3468,9 +3471,16 @@ async function refreshInBackground() {
 function startLiveUpdates() {
   stopLiveUpdates();
   if (!store.requiresAuthenticationBeforeData) return;
-  // Only invalidations travel over this channel. Actual records remain protected by RLS.
+  void organizationChat.startUnreadTracking();
+  // Data changes and org-scoped chat events use this authenticated channel; records remain protected by RLS.
   liveChannel = store.client.channel("gll-data-updates", { config: { broadcast: { self: false } } })
     .on("broadcast", { event: "data-changed" }, scheduleLiveRefresh)
+    .on("postgres_changes", {
+      event: "INSERT",
+      schema: "public",
+      table: "organization_messages",
+      filter: `organization_id=eq.${appState.currentOrganizationId}`,
+    }, organizationChat.handleIncomingMessage)
     .subscribe((status) => { if (status === "SUBSCRIBED") scheduleLiveRefresh(); });
   liveTimer = setInterval(scheduleLiveRefresh, 15000);
   window.addEventListener("online", scheduleLiveRefresh);
@@ -3486,6 +3496,7 @@ function stopLiveUpdates() {
   backgroundRefreshActive = false;
   if (liveChannel) void store.client.removeChannel(liveChannel);
   liveChannel = null;
+  organizationChat.stopUnreadTracking();
   window.removeEventListener("online", scheduleLiveRefresh);
   window.removeEventListener("focus", scheduleLiveRefresh);
   document.removeEventListener("visibilitychange", scheduleLiveRefresh);

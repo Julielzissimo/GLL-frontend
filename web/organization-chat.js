@@ -23,11 +23,152 @@ function createOrganizationChat({ getClient, getOrganizationId, getOrganizationN
   let members = new Map();
   let parentMessages = new Map();
   let lastRenderSignature = "";
+  let unreadCount = 0;
+  let unreadCountReady = false;
+  let unreadTrackingEnabled = false;
+  let unreadRefreshRequest = 0;
+  let unreadRefreshTimer = null;
+  let unreadAnimationTimer = null;
+  let unreadCounterAnimationTimer = null;
+  let unreadAnimationFrame = null;
+  let unreadCounterAnimationFrame = null;
+  const handledIncomingMessageIds = new Set();
 
   const formatTime = (value) => new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short" }).format(new Date(value));
   const isRecent = (value, seconds) => value && Date.now() - new Date(value).getTime() < seconds * 1000;
   const displayName = (member) => member?.display_name || member?.full_name || member?.name || "Integrante";
   const ownName = () => displayName(members.get(getUserId()));
+
+  function clearUnreadAnimations() {
+    const button = byId("organizationChatButton");
+    const counter = byId("organizationChatUnreadCount");
+    clearTimeout(unreadAnimationTimer);
+    clearTimeout(unreadCounterAnimationTimer);
+    unreadAnimationTimer = unreadCounterAnimationTimer = null;
+    if (unreadAnimationFrame !== null) cancelAnimationFrame(unreadAnimationFrame);
+    if (unreadCounterAnimationFrame !== null) cancelAnimationFrame(unreadCounterAnimationFrame);
+    unreadAnimationFrame = unreadCounterAnimationFrame = null;
+    button?.classList.remove("is-notifying");
+    counter?.classList.remove("is-bumping");
+  }
+
+  function animateUnreadArrival() {
+    if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return;
+    const button = byId("organizationChatButton");
+    const counter = byId("organizationChatUnreadCount");
+    if (!button || !counter) return;
+    clearUnreadAnimations();
+    unreadAnimationFrame = requestAnimationFrame(() => {
+      button.classList.add("is-notifying");
+      unreadAnimationFrame = null;
+    });
+    unreadCounterAnimationFrame = requestAnimationFrame(() => {
+      counter.classList.add("is-bumping");
+      unreadCounterAnimationFrame = null;
+    });
+    unreadAnimationTimer = setTimeout(() => {
+      button.classList.remove("is-notifying");
+      unreadAnimationTimer = null;
+    }, 1800);
+    unreadCounterAnimationTimer = setTimeout(() => {
+      counter.classList.remove("is-bumping");
+      unreadCounterAnimationTimer = null;
+    }, 300);
+  }
+
+  function setUnreadCount(value, { animate = false } = {}) {
+    const previous = unreadCount;
+    unreadCount = Math.max(0, Number(value) || 0);
+    const button = byId("organizationChatButton");
+    const counter = byId("organizationChatUnreadCount");
+    const label = unreadCount
+      ? `Mensagens da organização, ${unreadCount} ${unreadCount === 1 ? "mensagem não lida" : "mensagens não lidas"}`
+      : "Mensagens da organização";
+    if (button) {
+      button.setAttribute("aria-label", label);
+      button.title = label;
+    }
+    if (counter) {
+      counter.hidden = unreadCount === 0;
+      counter.textContent = unreadCount > 99 ? "99+" : String(unreadCount);
+      if (animate && unreadCount > previous) animateUnreadArrival();
+    }
+    if (unreadCount === 0) clearUnreadAnimations();
+  }
+
+  function queueUnreadCountRefresh() {
+    clearTimeout(unreadRefreshTimer);
+    unreadRefreshTimer = setTimeout(() => {
+      unreadRefreshTimer = null;
+      void refreshUnreadCount();
+    }, 100);
+  }
+
+  async function refreshUnreadCount({ animateIncrease = false } = {}) {
+    if (!unreadTrackingEnabled) return;
+    const client = getClient();
+    const organizationId = getOrganizationId();
+    const userId = getUserId();
+    if (!client || !organizationId || !userId) {
+      unreadCountReady = false;
+      setUnreadCount(0);
+      return;
+    }
+    const request = ++unreadRefreshRequest;
+    const previous = unreadCount;
+    try {
+      const [messageResult, readResult] = await Promise.all([
+        client.from("organization_messages").select("id", { count: "exact", head: true })
+          .eq("organization_id", organizationId).neq("sender_id", userId),
+        client.from("organization_message_reads").select("message_id", { count: "exact", head: true })
+          .eq("organization_id", organizationId).eq("reader_id", userId),
+      ]);
+      if (messageResult.error) throw messageResult.error;
+      if (readResult.error) throw readResult.error;
+      if (request !== unreadRefreshRequest || client !== getClient() || organizationId !== getOrganizationId() || userId !== getUserId()) return;
+      const next = Math.max(0, (messageResult.count || 0) - (readResult.count || 0));
+      const shouldAnimate = unreadCountReady && animateIncrease && next > previous;
+      unreadCountReady = true;
+      setUnreadCount(next, { animate: shouldAnimate });
+    } catch (error) {
+      if (request === unreadRefreshRequest) console.warn(error.message || "Não foi possível atualizar as mensagens não lidas.");
+    }
+  }
+
+  function handleIncomingMessage(payload) {
+    if (!unreadTrackingEnabled) return;
+    const row = payload?.new;
+    const organizationId = getOrganizationId();
+    const userId = getUserId();
+    if (!row || row.organization_id !== organizationId || row.sender_id === userId || row.id == null) return;
+    if (handledIncomingMessageIds.has(row.id)) return;
+    handledIncomingMessageIds.add(row.id);
+    if (handledIncomingMessageIds.size > 256) handledIncomingMessageIds.delete(handledIncomingMessageIds.values().next().value);
+    unreadRefreshRequest += 1;
+    if (active) {
+      void refresh();
+      return;
+    }
+    setUnreadCount(unreadCount + 1, { animate: true });
+    queueUnreadCountRefresh();
+  }
+
+  function startUnreadTracking() {
+    unreadTrackingEnabled = true;
+    handledIncomingMessageIds.clear();
+    unreadCountReady = false;
+    return refreshUnreadCount();
+  }
+
+  function stopUnreadTracking() {
+    unreadTrackingEnabled = false;
+    unreadRefreshRequest += 1;
+    clearTimeout(unreadRefreshTimer);
+    unreadRefreshTimer = null;
+    handledIncomingMessageIds.clear();
+    unreadCountReady = false;
+    setUnreadCount(0);
+  }
 
   function queuePresence(typing = false) {
     if (!active || !getClient() || !getOrganizationId() || !getUserId()) return;
@@ -386,6 +527,11 @@ function createOrganizationChat({ getClient, getOrganizationId, getOrganizationN
           { onConflict: "message_id,reader_id", ignoreDuplicates: true },
         );
         if (error) console.warn("Não foi possível registrar a leitura das mensagens.");
+        else {
+          unreadRefreshRequest += 1;
+          setUnreadCount(unreadCount - unread.length);
+          void refreshUnreadCount();
+        }
       }
     } catch (error) {
       if (active && request === requestNumber) byId("organizationChatError").textContent = error.message || "Não foi possível carregar as mensagens.";
@@ -537,7 +683,7 @@ function createOrganizationChat({ getClient, getOrganizationId, getOrganizationN
     });
   }
 
-  return { bind, close };
+  return { bind, close, handleIncomingMessage, refreshUnreadCount, startUnreadTracking, stopUnreadTracking };
 }
 
 window.GLLOrganizationChat = { createOrganizationChat };
