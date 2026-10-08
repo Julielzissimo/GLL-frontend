@@ -99,6 +99,7 @@ await writeFile(
     .replace('./declarations.js', `./declarations.js?v=${assetVersion}`)
     .replace('./company-data.js', `./company-data.js?v=${assetVersion}`)
     .replace('./commercial-proposals.js', `./commercial-proposals.js?v=${assetVersion}`)
+    .replace('./organization-chat.js', `./organization-chat.js?v=${assetVersion}`)
     .replace('./app.js', `./app.js?v=${assetVersion}`),
   "utf8",
 );
