@@ -501,6 +501,7 @@ function createOrganizationChat({ getClient, getOrganizationId, getOrganizationN
     lastRenderSignature = "";
     byId("organizationChatSubtitle").textContent = getOrganizationName() || "Organização";
     dialog.showModal();
+    resizeComposer();
     byId("organizationChatInput").focus();
     if (!getClient() || !getOrganizationId() || !getUserId()) {
       byId("organizationChatMessages").textContent = "As mensagens estão disponíveis após entrar no ambiente conectado à organização.";
@@ -605,6 +606,12 @@ function createOrganizationChat({ getClient, getOrganizationId, getOrganizationN
     typingTimer = setTimeout(stopTyping, 2800);
   }
 
+  function resizeComposer() {
+    const input = byId("organizationChatInput");
+    input.style.height = "auto";
+    input.style.height = `${input.scrollHeight}px`;
+  }
+
   function bind() {
     byId("organizationChatButton").addEventListener("click", () => { void open(); });
     byId("closeOrganizationChatButton").addEventListener("click", close);
@@ -623,17 +630,24 @@ function createOrganizationChat({ getClient, getOrganizationId, getOrganizationN
       if (!body) return;
       const message = { body, reply_to_id: replyTo?.id || null };
       input.value = "";
+      resizeComposer();
       replyTo = null;
       renderReplyPreview();
       void send(message);
     });
-    byId("organizationChatInput").addEventListener("input", handleTyping);
-    byId("organizationChatInput").addEventListener("keydown", (event) => {
+    const input = byId("organizationChatInput");
+    input.addEventListener("input", () => {
+      resizeComposer();
+      handleTyping();
+    });
+    input.addEventListener("keydown", (event) => {
       if (event.key === "Enter" && !event.shiftKey) {
         event.preventDefault();
         byId("organizationChatForm").requestSubmit();
       }
     });
+    window.addEventListener("resize", resizeComposer);
+    resizeComposer();
   }
 
   return { bind, close, handleIncomingMessage, refreshUnreadCount, startUnreadTracking, stopUnreadTracking };

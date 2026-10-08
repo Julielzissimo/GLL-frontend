@@ -6012,7 +6012,7 @@ html.is-loading { overflow: hidden; }
 .organization-chat-reply-preview span { overflow: hidden; color: var(--gll-ink-soft); text-overflow: ellipsis; white-space: nowrap; }
 .organization-chat-form label { display: block; margin-bottom: var(--space-xs); }
 .organization-chat-compose { display: flex; align-items: end; gap: var(--space-sm); }
-.organization-chat-compose textarea { flex: 1; min-width: 0; resize: vertical; }
+.organization-chat-compose textarea { flex: 1; min-width: 0; max-height: min(12rem, 35dvh); overflow-y: auto; resize: none; }
 @media (max-width: 520px) { .organization-chat-compose { align-items: stretch; flex-direction: column; } }
 
 .notification-menu-container {
