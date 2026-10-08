@@ -140,6 +140,7 @@ const appState = {
   users: [],
   suppliers: [],
   supplierProducts: [],
+  dismissedNotificationIds: [],
 };
 
 const $ = (id) => document.getElementById(id);
@@ -576,6 +577,15 @@ function removeEmptyId(record) {
   return nextRecord;
 }
 
+function notificationDismissalStorageKey(userId) {
+  const profileId = String(userId || "").trim();
+  return profileId ? `gll-notification-dismissals:${encodeURIComponent(profileId)}` : null;
+}
+
+function normalizeNotificationDismissalIds(ids) {
+  return [...new Set(Array.isArray(ids) ? ids.filter((id) => typeof id === "string" && id) : [])];
+}
+
 class IndexedDbStore {
   constructor() {
     this.requiresAuthenticationBeforeData = false;
@@ -678,6 +688,23 @@ class IndexedDbStore {
   }
 
   async getBidActivity() { return []; }
+
+  async getDismissedNotificationIds(userId) {
+    const key = notificationDismissalStorageKey(userId);
+    if (!key) return [];
+    try {
+      const saved = JSON.parse(window.localStorage.getItem(key) || "[]");
+      return normalizeNotificationDismissalIds(saved);
+    } catch {
+      return [];
+    }
+  }
+
+  async saveDismissedNotificationIds(ids, userId) {
+    const key = notificationDismissalStorageKey(userId);
+    if (!key) throw new Error("O perfil atual não está disponível.");
+    window.localStorage.setItem(key, JSON.stringify(normalizeNotificationDismissalIds(ids)));
+  }
 
   async authTx(storeName, mode, callback) {
     const db = await this.openAuth();
@@ -1218,6 +1245,28 @@ class SupabaseStore {
       .order("created_at", { ascending: false }).order("id", { ascending: false }).limit(30);
     assertSupabase(error);
     return data || [];
+  }
+
+  async getDismissedNotificationIds(userId) {
+    if (!userId) return [];
+    const client = await this.open();
+    const { data, error } = await client.from("user_notification_states")
+      .select("dismissed_notification_ids")
+      .eq("user_id", userId)
+      .maybeSingle();
+    assertSupabase(error);
+    return normalizeNotificationDismissalIds(data?.dismissed_notification_ids);
+  }
+
+  async saveDismissedNotificationIds(ids, userId) {
+    if (!userId) throw new Error("O perfil atual não está disponível.");
+    const client = await this.open();
+    const { error } = await client.from("user_notification_states").upsert({
+      user_id: userId,
+      dismissed_notification_ids: normalizeNotificationDismissalIds(ids),
+      updated_at: new Date().toISOString(),
+    }, { onConflict: "user_id" });
+    assertSupabase(error);
   }
 
   async getUsers() {
@@ -3023,6 +3072,7 @@ async function enterAuthenticatedView(user) {
   appState.authenticated = true;
   appState.currentUserEmail = user.email;
   appState.currentUserAuthId = user.auth_user_id || user.email;
+  appState.dismissedNotificationIds = [];
   appState.currentUserRole = normalizeUserRole(user.role);
   appState.currentUserName = userDisplayName(user);
   appState.currentOrganizationId = user.organization_id || user.organization?.id || null;
@@ -3071,6 +3121,7 @@ function resetAuthenticatedView() {
   appState.authenticated = false;
   appState.currentUserEmail = null;
   appState.currentUserAuthId = null;
+  appState.dismissedNotificationIds = [];
   appState.currentUserRole = null;
   appState.currentUserName = null;
   appState.currentOrganizationId = null;
@@ -3192,6 +3243,7 @@ function navigationNotifications() {
 
   return [
     ...pendingDocuments.map(({ document, bid }) => ({
+      id: `document:${document.id}`,
       bidId: bid.id,
       page: "documents",
       icon: "fileText",
@@ -3199,13 +3251,14 @@ function navigationNotifications() {
       description: bidDisplayNumber(bid),
     })),
     ...upcomingBids.map((bid) => ({
+      id: `session:${bid.id}:${bid.session_datetime || ""}`,
       bidId: bid.id,
       page: "items",
       icon: "briefcaseBusiness",
       title: `Sessão prevista · ${bidDisplayNumber(bid)}`,
       description: formatDateTime(bid.session_datetime),
     })),
-  ];
+  ].filter((notification) => !appState.dismissedNotificationIds.includes(notification.id));
 }
 
 function updateNotificationsIndicator() {
@@ -3224,12 +3277,17 @@ function setNotificationsMenuOpen(open) {
             <span><strong>${escapeHtml(notification.title)}</strong><small>${escapeHtml(notification.description)}</small></span>
           </button>`).join("")}`
       : `<div class="notification-menu-heading">Notificações</div><p class="notification-menu-empty" role="status">Nenhuma notificação nova.</p>`;
+    refs.notificationsMenu.insertAdjacentHTML("beforeend", `<div class="notification-menu-footer"><button type="button" data-clear-notifications${notifications.length ? "" : " disabled"}>Limpar notificações</button></div>`);
   }
   refs.notificationsMenu.classList.toggle("hidden", !open);
   refs.notificationsButton.setAttribute("aria-expanded", String(open));
 }
 
 function handleNotificationClick(event) {
+  if (event.target.closest("[data-clear-notifications]")) {
+    void clearAllNotifications();
+    return;
+  }
   const button = event.target.closest("[data-notification-bid]");
   if (!button) return;
   const bidId = button.dataset.notificationBid;
@@ -3237,6 +3295,34 @@ function handleNotificationClick(event) {
   setNotificationsMenuOpen(false);
   loadBid(bidId);
   if (page === "documents") setPage("documents");
+}
+
+async function clearAllNotifications() {
+  const userId = appState.currentUserAuthId;
+  const epoch = sessionEpoch;
+  const notifications = navigationNotifications();
+  if (!userId || !notifications.length) return;
+
+  const button = refs.notificationsMenu.querySelector("[data-clear-notifications]");
+  if (button) button.disabled = true;
+  const dismissedIds = [...new Set([
+    ...appState.dismissedNotificationIds,
+    ...notifications.map((notification) => notification.id),
+  ])];
+
+  try {
+    await store.saveDismissedNotificationIds(dismissedIds, userId);
+    if (epoch !== sessionEpoch || userId !== appState.currentUserAuthId) return;
+    dataRequest += 1;
+    appState.dismissedNotificationIds = dismissedIds;
+    updateNotificationsIndicator();
+    setNotificationsMenuOpen(true);
+    if (liveChannel) void liveChannel.send({ type: "broadcast", event: "data-changed", payload: {} }).catch(() => {});
+    showToast("Notificações limpas para este perfil.");
+  } catch {
+    if (button?.isConnected) button.disabled = false;
+    showToast("Não foi possível limpar as notificações. Tente novamente.");
+  }
 }
 
 function handleNotificationsKeydown(event) {
@@ -3543,6 +3629,7 @@ async function reloadData({ background = false } = {}) {
     store.getAll("bids"), store.getAll("items"), store.getAll("documents"),
     store.getAll("failure_history"), store.getAll("quotations"), store.getAll("quotation_items"),
     store.getUsers(), store.getAll("suppliers"), store.getAll("supplier_products"), store.getAll("bid_status_history"), store.getBidActivity(),
+    store.getDismissedNotificationIds(appState.currentUserAuthId),
   ]);
   // Discard stale responses after logout, another login, or a newer refresh.
   if (epoch !== sessionEpoch || request !== dataRequest || !appState.authenticated) return;
@@ -3579,6 +3666,7 @@ async function reloadData({ background = false } = {}) {
   next.suppliers = rows[7].map(normalizeSupplierRecord).sort((a, b) => a.name.localeCompare(b.name, "pt-BR"));
   next.supplierProducts = (rows[8] || []).map(normalizeSupplierProductRecord).sort((a, b) => a.name.localeCompare(b.name, "pt-BR"));
   next.users = rows[6].sort((a, b) => userDisplayName(a).localeCompare(userDisplayName(b), "pt-BR"));
+  next.dismissedNotificationIds = normalizeNotificationDismissalIds(rows[11]);
   if (store.requiresAuthenticationBeforeData && !next.users.some((user) => normalizeEmail(user.email) === normalizeEmail(appState.currentUserEmail))) {
     resetAuthenticatedView();
     setLoginMessage("Seu acesso não está mais disponível. Entre novamente ou contate o administrador.");
@@ -3587,12 +3675,20 @@ async function reloadData({ background = false } = {}) {
   if (store instanceof SupabaseStore) next.users = await store.addSignedAvatarUrls(next.users);
   if (epoch !== sessionEpoch || request !== dataRequest || !appState.authenticated) return;
   const changed = DATA_KEYS.some((key) => dataSignature(appState[key]) !== dataSignature(next[key]));
-  if (background && !changed) return;
+  const notificationStateChanged = dataSignature(appState.dismissedNotificationIds) !== dataSignature(next.dismissedNotificationIds);
+  if (background && !changed) {
+    if (!notificationStateChanged) return;
+    appState.dismissedNotificationIds = next.dismissedNotificationIds;
+    updateNotificationsIndicator();
+    if (!refs.notificationsMenu.classList.contains("hidden")) setNotificationsMenuOpen(true);
+    return;
+  }
   if (background && selectedDataSignature(appState) !== selectedDataSignature(next)) {
     setSyncNotice("O registro aberto foi alterado ou excluído em outra sessão. Seu formulário foi preservado. Reabra o registro pela lista para conferir a versão atual antes de salvar.");
   }
   Object.assign(appState, next);
   updateNotificationsIndicator();
+  if (!refs.notificationsMenu.classList.contains("hidden")) setNotificationsMenuOpen(true);
   updateCurrentUserProfile();
   if (appState.activePage === "userProfile") updateUserProfileAccessActions();
   renderBids();

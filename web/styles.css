@@ -6047,6 +6047,11 @@ html.is-loading { overflow: hidden; }
   font-weight: var(--font-weight-bold);
 }
 
+.notification-menu-footer {
+  margin-top: var(--space-xs);
+  border-top: 1px solid var(--gll-line);
+}
+
 .notification-menu-item {
   display: flex;
   align-items: flex-start;

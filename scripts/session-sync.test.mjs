@@ -157,7 +157,7 @@ test("itens não carregam nem enviam os campos antigos de frete", () => {
 function backend() {
   return {
     tables: { bids: [{ id: "TEST-1", buyer_agency: "Original" }], items: [], documents: [], failure_history: [], quotations: [{ id: 1, edital: "Original" }], quotation_items: [], suppliers: [] },
-    users: [user], channels: new Set(),
+    users: [user], channels: new Set(), notificationStates: new Map(),
   };
 }
 
@@ -194,7 +194,7 @@ function client(db = backend(), auth = { session: { user } }) {
           contains: (v) => classes.has(v),
           toggle: (v, on = !classes.has(v)) => on ? classes.add(v) : classes.delete(v),
         },
-        querySelectorAll: () => [], setAttribute() {}, prepend() {}, reset() {}, close() {},
+        querySelector: () => null, querySelectorAll: () => [], setAttribute() {}, insertAdjacentHTML() {}, prepend() {}, reset() {}, close() {},
       });
     }
     return elements.get(id);
@@ -213,15 +213,19 @@ function client(db = backend(), auth = { session: { user } }) {
     clearInterval: (id) => timers.delete(id),
   });
   vm.runInContext(application, context);
-  const api = vm.runInContext(`({ store, appState, restoreSession, logout, reloadData, refreshInBackground, startLiveUpdates, stopLiveUpdates, resetAuthenticatedView, scheduleLiveRefresh, calculateBidSummary, calculateLineTotal, calculateItemProfit, calculateProfitMargin, calculateValueWithMargin, parseDecimal, parseProfitMargin, money, formatDateTime, toDateTimeInputValue, fromDateTimeInputValue, readNavigationRoute, writeNavigationRoute, resolveAuthorizedPage, normalizeBidRecord, normalizeBidAttachments, validateEditalFiles, bidDisplayNumber, bidMatchesSearch, bidActivityDescription, creatorName, creatorInitials, creatorTagMarkup, normalizeQuotationRecord, normalizeQuotationItemRecord, quotationItemToBidItem, bidItemToQuotationItem, normalizeTechnicalSpecifications, quotationSaveError, sessionPolicyStorageKey, enforceSessionPolicy, availableBidQuotations })`, context);
+  element("notificationsMenu").classList.add("hidden");
+  const api = vm.runInContext(`({ store, appState, restoreSession, logout, reloadData, refreshInBackground, startLiveUpdates, stopLiveUpdates, resetAuthenticatedView, scheduleLiveRefresh, calculateBidSummary, calculateLineTotal, calculateItemProfit, calculateProfitMargin, calculateValueWithMargin, parseDecimal, parseProfitMargin, money, formatDateTime, toDateTimeInputValue, fromDateTimeInputValue, readNavigationRoute, writeNavigationRoute, resolveAuthorizedPage, normalizeBidRecord, normalizeBidAttachments, validateEditalFiles, bidDisplayNumber, bidMatchesSearch, bidActivityDescription, creatorName, creatorInitials, creatorTagMarkup, normalizeQuotationRecord, normalizeQuotationItemRecord, quotationItemToBidItem, bidItemToQuotationItem, normalizeTechnicalSpecifications, quotationSaveError, sessionPolicyStorageKey, enforceSessionPolicy, availableBidQuotations, navigationNotifications, clearAllNotifications })`, context);
   vm.runInContext(`
     renderSuppliers = renderBids = renderDetails = renderQuotations = renderUsers = () => {};
     clearBidForm = clearQuotationForm = setPage = updateMainNavigationState = () => {};
+    showToast = () => {};
   `, context);
   api.store.getAll = async (table) => structuredClone(db.tables[table]);
   api.store.getBidActivity = async () => structuredClone(db.tables.bid_activity || []);
   api.store.getUsers = async () => structuredClone(db.users);
   api.store.getUser = async () => db.users[0] || null;
+  api.store.getDismissedNotificationIds = async (userId) => structuredClone(db.notificationStates.get(userId) || []);
+  api.store.saveDismissedNotificationIds = async (ids, userId) => db.notificationStates.set(userId, structuredClone(ids));
   api.store.client = {
     functions: {
       invoke: async (name) => ({
@@ -258,6 +262,22 @@ function client(db = backend(), auth = { session: { user } }) {
     },
   };
 }
+
+test("limpar notificações persiste os avisos dispensados somente para o perfil atual", async () => {
+  const app = client();
+  app.appState.currentUserAuthId = "profile-1";
+  app.appState.bids = [{ id: "bid-1", edital_number: "8/2026" }];
+  app.appState.documents = [{ id: 11, bid_id: "bid-1", document_type: "Certidão", has_document: false }];
+
+  assert.equal(app.navigationNotifications().length, 1);
+  await app.clearAllNotifications();
+
+  assert.equal(app.navigationNotifications().length, 0);
+  assert.deepEqual(await app.store.getDismissedNotificationIds("profile-1"), ["document:11"]);
+  app.appState.dismissedNotificationIds = await app.store.getDismissedNotificationIds("profile-2");
+  assert.equal(app.navigationNotifications().length, 1);
+  assert.match(source, /data-clear-notifications[\s\S]*Limpar notificações/);
+});
 
 test("navigation writes readable URLs without discarding unrelated parameters", () => {
   const app = client();
