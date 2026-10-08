@@ -5902,12 +5902,12 @@ html.is-loading { overflow: hidden; }
   z-index: 1;
 }
 
-.organization-chat-button.is-notifying::before {
-  animation: organization-chat-wave 1.2s ease-out 1 both;
+.organization-chat-button.has-unread::before {
+  animation: organization-chat-wave 1s ease-out infinite;
 }
 
-.organization-chat-button.is-notifying::after {
-  animation: organization-chat-wave 1.2s ease-out .3s 1 both;
+.organization-chat-button.has-unread::after {
+  animation: organization-chat-wave 1s ease-out .3s infinite;
 }
 
 .organization-chat-unread-count {
@@ -5936,18 +5936,18 @@ html.is-loading { overflow: hidden; }
   display: none !important;
 }
 
-.organization-chat-unread-count.is-bumping {
-  animation: organization-chat-counter-bump 300ms ease-out 1 both;
+.organization-chat-unread-count.has-unread {
+  animation: organization-chat-counter-bump 1s ease-in-out infinite;
 }
 
 @keyframes organization-chat-wave {
   0% { opacity: .5; transform: translate(-50%, -50%) scale(.75); }
-  100% { opacity: 0; transform: translate(-50%, -50%) scale(2.5); }
+  70%, 100% { opacity: 0; transform: translate(-50%, -50%) scale(2.5); }
 }
 
 @keyframes organization-chat-counter-bump {
-  0%, 100% { transform: scale(1); }
-  50% { transform: scale(1.25); }
+  0%, 10%, 40%, 100% { transform: scale(1); }
+  25% { transform: scale(1.25); }
 }
 
 .organization-chat-dialog {
@@ -6230,9 +6230,9 @@ html.is-loading { overflow: hidden; }
 @keyframes blocking-loading-spin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) {
   .blocking-loading-spinner { animation: none; }
-  .organization-chat-button.is-notifying::before,
-  .organization-chat-button.is-notifying::after,
-  .organization-chat-unread-count.is-bumping { animation: none; }
+  .organization-chat-button.has-unread::before,
+  .organization-chat-button.has-unread::after,
+  .organization-chat-unread-count.has-unread { animation: none; }
 }
 .sync-notice {
   position: fixed;
