@@ -675,6 +675,14 @@
         "396bcfef14faf376a27defb86f4d1d6defa914c2"
       ],
       "migrations": []
+    },
+    {
+      "id": "FRONT-2.0-CHAT-NAO-LIDAS-001",
+      "backend_commits": [],
+      "frontend_commits": [
+        "67d32f76b253133670207a4ad35c822ca994e4f8"
+      ],
+      "migrations": []
     }
   ]
 }
