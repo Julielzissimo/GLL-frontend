@@ -84,6 +84,9 @@ jobs:
     if: github.ref_name == 'main' || github.ref_name == 'homolog'
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    env:
+      GLL_STORAGE_PROVIDER_HOMOLOG: ${{ vars.GLL_STORAGE_PROVIDER_HOMOLOG }}
+      GLL_STORAGE_PROVIDER_PRODUCTION: ${{ vars.GLL_STORAGE_PROVIDER_PRODUCTION }}
 
     steps:
       - name: Obter branch que iniciou a publicacao

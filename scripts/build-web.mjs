@@ -57,6 +57,8 @@ const otherTarget = target.environment === "homolog" ? TARGETS.production : TARG
 if (configuredKey && configuredKey === otherTarget.supabaseAnonKey) {
   throw new Error(`A chave pública Supabase de ${otherTarget.environment} não pode ser usada em ${target.environment}.`);
 }
+const storageProvider = process.env[`GLL_STORAGE_PROVIDER_${target.environment === "homolog" ? "HOMOLOG" : "PRODUCTION"}`] || "supabase";
+if (!["supabase", "r2"].includes(storageProvider)) throw new Error("Provedor de armazenamento inválido.");
 
 const scriptDir = dirname(fileURLToPath(import.meta.url));
 const rootDir = resolve(scriptDir, "..");
@@ -71,8 +73,9 @@ const runtimeConfig = {
   environment: target.environment,
   label: target.label,
   description: target.description,
-  storageLabel: target.storageLabel,
+  storageLabel: storageProvider === "r2" ? `Cloudflare R2 ${target.label.toLowerCase()}` : target.storageLabel,
   storageSuffix: target.storageSuffix,
+  storageProvider,
   appName: "GLL Web",
   supabaseUrl: target.supabaseUrl,
   supabaseAnonKey: configuredKey || target.supabaseAnonKey,
@@ -90,6 +93,7 @@ await writeFile(
 
 const assetVersion = createHash("sha256")
   .update(await readFile(resolve(sourceDir, "app.js")))
+  .update(await readFile(resolve(sourceDir, "file-storage.js")))
   .update(await readFile(resolve(sourceDir, "declarations.js")))
   .update(await readFile(resolve(sourceDir, "company-data.js")))
   .update(await readFile(resolve(sourceDir, "commercial-proposals.js")))
@@ -111,7 +115,8 @@ await writeFile(
     .replace('./declarations.js', `./declarations.js?v=${assetVersion}`)
     .replace('./company-data.js', `./company-data.js?v=${assetVersion}`)
     .replace('./commercial-proposals.js', `./commercial-proposals.js?v=${assetVersion}`)
-    .replace('./app.js', `./app.js?v=${assetVersion}`),
+    .replace('./app.js', `./app.js?v=${assetVersion}`)
+    .replace('./file-storage.js', `./file-storage.js?v=${assetVersion}`),
   "utf8",
 );
 
