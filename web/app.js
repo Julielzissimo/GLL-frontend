@@ -3481,7 +3481,13 @@ function startLiveUpdates() {
       table: "organization_messages",
       filter: `organization_id=eq.${appState.currentOrganizationId}`,
     }, organizationChat.handleIncomingMessage)
-    .subscribe((status) => { if (status === "SUBSCRIBED") scheduleLiveRefresh(); });
+    .subscribe((status, error) => {
+      if (status === "SUBSCRIBED") {
+        scheduleLiveRefresh();
+      } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
+        console.warn("A conexão Realtime do GLL falhou.", status, error);
+      }
+    });
   liveTimer = setInterval(scheduleLiveRefresh, 15000);
   window.addEventListener("online", scheduleLiveRefresh);
   window.addEventListener("focus", scheduleLiveRefresh);

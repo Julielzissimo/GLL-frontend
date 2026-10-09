@@ -9,6 +9,7 @@ function createOrganizationChat({ getClient, getOrganizationId, getOrganizationN
   let presenceQueue = Promise.resolve();
   let requestNumber = 0;
   let loading = false;
+  let refreshPending = false;
   let active = false;
   let isTyping = false;
   let lastTypingWrite = 0;
@@ -435,7 +436,11 @@ function createOrganizationChat({ getClient, getOrganizationId, getOrganizationN
   }
 
   async function refresh() {
-    if (!active || loading || !getClient() || !getOrganizationId()) return;
+    if (!active || !getClient() || !getOrganizationId()) return;
+    if (loading) {
+      refreshPending = true;
+      return;
+    }
     const request = requestNumber;
     loading = true;
     try {
@@ -490,6 +495,10 @@ function createOrganizationChat({ getClient, getOrganizationId, getOrganizationN
       if (active && request === requestNumber) byId("organizationChatError").textContent = error.message || "Não foi possível carregar as mensagens.";
     } finally {
       loading = false;
+      if (refreshPending) {
+        refreshPending = false;
+        if (active) void refresh();
+      }
     }
   }
 
