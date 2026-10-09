@@ -3529,6 +3529,7 @@ if (typeof ResizeObserver === "function") {
 const DATA_KEYS = ["bids", "items", "documents", "failureHistory", "statusHistory", "bidActivity", "quotations", "quotationItems", "users", "suppliers", "supplierProducts"];
 let sessionEpoch = 0;
 let dataRequest = 0;
+let liveSubscriptionRequest = 0;
 let liveChannel = null;
 let chatBroadcastChannel = null;
 let liveTimer = null;
@@ -3589,12 +3590,28 @@ async function refreshInBackground() {
   }
 }
 
-function startLiveUpdates() {
+async function startLiveUpdates() {
   stopLiveUpdates();
   if (!store.requiresAuthenticationBeforeData) return;
+  const request = ++liveSubscriptionRequest;
+  const client = store.client;
+  const organizationId = appState.currentOrganizationId;
+  const epoch = sessionEpoch;
   void organizationChat.startUnreadTracking();
+  try {
+    await client.realtime.setAuth();
+  } catch (error) {
+    console.warn("Não foi possível atualizar a autorização dos canais Realtime.", error);
+  }
+  if (
+    request !== liveSubscriptionRequest
+    || client !== store.client
+    || epoch !== sessionEpoch
+    || !appState.authenticated
+    || organizationId !== appState.currentOrganizationId
+  ) return;
   // Data changes and org-scoped chat events use this authenticated channel; records remain protected by RLS.
-  liveChannel = store.client.channel("gll-data-updates", { config: { broadcast: { self: false } } })
+  liveChannel = client.channel("gll-data-updates", { config: { broadcast: { self: false } } })
     .on("broadcast", { event: "data-changed" }, scheduleLiveRefresh)
     .on("postgres_changes", {
       event: "INSERT",
@@ -3609,9 +3626,8 @@ function startLiveUpdates() {
         console.warn("A conexão Realtime do GLL falhou.", status, error);
       }
     });
-  const organizationId = appState.currentOrganizationId;
   if (organizationId) {
-    chatBroadcastChannel = store.client.channel(`organization:${organizationId}`, {
+    chatBroadcastChannel = client.channel(`organization:${organizationId}`, {
       config: { private: true, broadcast: { self: false } },
     })
       .on("broadcast", { event: "organization-message-inserted" }, organizationChat.handleIncomingMessage)
@@ -3628,6 +3644,7 @@ function startLiveUpdates() {
 }
 
 function stopLiveUpdates() {
+  liveSubscriptionRequest += 1;
   clearInterval(liveTimer);
   clearTimeout(liveDebounce);
   liveTimer = null;
