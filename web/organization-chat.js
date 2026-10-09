@@ -93,7 +93,7 @@ function createOrganizationChat({ getClient, getOrganizationId, getOrganizationN
 
   function handleIncomingMessage(payload) {
     if (!unreadTrackingEnabled) return;
-    const row = payload?.new;
+    const row = payload?.new || payload?.payload?.new || payload?.payload || payload;
     const organizationId = getOrganizationId();
     const userId = getUserId();
     if (!row || row.organization_id !== organizationId || row.sender_id === userId || row.id == null) return;

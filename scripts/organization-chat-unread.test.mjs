@@ -237,6 +237,24 @@ test("starts the unread animation when a background refresh discovers unread mes
   chat.stopUnreadTracking();
 });
 
+test("accepts the private Broadcast payload and deduplicates the Postgres Changes fallback", async () => {
+  const { button, counter, chat, setCounts } = createChatHarness();
+  await chat.startUnreadTracking();
+  setCounts(1, 0);
+
+  const message = { id: 28, organization_id: "org-1", sender_id: "user-2" };
+  chat.handleIncomingMessage({ type: "broadcast", event: "organization-message-inserted", payload: message });
+  assert.equal(counter.textContent, "1");
+  chat.handleIncomingMessage({ new: message });
+  await new Promise((resolve) => setTimeout(resolve, 10));
+
+  assert.equal(counter.textContent, "1");
+  assert.equal(button.getAttribute("aria-label"), "Mensagens da organização, 1 mensagem não lida");
+  await new Promise((resolve) => setTimeout(resolve, 120));
+  assert.equal(counter.textContent, "1");
+  chat.stopUnreadTracking();
+});
+
 test("repeats a realtime refresh requested while another chat refresh is loading", async () => {
   const harness = createRefreshRaceHarness();
   await harness.startUnreadTracking();
