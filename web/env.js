@@ -4,6 +4,7 @@ window.GLL_CONFIG = {
   description: "Ambiente web de validação local",
   storageLabel: "IndexedDB local",
   storageSuffix: "local",
+  storageProvider: "supabase",
   appName: "GLL Web",
   supabaseUrl: "",
   supabaseAnonKey: "",

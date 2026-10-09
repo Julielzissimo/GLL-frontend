@@ -1,3 +1,4 @@
+const storageBucket = globalThis.window?.GLLFileStorage?.storageBucket || ((client, bucket) => client.storage.from(bucket));
 const PDF_BUCKET = "commercial-proposal-pdfs";
 const JSPDF_URL = "https://cdn.jsdelivr.net/npm/jspdf@2.5.2/+esm";
 const BUILTIN_FIELDS = Object.freeze({
@@ -925,7 +926,7 @@ export function createCommercialProposalsFeature({ getClient, getContext, toast,
 
   async function assetDataUrl(path) {
     if (!path) return "";
-    const { data: blob, error } = await client().storage.from("declaration-assets").download(path);
+    const { data: blob, error } = await storageBucket(client(), "declaration-assets").download(path);
     if (error || !blob) return "";
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
@@ -1230,14 +1231,19 @@ export function createCommercialProposalsFeature({ getClient, getContext, toast,
     const doc = await buildPdf();
     const blob = doc.output("blob");
     const reference = `${getContext().organizationId}/${state.editor.proposal.id}/${crypto.randomUUID()}.pdf`;
-    assertResult(await client().storage.from(PDF_BUCKET).upload(reference, blob, {
+    const uploaded = assertResult(await storageBucket(client(), PDF_BUCKET).upload(reference, blob, {
       contentType: "application/pdf", upsert: false,
     }), "Não foi possível armazenar o PDF.");
-    await rpc("record_commercial_proposal_generation", {
-      p_proposal_id: state.editor.proposal.id,
-      p_snapshot: documentSnapshot(),
-      p_pdf_reference: reference,
-    });
+    try {
+      await rpc("record_commercial_proposal_generation", {
+        p_proposal_id: state.editor.proposal.id,
+        p_snapshot: documentSnapshot(),
+        p_pdf_reference: uploaded?.path || reference,
+      });
+    } catch (error) {
+      await storageBucket(client(), PDF_BUCKET).remove([uploaded?.path || reference]);
+      throw error;
+    }
     doc.save(commercialProposalFileName(state.editor.bid.edital_number || state.editor.bid.id));
     await openEditor(state.editor.proposal.id);
     if (returnToReview) {
@@ -1250,7 +1256,7 @@ export function createCommercialProposalsFeature({ getClient, getContext, toast,
 
   async function downloadReference(reference) {
     if (!reference) return;
-    const { data: blob, error } = await client().storage.from(PDF_BUCKET).download(reference);
+    const { data: blob, error } = await storageBucket(client(), PDF_BUCKET).download(reference);
     assertResult({ data: blob, error });
     const url = URL.createObjectURL(blob);
     const anchor = document.createElement("a");

@@ -1,3 +1,4 @@
+const storageBucket = globalThis.window?.GLLFileStorage?.storageBucket || ((client, bucket) => client.storage.from(bucket));
 const ASSET_BUCKET = "declaration-assets";
 const PDF_BUCKET = "declaration-pdfs";
 const JSPDF_URL = "https://cdn.jsdelivr.net/npm/jspdf@2.5.2/+esm";
@@ -275,7 +276,7 @@ export function createDeclarationsFeature({ getClient, getContext, getBids, navi
     ]) {
       const path = state.settings?.[pathKey];
       if (!path) continue;
-      const result = await supabase.storage.from(ASSET_BUCKET).download(path);
+      const result = await storageBucket(supabase, ASSET_BUCKET).download(path);
       if (result.error || !result.data) {
         const detail = result.error?.message ? ` ${result.error.message}` : "";
         throw new Error(`Não foi possível carregar a ${label} configurada para o papel timbrado.${detail}`);
@@ -718,16 +719,16 @@ export function createDeclarationsFeature({ getClient, getContext, getBids, navi
     const supabase = client();
     if (supabase) {
       const filePath = buildPdfStoragePath(context.organizationId, crypto.randomUUID());
-      assertResult(await supabase.storage.from(PDF_BUCKET).upload(filePath, blob, { contentType: "application/pdf", upsert: false }));
+      const uploaded = assertResult(await storageBucket(supabase, PDF_BUCKET).upload(filePath, blob, { contentType: "application/pdf", upsert: false }));
       const historyRecord = {
         organization_id: context.organizationId, bid_id: composition.bidId, title: composition.title,
-        file_name: composition.fileName, file_path: filePath, edital_number: composition.editalNumber,
+        file_name: composition.fileName, file_path: uploaded?.path || filePath, edital_number: composition.editalNumber,
         agency: composition.agency, created_by: context.userAuthId, created_by_name: context.userName || context.userEmail,
         document_snapshot: composition,
       };
       const insert = await supabase.from("declaration_documents").insert(historyRecord).select().single();
       if (insert.error) {
-        await supabase.storage.from(PDF_BUCKET).remove([filePath]);
+        await storageBucket(supabase, PDF_BUCKET).remove([uploaded?.path || filePath]);
         assertResult(insert);
       }
       await refreshHistory();
@@ -762,7 +763,7 @@ export function createDeclarationsFeature({ getClient, getContext, getBids, navi
     const row = state.history.find((item) => item.id === id);
     if (!row) return;
     if (!client()) { toast("No modo local, gere novamente o PDF para baixá-lo."); return; }
-    const result = await client().storage.from(PDF_BUCKET).download(row.file_path);
+    const result = await storageBucket(client(), PDF_BUCKET).download(row.file_path);
     assertResult(result);
     const url = URL.createObjectURL(result.data);
     const link = document.createElement("a"); link.href = url; link.download = row.file_name; link.click();

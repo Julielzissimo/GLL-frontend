@@ -1,3 +1,4 @@
+const storageBucket = globalThis.window?.GLLFileStorage?.storageBucket || ((client, bucket) => client.storage.from(bucket));
 const COMPANY_ASSET_BUCKET = "declaration-assets";
 const MAX_IMAGE_SIZE = 5 * 1024 * 1024;
 
@@ -228,7 +229,7 @@ export function createCompanyDataFeature(options) {
     for (const [kind, pathKey] of [["logo", "logo_path"], ["watermark", "watermark_path"]]) {
       const path = state.organization?.[pathKey];
       if (!path) continue;
-      const result = await client.storage.from(COMPANY_ASSET_BUCKET).download(path);
+      const result = await storageBucket(client, COMPANY_ASSET_BUCKET).download(path);
       if (!result.error && result.data) assetUrls[kind] = URL.createObjectURL(result.data);
     }
   }
@@ -239,8 +240,8 @@ export function createCompanyDataFeature(options) {
       throw new Error("Use uma imagem PNG, JPG ou WebP de até 5 MB.");
     }
     const path = `${getContext().organizationId}/${kind}-${Date.now()}-${safeStorageName(file.name)}`;
-    assertResult(await getClient().storage.from(COMPANY_ASSET_BUCKET).upload(path, file, { contentType: file.type, upsert: false }));
-    return path;
+    const upload = assertResult(await storageBucket(getClient(), COMPANY_ASSET_BUCKET).upload(path, file, { contentType: file.type, upsert: false }));
+    return upload?.path || path;
   }
 
   function addRepresentative() {
@@ -301,16 +302,26 @@ export function createCompanyDataFeature(options) {
       const logoFile = refs.logo.files[0];
       const watermarkFile = refs.watermark.files[0];
       if (logoFile || watermarkFile) {
-        const branding = {
-          logo_path: await uploadAsset(logoFile, "logo", state.organization?.logo_path),
-          watermark_path: await uploadAsset(watermarkFile, "watermark", state.organization?.watermark_path),
-        };
-        const updatedOrganization = await client.from("organizations")
-          .update(branding)
-          .eq("id", organization.id)
-          .select("id,name,cnpj,logo_path,watermark_path")
-          .single();
-        Object.assign(organization, assertResult(updatedOrganization));
+        const uploadedPaths = [];
+        try {
+          const logoPath = await uploadAsset(logoFile, "logo", state.organization?.logo_path);
+          if (logoFile) uploadedPaths.push(logoPath);
+          const watermarkPath = await uploadAsset(watermarkFile, "watermark", state.organization?.watermark_path);
+          if (watermarkFile) uploadedPaths.push(watermarkPath);
+          const branding = {
+            logo_path: logoPath,
+            watermark_path: watermarkPath,
+          };
+          const updatedOrganization = await client.from("organizations")
+            .update(branding)
+            .eq("id", organization.id)
+            .select("id,name,cnpj,logo_path,watermark_path")
+            .single();
+          Object.assign(organization, assertResult(updatedOrganization));
+        } catch (error) {
+          if (uploadedPaths.length) await storageBucket(client, COMPANY_ASSET_BUCKET).remove(uploadedPaths);
+          throw error;
+        }
       } else {
         Object.assign(organization, {
           logo_path: state.organization?.logo_path || null,
