@@ -4,9 +4,15 @@
 
 Toda alteração solicitada deve ser publicada e validada no ambiente `homolog`. Não considere a tarefa concluída apenas com validação local.
 
+## Classificação de melhorias entre releases
+
+Para cada melhoria implementada em `homolog`, pergunte explicitamente à usuária se ela pertence à release [Front 2.0 - Reformulação visual](https://github.com/Julielzissimo/GLL-frontend/milestone/1), à release [Migração de storage para Cloudflare R2](https://github.com/Julielzissimo/GLL-frontend/milestone/2) ou a nenhuma das duas. Registre o item somente no marco escolhido; não classifique por tema, aparência ou código preexistente sem a resposta da usuária. Se a usuária já indicar explicitamente uma das três opções na solicitação, use essa classificação sem repetir a pergunta.
+
+Mantenha os commits de cada melhoria separáveis em `homolog`. Monte cada release exclusivamente com seus itens na respectiva branch `codex/release-front-2.0-reformulacao-visual` ou `codex/release-migracao-storage-cloudflare-r2`, ambas iniciadas em `main`. Não inclua itens de uma release na outra nem promova itens pendentes por meio de merge integral de `homolog`.
+
 ## Release temporária Front 2.0 - Reformulação visual
 
-Enquanto o [marco Front 2.0 - Reformulação visual](https://github.com/Julielzissimo/GLL-frontend/milestone/1) estiver aberto, pergunte se cada nova alteração entra na release quando a usuária não tiver informado isso antecipadamente. Registre no marco somente os itens que ela incluir; não presuma que uma mudança visual pertença à release.
+Enquanto o [marco Front 2.0 - Reformulação visual](https://github.com/Julielzissimo/GLL-frontend/milestone/1) estiver aberto, registre nele somente os itens classificados pela usuária para essa release. Não presuma que uma mudança visual pertença à release.
 
 Implemente e publique cada item em `homolog`, mantendo seus commits separáveis. A branch `codex/release-front-2.0-reformulacao-visual` reúne somente os itens da release sobre uma base de `main`. Itens fora dela podem ser promovidos separadamente, após solicitação e validação, sem promover a branch `homolog` inteira nem carregar itens da release por dependência. Siga o procedimento de manifestos, documentação e sincronização dos dois repositórios em `GLL-backend/docs/PROCESSO_DE_PUBLICACAO.md`.
 
