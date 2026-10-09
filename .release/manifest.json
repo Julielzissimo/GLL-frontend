@@ -713,6 +713,16 @@
         "supabase/migrations/20261008234851_chat_organization_messages_realtime.sql",
         "supabase/migrations/20261009003322_organization_message_broadcast_notifications.sql"
       ]
+    },
+    {
+      "id": "R2-ENV-ISOLATION-001",
+      "backend_commits": [
+        "78906403095eab948bfa9dd1f25b7135841512e6"
+      ],
+      "frontend_commits": [
+        "a81c9e62a9735e750df2b5e8c60e17908ebd9218"
+      ],
+      "migrations": []
     }
   ]
 }
