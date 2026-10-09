@@ -20,11 +20,18 @@ test("homologação envia, lê e exclui somente um arquivo sintético no R2", as
     new URL(config.supabaseUrl).hostname !== "dwotbzrjcetizyygzoty.supabase.co") {
     throw new Error("O teste R2 não está no ambiente de homologação ativado.");
   }
+  await page.waitForFunction(() => {
+    const badge = document.querySelector("#environmentBadge");
+    const loadingModal = document.querySelector("#blockingLoadingModal");
+    return badge?.dataset.environment === "homolog" && !loadingModal?.open &&
+      Boolean(document.querySelector("#loginForm button[type='submit']"));
+  }, null, { timeout: 30_000 });
 
   await page.locator("#loginEmail").fill(email);
   await page.locator("#loginPassword").fill(password);
   const authResponsePromise = page.waitForResponse(
     (response) => response.url().includes("/auth/v1/token") && response.request().method() === "POST",
+    { timeout: 30_000 },
   );
   await page.locator("#loginForm button[type='submit']").click();
   const authResponse = await authResponsePromise;
