@@ -45,6 +45,19 @@ if (!target) {
   process.exit(1);
 }
 
+const configuredUrl = process.env.GLL_SUPABASE_URL?.trim();
+if (configuredUrl && configuredUrl !== target.supabaseUrl) {
+  throw new Error(`GLL_SUPABASE_URL não corresponde ao projeto Supabase de ${target.environment}.`);
+}
+const configuredKey = (process.env.GLL_SUPABASE_ANON_KEY || process.env.GLL_SUPABASE_PUBLISHABLE_KEY || "").trim();
+if (configuredKey && !configuredKey.startsWith("sb_publishable_")) {
+  throw new Error("O frontend aceita somente uma chave pública sb_publishable_ do Supabase.");
+}
+const otherTarget = target.environment === "homolog" ? TARGETS.production : TARGETS.homolog;
+if (configuredKey && configuredKey === otherTarget.supabaseAnonKey) {
+  throw new Error(`A chave pública Supabase de ${otherTarget.environment} não pode ser usada em ${target.environment}.`);
+}
+
 const scriptDir = dirname(fileURLToPath(import.meta.url));
 const rootDir = resolve(scriptDir, "..");
 const sourceDir = resolve(rootDir, "web");
@@ -61,8 +74,8 @@ const runtimeConfig = {
   storageLabel: target.storageLabel,
   storageSuffix: target.storageSuffix,
   appName: "GLL Web",
-  supabaseUrl: process.env.GLL_SUPABASE_URL || target.supabaseUrl || "",
-  supabaseAnonKey: process.env.GLL_SUPABASE_ANON_KEY || process.env.GLL_SUPABASE_PUBLISHABLE_KEY || target.supabaseAnonKey || "",
+  supabaseUrl: target.supabaseUrl,
+  supabaseAnonKey: configuredKey || target.supabaseAnonKey,
   sessionIdleTimeoutMinutes: Number(process.env.GLL_SESSION_IDLE_TIMEOUT_MINUTES || target.sessionIdleTimeoutMinutes),
   sessionMaxLifetimeHours: Number(process.env.GLL_SESSION_MAX_LIFETIME_HOURS || target.sessionMaxLifetimeHours),
   suppliersEnabled: target.suppliersEnabled,
