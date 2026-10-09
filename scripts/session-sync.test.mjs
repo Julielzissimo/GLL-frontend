@@ -223,6 +223,7 @@ function client(db = backend(), auth = { session: { user } }) {
   api.store.getUsers = async () => structuredClone(db.users);
   api.store.getUser = async () => db.users[0] || null;
   api.store.client = {
+    realtime: { setAuth: async () => {} },
     functions: {
       invoke: async (name) => ({
         data: name === "password-reset-status" ? { mustChangePassword: auth.mustChangePassword === true } : { ok: true },
@@ -259,6 +260,25 @@ function client(db = backend(), auth = { session: { user } }) {
   };
 }
 
+test("sets the Realtime JWT before subscribing to the private organization channel", async () => {
+  const app = client();
+  app.appState.authenticated = true;
+  app.appState.currentOrganizationId = "org-1";
+  const calls = [];
+  app.store.client.realtime = { setAuth: async () => { calls.push("set-auth"); } };
+  const channel = app.store.client.channel.bind(app.store.client);
+  app.store.client.channel = (topic, options) => {
+    calls.push({ topic, options });
+    return channel(topic, options);
+  };
+
+  await app.startLiveUpdates();
+
+  assert.equal(calls[0], "set-auth");
+  const privateChannel = calls.find((call) => typeof call === "object" && call.topic === "organization:org-1");
+  assert.deepEqual(JSON.parse(JSON.stringify(privateChannel.options)), { config: { private: true, broadcast: { self: false } } });
+  app.stopLiveUpdates();
+});
 test("navigation writes readable URLs without discarding unrelated parameters", () => {
   const app = client();
   app.appState.authenticated = true;
