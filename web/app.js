@@ -3530,6 +3530,7 @@ const DATA_KEYS = ["bids", "items", "documents", "failureHistory", "statusHistor
 let sessionEpoch = 0;
 let dataRequest = 0;
 let liveChannel = null;
+let chatBroadcastChannel = null;
 let liveTimer = null;
 let liveDebounce = null;
 let backgroundRefreshActive = false;
@@ -3608,6 +3609,18 @@ function startLiveUpdates() {
         console.warn("A conexão Realtime do GLL falhou.", status, error);
       }
     });
+  const organizationId = appState.currentOrganizationId;
+  if (organizationId) {
+    chatBroadcastChannel = store.client.channel(`organization:${organizationId}`, {
+      config: { private: true, broadcast: { self: false } },
+    })
+      .on("broadcast", { event: "organization-message-inserted" }, organizationChat.handleIncomingMessage)
+      .subscribe((status, error) => {
+        if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
+          console.warn("A conexão Realtime das mensagens da organização falhou.", status, error);
+        }
+      });
+  }
   liveTimer = setInterval(scheduleLiveRefresh, 15000);
   window.addEventListener("online", scheduleLiveRefresh);
   window.addEventListener("focus", scheduleLiveRefresh);
@@ -3622,6 +3635,8 @@ function stopLiveUpdates() {
   backgroundRefreshActive = false;
   if (liveChannel) void store.client.removeChannel(liveChannel);
   liveChannel = null;
+  if (chatBroadcastChannel) void store.client.removeChannel(chatBroadcastChannel);
+  chatBroadcastChannel = null;
   organizationChat.stopUnreadTracking();
   window.removeEventListener("online", scheduleLiveRefresh);
   window.removeEventListener("focus", scheduleLiveRefresh);
