@@ -735,7 +735,8 @@
         "efe827fffa3251c7c09d47f79e254425ca408380",
         "315a25b7123eff04aaf800e1bfac85e2b79a68cf",
         "104759b39fea5914c8377b9e5fa2347bbbe6e4dd",
-        "44445139e0c41be6c1a2a3140ebafdaf12aa8c8b"
+        "44445139e0c41be6c1a2a3140ebafdaf12aa8c8b",
+        "b7e15d81fc02d29eb927e9e5b3f6731b08734567"
       ],
       "migrations": [
         "supabase/migrations/20261009223408_r2_file_objects_and_quota.sql"
