@@ -44,7 +44,11 @@ test("homologação envia, lê e exclui somente um arquivo sintético no R2", as
   try {
     const result = await page.evaluate(async ({ supabaseUrl, anonKey, accessToken }) => {
       const authHeaders = { apikey: anonKey, Authorization: `Bearer ${accessToken}` };
-      const orgResponse = await fetch(`${supabaseUrl}/rest/v1/organizations?select=id`, { headers: authHeaders });
+      const fetchStage = async (stage, url, options) => {
+        try { return await fetch(url, options); }
+        catch (error) { throw new Error(`${stage}: ${error instanceof Error ? error.message : "falha de rede"}`); }
+      };
+      const orgResponse = await fetchStage("organização", `${supabaseUrl}/rest/v1/organizations?select=id`, { headers: authHeaders });
       const organizations = orgResponse.ok ? await orgResponse.json() : [];
       if (organizations.length !== 1) throw new Error("Organização de teste não está isolada.");
 
@@ -52,7 +56,7 @@ test("homologação envia, lê e exclui somente um arquivo sintético no R2", as
       const bucket = "declaration-assets";
       let uploadedPath = "";
       const invoke = async (action, path, extra = {}) => {
-        const response = await fetch(endpoint, {
+        const response = await fetchStage(action, endpoint, {
           method: "POST",
           headers: { ...authHeaders, "Content-Type": "application/json" },
           body: JSON.stringify({ action, bucket, path, ...extra }),
@@ -69,7 +73,7 @@ test("homologação envia, lê e exclui somente um arquivo sintético no R2", as
           fileName: "test-r2-smoke.png", size: png.length,
         });
         uploadedPath = upload.path;
-        const put = await fetch(upload.url, {
+        const put = await fetchStage("PUT R2", upload.url, {
           method: "PUT",
           headers: { "Content-Type": upload.contentType, "If-None-Match": "*" },
           body: png,
@@ -78,7 +82,7 @@ test("homologação envia, lê e exclui somente um arquivo sintético no R2", as
         await invoke("complete-upload", uploadedPath);
         const download = await invoke("download-url", uploadedPath);
         if (download.legacy) throw new Error("Arquivo novo foi classificado como legado.");
-        const get = await fetch(download.url);
+        const get = await fetchStage("GET R2", download.url);
         if (!get.ok) throw new Error(`GET R2: HTTP ${get.status}`);
         const received = new Uint8Array(await get.arrayBuffer());
         if (received.length !== png.length || received.some((byte, index) => byte !== png[index])) {
