@@ -696,13 +696,16 @@
     {
       "id": "FRONT-2.0-CHAT-REALTIME-001",
       "backend_commits": [
-        "b9c3c22cb7223cab1e809e6226d5a4f402fd31fb"
+        "b9c3c22cb7223cab1e809e6226d5a4f402fd31fb",
+        "189e71b7672b270683bdbb7015cf362364e30d7f"
       ],
       "frontend_commits": [
-        "6d5c8206ac4d8e2649c867db2cd8d2bb2880b786"
+        "6d5c8206ac4d8e2649c867db2cd8d2bb2880b786",
+        "972c6ebb45db3ffcda467e12b0b6b7276a7dec82"
       ],
       "migrations": [
-        "supabase/migrations/20261008234851_chat_organization_messages_realtime.sql"
+        "supabase/migrations/20261008234851_chat_organization_messages_realtime.sql",
+        "supabase/migrations/20261009003322_organization_message_broadcast_notifications.sql"
       ]
     }
   ]
