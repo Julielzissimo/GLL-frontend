@@ -698,7 +698,9 @@
       "backend_commits": [
         "b9c3c22cb7223cab1e809e6226d5a4f402fd31fb"
       ],
-      "frontend_commits": [],
+      "frontend_commits": [
+        "6d5c8206ac4d8e2649c867db2cd8d2bb2880b786"
+      ],
       "migrations": [
         "supabase/migrations/20261008234851_chat_organization_messages_realtime.sql"
       ]
