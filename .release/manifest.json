@@ -732,7 +732,8 @@
       "frontend_commits": [
         "f9af99892b0da7124bd87486fce1324adbbf6bf6",
         "876c564d5a1e193e4a964401f9b9e1a82ade5d3a",
-        "efe827fffa3251c7c09d47f79e254425ca408380"
+        "efe827fffa3251c7c09d47f79e254425ca408380",
+        "315a25b7123eff04aaf800e1bfac85e2b79a68cf"
       ],
       "migrations": [
         "supabase/migrations/20261009223408_r2_file_objects_and_quota.sql"
