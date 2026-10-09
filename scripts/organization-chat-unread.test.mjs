@@ -9,10 +9,18 @@ const stylesSource = await readFile(new URL("../web/styles.css", import.meta.url
 function createElement() {
   const classes = new Set();
   const attributes = new Map();
+  const listeners = new Map();
+  const children = [];
   return {
     hidden: false,
     textContent: "",
     title: "",
+    value: "",
+    open: false,
+    style: {},
+    scrollHeight: 0,
+    scrollTop: 0,
+    clientHeight: 0,
     classList: {
       add: (value) => classes.add(value),
       remove: (value) => classes.delete(value),
@@ -20,6 +28,13 @@ function createElement() {
     },
     setAttribute: (name, value) => attributes.set(name, value),
     getAttribute: (name) => attributes.get(name),
+    addEventListener: (name, listener) => listeners.set(name, listener),
+    listener: (name) => listeners.get(name),
+    focus() {},
+    showModal() { this.open = true; },
+    close() { this.open = false; },
+    replaceChildren(...items) { children.splice(0, children.length, ...items); },
+    append(...items) { children.push(...items); },
   };
 }
 
@@ -81,6 +96,96 @@ function createChatHarness() {
   };
 }
 
+function createRefreshRaceHarness() {
+  const elementIds = [
+    "organizationChatButton",
+    "closeOrganizationChatButton",
+    "organizationChatDialog",
+    "organizationChatMessages",
+    "organizationChatCancelReplyButton",
+    "organizationChatForm",
+    "organizationChatInput",
+    "organizationChatReplyPreview",
+    "organizationChatReplyAuthor",
+    "organizationChatReplyBody",
+    "organizationChatTyping",
+    "organizationChatSubtitle",
+    "organizationChatError",
+  ];
+  const elements = new Map(elementIds.map((id) => [id, createElement()]));
+  const firstMessageQuery = {};
+  firstMessageQuery.promise = new Promise((resolve) => { firstMessageQuery.resolve = resolve; });
+  let resolveFirstQueryStarted;
+  const firstQueryStarted = new Promise((resolve) => { resolveFirstQueryStarted = resolve; });
+  let messageRefreshQueries = 0;
+  let intervalId = 0;
+  const document = {
+    hidden: false,
+    getElementById: (id) => elements.get(id) || null,
+    createElement: () => createElement(),
+  };
+  const window = { addEventListener() {} };
+  const context = {
+    window,
+    document,
+    crypto: { randomUUID: () => "test-session" },
+    console: { warn() {} },
+    setTimeout,
+    clearTimeout,
+    setInterval: () => ++intervalId,
+    clearInterval() {},
+    Intl,
+    Date,
+    Map,
+    Set,
+    Promise,
+  };
+  runInNewContext(chatSource, context);
+
+  const client = {
+    from(table) {
+      let countQuery = false;
+      const query = {
+        select(_columns, options) { countQuery = Boolean(options?.head); return query; },
+        eq() { return query; },
+        neq() { return query; },
+        order() { return query; },
+        limit() { return query; },
+        upsert() { return Promise.resolve({ error: null }); },
+        delete() { return query; },
+        then(resolve, reject) {
+          if (table === "organization_messages" && !countQuery) {
+            messageRefreshQueries += 1;
+            if (messageRefreshQueries === 1) {
+              resolveFirstQueryStarted();
+              return firstMessageQuery.promise.then(resolve, reject);
+            }
+          }
+          const result = { data: [], count: 0, error: null };
+          return Promise.resolve(result).then(resolve, reject);
+        },
+      };
+      return query;
+    },
+  };
+  const chat = window.GLLOrganizationChat.createOrganizationChat({
+    getClient: () => client,
+    getOrganizationId: () => "org-1",
+    getOrganizationName: () => "Organização",
+    getUserId: () => "user-1",
+  });
+  chat.bind();
+
+  return {
+    chat,
+    elements,
+    firstQueryStarted,
+    startUnreadTracking: () => chat.startUnreadTracking(),
+    releaseFirstQuery: () => firstMessageQuery.resolve({ data: [], count: 0, error: null }),
+    getMessageRefreshQueries: () => messageRefreshQueries,
+  };
+}
+
 test("keeps the unread animation active until all messages are read", async () => {
   const { button, counter, chat, setCounts } = createChatHarness();
   setCounts(8, 5);
@@ -130,6 +235,20 @@ test("starts the unread animation when a background refresh discovers unread mes
   assert.equal(button.classList.contains("has-unread"), true);
   assert.equal(counter.classList.contains("has-unread"), true);
   chat.stopUnreadTracking();
+});
+
+test("repeats a realtime refresh requested while another chat refresh is loading", async () => {
+  const harness = createRefreshRaceHarness();
+  await harness.startUnreadTracking();
+
+  harness.elements.get("organizationChatButton").listener("click")();
+  await harness.firstQueryStarted;
+  harness.chat.handleIncomingMessage({ new: { id: 50, organization_id: "org-1", sender_id: "user-2" } });
+  harness.releaseFirstQuery();
+  await new Promise((resolve) => setTimeout(resolve, 0));
+
+  assert.equal(harness.getMessageRefreshQueries(), 2);
+  harness.chat.close();
 });
 
 test("repeats the unread pulse every second and honors reduced motion", () => {
