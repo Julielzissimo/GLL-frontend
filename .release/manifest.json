@@ -723,6 +723,18 @@
         "a81c9e62a9735e750df2b5e8c60e17908ebd9218"
       ],
       "migrations": []
+    },
+    {
+      "id": "R2-STORAGE-INTEGRATION-001",
+      "backend_commits": [
+        "deeea94f3c853ac00ecfcd18f0cb58e9dcd9a27c"
+      ],
+      "frontend_commits": [
+        "f9af99892b0da7124bd87486fce1324adbbf6bf6"
+      ],
+      "migrations": [
+        "supabase/migrations/20261009223408_r2_file_objects_and_quota.sql"
+      ]
     }
   ]
 }
