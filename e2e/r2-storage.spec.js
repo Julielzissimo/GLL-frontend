@@ -40,9 +40,17 @@ test("homologação envia, lê e exclui somente um arquivo sintético no R2", as
   if (!session.access_token || session.user?.email?.toLowerCase() !== email.toLowerCase()) {
     throw new Error("A sessão não corresponde à conta de teste.");
   }
+  let signedPutUrl = "";
+  page.on("request", (request) => {
+    if (request.method() === "PUT" && new URL(request.url()).hostname.endsWith(".r2.cloudflarestorage.com")) {
+      signedPutUrl = request.url();
+    }
+  });
 
   try {
-    const result = await page.evaluate(async ({ supabaseUrl, anonKey, accessToken }) => {
+    let result;
+    try {
+      result = await page.evaluate(async ({ supabaseUrl, anonKey, accessToken }) => {
       const authHeaders = { apikey: anonKey, Authorization: `Bearer ${accessToken}` };
       const fetchStage = async (stage, url, options) => {
         try { return await fetch(url, options); }
@@ -96,7 +104,21 @@ test("homologação envia, lê e exclui somente um arquivo sintético no R2", as
       } finally {
         if (uploadedPath) await invoke("delete", uploadedPath).catch(() => undefined);
       }
-    }, { supabaseUrl: config.supabaseUrl, anonKey: config.supabaseAnonKey, accessToken: session.access_token });
+      }, { supabaseUrl: config.supabaseUrl, anonKey: config.supabaseAnonKey, accessToken: session.access_token });
+    } catch (error) {
+      if (signedPutUrl) {
+        const preflight = await page.request.fetch(signedPutUrl, {
+          method: "OPTIONS",
+          headers: {
+            Origin: "https://julielzissimo.github.io",
+            "Access-Control-Request-Method": "PUT",
+            "Access-Control-Request-Headers": "content-type,if-none-match",
+          },
+        });
+        console.log(`R2 preflight: HTTP ${preflight.status()}, origin=${preflight.headers()["access-control-allow-origin"] || "ausente"}, headers=${preflight.headers()["access-control-allow-headers"] || "ausentes"}`);
+      }
+      throw error;
+    }
     if (!result.uploaded || !result.downloaded || !result.deleted) throw new Error("Fluxo R2 incompleto.");
     console.log("R2 homologação: upload, download, exclusão e leitura após exclusão validados com PNG sintético.");
   } finally {
