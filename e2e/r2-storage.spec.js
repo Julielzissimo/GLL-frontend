@@ -80,6 +80,7 @@ test("homologação envia, lê e exclui somente um arquivo sintético no R2", as
         const upload = await invoke("request-upload", requestedPath, {
           fileName: "test-r2-smoke.png", size: png.length,
         });
+        window.__gllR2SmokeSignedPutUrl = upload.url;
         uploadedPath = upload.path;
         const put = await fetchStage("PUT R2", upload.url, {
           method: "PUT",
@@ -106,6 +107,7 @@ test("homologação envia, lê e exclui somente um arquivo sintético no R2", as
       }
       }, { supabaseUrl: config.supabaseUrl, anonKey: config.supabaseAnonKey, accessToken: session.access_token });
     } catch (error) {
+      signedPutUrl ||= await page.evaluate(() => window.__gllR2SmokeSignedPutUrl || "");
       if (signedPutUrl) {
         const preflight = await page.request.fetch(signedPutUrl, {
           method: "OPTIONS",
@@ -118,6 +120,8 @@ test("homologação envia, lê e exclui somente um arquivo sintético no R2", as
         console.log(`R2 preflight: HTTP ${preflight.status()}, origin=${preflight.headers()["access-control-allow-origin"] || "ausente"}, headers=${preflight.headers()["access-control-allow-headers"] || "ausentes"}`);
       }
       throw error;
+    } finally {
+      await page.evaluate(() => { delete window.__gllR2SmokeSignedPutUrl; });
     }
     if (!result.uploaded || !result.downloaded || !result.deleted) throw new Error("Fluxo R2 incompleto.");
     console.log("R2 homologação: upload, download, exclusão e leitura após exclusão validados com PNG sintético.");
