@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "release_id": "2026-10-10-radar-fase3-coletor",
+  "release_id": "2026-10-10-radar-fase4-pesquisa",
   "environment": "homolog",
   "target_branch": "homolog",
   "items": [
@@ -865,6 +865,17 @@
       "migrations": [
         "supabase/migrations/20261010162217_radar_collector_incremental_sync.sql",
         "supabase/migrations/20261010172500_radar_collector_rate_and_indexes.sql"
+      ]
+    },
+    {
+      "id": "RADAR-04-PESQUISA-001",
+      "backend_commits": [
+        "07a58e3ba0440cb15c1fc46acdc4be068a97e7d4",
+        "28a850495cc31fd1aee69e3779c07c2ce3dbeea4"
+      ],
+      "frontend_commits": [],
+      "migrations": [
+        "supabase/migrations/20261010175803_radar_search_engine.sql"
       ]
     }
   ]
