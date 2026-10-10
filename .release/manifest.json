@@ -951,7 +951,8 @@
       "id": "RADAR-07-ORCAMENTO-001",
       "backend_commits": [
         "32f9e2bdd33e69be127d698ec3ec500be05ed02d",
-        "1dac6418a07ddef25cd12d4be9563bf6c8b9b712"
+        "1dac6418a07ddef25cd12d4be9563bf6c8b9b712",
+        "fe0a2ccdbe5dbc55f4ecf377a2262b1eb03de929"
       ],
       "frontend_commits": [],
       "migrations": [
