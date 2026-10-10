@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "release_id": "2026-10-07-front-2.0-reformulacao-visual",
+  "release_id": "2026-10-10-promocao-individual-indicadores-licitacao",
   "environment": "production",
   "target_branch": "main",
   "items": [
@@ -714,6 +714,14 @@
       "backend_commits": [],
       "frontend_commits": [
         "ac9e00e230a8244da762ffbd6a328941b154607f"
+      ],
+      "migrations": []
+    },
+    {
+      "id": "COR-INDICADORES-LICITACAO-001",
+      "backend_commits": [],
+      "frontend_commits": [
+        "d306111859bcc2d70290a52dc47c06fc347e1307"
       ],
       "migrations": []
     }
