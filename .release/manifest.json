@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "release_id": "2026-10-10-radar-fase6-detalhes-favoritos",
+  "release_id": "2026-10-10-radar-fase7-importacao",
   "environment": "homolog",
   "target_branch": "homolog",
   "items": [
@@ -893,6 +893,31 @@
         "1c6d984338d927a3469e71b138a24e9302992dcc"
       ],
       "migrations": []
+    },
+    {
+      "id": "RADAR-07-IMPORTACAO-001",
+      "backend_commits": [
+        "3c9af82f4c0aaa579611fcb3768b55748a49d1ee",
+        "551139ddda24ec231672b4d294c5c44ba29c69fe",
+        "b63a7de01fbaa9a34182ae5c539318bf85b16481",
+        "e928e6f563fde5429447fa88274927dd41442acb",
+        "d56b6a4a6df070bf0512dc99c86616587e3fb34a",
+        "93ec7e76eb8e7217c26a8aef6323d3aae9187f6a",
+        "f17e89a545fda9ce5b782b686ad6c500765e232e",
+        "4903c8b0224ae5adae08f762df2fbf048580b2aa",
+        "1aec087fbe9bc2c4a3ad591eed9979ad254f46c4",
+        "611282bc5b67451f95889ff92fce65dc528f65d0",
+        "2525e7abb0c93f66b75d73e0953a77c2d102c081"
+      ],
+      "frontend_commits": [
+        "406afb7e2bf45166537efb70676af169aabc19ef"
+      ],
+      "migrations": [
+        "supabase/migrations/20261010203112_radar_importacao_transacional.sql",
+        "supabase/migrations/20261010205946_radar_import_lock_privilege_fix.sql",
+        "supabase/migrations/20261010211500_radar_import_rpc_definer.sql",
+        "supabase/migrations/20261010213000_radar_import_revoke_direct_insert.sql"
+      ]
     }
   ]
 }
