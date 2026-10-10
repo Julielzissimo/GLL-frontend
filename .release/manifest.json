@@ -754,6 +754,14 @@
         "dcdfaaf4bef483ec7974d24df4508b099d6ccf60"
       ],
       "migrations": []
+    },
+    {
+      "id": "FRONT-2.0-DESIGN-SYSTEM-PRODUCTION-GATE-001",
+      "backend_commits": [],
+      "frontend_commits": [
+        "b2fc02f6a9f6953fbef47bd7bce3ed741ba0e115"
+      ],
+      "migrations": []
     }
   ]
 }
