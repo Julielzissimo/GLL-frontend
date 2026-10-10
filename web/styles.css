@@ -3441,7 +3441,7 @@ tr.item-won td {
   gap: 0;
   padding: 15px 18px;
   border-radius: var(--radius);
-  background: var(--gll-ink);
+  background: var(--gll-forest);
   color: var(--gll-paper);
 }
 
@@ -3469,7 +3469,7 @@ tr.item-won td {
 
 .metric-copy > span {
   display: block;
-  color: var(--gll-ink-soft);
+  color: var(--gll-paper);
   font-size: 10px;
   font-weight: 700;
   text-transform: uppercase;

@@ -737,6 +737,15 @@
       "migrations": [
         "supabase/migrations/20261010131754_radar_catalogs_and_dynamic_contracts.sql"
       ]
+    },
+    {
+      "id": "COR-INDICADORES-LICITACAO-001",
+      "backend_commits": [],
+      "frontend_commits": [
+        "d306111859bcc2d70290a52dc47c06fc347e1307",
+        "d0a379e59d11fb5480fb61089a928c4162fea7e8"
+      ],
+      "migrations": []
     }
   ]
 }
