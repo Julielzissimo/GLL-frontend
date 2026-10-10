@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "release_id": "2026-10-10-radar-fase7-importacao",
+  "release_id": "2026-10-10-radar-fase8-validacao",
   "environment": "homolog",
   "target_branch": "homolog",
   "items": [
@@ -884,6 +884,21 @@
       ]
     },
     {
+      "id": "RADAR-05-FRONTEND-001",
+      "backend_commits": [
+        "dd9a52cd91acd19619753a5f9b422a198f93f6f2",
+        "857ed182cb8250793bb92907a85358b97399beba"
+      ],
+      "frontend_commits": [
+        "b30845c29a18cc5d4c83e09561a62a666914e996",
+        "4093c78f26010798716170314b20d4aadf2d36e8",
+        "5a04673a453cf2a965abe6020adaab1f68feb2e2"
+      ],
+      "migrations": [
+        "supabase/migrations/20261010183606_radar_search_default_period.sql"
+      ]
+    },
+    {
       "id": "RADAR-06-DETALHES-001",
       "backend_commits": [
         "d75e82e2256cdb4d55ce317da71893a3402f7f90",
@@ -918,6 +933,16 @@
         "supabase/migrations/20261010211500_radar_import_rpc_definer.sql",
         "supabase/migrations/20261010213000_radar_import_revoke_direct_insert.sql"
       ]
+    },
+    {
+      "id": "RADAR-08-RELEASE-001",
+      "backend_commits": [
+        "ece4c1078552ef4d059a00ceb26fac1b21c7b211"
+      ],
+      "frontend_commits": [
+        "ece32c8d52ad76c8c7948c3a9a9cb58b6eaa0c43"
+      ],
+      "migrations": []
     }
   ]
 }
