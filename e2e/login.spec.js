@@ -123,6 +123,8 @@ async function validateRadarSearchPage(page) {
   const refresh = await refreshResponse;
   if (!refresh.ok()) throw new Error(`A atualização manual do Radar retornou HTTP ${refresh.status()}.`);
   await expect(page.locator("#radarCoverageFeedback")).toBeVisible();
+  await page.locator("#navUsersButton").click();
+  await expect(page.locator("#usersPage")).toBeVisible();
 }
 
 test("o login de teste acessa somente a organização de teste", async ({ page }) => {
