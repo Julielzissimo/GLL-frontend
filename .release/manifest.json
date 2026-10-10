@@ -854,7 +854,8 @@
     {
       "id": "RADAR-03-COLETOR-001",
       "backend_commits": [
-        "d51db4b7f814b01dfbdf7b0e59c8f415cc7214e8"
+        "d51db4b7f814b01dfbdf7b0e59c8f415cc7214e8",
+        "0c797bcb8f5b219112cad7bca0c3cfd0bbed2111"
       ],
       "frontend_commits": [],
       "migrations": [
