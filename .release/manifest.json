@@ -844,6 +844,16 @@
         "supabase/migrations/20261010211500_radar_import_rpc_definer.sql",
         "supabase/migrations/20261010213000_radar_import_revoke_direct_insert.sql"
       ]
+    },
+    {
+      "id": "RADAR-07-ORCAMENTO-001",
+      "backend_commits": [
+        "01bc606120144ea5b71fb31711d36cea896ffc4e"
+      ],
+      "frontend_commits": [],
+      "migrations": [
+        "supabase/migrations/20261010232844_radar_import_create_linked_quotation.sql"
+      ]
     }
   ]
 }
