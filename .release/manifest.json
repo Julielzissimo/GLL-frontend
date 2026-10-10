@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "release_id": "2026-10-07-front-2.0-reformulacao-visual",
+  "release_id": "2026-10-10-radar-licitacoes-1.0",
   "environment": "production",
   "target_branch": "main",
   "items": [
@@ -716,6 +716,27 @@
         "ac9e00e230a8244da762ffbd6a328941b154607f"
       ],
       "migrations": []
+    },
+    {
+      "id": "RADAR-00-AUDITORIA-001",
+      "backend_commits": [
+        "69d233572abadcc20ae21b682db85772e4348ac6"
+      ],
+      "frontend_commits": [],
+      "migrations": []
+    },
+    {
+      "id": "RADAR-01-CATALOGOS-001",
+      "backend_commits": [
+        "213800bfe51c3b2b84c72cab09d47fae49d6bd85",
+        "ba546472c18d399b15a10ff6fd9053dac99cbc79"
+      ],
+      "frontend_commits": [
+        "9266a62491d02ac07de5b39ca8888e665950c97b"
+      ],
+      "migrations": [
+        "supabase/migrations/20261010131754_radar_catalogs_and_dynamic_contracts.sql"
+      ]
     }
   ]
 }
