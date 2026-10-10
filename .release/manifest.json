@@ -871,7 +871,8 @@
       "id": "RADAR-04-PESQUISA-001",
       "backend_commits": [
         "07a58e3ba0440cb15c1fc46acdc4be068a97e7d4",
-        "28a850495cc31fd1aee69e3779c07c2ce3dbeea4"
+        "28a850495cc31fd1aee69e3779c07c2ce3dbeea4",
+        "3742bdf2fa4743a68ced76cebace71b1be2661d4"
       ],
       "frontend_commits": [],
       "migrations": [
