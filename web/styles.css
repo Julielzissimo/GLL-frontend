@@ -7839,7 +7839,7 @@ button.history-row:hover {
 .radar-empty-state p { max-width: 44rem; margin: 0; color: var(--color-text-secondary); line-height: var(--line-height-relaxed); }
 .radar-empty-icon { color: var(--color-primary); font-size: var(--font-size-3xl); line-height: 1; }
 .radar-results-table-wrap { max-height: min(68vh, 52rem); overflow: auto; overscroll-behavior: contain; }
-.radar-results-table { width: 100%; min-width: 78rem; border-collapse: separate; border-spacing: 0; }
+.radar-results-table { width: 100%; min-width: 84rem; border-collapse: separate; border-spacing: 0; }
 .radar-results-table th { position: sticky; top: 0; z-index: var(--z-sticky); background: var(--color-surface-subtle); text-align: left; white-space: nowrap; }
 .radar-results-table th,
 .radar-results-table td { padding: var(--space-md); border-bottom: var(--border-default); vertical-align: top; }
@@ -7850,6 +7850,29 @@ button.history-row:hover {
 .radar-results-table td.numeric,
 .radar-results-table th.numeric { text-align: right; white-space: nowrap; }
 .radar-results-table .radar-object-cell { min-width: 18rem; max-width: 26rem; }
+.radar-platform-detail { display: grid; gap: var(--space-xs); padding-top: var(--space-md); border-top: var(--border-default); }
+.radar-platform-detail h3,
+.radar-platform-detail p { margin: 0; }
+.radar-platform-detail small { color: var(--color-text-secondary); line-height: var(--line-height-normal); }
+.radar-platform-detail a { display: inline-flex; align-items: center; gap: var(--space-xs); }
+.radar-platform-admin { display: grid; gap: var(--space-md); padding-top: var(--space-lg); border-top: var(--border-default); }
+.radar-platform-admin > h3,
+.radar-platform-admin > h4,
+.radar-platform-admin > p { margin: 0; }
+.radar-platform-admin > p { color: var(--color-text-secondary); }
+.radar-platform-admin-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr)); align-items: end; gap: var(--space-md); }
+.radar-platform-admin-form label:not(.radar-modality-option) { display: grid; min-width: 0; gap: var(--space-xs); font-size: var(--font-size-sm); font-weight: var(--font-weight-semibold); }
+.radar-platform-admin-form input:not([type="checkbox"]),
+.radar-platform-admin-form select { width: 100%; min-width: 0; min-height: var(--control-height-md); }
+.radar-platform-admin-list { display: grid; gap: var(--space-sm); }
+.radar-platform-admin-entry { display: grid; gap: var(--space-sm); padding: var(--space-md); border: var(--border-default); border-radius: var(--radius-md); }
+.radar-platform-admin-entry > div:first-child { display: grid; gap: var(--space-xs); }
+.radar-platform-admin-entry small { color: var(--color-text-secondary); }
+.radar-platform-admin-entry ul { display: grid; gap: var(--space-xs); margin: 0; padding-left: var(--space-lg); }
+.radar-platform-admin-entry li { overflow-wrap: anywhere; }
+.radar-platform-admin-entry li button { margin-left: var(--space-xs); }
+.radar-platform-admin-entry code { overflow-wrap: anywhere; }
+.radar-platform-admin .button-row { flex-wrap: wrap; }
 .radar-object-text { display: -webkit-box; overflow: hidden; overflow-wrap: anywhere; -webkit-box-orient: vertical; -webkit-line-clamp: 5; }
 .radar-object-details summary { display: -webkit-box; overflow: hidden; cursor: pointer; overflow-wrap: anywhere; -webkit-box-orient: vertical; -webkit-line-clamp: 5; }
 .radar-object-details[open] summary { display: block; }
