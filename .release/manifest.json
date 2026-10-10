@@ -708,6 +708,14 @@
         "supabase/migrations/20261008234851_chat_organization_messages_realtime.sql",
         "supabase/migrations/20261009003322_organization_message_broadcast_notifications.sql"
       ]
+    },
+    {
+      "id": "FRONT-2.0-DESIGN-SYSTEM-PRODUCTION-GATE-001",
+      "backend_commits": [],
+      "frontend_commits": [
+        "ac9e00e230a8244da762ffbd6a328941b154607f"
+      ],
+      "migrations": []
     }
   ]
 }
