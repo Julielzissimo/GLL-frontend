@@ -41,6 +41,16 @@ test("homologação envia, lê e exclui somente um arquivo sintético no R2", as
     throw new Error("A sessão não corresponde à conta de teste.");
   }
   let signedPutUrl = "";
+  const networkFailures = [];
+  const devtools = await page.context().newCDPSession(page);
+  await devtools.send("Network.enable");
+  devtools.on("Network.loadingFailed", (event) => {
+    networkFailures.push({
+      error: event.errorText,
+      cors: event.corsErrorStatus?.corsError || "",
+      blocked: event.blockedReason || "",
+    });
+  });
   page.on("request", (request) => {
     if (request.method() === "PUT" && new URL(request.url()).hostname.endsWith(".r2.cloudflarestorage.com")) {
       signedPutUrl = request.url();
@@ -103,6 +113,9 @@ test("homologação envia, lê e exclui somente um arquivo sintético no R2", as
         return { uploaded: true, downloaded: true, deleted: true };
       }, { supabaseUrl: config.supabaseUrl, anonKey: config.supabaseAnonKey, accessToken: session.access_token });
     } catch (error) {
+      for (const failure of networkFailures.slice(-3)) {
+        console.log(`Falha do navegador: ${failure.error}; CORS=${failure.cors || "não indicado"}; bloqueio=${failure.blocked || "não indicado"}`);
+      }
       signedPutUrl ||= await page.evaluate(() => window.__gllR2SmokeUpload?.url || "");
       if (signedPutUrl) {
         const preflight = await page.request.fetch(signedPutUrl, {
