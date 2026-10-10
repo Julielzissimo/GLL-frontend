@@ -40,6 +40,11 @@ test("homologação envia, lê e exclui somente um arquivo sintético no R2", as
   if (!session.access_token || session.user?.email?.toLowerCase() !== email.toLowerCase()) {
     throw new Error("A sessão não corresponde à conta de teste.");
   }
+  await page.waitForFunction(() => {
+    const appView = document.querySelector("#appView");
+    const loadingModal = document.querySelector("#blockingLoadingModal");
+    return appView && !appView.classList.contains("hidden") && !loadingModal?.open;
+  }, null, { timeout: 35_000 });
   let signedPutUrl = "";
   const networkFailures = [];
   const devtools = await page.context().newCDPSession(page);
