@@ -766,7 +766,8 @@
     {
       "id": "RADAR-01-CATALOGOS-001",
       "backend_commits": [
-        "c2a5877fefc148db718247b966eb1e3b89150bb8"
+        "c2a5877fefc148db718247b966eb1e3b89150bb8",
+        "77b1ed5e4bf58dd086b62c019a5e2bf3f2b3963b"
       ],
       "frontend_commits": [
         "1728ccc1c3e66128dffd59a9e5fd9e94f1393fa0"
