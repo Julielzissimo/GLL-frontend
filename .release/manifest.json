@@ -793,6 +793,21 @@
         "supabase/migrations/20261010175803_radar_search_engine.sql",
         "supabase/migrations/20261010181715_radar_search_pagination_fix.sql"
       ]
+    },
+    {
+      "id": "RADAR-05-FRONTEND-001",
+      "backend_commits": [
+        "1803c84f915ace3b3e5098e2a196dc7289cf8a9b",
+        "00aae6c25d4f670e9247b4cc5917b2cc1e3c1ecc"
+      ],
+      "frontend_commits": [
+        "31781e5890984d1d4346debced27d14e77b90086",
+        "b4dcc5ed217e3373ad4fef4d1bb0e6f01907fa59",
+        "49d92e9304ec10917dae64f20e956fdc83d34de4"
+      ],
+      "migrations": [
+        "supabase/migrations/20261010183606_radar_search_default_period.sql"
+      ]
     }
   ]
 }
