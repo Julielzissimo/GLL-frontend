@@ -762,6 +762,18 @@
         "b2fc02f6a9f6953fbef47bd7bce3ed741ba0e115"
       ],
       "migrations": []
+    },
+    {
+      "id": "RADAR-01-CATALOGOS-001",
+      "backend_commits": [
+        "c2a5877fefc148db718247b966eb1e3b89150bb8"
+      ],
+      "frontend_commits": [
+        "1728ccc1c3e66128dffd59a9e5fd9e94f1393fa0"
+      ],
+      "migrations": [
+        "supabase/migrations/20261010131754_radar_catalogs_and_dynamic_contracts.sql"
+      ]
     }
   ]
 }
