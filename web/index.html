@@ -290,9 +290,14 @@
                 Órgão Comprador *
                 <input id="buyerAgency" required />
               </label>
+              <label class="wide">
+                Objeto do Edital
+                <textarea id="bidObject" rows="3"></textarea>
+              </label>
               <label>
-                Data e Hora da Sessão *
+                <span id="sessionDatetimeLabel">Data e Hora da Sessão *</span>
                 <input id="sessionDatetime" type="datetime-local" required />
+                <small id="sessionDatetimeHelp" hidden>O PNCP não informou a data da sessão. Você pode completá-la depois.</small>
               </label>
               <label>
                 Data Limite Proposta
@@ -1635,6 +1640,7 @@
     <script type="module" src="./company-data.js"></script>
     <script type="module" src="./commercial-proposals.js"></script>
     <script type="module" src="./radar-catalogs.js"></script>
+    <script type="module" src="./radar-import.js"></script>
     <script type="module" src="./radar-details.js"></script>
     <script type="module" src="./radar-search.js"></script>
     <script src="./organization-chat.js"></script>

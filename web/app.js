@@ -331,7 +331,10 @@ const refs = {
   bidForm: $("bidForm"),
   bidId: $("bidId"),
   buyerAgency: $("buyerAgency"),
+  bidObject: $("bidObject"),
   sessionDatetime: $("sessionDatetime"),
+  sessionDatetimeLabel: $("sessionDatetimeLabel"),
+  sessionDatetimeHelp: $("sessionDatetimeHelp"),
   proposalDeadline: $("proposalDeadline"),
   deliveryPlace: $("deliveryPlace"),
   publicSessionLink: $("publicSessionLink"),
@@ -1922,6 +1925,11 @@ const radarDetailsFeature = createRadarDetailsFeature({
   getClient: () => (store.requiresAuthenticationBeforeData ? store.client : null),
   toast: (message, tone) => showToast(message, tone),
   onFavoriteChanged: (identifier, isFavorite) => radarSearchFeature?.syncFavorite(identifier, isFavorite),
+  onOpenBid: async (bidId) => {
+    await reloadData();
+    loadBid(bidId, { history: "none" });
+    setPage("items");
+  },
 });
 radarSearchFeature = createRadarSearchFeature({
   getClient: () => (store.requiresAuthenticationBeforeData ? store.client : null),
@@ -2094,13 +2102,32 @@ function populateOptions() {
 }
 
 function setBidType(value) {
-  const isSupportedType = BID_TYPE_OPTIONS.includes(value);
+  const normalizedValue = String(value || "");
+  const options = refs.bidTypeGroup.querySelector(".bid-type-options");
+  options?.querySelector("[data-dynamic-bid-type]")?.remove();
+  const isSupportedType = BID_TYPE_OPTIONS.includes(normalizedValue);
+  if (normalizedValue && !isSupportedType && options) {
+    const label = document.createElement("label");
+    label.className = "bid-type-option";
+    label.setAttribute("for", "bidTypeDynamic");
+    label.dataset.dynamicBidType = "true";
+    const input = document.createElement("input");
+    input.id = "bidTypeDynamic";
+    input.name = "bidType";
+    input.type = "radio";
+    input.value = normalizedValue;
+    input.required = true;
+    const text = document.createElement("span");
+    text.textContent = normalizedValue;
+    label.append(input, text);
+    options.append(label);
+  }
   refs.bidTypeGroup.querySelectorAll('input[name="bidType"]').forEach((input) => {
-    input.checked = isSupportedType && input.value === value;
-    input.toggleAttribute("aria-invalid", Boolean(value) && !isSupportedType);
+    input.checked = input.value === normalizedValue;
+    input.removeAttribute("aria-invalid");
   });
-  refs.bidTypeHelp.textContent = value && !isSupportedType
-    ? "Este edital tem um tipo antigo. Escolha uma das opções disponíveis para atualizá-lo."
+  refs.bidTypeHelp.textContent = normalizedValue && !isSupportedType
+    ? "Modalidade importada do PNCP. Ela será mantida ao salvar este edital."
     : "Selecione o tipo do edital.";
 }
 
@@ -2114,6 +2141,14 @@ function bidTypeLabel(value) {
 
 function optionList(values) {
   return values.map((value) => `<option value="${escapeHtml(value)}">${escapeHtml(value)}</option>`).join("");
+}
+
+function setSalesUnit(value) {
+  const normalizedValue = String(value || SALES_UNIT_OPTIONS[0]);
+  if (![...refs.salesUnit.options].some((option) => option.value === normalizedValue)) {
+    refs.salesUnit.add(new Option(normalizedValue, normalizedValue));
+  }
+  refs.salesUnit.value = normalizedValue;
 }
 
 // Wrap complete UI operations, including their data refresh, rather than individual requests.
@@ -4279,11 +4314,15 @@ function loadBid(bidId, options = {}) {
   appState.bidQuotationCreating = false;
   refs.bidId.value = bidDisplayNumber(bid);
   refs.buyerAgency.value = bid.buyer_agency || "";
+  refs.bidObject.value = bid.bid_object || "";
   refs.sessionDatetime.value = toDateTimeInputValue(bid.session_datetime);
+  refs.sessionDatetime.required = Boolean(bid.session_datetime);
   refs.proposalDeadline.value = toDateTimeInputValue(bid.proposal_deadline);
   refs.deliveryPlace.value = bid.delivery_place || "";
   refs.publicSessionLink.value = bid.public_session_link || "";
-  setBidType(bid.bid_type || BID_TYPE_OPTIONS[0]);
+  setBidType(bid.bid_type);
+  refs.sessionDatetimeLabel.textContent = bid.session_datetime ? "Data e Hora da Sessão *" : "Data e Hora da Sessão";
+  refs.sessionDatetimeHelp.hidden = Boolean(bid.session_datetime);
   refs.bidStatus.value = bid.status || STATUS_OPTIONS[0];
   refs.hasGuaranteeDeposit.checked = Boolean(bid.has_guarantee_deposit);
   refs.bidStatusReason.value = "";
@@ -4407,6 +4446,9 @@ function clearBidForm(options = {}) {
   renderBidAttachment(null);
   renderPublicSessionLink();
   setBidType(BID_TYPE_OPTIONS[0]);
+  refs.sessionDatetime.required = true;
+  refs.sessionDatetimeLabel.textContent = "Data e Hora da Sessão *";
+  refs.sessionDatetimeHelp.hidden = true;
   refs.bidStatus.value = STATUS_OPTIONS[0];
   refs.bidStatusReason.value = "";
   updateBidStatusControls();
@@ -4625,9 +4667,9 @@ function escapeCsvCell(value) {
 function collectBidData() {
   if (!refs.bidId.value.trim()) throw new Error("Preencha o N° do Edital.");
   if (!refs.buyerAgency.value.trim()) throw new Error("Preencha o Órgão Comprador.");
-  if (!refs.sessionDatetime.value) throw new Error("Preencha a Data e Hora da Sessão.");
+  if (refs.sessionDatetime.required && !refs.sessionDatetime.value) throw new Error("Preencha a Data e Hora da Sessão.");
   const bidType = selectedBidType();
-  if (!BID_TYPE_OPTIONS.includes(bidType)) throw new Error("Selecione o tipo do edital.");
+  if (!bidType) throw new Error("Selecione o tipo do edital.");
   const publicSessionLink = refs.publicSessionLink.value.trim();
   const normalizedPublicSessionLink = normalizeUrlValue(publicSessionLink);
   if (publicSessionLink && !normalizedPublicSessionLink) throw new Error("Informe um Link da Sessão Pública válido.");
@@ -4635,6 +4677,7 @@ function collectBidData() {
     id: appState.originalBidId || crypto.randomUUID(),
     edital_number: refs.bidId.value.trim(),
     buyer_agency: refs.buyerAgency.value.trim(),
+    bid_object: refs.bidObject.value.trim(),
     session_datetime: fromDateTimeInputValue(refs.sessionDatetime.value),
     delivery_place: refs.deliveryPlace.value.trim(),
     bid_type: bidType,
@@ -4854,7 +4897,7 @@ function loadItem(itemId) {
   appState.currentItemId = item.id;
   refs.itemNumber.value = item.item_number;
   refs.itemName.value = item.name || "";
-  refs.salesUnit.value = item.sales_unit || SALES_UNIT_OPTIONS[0];
+  setSalesUnit(item.sales_unit || SALES_UNIT_OPTIONS[0]);
   refs.estimatedValue.value = item.estimated_value ? money(item.estimated_value) : "";
   refs.supplierCost.value = item.supplier_cost ? money(item.supplier_cost) : "";
   refs.maxValue.value = item.max_acceptable_value ? money(item.max_acceptable_value) : "";
@@ -4875,7 +4918,7 @@ function loadItem(itemId) {
 function clearItemForm() {
   appState.currentItemId = null;
   refs.itemForm.reset();
-  refs.salesUnit.value = SALES_UNIT_OPTIONS[0];
+  setSalesUnit(SALES_UNIT_OPTIONS[0]);
   appState.supplierLinksDraft = [];
   renderSupplierLinks();
   updateValueWithMargin();
@@ -6610,11 +6653,12 @@ function normalizeBidRecord(record) {
     id: String(record.id || "").trim(),
     edital_number: String(record.edital_number || record.id || "").trim(),
     buyer_agency: record.buyer_agency || "",
+    bid_object: record.bid_object || "",
     session_datetime: record.session_datetime || "",
     delivery_place: record.delivery_place || "",
     edital_link: record.edital_link || "",
     public_session_link: record.public_session_link || "",
-    bid_type: record.bid_type || BID_TYPE_OPTIONS[0],
+    bid_type: record.bid_type || "",
     proposal_deadline: record.proposal_deadline || "",
     has_guarantee_deposit: Boolean(record.has_guarantee_deposit),
     status: normalizeBidStatus(record.status),
