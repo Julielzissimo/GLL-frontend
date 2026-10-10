@@ -161,7 +161,7 @@ function backend() {
   };
 }
 
-function client(db = backend(), auth = { session: { user } }) {
+function client(db = backend(), auth = { session: { user } }, config = {}) {
   const elements = new Map();
   const listeners = new Map();
   const timers = new Map();
@@ -205,7 +205,7 @@ function client(db = backend(), auth = { session: { user } }) {
   };
   const context = vm.createContext({
     console, URL, URLSearchParams, Intl, Date,
-    window: { GLL_CONFIG: { supabaseUrl: "https://test.invalid", supabaseAnonKey: "test", sessionIdleTimeoutMinutes: 30, sessionMaxLifetimeHours: 8 }, location, history, localStorage, ...events },
+    window: { GLL_CONFIG: { supabaseUrl: "https://test.invalid", supabaseAnonKey: "test", sessionIdleTimeoutMinutes: 30, sessionMaxLifetimeHours: 8, ...config }, location, history, localStorage, ...events },
     document: { hidden: false, getElementById: element, querySelectorAll: () => [], createElement: () => element("syncNotice"), ...events },
     setTimeout: (fn) => { timers.set(++nextTimer, fn); return nextTimer; },
     clearTimeout: (id) => timers.delete(id),
@@ -298,6 +298,14 @@ test("design system route is available to administrators and blocked for analyst
   assert.equal(app.resolveAuthorizedPage("designSystem"), "designSystem");
   app.appState.currentUserRole = "Analista";
   assert.equal(app.resolveAuthorizedPage("designSystem"), "settings");
+});
+
+test("production blocks the Design System route for every profile", () => {
+  const app = client(backend(), { session: { user } }, { designSystemEnabled: false });
+  for (const role of ["Administrador", "Analista"]) {
+    app.appState.currentUserRole = role;
+    assert.equal(app.resolveAuthorizedPage("designSystem"), "home");
+  }
 });
 
 test("quotation normalization preserves the delivery deadline", () => {

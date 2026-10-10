@@ -17,6 +17,7 @@ const TARGETS = {
     sessionMaxLifetimeHours: 8,
     suppliersEnabled: true,
     commercialProposalsEnabled: true,
+    designSystemEnabled: true,
   },
   production: {
     outputDir: "prod",
@@ -31,6 +32,7 @@ const TARGETS = {
     sessionMaxLifetimeHours: 8,
     suppliersEnabled: false,
     commercialProposalsEnabled: false,
+    designSystemEnabled: false,
   },
   prod: null,
 };
@@ -67,6 +69,7 @@ const runtimeConfig = {
   sessionMaxLifetimeHours: Number(process.env.GLL_SESSION_MAX_LIFETIME_HOURS || target.sessionMaxLifetimeHours),
   suppliersEnabled: target.suppliersEnabled,
   commercialProposalsEnabled: target.commercialProposalsEnabled,
+  designSystemEnabled: target.designSystemEnabled,
 };
 
 await writeFile(

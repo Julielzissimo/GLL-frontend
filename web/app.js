@@ -52,6 +52,7 @@ const DEFAULT_GLL_CONFIG = {
   sessionMaxLifetimeHours: 8,
   suppliersEnabled: true,
   commercialProposalsEnabled: true,
+  designSystemEnabled: true,
 };
 const GLL_CONFIG = {
   ...DEFAULT_GLL_CONFIG,
@@ -3255,6 +3256,7 @@ function isCurrentUserAdmin() {
 function resolveAuthorizedPage(page) {
   if (page === "suppliers" && GLL_CONFIG.suppliersEnabled === false) return "home";
   if (page === "commercialProposals" && GLL_CONFIG.commercialProposalsEnabled === false) return "home";
+  if (page === "designSystem" && GLL_CONFIG.designSystemEnabled === false) return "home";
   if (page === "users" && !isCurrentUserAdmin()) return "home";
   if (page === "userProfile" && refs.userCreateForm.dataset.mode === "create" && !isCurrentUserAdmin()) return "home";
   if (page === "designSystem" && !isCurrentUserAdmin()) return "settings";
@@ -3395,13 +3397,16 @@ function creatorTagMarkup(record) {
 
 function updateAccessInterface() {
   const showUserManagement = isCurrentUserAdmin();
+  const showDesignSystemAccess = showUserManagement && GLL_CONFIG.designSystemEnabled !== false;
   refs.navUsersButton.classList.toggle("hidden", !showUserManagement);
   refs.navUsersButton.disabled = !showUserManagement;
   refs.navUsersButton.setAttribute("aria-hidden", String(!showUserManagement));
-  refs.navDesignSystemButton.classList.toggle("hidden", !showUserManagement);
-  refs.navDesignSystemButton.setAttribute("aria-hidden", String(!showUserManagement));
-  refs.designSystemAccessCard.classList.toggle("hidden", !showUserManagement);
-  refs.designSystemAccessCard.setAttribute("aria-hidden", String(!showUserManagement));
+  refs.navDesignSystemButton.classList.toggle("hidden", !showDesignSystemAccess);
+  refs.navDesignSystemButton.disabled = !showDesignSystemAccess;
+  refs.navDesignSystemButton.setAttribute("aria-hidden", String(!showDesignSystemAccess));
+  refs.navDesignSystemButton.setAttribute("aria-disabled", String(!showDesignSystemAccess));
+  refs.designSystemAccessCard.classList.toggle("hidden", !showDesignSystemAccess);
+  refs.designSystemAccessCard.setAttribute("aria-hidden", String(!showDesignSystemAccess));
   refs.workspaceName.textContent = appState.currentOrganizationName || "Organização";
   refs.workspaceInitial.textContent = organizationInitials(appState.currentOrganizationName);
 }
