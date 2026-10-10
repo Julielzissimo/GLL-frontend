@@ -4,12 +4,13 @@ import vm from "node:vm";
 import test from "node:test";
 
 const root = new URL("../", import.meta.url);
-const [html, tokens, theme, componentsSource, app, packageSource, workflow] = await Promise.all([
+const [html, tokens, theme, componentsSource, app, build, packageSource, workflow] = await Promise.all([
   readFile(new URL("web/index.html", root), "utf8"),
   readFile(new URL("web/design-system/tokens.css", root), "utf8"),
   readFile(new URL("web/design-system/prototype-theme.css", root), "utf8"),
   readFile(new URL("web/design-system/components.js", root), "utf8"),
   readFile(new URL("web/app.js", root), "utf8"),
+  readFile(new URL("scripts/build-web.mjs", root), "utf8"),
   readFile(new URL("package.json", root), "utf8"),
   readFile(new URL(".github/workflows/pages.yml", root), "utf8"),
 ]);
@@ -70,7 +71,17 @@ test("the internal catalog is wired to the administrator-only route", () => {
   assert.match(html, /id="designSystemPage"[^>]*hidden/);
   assert.match(app, /designSystem:\s*"configuracoes\/design-system"/);
   assert.match(app, /page === "designSystem" && !isCurrentUserAdmin\(\)\) return "settings"/);
-  assert.match(app, /designSystemAccessCard\.classList\.toggle\("hidden", !showUserManagement\)/);
+  assert.match(app, /designSystemAccessCard\.classList\.toggle\("hidden", !showDesignSystemAccess\)/);
+});
+
+test("production hides and blocks the internal Design System while homologation keeps it enabled", () => {
+  const homologTarget = build.slice(build.indexOf("homolog: {"), build.indexOf("production: {"));
+  const productionTarget = build.slice(build.indexOf("production: {"), build.indexOf("prod: null"));
+  assert.match(homologTarget, /designSystemEnabled:\s*true/);
+  assert.match(productionTarget, /commercialProposalsEnabled:\s*false/);
+  assert.match(productionTarget, /designSystemEnabled:\s*false/);
+  assert.match(app, /page === "designSystem" && GLL_CONFIG\.designSystemEnabled === false\) return "home"/);
+  assert.match(app, /const showDesignSystemAccess = showUserManagement && GLL_CONFIG\.designSystemEnabled !== false/);
 });
 
 test("storybook is local-only and not part of the Pages artifact", () => {
