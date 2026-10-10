@@ -808,6 +808,17 @@
       "migrations": [
         "supabase/migrations/20261010183606_radar_search_default_period.sql"
       ]
+    },
+    {
+      "id": "RADAR-06-DETALHES-001",
+      "backend_commits": [
+        "101add85b88e0340d8cffc3d50d111bb0573233f",
+        "5f3d8d72a89b3f1382b5be9bb8433db5a7b7dfd8"
+      ],
+      "frontend_commits": [
+        "f6abc3a1160586fa8e0f2485dc229e7154768241"
+      ],
+      "migrations": []
     }
   ]
 }
