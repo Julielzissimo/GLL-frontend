@@ -217,8 +217,12 @@ function currentFiltersFromInputs(root, tags, modalities) {
 
 /**
  * @typedef {Object} RadarResultActionHandlers
- * @property {(result: Object) => void} [onOpenDetails] Optional Fase 6 detail handler.
- * @property {(result: Object) => void} [onToggleFavorite] Optional Fase 6 favorite handler.
+ * @property {(result: Object) => void} [onOpenDetails] Opens the on-demand detail view.
+ * @property {(identifiers: string[]) => Promise<string[]>} [loadFavoriteIds] Loads the current user's state for result rows.
+ * @property {(options: Object) => Promise<Object>} [loadFavoritesPage] Loads one page of the current user's favorites.
+ * @property {(result: Object, shouldFavorite: boolean) => Promise<boolean>} [setFavorite] Persists the current user's favorite state.
+ * @property {(identifier: string) => boolean} [isFavorite] Reads the favorite state held by the feature.
+ * @property {(identifier: string, isFavorite: boolean) => void} [onFavoriteChanged] Keeps the search view in sync with details.
  */
 
 /**
@@ -244,6 +248,15 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
     selectedModalities: null,
     tags: [],
     results: [],
+    favoriteIds: new Set(),
+    favoriteState: "idle",
+    favoritesResults: [],
+    favoritesPagination: null,
+    favoritesPage: 1,
+    favoritesLoading: false,
+    favoritesError: "",
+    favoriteUpdatingIds: new Set(),
+    view: "search",
     coverage: null,
     pagination: null,
     collectionTask: null,
@@ -442,6 +455,11 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
   function renderCoverage() {
     const target = byId("radarCoverageFeedback");
     if (!target) return;
+    if (state.view === "favorites") {
+      target.hidden = true;
+      target.replaceChildren();
+      return;
+    }
     const coverage = state.coverage;
     if (state.searching) {
       target.hidden = false;
@@ -519,8 +537,13 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
     if (typeof actions.onOpenDetails === "function") {
       buttons.push(`<button type="button" class="quiet-action compact-action" data-radar-detail="${escapeHtml(result.numberControlPncp)}">Ver detalhes</button>`);
     }
-    if (typeof actions.onToggleFavorite === "function") {
-      buttons.push(`<button type="button" class="quiet-action compact-action" data-radar-favorite="${escapeHtml(result.numberControlPncp)}">Favoritar</button>`);
+    if (typeof actions.setFavorite === "function") {
+      const favorite = state.favoriteIds.has(result.numberControlPncp);
+      const updating = state.favoriteUpdatingIds.has(result.numberControlPncp);
+      const unavailable = state.favoriteState === "error";
+      const loading = state.favoriteState === "loading";
+      const label = unavailable ? "Favorito indisponível" : loading ? "Carregando…" : updating ? "Atualizando…" : favorite ? "Desfavoritar" : "Favoritar";
+      buttons.push(`<button type="button" class="quiet-action compact-action" data-radar-favorite="${escapeHtml(result.numberControlPncp)}" aria-pressed="${favorite}"${updating || unavailable || loading ? " disabled" : ""}>${label}</button>`);
     }
     const sourceUrl = validatedPncpSourceUrl(result.sourceUrl);
     if (sourceUrl) buttons.push(`<a class="quiet-action compact-action radar-source-link" href="${escapeHtml(sourceUrl)}" target="_blank" rel="noopener noreferrer">PNCP <span aria-hidden="true">↗</span></a>`);
@@ -556,6 +579,23 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
   function renderPagination() {
     const target = byId("radarPagination");
     if (!target) return;
+    if (state.view === "favorites") {
+      const pagination = state.favoritesPagination;
+      if (!pagination || pagination.totalCount <= pagination.pageSize) {
+        target.hidden = true;
+        target.replaceChildren();
+        return;
+      }
+      const pages = Math.max(1, Math.ceil(pagination.totalCount / pagination.pageSize));
+      target.hidden = false;
+      target.innerHTML = `
+        <span>Página ${pagination.page} de ${pages} <small>${pagination.totalCount.toLocaleString("pt-BR")} favoritos.</small></span>
+        <div class="button-row">
+          <button class="quiet-action compact-action" type="button" data-radar-favorites-page="${pagination.page - 1}"${pagination.page <= 1 || state.favoritesLoading ? " disabled" : ""}>Anterior</button>
+          <button class="quiet-action compact-action" type="button" data-radar-favorites-page="${pagination.page + 1}"${!pagination.hasMore || state.favoritesLoading ? " disabled" : ""}>Próxima</button>
+        </div>`;
+      return;
+    }
     if (!state.hasSearched || !state.pagination) {
       target.hidden = true;
       target.replaceChildren();
@@ -582,9 +622,52 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
     const count = byId("radarResultsCount");
     const lastUpdate = byId("radarLastUpdated");
     if (!target) return;
+    const favoritesView = state.view === "favorites";
+    const rows = favoritesView ? state.favoritesResults : state.results;
+    const searchForm = byId("radarSearchForm");
+    const defaultSettings = byId("radarDefaultSettings");
+    const resultControls = root?.querySelector(".radar-results-controls");
+    if (searchForm) searchForm.hidden = favoritesView;
+    if (defaultSettings) defaultSettings.hidden = favoritesView || getUserRole?.() !== "Administrador";
+    if (resultControls) resultControls.hidden = favoritesView;
+    byId("radarSearchViewButton")?.setAttribute("aria-pressed", String(!favoritesView));
+    byId("radarFavoritesViewButton")?.setAttribute("aria-pressed", String(favoritesView));
+    const title = byId("radarResultsTitle");
+    if (title) title.textContent = favoritesView ? "Favoritos" : "Resultados";
     if (lastUpdate) lastUpdate.textContent = state.dataUpdatedAt
       ? `Última atualização da base: ${formatDateTime(state.dataUpdatedAt)}`
       : "Última atualização da base: ainda não confirmada";
+    if (favoritesView) {
+      if (state.favoritesLoading && !rows.length) {
+        if (count) count.textContent = "Carregando favoritos…";
+        target.innerHTML = '<div class="radar-loading" role="status"><span class="radar-spinner" aria-hidden="true"></span><span>Carregando seus favoritos…</span></div>';
+        renderPagination();
+        renderCoverage();
+        return;
+      }
+      if (state.favoritesError) {
+        if (count) count.textContent = "Não foi possível carregar os favoritos.";
+        target.innerHTML = `<div class="radar-feedback" data-tone="error" role="alert"><strong>Favoritos indisponíveis</strong><span>${escapeHtml(state.favoritesError)}</span><button class="quiet-action compact-action" type="button" data-radar-action="reload-favorites">Tentar novamente</button></div>`;
+        renderPagination();
+        renderCoverage();
+        return;
+      }
+      if (!rows.length) {
+        if (count) count.textContent = "0 licitações favoritas.";
+        target.innerHTML = '<div class="empty-state radar-empty-state"><span class="radar-empty-icon" aria-hidden="true">☆</span><strong>Você ainda não tem favoritos</strong><p>Pesquise uma contratação e use “Favoritar” para guardá-la nesta conta.</p></div>';
+        renderPagination();
+        renderCoverage();
+        return;
+      }
+      const total = Number(state.favoritesPagination?.totalCount ?? rows.length);
+      if (count) count.textContent = `${total.toLocaleString("pt-BR")} licitações favoritas nesta conta.`;
+      target.innerHTML = `<div class="table-wrap radar-results-table-wrap" role="region" tabindex="0" aria-label="Licitações favoritas; use a rolagem horizontal para ver todas as colunas."><table class="radar-results-table"><caption class="sr-only">Licitações favoritas do usuário</caption><thead><tr>
+        <th scope="col">Contratação</th><th scope="col">Órgão responsável</th><th scope="col">Objeto da contratação</th><th scope="col">Modalidade</th><th scope="col">Município / UF</th><th scope="col" class="numeric">Valor estimado</th><th scope="col">Publicação</th><th scope="col">Encerramento</th><th scope="col">Situação</th><th scope="col">Ações</th>
+        </tr></thead><tbody>${rows.map(renderResultRow).join("")}</tbody></table></div>`;
+      renderPagination();
+      renderCoverage();
+      return;
+    }
     if (!state.hasSearched && !state.searching) {
       if (count) count.textContent = "Configure os filtros para iniciar uma pesquisa.";
       target.innerHTML = '<div class="empty-state radar-empty-state"><span class="radar-empty-icon" aria-hidden="true">⌕</span><strong>Pesquise contratações do PNCP</strong><p>O Radar pesquisa somente o objeto da contratação. Você pode informar mais de um termo; qualquer termo pode corresponder.</p></div>';
@@ -592,14 +675,14 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
       renderCoverage();
       return;
     }
-    if (state.searching && !state.results.length) {
+    if (state.searching && !rows.length) {
       if (count) count.textContent = "A pesquisa está em andamento.";
       target.innerHTML = '<div class="radar-loading" role="status"><span class="radar-spinner" aria-hidden="true"></span><span>Consultando o índice do Radar…</span></div>';
       renderPagination();
       renderCoverage();
       return;
     }
-    if (!state.results.length) {
+    if (!rows.length) {
       const empty = radarEmptyResultState(state.coverage);
       if (count) count.textContent = "Nenhum registro nesta página.";
       target.innerHTML = `<div class="empty-state radar-empty-state" data-empty-kind="${empty.kind}"><span class="radar-empty-icon" aria-hidden="true">◇</span><strong>${escapeHtml(empty.title)}</strong><p>${escapeHtml(empty.description)}</p></div>`;
@@ -609,12 +692,12 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
     }
     if (count) {
       count.textContent = state.pagination?.totalCount === null || state.pagination?.totalCount === undefined
-        ? `${state.results.length.toLocaleString("pt-BR")} resultados nesta página; total ainda não confirmado.`
+      ? `${rows.length.toLocaleString("pt-BR")} resultados nesta página; total ainda não confirmado.`
         : `${Number(state.pagination.totalCount).toLocaleString("pt-BR")} licitações encontradas.`;
     }
     target.innerHTML = `<div class="table-wrap radar-results-table-wrap" role="region" tabindex="0" aria-label="Resultados do Radar; use a rolagem horizontal para ver todas as colunas."><table class="radar-results-table"><caption class="sr-only">Resultados do Radar de Licitações</caption><thead><tr>
       <th scope="col">Contratação</th><th scope="col">Órgão responsável</th><th scope="col">Objeto da contratação</th><th scope="col">Modalidade</th><th scope="col">Município / UF</th><th scope="col" class="numeric">Valor estimado</th><th scope="col">Publicação</th><th scope="col">Encerramento</th><th scope="col">Situação</th><th scope="col">Ações</th>
-      </tr></thead><tbody>${state.results.map(renderResultRow).join("")}</tbody></table></div>`;
+      </tr></thead><tbody>${rows.map(renderResultRow).join("")}</tbody></table></div>`;
     renderPagination();
     renderCoverage();
   }
@@ -680,6 +763,79 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
     }
   }
 
+  async function loadFavoritesPage(page = 1) {
+    state.view = "favorites";
+    state.favoritesPage = Math.max(1, Number(page) || 1);
+    state.favoritesLoading = true;
+    state.favoritesError = "";
+    renderResults();
+    try {
+      if (typeof actions.loadFavoritesPage !== "function") {
+        throw new Error("O serviço de favoritos não está disponível.");
+      }
+      const result = await actions.loadFavoritesPage({ page: state.favoritesPage, pageSize: 20 });
+      state.favoritesResults = Array.isArray(result?.results) ? result.results : [];
+      state.favoriteIds = new Set(Array.isArray(result?.favoriteIds) ? result.favoriteIds : []);
+      state.favoritesPagination = {
+        page: Number(result?.page || state.favoritesPage),
+        pageSize: Number(result?.pageSize || 20),
+        totalCount: Number(result?.totalCount || 0),
+        hasMore: result?.hasMore === true,
+      };
+      state.favoritesPage = state.favoritesPagination.page;
+      if (!state.favoritesResults.length && state.favoritesPage > 1
+        && state.favoritesPagination.totalCount <= (state.favoritesPage - 1) * state.favoritesPagination.pageSize) {
+        return await loadFavoritesPage(state.favoritesPage - 1);
+      }
+    } catch (error) {
+      state.favoritesError = error instanceof Error ? error.message : "Não foi possível carregar os favoritos.";
+      state.favoritesResults = [];
+      state.favoritesPagination = null;
+    } finally {
+      state.favoritesLoading = false;
+      renderResults();
+    }
+  }
+
+  function showSearchView() {
+    state.view = "search";
+    state.favoritesError = "";
+    if (state.initialized) renderDefaultSettings();
+    renderResults();
+  }
+
+  async function toggleFavorite(result) {
+    const id = String(result?.numberControlPncp || "");
+    if (!id || typeof actions.setFavorite !== "function" || state.favoriteUpdatingIds.has(id)) return;
+    const shouldFavorite = !state.favoriteIds.has(id);
+    state.favoriteUpdatingIds.add(id);
+    renderResults();
+    try {
+      const isFavorite = await actions.setFavorite(result, shouldFavorite);
+      if (isFavorite) state.favoriteIds.add(id);
+      else state.favoriteIds.delete(id);
+      toast(isFavorite ? "Licitação adicionada aos favoritos." : "Licitação removida dos favoritos.", "success");
+      if (state.view === "favorites" && !isFavorite) await loadFavoritesPage(state.favoritesPage);
+    } catch (error) {
+      toast(error instanceof Error ? error.message : "Não foi possível atualizar o favorito.", "error");
+    } finally {
+      state.favoriteUpdatingIds.delete(id);
+      renderResults();
+    }
+  }
+
+  function syncFavorite(identifier, isFavorite) {
+    const id = String(identifier || "");
+    if (!id) return;
+    if (isFavorite) state.favoriteIds.add(id);
+    else state.favoriteIds.delete(id);
+    if (state.view === "favorites" && !isFavorite) {
+      void loadFavoritesPage(state.favoritesPage);
+      return;
+    }
+    renderResults();
+  }
+
   async function runSearch({ page = 1, refreshCoverage = false } = {}) {
     if (!state.catalogsLoaded) {
       await loadCatalogs();
@@ -720,6 +876,19 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
       state.dataUpdatedAt = data.metadata?.dataUpdatedAt || data.coverage.updatedAt || null;
       state.hasSearched = true;
       await loadMunicipalityLabels(state.results);
+      if (typeof actions.loadFavoriteIds === "function") {
+        state.favoriteState = "loading";
+        renderResults();
+        try {
+          const identifiers = state.results.map((result) => result.numberControlPncp).filter(Boolean);
+          state.favoriteIds = new Set(await actions.loadFavoriteIds(identifiers));
+          state.favoriteState = "ready";
+        } catch {
+          state.favoriteState = "error";
+        }
+      } else {
+        state.favoriteState = "error";
+      }
       if (refreshCoverage && data.collectionTask) {
         toast("A atualização da cobertura foi solicitada.", "info");
       }
@@ -805,7 +974,7 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
       void runSearch({ page: 1 });
     });
     root.addEventListener("click", (event) => {
-      const target = event.target.closest("[data-radar-action], [data-radar-remove-tag], [data-radar-page], [data-radar-detail], [data-radar-favorite]");
+      const target = event.target.closest("[data-radar-action], [data-radar-remove-tag], [data-radar-page], [data-radar-favorites-page], [data-radar-detail], [data-radar-favorite]");
       if (!target) return;
       if (target.dataset.radarRemoveTag !== undefined) {
         const index = Number(target.dataset.radarRemoveTag);
@@ -815,6 +984,9 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
       } else if (target.dataset.radarPage !== undefined) {
         const page = Number(target.dataset.radarPage);
         if (page >= 1 && page !== Number(state.pagination?.page)) void runSearch({ page });
+      } else if (target.dataset.radarFavoritesPage !== undefined) {
+        const page = Number(target.dataset.radarFavoritesPage);
+        if (page >= 1 && page !== state.favoritesPage) void loadFavoritesPage(page);
       } else if (target.dataset.radarAction === "add-tag") {
         collectPendingTags();
         byId("radarTagInput").focus();
@@ -833,12 +1005,22 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
         void saveDefaultPeriod();
       } else if (target.dataset.radarAction === "refresh") {
         void runSearch({ page: 1, refreshCoverage: true });
+      } else if (target.dataset.radarAction === "show-search") {
+        showSearchView();
+      } else if (target.dataset.radarAction === "show-favorites") {
+        void loadFavoritesPage(1);
+      } else if (target.dataset.radarAction === "reload-favorites") {
+        void loadFavoritesPage(state.favoritesPage);
       } else if (target.dataset.radarDetail && typeof actions.onOpenDetails === "function") {
         const result = state.results.find((item) => item.numberControlPncp === target.dataset.radarDetail);
-        if (result) actions.onOpenDetails(result);
-      } else if (target.dataset.radarFavorite && typeof actions.onToggleFavorite === "function") {
-        const result = state.results.find((item) => item.numberControlPncp === target.dataset.radarFavorite);
-        if (result) actions.onToggleFavorite(result);
+        const favoriteResult = state.view === "favorites"
+          ? state.favoritesResults.find((item) => item.numberControlPncp === target.dataset.radarDetail)
+          : null;
+        if (result || favoriteResult) actions.onOpenDetails(result || favoriteResult);
+      } else if (target.dataset.radarFavorite && typeof actions.setFavorite === "function") {
+        const result = [...state.results, ...state.favoritesResults]
+          .find((item) => item.numberControlPncp === target.dataset.radarFavorite);
+        if (result) void toggleFavorite(result);
       }
     });
     root.addEventListener("change", (event) => {
@@ -889,7 +1071,9 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
       else setCatalogFeedback();
       renderCoverage();
       renderResults();
+      actions.syncDetailRoute?.();
     },
+    syncFavorite,
     reset() {
       state.initialized = false;
       state.catalogsLoaded = false;
@@ -904,6 +1088,16 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
       state.selectedModalities = null;
       state.tags = [];
       state.results = [];
+      state.favoriteIds.clear();
+      state.favoriteState = "idle";
+      state.favoritesResults = [];
+      state.favoritesPagination = null;
+      state.favoritesPage = 1;
+      state.favoritesLoading = false;
+      state.favoritesError = "";
+      state.favoriteUpdatingIds.clear();
+      state.view = "search";
+      actions.resetDetails?.();
       state.coverage = null;
       state.pagination = null;
       state.collectionTask = null;

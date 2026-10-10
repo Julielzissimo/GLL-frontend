@@ -7721,6 +7721,40 @@ button.history-row:hover {
 .radar-page .eyebrow { color: var(--gll-ink); }
 .radar-page .page-heading h1 { margin-bottom: var(--space-xs); }
 .radar-page .page-heading p { max-width: 58rem; line-height: var(--line-height-relaxed); }
+#radarListView[hidden],
+.radar-details-view[hidden] { display: none !important; }
+.radar-view-switch { display: flex; gap: var(--space-sm); margin: 0 0 var(--space-md); }
+.radar-view-switch button[aria-pressed="true"] { border-color: var(--color-primary); background: var(--color-surface-subtle); color: var(--color-text-primary); font-weight: var(--font-weight-semibold); }
+.radar-details-view { display: grid; min-width: 0; gap: var(--space-lg); }
+.radar-detail-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: var(--space-sm); }
+.radar-details-content { display: grid; min-width: 0; gap: var(--space-lg); }
+.radar-detail-source { margin: 0; color: var(--color-text-secondary); font-size: var(--font-size-sm); }
+.radar-detail-source a { color: var(--color-primary); }
+.radar-detail-section { display: grid; min-width: 0; gap: var(--space-lg); }
+.radar-detail-section-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--space-md); }
+.radar-detail-section-heading h2 { margin: 0 0 var(--space-xs); }
+.radar-detail-section-heading p { margin: 0; color: var(--color-text-secondary); line-height: var(--line-height-normal); }
+.radar-detail-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-md); margin: 0; }
+.radar-detail-grid > div { min-width: 0; padding: var(--space-md); border: var(--border-default); border-radius: var(--radius-sm); }
+.radar-detail-grid dt { margin-bottom: var(--space-xs); color: var(--color-text-secondary); font-size: var(--font-size-xs); font-weight: var(--font-weight-semibold); }
+.radar-detail-grid dd { margin: 0; overflow-wrap: anywhere; line-height: var(--line-height-normal); }
+.radar-detail-grid .radar-detail-object { white-space: pre-wrap; }
+.radar-official-link { justify-self: start; text-decoration: none; }
+.radar-detail-items-wrap { max-height: min(68vh, 52rem); overflow: auto; overscroll-behavior: contain; }
+.radar-items-table { min-width: 86rem; }
+.radar-items-table td { max-width: 25rem; white-space: pre-wrap; }
+.radar-items-table td.numeric,
+.radar-items-table th.numeric { font-variant-numeric: tabular-nums; }
+.radar-document-list { display: grid; gap: var(--space-sm); margin: 0; padding: 0; list-style: none; }
+.radar-document-list > li { display: flex; min-width: 0; align-items: center; justify-content: space-between; gap: var(--space-lg); padding: var(--space-md); border: var(--border-default); border-radius: var(--radius-sm); }
+.radar-document-list > li > div { display: grid; min-width: 0; gap: var(--space-xs); }
+.radar-document-list strong,
+.radar-document-list span,
+.radar-document-list small { overflow-wrap: anywhere; }
+.radar-document-list > li > div > span,
+.radar-document-list small { color: var(--color-text-secondary); font-size: var(--font-size-sm); }
+.radar-document-list a { flex: 0 0 auto; text-decoration: none; }
+.radar-document-url { max-width: 32rem; }
 .radar-update-button { display: inline-flex; align-items: center; justify-content: center; gap: var(--space-sm); flex: 0 0 auto; }
 .radar-update-button span { font-size: var(--font-size-lg); line-height: 1; }
 .radar-page-meta { display: flex; justify-content: space-between; gap: var(--space-lg); color: var(--color-text-secondary); font-size: var(--font-size-sm); }
@@ -7828,6 +7862,12 @@ button.history-row:hover {
 @media (max-width: 700px) {
   .radar-page .page-heading { align-items: stretch; }
   .radar-page .page-heading .radar-update-button { width: 100%; }
+  .radar-detail-actions { align-items: stretch; flex-direction: column; }
+  .radar-detail-actions > button { width: 100%; }
+  .radar-detail-grid { grid-template-columns: minmax(0, 1fr); }
+  .radar-document-list > li { align-items: stretch; flex-direction: column; }
+  .radar-document-list a { align-self: flex-start; }
+  .radar-view-switch > button { flex: 1 1 0; }
   .radar-page-meta { flex-direction: column; gap: var(--space-xs); }
   .radar-filter-grid { grid-template-columns: minmax(0, 1fr); }
   .radar-tag-field { grid-column: auto; }
