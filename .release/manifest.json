@@ -761,6 +761,33 @@
       "migrations": [
         "supabase/migrations/20261010143828_radar_licitacoes_persistence_storage.sql"
       ]
+    },
+    {
+      "id": "RADAR-03-COLETOR-001",
+      "backend_commits": [
+        "4a8963ba00c09ad89800908501f13acd20f12284",
+        "ae0195cac227727567f2904bd6fbdbdd1ae0b6f3",
+        "0b39457af7c867841a49708af6d7a7d0d58e2456",
+        "5eb8d449a585df2dbdb5fe901865f1f500fb4fed",
+        "d0ea372c8881012fc94c58582b3fb68daf4e322c",
+        "add1d41b962a22dc2749d1817b4c5d8d9a1bf2d1"
+      ],
+      "frontend_commits": [],
+      "migrations": [
+        "supabase/migrations/20261010162217_radar_collector_incremental_sync.sql",
+        "supabase/migrations/20261010172500_radar_collector_rate_and_indexes.sql"
+      ]
+    },
+    {
+      "id": "RADAR-04-PESQUISA-001",
+      "backend_commits": [
+        "ac89c4e311a4d0b4e08a4b79b8ee88e3f1314854",
+        "51e9fefc8a3667ff951a902f4b3863553218e29e"
+      ],
+      "frontend_commits": [],
+      "migrations": [
+        "supabase/migrations/20261010175803_radar_search_engine.sql"
+      ]
     }
   ]
 }
