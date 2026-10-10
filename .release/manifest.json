@@ -746,6 +746,17 @@
         "d0a379e59d11fb5480fb61089a928c4162fea7e8"
       ],
       "migrations": []
+    },
+    {
+      "id": "RADAR-02-BANCO-001",
+      "backend_commits": [
+        "05213c2fa9cc762a7f34fd0166b601b8cd631762",
+        "b474a4ddb08b944537cd1fb5c18baee4ad93673f"
+      ],
+      "frontend_commits": [],
+      "migrations": [
+        "supabase/migrations/20261010143828_radar_licitacoes_persistence_storage.sql"
+      ]
     }
   ]
 }
