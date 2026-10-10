@@ -784,11 +784,13 @@
         "ac89c4e311a4d0b4e08a4b79b8ee88e3f1314854",
         "51e9fefc8a3667ff951a902f4b3863553218e29e",
         "e9d642c8b2e7eaacff202f1c62ba36df24e45fbb",
-        "1cc5c7a96e3f6fb905997016e5f38145488894b4"
+        "1cc5c7a96e3f6fb905997016e5f38145488894b4",
+        "a0d63dd9d2c367877b362f706df64abb3044ffc3"
       ],
       "frontend_commits": [],
       "migrations": [
-        "supabase/migrations/20261010175803_radar_search_engine.sql"
+        "supabase/migrations/20261010175803_radar_search_engine.sql",
+        "supabase/migrations/20261010181715_radar_search_pagination_fix.sql"
       ]
     }
   ]
