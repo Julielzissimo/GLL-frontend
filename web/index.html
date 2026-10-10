@@ -375,7 +375,7 @@
                   <span class="eyebrow">VINCULAR ORÇAMENTO</span>
                   <h2 id="bidQuotationModalTitle">Localizar orçamento</h2>
                 </div>
-                <button id="closeBidQuotationModalButton" class="quotation-item-modal-close" type="button" aria-label="Fechar modal"><span data-gll-icon="close" aria-hidden="true"></span></button>
+                <button id="closeBidQuotationModalButton" class="quotation-item-modal-close modal-close-button" type="button" aria-label="Fechar modal"><span data-gll-icon="close" aria-hidden="true"></span></button>
               </div>
               <div class="bid-quotation-modal-content">
                 <div class="form-grid bid-quotation-filters">
@@ -815,7 +815,7 @@
                   <span class="eyebrow">ORÇAMENTO</span>
                   <h2 id="quotationItemModalTitle">Cadastrar item</h2>
                 </div>
-                <button id="closeQuotationItemModalButton" class="quotation-item-modal-close" type="button" aria-label="Fechar modal"><span data-gll-icon="close" aria-hidden="true"></span></button>
+                <button id="closeQuotationItemModalButton" class="quotation-item-modal-close modal-close-button" type="button" aria-label="Fechar modal"><span data-gll-icon="close" aria-hidden="true"></span></button>
               </div>
 
               <form id="quotationItemForm" class="quotation-item-modal-form">
@@ -1121,7 +1121,7 @@
                 <h2 id="userAccessTitle">Revogar acesso</h2>
                 <p id="userAccessDescription"></p>
               </div>
-              <button id="closeUserAccessDialogButton" class="icon-button" type="button" aria-label="Fechar"><span data-gll-icon="close" aria-hidden="true"></span></button>
+              <button id="closeUserAccessDialogButton" class="icon-button modal-close-button" type="button" aria-label="Fechar"><span data-gll-icon="close" aria-hidden="true"></span></button>
             </div>
             <label id="userAccessReasonField">Motivo<textarea id="userAccessReason" name="reason" rows="3" maxlength="1000" required></textarea></label>
             <div id="userAccessPasswordField" class="user-access-password-fields hidden">
@@ -1144,7 +1144,7 @@
                 <h2 id="userAssignmentsTitle">Configurar acessos</h2>
                 <p id="userAssignmentsDescription"></p>
               </div>
-              <button id="closeUserAssignmentsButton" class="icon-button" type="button" aria-label="Fechar"><span data-gll-icon="close" aria-hidden="true"></span></button>
+              <button id="closeUserAssignmentsButton" class="icon-button modal-close-button" type="button" aria-label="Fechar"><span data-gll-icon="close" aria-hidden="true"></span></button>
             </div>
             <div id="userAssignmentsList" class="user-assignments-list"></div>
             <p id="userAssignmentsError" class="form-error" role="alert"></p>
@@ -1202,7 +1202,7 @@
 
         <dialog id="supplierModal" class="quotation-item-modal supplier-modal" aria-labelledby="supplierFormTitle">
           <div class="quotation-item-modal-shell">
-            <div class="quotation-item-modal-header"><div><span class="eyebrow">FORNECEDOR</span><h2 id="supplierFormTitle">Novo fornecedor</h2></div><button id="closeSupplierModalButton" class="quotation-item-modal-close" type="button" aria-label="Fechar modal"><span data-gll-icon="close" aria-hidden="true"></span></button></div>
+            <div class="quotation-item-modal-header"><div><span class="eyebrow">FORNECEDOR</span><h2 id="supplierFormTitle">Novo fornecedor</h2></div><button id="closeSupplierModalButton" class="quotation-item-modal-close modal-close-button" type="button" aria-label="Fechar modal"><span data-gll-icon="close" aria-hidden="true"></span></button></div>
             <form id="supplierForm" class="quotation-item-modal-form">
               <input id="supplierId" type="hidden" />
               <div class="form-grid">
@@ -1219,7 +1219,7 @@
 
         <dialog id="supplierProductModal" class="quotation-item-modal" aria-labelledby="supplierProductModalTitle">
           <div class="quotation-item-modal-shell">
-            <div class="quotation-item-modal-header"><div><span class="eyebrow">PRODUTO DO FORNECEDOR</span><h2 id="supplierProductModalTitle">Cadastrar produto</h2></div><button id="closeSupplierProductModalButton" class="quotation-item-modal-close" type="button" aria-label="Fechar modal"><span data-gll-icon="close" aria-hidden="true"></span></button></div>
+            <div class="quotation-item-modal-header"><div><span class="eyebrow">PRODUTO DO FORNECEDOR</span><h2 id="supplierProductModalTitle">Cadastrar produto</h2></div><button id="closeSupplierProductModalButton" class="quotation-item-modal-close modal-close-button" type="button" aria-label="Fechar modal"><span data-gll-icon="close" aria-hidden="true"></span></button></div>
             <form id="supplierProductForm" class="quotation-item-modal-form">
               <input id="supplierProductId" type="hidden" />
               <div class="form-grid supplier-product-form-grid">
@@ -1342,12 +1342,12 @@
         </section>
 
         <dialog id="declarationTemplateModal" class="quotation-item-modal" aria-labelledby="declarationTemplateModalTitle">
-          <div class="quotation-item-modal-shell"><div class="quotation-item-modal-header"><div><span class="eyebrow">BIBLIOTECA</span><h2 id="declarationTemplateModalTitle">Nova declaração</h2></div><button id="closeDeclarationTemplateModalButton" class="quotation-item-modal-close" type="button" aria-label="Fechar"><span data-gll-icon="close" aria-hidden="true"></span></button></div>
+          <div class="quotation-item-modal-shell"><div class="quotation-item-modal-header"><div><span class="eyebrow">BIBLIOTECA</span><h2 id="declarationTemplateModalTitle">Nova declaração</h2></div><button id="closeDeclarationTemplateModalButton" class="quotation-item-modal-close modal-close-button" type="button" aria-label="Fechar"><span data-gll-icon="close" aria-hidden="true"></span></button></div>
             <form id="declarationTemplateForm" class="quotation-item-modal-form"><input id="declarationTemplateId" type="hidden" /><div class="form-grid"><label class="full-field">Título *<input id="declarationTemplateTitle" maxlength="180" required /></label><label class="full-field">Escopo<select id="declarationTemplateScope"><option value="organization">Organização</option><option value="bid">Edital específico</option></select></label><label id="declarationTemplateBidField" class="full-field hidden">Edital *<select id="declarationTemplateBid"></select></label><label class="variable-editor full-field">Conteúdo *<textarea id="declarationTemplateContent" rows="10" required data-variable-editor></textarea><span class="variable-help">Digite <code>{{</code> para inserir uma variável.</span></label></div><p id="declarationTemplateError" class="form-error" role="alert"></p><div class="button-row end"><button id="deleteDeclarationTemplateButton" class="danger-action hidden" type="button">Excluir</button><button id="cancelDeclarationTemplateButton" class="quiet-action" type="button">Cancelar</button><button class="primary-action" type="submit">Salvar declaração</button></div></form>
           </div>
         </dialog>
 
-        <dialog id="declarationPreviewModal" class="declaration-preview-modal" aria-labelledby="declarationPreviewTitle"><div class="declaration-preview-shell"><div class="quotation-item-modal-header"><div><span class="eyebrow">PRÉ-VISUALIZAÇÃO A4</span><h2 id="declarationPreviewTitle">Conferir documento</h2></div><button id="closeDeclarationPreviewButton" class="quotation-item-modal-close" type="button" aria-label="Fechar"><span data-gll-icon="close" aria-hidden="true"></span></button></div><iframe id="declarationPreviewFrame" class="declaration-preview-frame" title="Pré-visualização do PDF"></iframe><div class="button-row end"><button id="closeDeclarationPreviewFooterButton" class="quiet-action" type="button">Voltar à edição</button><button id="generateDeclarationFromPreviewButton" class="primary-action" type="button">Gerar PDF</button></div></div></dialog>
+        <dialog id="declarationPreviewModal" class="declaration-preview-modal" aria-labelledby="declarationPreviewTitle"><div class="declaration-preview-shell"><div class="quotation-item-modal-header"><div><span class="eyebrow">PRÉ-VISUALIZAÇÃO A4</span><h2 id="declarationPreviewTitle">Conferir documento</h2></div><button id="closeDeclarationPreviewButton" class="quotation-item-modal-close modal-close-button" type="button" aria-label="Fechar"><span data-gll-icon="close" aria-hidden="true"></span></button></div><iframe id="declarationPreviewFrame" class="declaration-preview-frame" title="Pré-visualização do PDF"></iframe><div class="button-row end"><button id="closeDeclarationPreviewFooterButton" class="quiet-action" type="button">Voltar à edição</button><button id="generateDeclarationFromPreviewButton" class="primary-action" type="button">Gerar PDF</button></div></div></dialog>
 
         <dialog id="declarationValidationModal" class="quotation-item-discard-modal" aria-labelledby="declarationValidationTitle"><div class="quotation-item-discard-content"><h2 id="declarationValidationTitle">Não foi possível gerar a declaração</h2><p>Existem informações utilizadas no documento que ainda não foram preenchidas:</p><ul id="declarationMissingVariables"></ul><p>Preencha as informações indicadas antes de gerar o PDF.</p><div class="button-row end"><button id="closeDeclarationValidationButton" class="primary-action" type="button">Entendi</button></div></div></dialog>
         <div id="declarationVariableSuggestions" class="declaration-variable-suggestions hidden" role="listbox"></div>
@@ -1448,7 +1448,7 @@
 
     <dialog id="organizationChatDialog" class="organization-chat-dialog" aria-labelledby="organizationChatTitle">
       <div class="organization-chat-shell">
-        <header class="organization-chat-header"><div><span class="eyebrow">CONVERSA EM GRUPO</span><h2 id="organizationChatTitle">Mensagens da organização</h2><p id="organizationChatSubtitle"></p></div><button id="closeOrganizationChatButton" class="icon-button" type="button" aria-label="Fechar mensagens"><span aria-hidden="true" data-gll-icon="close"></span></button></header>
+        <header class="organization-chat-header"><div><span class="eyebrow">CONVERSA EM GRUPO</span><h2 id="organizationChatTitle">Mensagens da organização</h2><p id="organizationChatSubtitle"></p></div><button id="closeOrganizationChatButton" class="icon-button modal-close-button" type="button" aria-label="Fechar mensagens"><span aria-hidden="true" data-gll-icon="close"></span></button></header>
         <div id="organizationChatMessages" class="organization-chat-messages" role="log" aria-label="Mensagens da conversa" aria-live="polite" aria-relevant="additions text"></div>
         <div id="organizationChatTyping" class="organization-chat-typing" role="status" aria-live="polite" hidden></div>
         <p id="organizationChatError" class="form-error organization-chat-error" role="alert"></p>

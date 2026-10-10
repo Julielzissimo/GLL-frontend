@@ -117,6 +117,11 @@
     return `<button class="${className}" type="button"${disabled || loading ? " disabled" : ""}${loading ? ' aria-busy="true"' : ""}>${loading ? '<span class="ds-spinner" aria-hidden="true"></span>' : icon ? iconMarkup(icon) : ""}${escapeHtml(loading ? "Carregando…" : label)}</button>`;
   }
 
+  function iconButton({ label = "Ação", icon = "settings", variant = "default", disabled = false } = {}) {
+    const className = variant === "danger" ? "icon-button modal-close-button" : "icon-button";
+    return `<button class="${className}" type="button" aria-label="${escapeHtml(label)}"${disabled ? " disabled" : ""}>${iconMarkup(icon)}</button>`;
+  }
+
   function badge({ label = "Status", tone = "neutral" } = {}) {
     return `<span class="ds-badge ds-badge-${escapeHtml(tone)}">${escapeHtml(label)}</span>`;
   }
@@ -199,7 +204,7 @@
     return `<div class="ds-modal-preview"><article class="ds-modal-card ds-dialog-${escapeHtml(size)}" aria-labelledby="${titleId}"><span class="eyebrow">DIÁLOGO · ${escapeHtml(size.toUpperCase())}</span><h3 id="${titleId}">${escapeHtml(title)}</h3><p>${escapeHtml(description)}</p><div class="button-row end">${actionMarkup}</div></article></div>`;
   }
 
-  const COMPONENTS = Object.freeze({ button, badge, statusBadge, toast, tag, formField, select, textarea, checkbox, radio, switchControl, card, alert, emptyState, loading, skeleton, pageHeader, tabs, table, modal: dialogPreview, dialogPreview });
+  const COMPONENTS = Object.freeze({ button, iconButton, badge, statusBadge, toast, tag, formField, select, textarea, checkbox, radio, switchControl, card, alert, emptyState, loading, skeleton, pageHeader, tabs, table, modal: dialogPreview, dialogPreview });
 
   global.document?.querySelectorAll?.("[data-gll-icon]").forEach((element) => {
     element.innerHTML = iconMarkup(element.dataset.gllIcon);
@@ -226,7 +231,7 @@
 
   function componentsMarkup() {
     return `
-      <section class="ds-doc-section" id="ds-buttons"><div class="ds-section-heading"><span class="eyebrow">COMPONENTS</span><h2>Button e IconButton</h2></div><div class="ds-preview-row">${button({ label: "Primário" })}${button({ label: "Secundário", variant: "secondary" })}${button({ label: "Ghost", variant: "ghost" })}${button({ label: "Excluir", variant: "danger" })}${button({ label: "Desabilitado", disabled: true })}${button({ loading: true })}${button({ label: "Nova licitação", icon: "add" })}<button class="icon-button" type="button" aria-label="Configurações">${ICONS.settings}</button></div></section>
+      <section class="ds-doc-section" id="ds-buttons"><div class="ds-section-heading"><span class="eyebrow">COMPONENTS</span><h2>Button e IconButton</h2></div><div class="ds-preview-row">${button({ label: "Primário" })}${button({ label: "Secundário", variant: "secondary" })}${button({ label: "Ghost", variant: "ghost" })}${button({ label: "Excluir", variant: "danger" })}${button({ label: "Desabilitado", disabled: true })}${button({ loading: true })}${button({ label: "Nova licitação", icon: "add" })}${iconButton({ label: "Configurações", icon: "settings" })}${iconButton({ label: "Fechar modal", icon: "close", variant: "danger" })}</div></section>
       <section class="ds-doc-section" id="ds-fields"><div class="ds-section-heading"><h2>Campos de formulário</h2></div><div class="ds-form-showcase">${formField({ id: "ds-name", label: "Órgão comprador", placeholder: "Pesquisar órgão…", helper: "Informe o nome oficial." })}${formField({ id: "ds-error", label: "Número do edital", value: "14/2026", error: "Já existe um edital com este número." })}${select({ id: "ds-select", label: "Status", options: ["Em análise", "Aprovada", "Descartada"] })}${textarea({ id: "ds-textarea", label: "Observações", helper: "Até 500 caracteres." })}</div><div class="ds-preview-row">${checkbox({ id: "ds-check", label: "Item ganho", checked: true })}${radio({ id: "ds-radio-1", label: "Pregão eletrônico", checked: true })}${radio({ id: "ds-radio-2", label: "Concorrência" })}${switchControl({ id: "ds-switch", label: "Notificações", checked: true })}</div></section>
       <section class="ds-doc-section" id="ds-status"><div class="ds-section-heading"><h2>Status do edital, Tag e Alert</h2><p>As seis situações usam um mapa central e mantêm o rótulo junto à cor.</p></div><div class="ds-preview-row">${["Em Analise", "Aprovada", "Descartada", "Faturado", "Disputada", "Desclassificado"].map((status) => statusBadge({ status, label: status === "Em Analise" ? "Em análise" : status })).join("")}${tag({ label: "papelaria" })}</div><div class="ds-stack">${alert({ title: "Informação", message: "Os dados foram atualizados.", tone: "info" })}${alert({ title: "Atenção", message: "Revise os campos pendentes.", tone: "warning" })}${alert({ title: "Erro", message: "Não foi possível salvar.", tone: "danger" })}</div></section>
       <section class="ds-doc-section" id="ds-toasts"><div class="ds-section-heading"><h2>Toast</h2><p>Mensagens curtas com tom semântico e leitura acessível.</p></div><div class="ds-toast-stack">${toast({ message: "Edital salvo.", tone: "success" })}${toast({ message: "Link removido. Salve o edital para confirmar.", tone: "warning" })}${toast({ message: "Não foi possível concluir a operação. Tente novamente.", tone: "danger" })}</div><details class="ds-copy-catalog"><summary>Catálogo de mensagens atuais</summary>${TOAST_CATALOG.map(({ tone, messages }) => `<div class="ds-copy-group"><strong>${escapeHtml(tone)}</strong><ul>${messages.map((message) => `<li>${escapeHtml(message)}</li>`).join("")}</ul></div>`).join("")}</details></section>

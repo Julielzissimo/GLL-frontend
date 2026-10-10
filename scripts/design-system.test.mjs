@@ -43,9 +43,13 @@ test("the catalog uses the application component source", () => {
   const ds = context.window.GLLDesignSystem;
   assert.ok(ds);
   assert.match(ds.COMPONENTS.button({ label: "Salvar" }), /primary-action/);
+  assert.match(ds.COMPONENTS.iconButton({ label: "Fechar modal", icon: "close", variant: "danger" }), /class="icon-button modal-close-button"/);
   assert.match(ds.COMPONENTS.formField({ id: "field", error: "Obrigatório" }), /aria-invalid="true"/);
   assert.match(ds.COMPONENTS.alert({ tone: "danger" }), /role="alert"/);
   assert.ok(Object.keys(ds.ICONS).length >= 10);
+  assert.match(theme, /\.modal-close-button\s*\{[\s\S]*?border-radius:\s*var\(--gll-radius-md\)[\s\S]*?background:\s*var\(--gll-danger\)/);
+  assert.match(theme, /\.modal-close-button svg\s*\{[\s\S]*?stroke:\s*currentColor/);
+  assert.equal((html.match(/class="[^"]*modal-close-button/g) || []).length, 9);
 });
 
 test("foundation samples comply with the app content security policy", () => {

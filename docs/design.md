@@ -89,7 +89,7 @@ Use apenas a escala: `base`, `sticky`, `menu`, `dropdown`, `overlay`, `modal`, `
 
 O catálogo inicial documenta componentes que já aparecem no GLL ou representam padrões recorrentes:
 
-- Button e IconButton;
+- Button e IconButton, incluindo a variante destrutiva quadrada usada para fechar diálogos;
 - Input, Textarea, Select e FormField;
 - Checkbox, Radio e Switch;
 - Badge e Tag;
