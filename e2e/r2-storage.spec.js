@@ -116,11 +116,15 @@ test("homologação envia, lê e exclui somente um arquivo sintético no R2", as
         console.log(`R2 preflight: HTTP ${preflight.status()}, origin=${preflight.headers()["access-control-allow-origin"] || "ausente"}, headers=${preflight.headers()["access-control-allow-headers"] || "ausentes"}`);
         const directPut = await page.request.fetch(signedPutUrl, {
           method: "PUT",
-          headers: { "Content-Type": "image/png", "If-None-Match": "*" },
+          headers: {
+            Origin: "https://julielzissimo.github.io",
+            "Content-Type": "image/png",
+            "If-None-Match": "*",
+          },
           data: Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/lS8AAAAASUVORK5CYII=", "base64"),
         });
         const code = (await directPut.text()).match(/<Code>([^<]+)<\/Code>/)?.[1] || "sem código XML";
-        console.log(`R2 PUT direto: HTTP ${directPut.status()}, código=${code}`);
+        console.log(`R2 PUT direto: HTTP ${directPut.status()}, código=${code}, CORS=${directPut.headers()["access-control-allow-origin"] || "ausente"}`);
       }
       throw error;
     }
