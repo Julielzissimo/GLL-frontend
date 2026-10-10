@@ -75,10 +75,15 @@ const createCommercialProposalsFeature = window.GLLCommercialProposals?.createCo
   reset: () => undefined,
   requestDiscardChanges: (action) => { action(); return true; },
 }));
+const createRadarSearchFeature = window.GLLRadarSearch?.createRadarSearchFeature || (() => ({
+  showPage: async () => undefined,
+  reset: () => undefined,
+}));
 
 const PAGE_ROUTE_NAMES = {
   home: "visao-geral",
   bids: "licitacoes",
+  radarSearch: "radar-de-licitacoes",
   edit: "nova-licitacao",
   items: "itens",
   documents: "documentos",
@@ -200,6 +205,7 @@ const refs = {
   toggleSidebarButton: $("toggleSidebarButton"),
   sidebarPanel: $("sidebarPanel"),
   bidsPage: $("bidsPage"),
+  radarSearchPage: $("radarSearchPage"),
   homePage: $("homePage"),
   bidCatalogPage: $("bidCatalogPage"),
   upcomingBidsList: $("upcomingBidsList"),
@@ -1903,6 +1909,11 @@ const commercialProposalsFeature = createCommercialProposalsFeature({
   toast: (message, tone) => showToast(message, tone),
   runBusy: (operation, message) => withBlockingLoading(operation, message)(),
 });
+const radarSearchFeature = createRadarSearchFeature({
+  getClient: () => (store.requiresAuthenticationBeforeData ? store.client : null),
+  getUserRole: () => appState.currentUserRole,
+  toast: (message, tone) => showToast(message, tone),
+});
 
 const SESSION_ACTIVITY_EVENTS = ["pointerdown", "keydown", "input"];
 const SESSION_POLICY_CHECK_INTERVAL_MS = 60 * 1000;
@@ -3140,6 +3151,7 @@ function resetAuthenticatedView() {
   declarationsFeature.reset();
   commercialProposalsFeature.reset();
   companyDataFeature.reset();
+  radarSearchFeature.reset();
   refs.appView.classList.remove("mobile-nav-open");
   updateMainNavigationState();
   for (const key of DATA_KEYS) appState[key] = [];
@@ -3393,6 +3405,11 @@ function breadcrumbItems(page) {
       ? [{ label: "Propostas comerciais" }]
       : [home, { label: "Propostas comerciais" }];
   }
+  if (page === "radarSearch") {
+    return compact
+      ? [{ label: "Radar de Licitações" }]
+      : [home, { label: "Radar de Licitações" }];
+  }
   if (page === "declarations") {
     return compact
       ? [{ label: "Declarações" }]
@@ -3413,6 +3430,7 @@ function breadcrumbItems(page) {
   const topLevelLabels = {
     home: "Visão geral",
     bids: "Licitações",
+    radarSearch: "Radar de Licitações",
     quotations: "Orçamentos",
     commercialProposals: "Propostas comerciais",
     suppliers: "Fornecedores",
@@ -3854,6 +3872,7 @@ function setPage(page, options = {}) {
   const showSuppliers = page === "suppliers";
   const showDeclarations = declarationPages.includes(page);
   const showCommercialProposals = page === "commercialProposals";
+  const showRadarSearch = page === "radarSearch";
   $("suppliersPage").classList.toggle("hidden", !showSuppliers);
   refs.declarationsPage.classList.toggle("hidden", !showDeclarations);
   refs.commercialProposalsPage.classList.toggle("hidden", !showCommercialProposals);
@@ -3862,7 +3881,8 @@ function setPage(page, options = {}) {
   const showCatalog = page === "bids";
   const showEditor = page === "edit";
   const showDetail = detailPages.includes(page);
-  refs.bidsPage.classList.toggle("hidden", showUsers || showUserProfile || showSettings || showCompanyData || showDesignSystem || showQuotations || showSuppliers || showDeclarations || showCommercialProposals);
+  refs.bidsPage.classList.toggle("hidden", showUsers || showUserProfile || showSettings || showCompanyData || showDesignSystem || showQuotations || showSuppliers || showDeclarations || showCommercialProposals || showRadarSearch);
+  refs.radarSearchPage.classList.toggle("hidden", !showRadarSearch);
   refs.usersPage.classList.toggle("hidden", !showUsers);
   refs.userProfilePage.classList.toggle("hidden", !showUserProfile);
   refs.settingsPage.classList.toggle("hidden", !showSettings);
@@ -3878,12 +3898,12 @@ function setPage(page, options = {}) {
   refs.itemsPanel.classList.toggle("hidden", page !== "items");
   refs.documentsPanel.classList.toggle("hidden", page !== "documents");
   refs.failuresPanel.classList.toggle("hidden", page !== "failures");
-  refs.appView.classList.toggle("users-active", showUsers || showUserProfile || showSettings || showCompanyData || showDesignSystem || showQuotations || showSuppliers || showDeclarations || showCommercialProposals);
+  refs.appView.classList.toggle("users-active", showUsers || showUserProfile || showSettings || showCompanyData || showDesignSystem || showQuotations || showSuppliers || showDeclarations || showCommercialProposals || showRadarSearch);
   refs.itemsTabButton.classList.toggle("active", page === "items");
   refs.documentsTabButton.classList.toggle("active", page === "documents");
   refs.failuresTabButton.classList.toggle("active", page === "failures");
   refs.failuresTabButton.classList.toggle("hidden", !shouldShowFailureHistory());
-  const primaryPage = showCommercialProposals ? "commercialProposals" : showDeclarations ? "declarations" : showSuppliers ? "suppliers" : showUsers || (showUserProfile && isCurrentUserAdmin()) ? "users" : showSettings || showCompanyData || showDesignSystem ? "settings" : showQuotations ? "quotations" : showHome || showUserProfile ? "home" : "bids";
+  const primaryPage = showRadarSearch ? "radarSearch" : showCommercialProposals ? "commercialProposals" : showDeclarations ? "declarations" : showSuppliers ? "suppliers" : showUsers || (showUserProfile && isCurrentUserAdmin()) ? "users" : showSettings || showCompanyData || showDesignSystem ? "settings" : showQuotations ? "quotations" : showHome || showUserProfile ? "home" : "bids";
   const activeNavigationPage = ["settings", "companyData", "designSystem"].includes(page) ? page : primaryPage;
   renderBreadcrumb(page);
   document.querySelectorAll("[data-navigation-page]").forEach((button) => {
@@ -3901,6 +3921,7 @@ function setPage(page, options = {}) {
   if (showDeclarations) void declarationsFeature.showPage(page).catch((error) => showToast(error.message, "error"));
   if (showCommercialProposals) void commercialProposalsFeature.showPage().catch((error) => showToast(error.message, "error"));
   if (showCompanyData) void companyDataFeature.showPage().catch((error) => showToast(error.message, "error"));
+  if (showRadarSearch) void radarSearchFeature.showPage().catch((error) => showToast(error.message, "error"));
   if (showDesignSystem) window.GLLDesignSystem?.mountCatalog(refs.designSystemCatalog);
   writeNavigationRoute(page, options.history || "push");
 }
