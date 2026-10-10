@@ -938,7 +938,8 @@
       "id": "RADAR-08-RELEASE-001",
       "backend_commits": [
         "ece4c1078552ef4d059a00ceb26fac1b21c7b211",
-        "089b03d525bd83e6a4a5cd48e58fb9b0c448c781"
+        "089b03d525bd83e6a4a5cd48e58fb9b0c448c781",
+        "d654ad10faadedaf54497d0f3c7deb174c4189d4"
       ],
       "frontend_commits": [
         "ece32c8d52ad76c8c7948c3a9a9cb58b6eaa0c43"
