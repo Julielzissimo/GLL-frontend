@@ -951,7 +951,8 @@
       "id": "RADAR-09-PLATAFORMAS-001",
       "backend_commits": [
         "2de15b8dc1f232552b3636c4272c10d0b14cd973",
-        "3c363980629d3370363e8f06a71f1f8c4545c570"
+        "3c363980629d3370363e8f06a71f1f8c4545c570",
+        "f24aefbc69c631195062ca943388ba52d2adb968"
       ],
       "frontend_commits": [
         "96ca3b954335a17175b952c0ed6ac1a5cf5f2009"
