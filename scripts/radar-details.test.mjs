@@ -7,6 +7,7 @@ import {
   mapRadarFavoriteMetadata,
   radarContractBudgetIsSecret,
   validatedOfficialPncpUrl,
+  validatedPlatformSourceUrl,
 } from "../web/radar-details.js";
 
 const procurementId = "88768080000170-1-000478/2026";
@@ -69,6 +70,13 @@ test("oculta valores zero de contratação e item quando o PNCP marca orçamento
   assert.equal(formatRadarContractEstimatedValue({ orcamentoSigilosoCodigo: 1, valorTotalEstimado: 0 }), "R$ 0,00");
   assert.equal(formatRadarItemMoney(0, true), "Orçamento sigiloso");
   assert.equal(formatRadarItemMoney(0, false), "R$ 0,00");
+});
+
+test("valida link seguro da plataforma sem substituir o link oficial do PNCP", () => {
+  assert.equal(validatedPlatformSourceUrl("https://portal.example/processo"), "https://portal.example/processo");
+  assert.equal(validatedPlatformSourceUrl("http://portal.example/processo"), null);
+  assert.equal(validatedPlatformSourceUrl("javascript:alert(1)"), null);
+  assert.equal(validatedOfficialPncpUrl("https://pncp.gov.br/app/editais/123"), "https://pncp.gov.br/app/editais/123");
 });
 
 test("preserva metadados da licitação ao montar a visualização de favoritos", () => {

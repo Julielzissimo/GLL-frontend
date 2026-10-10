@@ -92,6 +92,11 @@ export function buildRadarSearchPayload(filters, { page = 1, refreshCoverage = f
   };
   if (tags.length) payload.tags = tags;
   if (!useEveryActiveModality && selectedIds.length) payload.modalities = selectedIds;
+  if (Array.isArray(filters.platformIds)) {
+    const platformIds = [...new Set(filters.platformIds.map((id) => String(id).toLowerCase()))];
+    if (platformIds.length || filters.includeUnidentified === true) payload.platformIds = platformIds;
+  }
+  if (filters.includeUnidentified === true) payload.includeUnidentified = true;
   if (filters.uf) payload.uf = String(filters.uf).trim().toUpperCase();
   if (filters.municipalityIbgeId && filters.uf) payload.municipalityIbgeId = Number(filters.municipalityIbgeId);
   if (filters.publishedFrom) payload.publishedFrom = filters.publishedFrom;
@@ -134,6 +139,17 @@ export function validatedPncpSourceUrl(value) {
     const url = new URL(value);
     if (url.protocol !== "https:" || url.hostname !== "pncp.gov.br" || url.username || url.password) return null;
     if (!url.pathname.startsWith("/app/")) return null;
+    return url.toString();
+  } catch {
+    return null;
+  }
+}
+
+export function validatedPlatformSourceUrl(value) {
+  if (typeof value !== "string" || !value.trim()) return null;
+  try {
+    const url = new URL(value);
+    if (url.protocol !== "https:" || !url.hostname || url.username || url.password) return null;
     return url.toString();
   } catch {
     return null;
@@ -200,12 +216,14 @@ function clampPeriodDays(value) {
   return Number.isInteger(days) && days >= 1 && days <= 365 ? days : DEFAULT_PERIOD_DAYS;
 }
 
-function currentFiltersFromInputs(root, tags, modalities) {
+function currentFiltersFromInputs(root, tags, modalities, platformIds) {
   return {
     tags,
     modalities,
     uf: root.querySelector("#radarUf")?.value || "",
     municipalityIbgeId: root.querySelector("#radarMunicipality")?.value || "",
+    platformIds,
+    includeUnidentified: root.querySelector("#radarIncludeUnidentified")?.checked === true,
     publishedFrom: root.querySelector("#radarPublishedFrom")?.value || "",
     publishedTo: root.querySelector("#radarPublishedTo")?.value || "",
     proposalReceiptState: root.querySelector("#radarSituation")?.value || "open",
@@ -243,9 +261,13 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
     modalities: [],
     states: [],
     municipalities: [],
+    platforms: [],
+    platformDomains: [],
+    platformCatalogVersion: 1,
     municipalityNames: new Map(),
     municipalityLoadId: 0,
     selectedModalities: null,
+    selectedPlatformIds: null,
     tags: [],
     results: [],
     favoriteIds: new Set(),
@@ -325,6 +347,84 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
     summary.textContent = selectedCount === state.modalities.length
       ? `Todas as modalidades ativas (${state.modalities.length})`
       : `${selectedCount} de ${state.modalities.length} selecionadas`;
+  }
+
+  function updatePlatformSummary() {
+    const summary = byId("radarPlatformSummary");
+    if (!summary) return;
+    if (state.selectedPlatformIds === null) {
+      summary.textContent = "Todas as plataformas";
+      return;
+    }
+    const selected = state.platforms.filter((platform) => state.selectedPlatformIds.includes(platform.id));
+    const names = selected.map((platform) => platform.nome);
+    const includeUnknown = byId("radarIncludeUnidentified")?.checked === true;
+    if (!names.length && includeUnknown) summary.textContent = "Somente não identificadas";
+    else if (!names.length) summary.textContent = "Todas as plataformas";
+    else if (names.length <= 2) summary.textContent = names.join(", ");
+    else summary.textContent = `${names.length} plataformas${includeUnknown ? " e não identificadas" : ""}`;
+    if (names.length <= 2 && includeUnknown && names.length) summary.textContent += " + não identificadas";
+  }
+
+  function renderPlatformOptions() {
+    const list = byId("radarPlatforms");
+    if (!list) return;
+    const search = String(byId("radarPlatformSearch")?.value || "").trim().toLocaleLowerCase("pt-BR");
+    const active = state.platforms.filter((platform) => platform.ativo);
+    const selected = state.selectedPlatformIds === null
+      ? new Set(active.map((platform) => platform.id))
+      : new Set(state.selectedPlatformIds);
+    const visible = active.filter((platform) => !search || platform.nome.toLocaleLowerCase("pt-BR").includes(search));
+    list.innerHTML = visible.length ? visible.map((platform) => `
+      <label class="radar-modality-option">
+        <input type="checkbox" name="radarPlatform" value="${escapeHtml(platform.id)}"${selected.has(platform.id) ? " checked" : ""} />
+        <span>${escapeHtml(platform.nome)}</span>
+      </label>`).join("") : '<p class="radar-empty-state">Nenhuma plataforma corresponde à pesquisa.</p>';
+    updatePlatformSummary();
+  }
+
+  function renderPlatformAdmin() {
+    const target = byId("radarPlatformAdminList");
+    const platformSelect = byId("radarPlatformDomainPlatform");
+    if (platformSelect) {
+      const current = platformSelect.value;
+      platformSelect.innerHTML = state.platforms.map((platform) => `<option value="${escapeHtml(platform.id)}">${escapeHtml(platform.nome)}${platform.ativo ? "" : " (inativa)"}</option>`).join("");
+      if (state.platforms.some((platform) => platform.id === current)) platformSelect.value = current;
+    }
+    if (!target) return;
+    target.innerHTML = state.platforms.map((platform) => {
+      const domains = state.platformDomains.filter((domain) => domain.plataforma_id === platform.id);
+      return `<article class="radar-platform-admin-entry"><div><strong>${escapeHtml(platform.nome)}</strong><small>${escapeHtml(platform.slug)} · ${platform.ativo ? "Ativa" : "Inativa"}</small>${platform.descricao ? `<small>${escapeHtml(platform.descricao)}</small>` : ""}</div><div class="radar-row-actions"><button class="quiet-action compact-action" type="button" data-platform-edit="${escapeHtml(platform.id)}">Editar</button><button class="quiet-action compact-action" type="button" data-platform-toggle="${escapeHtml(platform.id)}" aria-pressed="${platform.ativo}">${platform.ativo ? "Desativar" : "Ativar"}</button></div>${domains.length ? `<ul>${domains.map((domain) => `<li><code>${escapeHtml(domain.dominio)}</code> · ${domain.ativo ? "Ativo" : "Inativo"}${domain.incluir_subdominios ? " · inclui subdomínios" : ""}<button class="quiet-action compact-action" type="button" data-domain-edit="${escapeHtml(domain.id)}">Editar regra</button><button class="quiet-action compact-action" type="button" data-domain-toggle="${escapeHtml(domain.id)}" aria-pressed="${domain.ativo}">${domain.ativo ? "Desativar" : "Ativar"}</button></li>`).join("")}</ul>` : "<small>Sem domínios cadastrados.</small>"}</article>`;
+    }).join("");
+  }
+
+  async function loadPlatformCatalog() {
+    const currentClient = client();
+    const [platformResult, domainResult, versionResult] = await Promise.all([
+      currentClient.from("radar_plataformas").select("id, nome, slug, descricao, ativo").order("nome"),
+      currentClient.from("radar_plataforma_dominios").select("id, plataforma_id, dominio, incluir_subdominios, ativo").order("dominio"),
+      currentClient.from("radar_plataforma_catalog_state").select("versao").eq("id", true).single(),
+    ]);
+    if (platformResult.error || domainResult.error || versionResult.error) throw new Error("Não foi possível carregar o catálogo de plataformas.");
+    state.platforms = platformResult.data || [];
+    state.platformDomains = domainResult.data || [];
+    state.platformCatalogVersion = Number(versionResult.data?.versao || 1);
+    renderPlatformOptions();
+    renderPlatformAdmin();
+  }
+
+  async function loadPlatformMetrics() {
+    const target = byId("radarPlatformMetrics");
+    if (!target || getUserRole?.() !== "Administrador") return;
+    try {
+      const { data, error } = await client().functions.invoke("radar-catalogs", { body: { action: "platform_metrics" } });
+      if (error) throw error;
+      const metrics = data?.metrics;
+      if (!metrics) throw new Error("Métricas indisponíveis.");
+      target.textContent = `Catálogo: ${metrics.platforms} plataformas, ${metrics.domains} domínios. Licitações: ${Number(metrics.classified).toLocaleString("pt-BR")} identificadas, ${Number(metrics.unidentified).toLocaleString("pt-BR")} sem correspondência, ${Number(metrics.linkNotInformed).toLocaleString("pt-BR")} sem link, ${Number(metrics.pendingVerification).toLocaleString("pt-BR")} pendentes. Armazenamento da tabela: ${Number(metrics.storageBytes).toLocaleString("pt-BR")} bytes.`;
+    } catch {
+      target.textContent = "Não foi possível carregar as métricas neste momento.";
+    }
   }
 
   function renderStateOptions() {
@@ -407,18 +507,23 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
     try {
       const currentClient = client();
       const service = window.GLLRadarCatalogs.createRadarCatalogsService(currentClient);
-      const [modalitiesResult, statesResult, settingsResult] = await Promise.allSettled([
+      const [modalitiesResult, statesResult, settingsResult, platformCatalogResult] = await Promise.allSettled([
         service.listModalities(),
         service.listStates(),
         currentClient.from("radar_configuracoes")
           .select("busca_periodo_padrao_dias")
           .eq("id", 1)
           .single(),
+        loadPlatformCatalog(),
       ]);
       if (modalitiesResult.status === "rejected") throw modalitiesResult.reason;
       if (statesResult.status === "rejected") throw statesResult.reason;
+      if (platformCatalogResult.status === "rejected") throw platformCatalogResult.reason;
       state.modalities = modalitiesResult.value;
       state.states = statesResult.value;
+      if (settingsResult.status === "rejected") {
+        state.settingsError = "Não foi possível carregar o período compartilhado; o formulário está usando 30 dias temporariamente.";
+      }
       if (settingsResult.status === "fulfilled" && !settingsResult.value.error) {
         state.defaultPeriodDays = clampPeriodDays(settingsResult.value.data?.busca_periodo_padrao_dias);
         state.settingsError = "";
@@ -429,10 +534,13 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
       state.catalogsLoaded = true;
       state.initialized = true;
       renderModalityOptions();
+      renderPlatformOptions();
+      renderPlatformAdmin();
       renderStateOptions();
       renderDefaultSettings();
       if (!byId("radarPublishedFrom").value && !byId("radarPublishedTo").value) applyDefaultPeriod();
       await loadMunicipalities(byId("radarUf").value);
+      void loadPlatformMetrics();
     } catch (error) {
       state.catalogsError = error?.message || "Não foi possível carregar os filtros do Radar.";
       state.initialized = true;
@@ -562,11 +670,19 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
       ? `<small>${escapeHtml(result.administrativeSituationName)}</small>`
       : "";
     const receipt = RECEIPT_STATUS_LABELS[result.proposalReceiptStatus] || RECEIPT_STATUS_LABELS.unknown;
+    const platformSourceUrl = result.platformStatus === "identified" ? validatedPlatformSourceUrl(result.platformSourceUrl) : null;
+    const platformLabel = result.platformStatus === "identified"
+      ? result.platformName || "Plataforma identificada"
+      : result.platformStatus === "pending_verification" ? "Pendente de verificação" : "Não identificada";
+    const platformMarkup = platformSourceUrl
+      ? `<a href="${escapeHtml(platformSourceUrl)}" target="_blank" rel="noopener noreferrer">${escapeHtml(platformLabel)} <span aria-hidden="true">↗</span></a>`
+      : escapeHtml(platformLabel);
     return `<tr>
       <td><strong>${escapeHtml(number)}${year}</strong><small>${escapeHtml(result.numberControlPncp || "")}</small></td>
       <td><strong>${escapeHtml(result.agencyName || result.administrativeUnitName || "Órgão não informado")}</strong><small>${escapeHtml(result.administrativeUnitName || "")}</small></td>
       <td class="radar-object-cell">${objectMarkup}</td>
       <td>${escapeHtml(resolveModalityName(result.modalityId))}</td>
+      <td>${platformMarkup}</td>
       <td>${escapeHtml(resolveMunicipalityName(result))}${result.uf ? ` / ${escapeHtml(result.uf)}` : ""}</td>
       <td class="numeric">${escapeHtml(formatMoney(result.estimatedValue))}</td>
       <td>${escapeHtml(formatDate(result.publishedAt))}</td>
@@ -662,7 +778,7 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
       const total = Number(state.favoritesPagination?.totalCount ?? rows.length);
       if (count) count.textContent = `${total.toLocaleString("pt-BR")} licitações favoritas nesta conta.`;
       target.innerHTML = `<div class="table-wrap radar-results-table-wrap" role="region" tabindex="0" aria-label="Licitações favoritas; use a rolagem horizontal para ver todas as colunas."><table class="radar-results-table"><caption class="sr-only">Licitações favoritas do usuário</caption><thead><tr>
-        <th scope="col">Contratação</th><th scope="col">Órgão responsável</th><th scope="col">Objeto da contratação</th><th scope="col">Modalidade</th><th scope="col">Município / UF</th><th scope="col" class="numeric">Valor estimado</th><th scope="col">Publicação</th><th scope="col">Encerramento</th><th scope="col">Situação</th><th scope="col">Ações</th>
+        <th scope="col">Contratação</th><th scope="col">Órgão responsável</th><th scope="col">Objeto da contratação</th><th scope="col">Modalidade</th><th scope="col">Plataforma</th><th scope="col">Município / UF</th><th scope="col" class="numeric">Valor estimado</th><th scope="col">Publicação</th><th scope="col">Encerramento</th><th scope="col">Situação</th><th scope="col">Ações</th>
         </tr></thead><tbody>${rows.map(renderResultRow).join("")}</tbody></table></div>`;
       renderPagination();
       renderCoverage();
@@ -696,14 +812,14 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
         : `${Number(state.pagination.totalCount).toLocaleString("pt-BR")} licitações encontradas.`;
     }
     target.innerHTML = `<div class="table-wrap radar-results-table-wrap" role="region" tabindex="0" aria-label="Resultados do Radar; use a rolagem horizontal para ver todas as colunas."><table class="radar-results-table"><caption class="sr-only">Resultados do Radar de Licitações</caption><thead><tr>
-      <th scope="col">Contratação</th><th scope="col">Órgão responsável</th><th scope="col">Objeto da contratação</th><th scope="col">Modalidade</th><th scope="col">Município / UF</th><th scope="col" class="numeric">Valor estimado</th><th scope="col">Publicação</th><th scope="col">Encerramento</th><th scope="col">Situação</th><th scope="col">Ações</th>
+      <th scope="col">Contratação</th><th scope="col">Órgão responsável</th><th scope="col">Objeto da contratação</th><th scope="col">Modalidade</th><th scope="col">Plataforma</th><th scope="col">Município / UF</th><th scope="col" class="numeric">Valor estimado</th><th scope="col">Publicação</th><th scope="col">Encerramento</th><th scope="col">Situação</th><th scope="col">Ações</th>
       </tr></thead><tbody>${rows.map(renderResultRow).join("")}</tbody></table></div>`;
     renderPagination();
     renderCoverage();
   }
 
   function readForm() {
-    return currentFiltersFromInputs(root, state.tags, state.selectedModalities);
+    return currentFiltersFromInputs(root, state.tags, state.selectedModalities, state.selectedPlatformIds);
   }
 
   function collectPendingTags() {
@@ -939,9 +1055,153 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
     }
   }
 
+  function setPlatformAdminStatus(message) {
+    const target = byId("radarPlatformAdminStatus");
+    if (target) target.textContent = message;
+  }
+
+  function resetPlatformForm() {
+    byId("radarPlatformId").value = "";
+    byId("radarPlatformName").value = "";
+    byId("radarPlatformSlug").value = "";
+    byId("radarPlatformDescription").value = "";
+    byId("radarPlatformActive").checked = true;
+  }
+
+  function resetPlatformDomainForm() {
+    byId("radarPlatformDomainId").value = "";
+    byId("radarPlatformDomainName").value = "";
+    byId("radarPlatformIncludeSubdomains").checked = false;
+    byId("radarPlatformDomainActive").checked = true;
+  }
+
+  async function savePlatformForm(event) {
+    event.preventDefault();
+    if (getUserRole?.() !== "Administrador") return setPlatformAdminStatus("Somente Administradores podem alterar o catálogo.");
+    setPlatformAdminStatus("Salvando plataforma…");
+    try {
+      const { data, error } = await client().functions.invoke("radar-catalogs", { body: {
+        action: "platform_save",
+        id: byId("radarPlatformId").value || undefined,
+        name: byId("radarPlatformName").value,
+        slug: byId("radarPlatformSlug").value,
+        description: byId("radarPlatformDescription").value,
+        active: byId("radarPlatformActive").checked,
+      } });
+      if (error) throw error;
+      if (!data?.ok) throw new Error(data?.error || "Não foi possível salvar a plataforma.");
+      await loadPlatformCatalog();
+      resetPlatformForm();
+      setPlatformAdminStatus("Plataforma salva. Os registros anteriores foram marcados para reclassificação em lotes.");
+      await loadPlatformMetrics();
+    } catch (error) {
+      const described = await describeFunctionError(error, "Não foi possível salvar a plataforma.");
+      setPlatformAdminStatus(described.message);
+    }
+  }
+
+  async function savePlatformDomainForm(event) {
+    event.preventDefault();
+    if (getUserRole?.() !== "Administrador") return setPlatformAdminStatus("Somente Administradores podem alterar o catálogo.");
+    setPlatformAdminStatus("Salvando domínio…");
+    try {
+      const { data, error } = await client().functions.invoke("radar-catalogs", { body: {
+        action: "domain_save",
+        id: byId("radarPlatformDomainId").value || undefined,
+        platformId: byId("radarPlatformDomainPlatform").value,
+        domain: byId("radarPlatformDomainName").value,
+        includeSubdomains: byId("radarPlatformIncludeSubdomains").checked,
+        active: byId("radarPlatformDomainActive").checked,
+      } });
+      if (error) throw error;
+      if (!data?.ok) throw new Error(data?.error || "Não foi possível salvar o domínio.");
+      await loadPlatformCatalog();
+      resetPlatformDomainForm();
+      setPlatformAdminStatus("Regra de domínio salva. Os registros anteriores foram marcados para reclassificação em lotes.");
+      await loadPlatformMetrics();
+    } catch (error) {
+      const described = await describeFunctionError(error, "Não foi possível salvar o domínio.");
+      setPlatformAdminStatus(described.message);
+    }
+  }
+
+  async function reclassifyPlatformBatch() {
+    const button = byId("radarPlatformReclassify");
+    if (getUserRole?.() !== "Administrador") return setPlatformAdminStatus("Somente Administradores podem reclassificar licitações.");
+    const batchSize = Number(byId("radarPlatformBatchSize")?.value || 250);
+    const maxPncpLookups = Number(byId("radarPlatformPncpLookups")?.value || 0);
+    if (!Number.isInteger(batchSize) || batchSize < 1 || batchSize > 500 || !Number.isInteger(maxPncpLookups) || maxPncpLookups < 0 || maxPncpLookups > 5) {
+      return setPlatformAdminStatus("Informe um lote entre 1 e 500 e até 5 consultas PNCP.");
+    }
+    if (button) button.disabled = true;
+    setPlatformAdminStatus("Processando reclassificação…");
+    try {
+      const { data, error } = await client().functions.invoke("radar-collector", {
+        body: { action: "reclassify_platforms", batchSize, maxPncpLookups },
+      });
+      if (error) throw error;
+      if (!data?.ok) throw new Error(data?.error || "Não foi possível executar a reclassificação.");
+      setPlatformAdminStatus(`Lote processado: ${Number(data.processed).toLocaleString("pt-BR")}; classificadas: ${Number(data.classified).toLocaleString("pt-BR")}; não identificadas: ${Number(data.unidentified).toLocaleString("pt-BR")}; consultas PNCP enfileiradas: ${Number(data.pncpRequestsQueued).toLocaleString("pt-BR")}; ainda com link para reclassificar: ${Number(data.remainingWithUrl).toLocaleString("pt-BR")}; sem link pendente: ${Number(data.remainingWithoutUrl).toLocaleString("pt-BR")}.`);
+      await loadPlatformMetrics();
+    } catch (error) {
+      const described = await describeFunctionError(error, "Não foi possível executar a reclassificação.");
+      setPlatformAdminStatus(described.message);
+    } finally {
+      if (button) button.disabled = false;
+    }
+  }
+
+  async function togglePlatformActive(id) {
+    const platform = state.platforms.find((item) => item.id === id);
+    if (!platform) return;
+    const { data, error } = await client().functions.invoke("radar-catalogs", { body: {
+      action: "platform_save", id: platform.id, name: platform.nome, slug: platform.slug,
+      description: platform.descricao || "", active: !platform.ativo,
+    } });
+    if (error || !data?.ok) throw error || new Error(data?.error || "Não foi possível alterar a plataforma.");
+    await loadPlatformCatalog();
+    await loadPlatformMetrics();
+  }
+
+  async function togglePlatformDomainActive(id) {
+    const domain = state.platformDomains.find((item) => item.id === id);
+    if (!domain) return;
+    const { data, error } = await client().functions.invoke("radar-catalogs", { body: {
+      action: "domain_save", id: domain.id, platformId: domain.plataforma_id, domain: domain.dominio,
+      includeSubdomains: domain.incluir_subdominios, active: !domain.ativo,
+    } });
+    if (error || !data?.ok) throw error || new Error(data?.error || "Não foi possível alterar a regra.");
+    await loadPlatformCatalog();
+    await loadPlatformMetrics();
+  }
+
+  function editPlatform(id) {
+    const platform = state.platforms.find((item) => item.id === id);
+    if (!platform) return;
+    byId("radarPlatformId").value = platform.id;
+    byId("radarPlatformName").value = platform.nome;
+    byId("radarPlatformSlug").value = platform.slug;
+    byId("radarPlatformDescription").value = platform.descricao || "";
+    byId("radarPlatformActive").checked = platform.ativo;
+    byId("radarPlatformName").focus();
+  }
+
+  function editPlatformDomain(id) {
+    const domain = state.platformDomains.find((item) => item.id === id);
+    if (!domain) return;
+    byId("radarPlatformDomainId").value = domain.id;
+    byId("radarPlatformDomainPlatform").value = domain.plataforma_id;
+    byId("radarPlatformDomainName").value = domain.dominio;
+    byId("radarPlatformIncludeSubdomains").checked = domain.incluir_subdominios;
+    byId("radarPlatformDomainActive").checked = domain.ativo;
+    byId("radarPlatformDomainName").focus();
+  }
+
   function resetFilters() {
     state.tags = [];
     state.selectedModalities = null;
+    state.selectedPlatformIds = null;
+    byId("radarIncludeUnidentified").checked = false;
     state.results = [];
     state.coverage = null;
     state.pagination = null;
@@ -956,6 +1216,7 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
     if (byId("radarSortDirection")) byId("radarSortDirection").value = "desc";
     renderTags();
     renderModalityOptions();
+    renderPlatformOptions();
     renderStateOptions();
     renderMunicipalityOptions();
     byId("radarTagsError").textContent = "";
@@ -969,12 +1230,17 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
     if (!root || state.bound) return;
     state.bound = true;
     root.addEventListener("submit", (event) => {
-      if (event.target?.id !== "radarSearchForm") return;
-      event.preventDefault();
-      void runSearch({ page: 1 });
+      if (event.target?.id === "radarSearchForm") {
+        event.preventDefault();
+        void runSearch({ page: 1 });
+      } else if (event.target?.id === "radarPlatformForm") {
+        void savePlatformForm(event);
+      } else if (event.target?.id === "radarPlatformDomainForm") {
+        void savePlatformDomainForm(event);
+      }
     });
     root.addEventListener("click", (event) => {
-      const target = event.target.closest("[data-radar-action], [data-radar-remove-tag], [data-radar-page], [data-radar-favorites-page], [data-radar-detail], [data-radar-favorite]");
+      const target = event.target.closest("[data-radar-action], [data-radar-remove-tag], [data-radar-page], [data-radar-favorites-page], [data-radar-detail], [data-radar-favorite], [data-platform-edit], [data-platform-toggle], [data-domain-edit], [data-domain-toggle]");
       if (!target) return;
       if (target.dataset.radarRemoveTag !== undefined) {
         const index = Number(target.dataset.radarRemoveTag);
@@ -998,6 +1264,17 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
       } else if (target.dataset.radarAction === "select-all-modalities") {
         state.selectedModalities = null;
         renderModalityOptions();
+      } else if (target.dataset.radarAction === "select-all-platforms") {
+        state.selectedPlatformIds = null;
+        renderPlatformOptions();
+      } else if (target.dataset.radarAction === "reset-platform-form") {
+        resetPlatformForm();
+      } else if (target.dataset.radarAction === "reset-domain-form") {
+        resetPlatformDomainForm();
+      } else if (target.dataset.radarAction === "reclassify-platforms") {
+        void reclassifyPlatformBatch();
+      } else if (target.dataset.radarAction === "refresh-platform-metrics") {
+        void loadPlatformMetrics();
       } else if (target.dataset.radarAction === "apply-default-period") {
         applyDefaultPeriod();
         announce(`Período padrão de ${state.defaultPeriodDays} dias aplicado ao formulário.`);
@@ -1021,6 +1298,14 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
         const result = [...state.results, ...state.favoritesResults]
           .find((item) => item.numberControlPncp === target.dataset.radarFavorite);
         if (result) void toggleFavorite(result);
+      } else if (target.dataset.platformEdit) {
+        editPlatform(target.dataset.platformEdit);
+      } else if (target.dataset.platformToggle) {
+        void togglePlatformActive(target.dataset.platformToggle).catch((error) => setPlatformAdminStatus(error?.message || "Não foi possível alterar a plataforma."));
+      } else if (target.dataset.domainEdit) {
+        editPlatformDomain(target.dataset.domainEdit);
+      } else if (target.dataset.domainToggle) {
+        void togglePlatformDomainActive(target.dataset.domainToggle).catch((error) => setPlatformAdminStatus(error?.message || "Não foi possível alterar a regra."));
       }
     });
     root.addEventListener("change", (event) => {
@@ -1038,12 +1323,28 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
           : [...selected];
         if (selected.size === 0) renderModalityOptions();
         else updateModalitySummary();
+      } else if (event.target?.matches('input[name="radarPlatform"]')) {
+        const activePlatforms = state.platforms.filter((platform) => platform.ativo);
+        const selected = state.selectedPlatformIds === null
+          ? new Set(activePlatforms.map((platform) => platform.id))
+          : new Set(state.selectedPlatformIds);
+        if (event.target.checked) selected.add(event.target.value);
+        else selected.delete(event.target.value);
+        const includeUnknown = byId("radarIncludeUnidentified")?.checked === true;
+        state.selectedPlatformIds = selected.size === activePlatforms.length || (selected.size === 0 && !includeUnknown)
+          ? null
+          : [...selected];
+        updatePlatformSummary();
+      } else if (event.target?.id === "radarIncludeUnidentified") {
+        if (!event.target.checked && state.selectedPlatformIds?.length === 0) state.selectedPlatformIds = null;
+        updatePlatformSummary();
       } else if (event.target?.id === "radarPageSize" && state.hasSearched) {
         void runSearch({ page: 1 });
       } else if (["radarSortBy", "radarSortDirection"].includes(event.target?.id) && state.hasSearched) {
         void runSearch({ page: 1 });
       }
     });
+    byId("radarPlatformSearch")?.addEventListener("input", renderPlatformOptions);
     byId("radarTagInput")?.addEventListener("keydown", (event) => {
       if (event.key === "Enter") {
         event.preventDefault();
@@ -1083,9 +1384,13 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
       state.modalities = [];
       state.states = [];
       state.municipalities = [];
+      state.platforms = [];
+      state.platformDomains = [];
+      state.platformCatalogVersion = 1;
       state.municipalityNames.clear();
       state.municipalityLoadId += 1;
       state.selectedModalities = null;
+      state.selectedPlatformIds = null;
       state.tags = [];
       state.results = [];
       state.favoriteIds.clear();
