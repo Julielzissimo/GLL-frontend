@@ -751,7 +751,8 @@
       "id": "RADAR-02-BANCO-001",
       "backend_commits": [
         "05213c2fa9cc762a7f34fd0166b601b8cd631762",
-        "b474a4ddb08b944537cd1fb5c18baee4ad93673f"
+        "b474a4ddb08b944537cd1fb5c18baee4ad93673f",
+        "d4a8a628fe1714255564211d44be1318567dfe34"
       ],
       "frontend_commits": [],
       "migrations": [
