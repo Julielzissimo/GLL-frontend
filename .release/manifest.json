@@ -521,7 +521,9 @@
       "backend_commits": [],
       "frontend_commits": [
         "e2e10b67dc539403f238f59bfc45e00e482730e3",
-        "6734398466260ca63af58410104692911a4e57a3"
+        "6734398466260ca63af58410104692911a4e57a3",
+        "c793dad2a8b9f31b13e2fdd432646531f029714b",
+        "8c9cda088f743364a3d24ebac8bf1a713f52014a"
       ],
       "migrations": []
     },
@@ -530,7 +532,9 @@
       "backend_commits": [],
       "frontend_commits": [
         "11b192a393534e24f71055539305c3e951c13e6c",
-        "b5e65a89a0189fafda9bceb42e6dfd3efb542527"
+        "b5e65a89a0189fafda9bceb42e6dfd3efb542527",
+        "4461efe7a1b67cf402a034a7dad63bbc50f9da98",
+        "1c9e1bb1ad03e75b0fe2aa72eb640c81dc7baf6f"
       ],
       "migrations": []
     },
@@ -538,7 +542,8 @@
       "id": "FRONT-2.0-ATIVIDADE-RECENTE-001",
       "backend_commits": [],
       "frontend_commits": [
-        "ae6b0793569dea5a9b0a12592c203993042d0b12"
+        "ae6b0793569dea5a9b0a12592c203993042d0b12",
+        "8c0a5da97aa6ee49adac9838cf79787108c7eabb"
       ],
       "migrations": []
     },
@@ -546,7 +551,8 @@
       "id": "FRONT-2.0-DESIGN-SYSTEM-001",
       "backend_commits": [],
       "frontend_commits": [
-        "cc5cb399ecf2ac2f4c3fd9bde5805973ec3d51c3"
+        "cc5cb399ecf2ac2f4c3fd9bde5805973ec3d51c3",
+        "8727ae96701bab05109db48d6ec0cdfd521d00f6"
       ],
       "migrations": []
     },
@@ -554,7 +560,8 @@
       "id": "FRONT-2.0-CREATOR-TAG-001",
       "backend_commits": [],
       "frontend_commits": [
-        "1ee0b1ed34de98ebe670baaabfcabc5c5d282655"
+        "1ee0b1ed34de98ebe670baaabfcabc5c5d282655",
+        "e8602807a475940e1f260c8b4dc3d88943843ac8"
       ],
       "migrations": []
     },
@@ -562,7 +569,8 @@
       "id": "FRONT-2.0-IDENTIDADE-VISUAL-GLL-001",
       "backend_commits": [],
       "frontend_commits": [
-        "7599f7dda5e74c94320658078c163549aacc4f5e"
+        "7599f7dda5e74c94320658078c163549aacc4f5e",
+        "946f7607447b490318d7e5b9c42fe45e517913f1"
       ],
       "migrations": []
     },
@@ -570,7 +578,8 @@
       "id": "FRONT-2.0-ASSINATURA-LOGO-GLL-001",
       "backend_commits": [],
       "frontend_commits": [
-        "55b499d558da320f6272a066f010ace418731ec3"
+        "55b499d558da320f6272a066f010ace418731ec3",
+        "d561015f05d324a035386fb8387d8110f47d65a3"
       ],
       "migrations": []
     },
@@ -578,7 +587,8 @@
       "id": "FRONT-2.0-CARDS-STATUS-001",
       "backend_commits": [],
       "frontend_commits": [
-        "9cfe440069bd2e81a971e362780eee0a161289c1"
+        "9cfe440069bd2e81a971e362780eee0a161289c1",
+        "b77062c77c013ca08eb4ed48a673104b636d5998"
       ],
       "migrations": []
     },
@@ -586,7 +596,8 @@
       "id": "FRONT-2.0-CABECALHOS-LICITACOES-001",
       "backend_commits": [],
       "frontend_commits": [
-        "5688677deda4a73aa270bc84df8b0461ceaf1288"
+        "5688677deda4a73aa270bc84df8b0461ceaf1288",
+        "0f8dd011a3bf4a1444128c60d453b8016b4344e5"
       ],
       "migrations": []
     },
@@ -594,7 +605,8 @@
       "id": "FRONT-2.0-USUARIOS-RESPONSIVIDADE-001",
       "backend_commits": [],
       "frontend_commits": [
-        "5f3e9bf619ff19d26b57252e37d14e195b61ab82"
+        "5f3e9bf619ff19d26b57252e37d14e195b61ab82",
+        "1e832f12a25cd46fb8d96bbba80ce3f3cc88816f"
       ],
       "migrations": []
     },
@@ -611,11 +623,14 @@
     {
       "id": "FRONT-2.0-CHAT-ORGANIZACAO-001",
       "backend_commits": [
-        "c9cd8cf4dc6fd9417055e969fdcb3010fa4db676"
+        "c9cd8cf4dc6fd9417055e969fdcb3010fa4db676",
+        "b82270f88ab2e9119c03d50c0359fb6f9a947c2a"
       ],
       "frontend_commits": [
         "bebf27dece9adf090185dc262f484d37db8caefa",
-        "263ec07b839df2eddd0524b2d2f7944cb46b9126"
+        "263ec07b839df2eddd0524b2d2f7944cb46b9126",
+        "45fd102ecb2656d10b1c7e7b276b06f47e4943ff",
+        "3a672f92c450f526e6144c89c3ffef0242e7d338"
       ],
       "migrations": [
         "supabase/migrations/20261007185817_organization_messages.sql"
@@ -624,10 +639,12 @@
     {
       "id": "FRONT-2.0-FEED-EDITAIS-001",
       "backend_commits": [
-        "2d2ea3711f2bf9bd7a2177f6302d0aa73e78870f"
+        "2d2ea3711f2bf9bd7a2177f6302d0aa73e78870f",
+        "68745f57d1b4f9a16c6f28546886644e81448fa4"
       ],
       "frontend_commits": [
-        "788fde81a7b0a55dd2d9fc9738281b3e1070be7f"
+        "788fde81a7b0a55dd2d9fc9738281b3e1070be7f",
+        "c2ad0f3232029f70ca65271ca13e383e0ea98e58"
       ],
       "migrations": [
         "supabase/migrations/20261007210000_bid_activity_feed.sql"
@@ -637,17 +654,20 @@
       "id": "FRONT-2.0-USUARIOS-CABECALHO-001",
       "backend_commits": [],
       "frontend_commits": [
-        "16d0c5a8c85afb4d074335045cff8c663fee7460"
+        "16d0c5a8c85afb4d074335045cff8c663fee7460",
+        "8f15fc6300daf0aa9c134d9fca952fbd11caf9ab"
       ],
       "migrations": []
     },
     {
       "id": "FRONT-2.0-CHAT-INTERACOES-001",
       "backend_commits": [
-        "d93e7baba63d38493762bd77d7e62c3b21c1342f"
+        "d93e7baba63d38493762bd77d7e62c3b21c1342f",
+        "9c0cc2b4402818d08cffd815d5788e76266e068c"
       ],
       "frontend_commits": [
-        "a83ff1853d2d9d595abeb1fb806d8ab65f308aa2"
+        "a83ff1853d2d9d595abeb1fb806d8ab65f308aa2",
+        "3ba3bc8e4778362de6cc61f36967c5168f56372d"
       ],
       "migrations": [
         "supabase/migrations/20261007204101_organization_message_interactions.sql"
@@ -657,7 +677,8 @@
       "id": "FRONT-2.0-CHAT-FECHAMENTO-EXTERNO-001",
       "backend_commits": [],
       "frontend_commits": [
-        "39ea96dc108f44128c892fd198b95b7e052731fe"
+        "39ea96dc108f44128c892fd198b95b7e052731fe",
+        "06d00d613633b8a58bba7b0cee9d9791a25d4806"
       ],
       "migrations": []
     },
@@ -665,7 +686,8 @@
       "id": "FRONT-2.0-CHAT-ACOES-HOVER-001",
       "backend_commits": [],
       "frontend_commits": [
-        "4d9b7aab462915eaa915aed66ef786d88bc99965"
+        "4d9b7aab462915eaa915aed66ef786d88bc99965",
+        "396bcfef14faf376a27defb86f4d1d6defa914c2"
       ],
       "migrations": []
     },
@@ -674,7 +696,9 @@
       "backend_commits": [],
       "frontend_commits": [
         "3206278feed2a01c595f49efc02185474e029eca",
-        "784f73f6c1ffa0ee22d68b1a9accf6e353c7451b"
+        "784f73f6c1ffa0ee22d68b1a9accf6e353c7451b",
+        "67d32f76b253133670207a4ad35c822ca994e4f8",
+        "3e54326f0a4183f94e0166704e6bd1dc3e76433e"
       ],
       "migrations": []
     },
@@ -694,7 +718,8 @@
       "id": "FRONT-2.0-CHAT-COMPOSER-001",
       "backend_commits": [],
       "frontend_commits": [
-        "2588c05e90859984159354b1ff58c2bdb09e7985"
+        "2588c05e90859984159354b1ff58c2bdb09e7985",
+        "508237459ae0527b39d96827071ef9b8814e1fde"
       ],
       "migrations": []
     },
@@ -702,12 +727,17 @@
       "id": "FRONT-2.0-CHAT-REALTIME-001",
       "backend_commits": [
         "6fbae46c16ca2f03282dd5fa8de1f0a0a2a9f3e6",
-        "21143a368fc3a38e7bed09f953b635973c5acb69"
+        "21143a368fc3a38e7bed09f953b635973c5acb69",
+        "b9c3c22cb7223cab1e809e6226d5a4f402fd31fb",
+        "189e71b7672b270683bdbb7015cf362364e30d7f"
       ],
       "frontend_commits": [
         "0d4ccb7d45fca098a2720e5bc4e60b3ad4554b9a",
         "1b728ecd488a4975d573737263c1d784e071e506",
-        "eec58150c769aba6cc2a25198d99df5f219a47c9"
+        "eec58150c769aba6cc2a25198d99df5f219a47c9",
+        "6d5c8206ac4d8e2649c867db2cd8d2bb2880b786",
+        "972c6ebb45db3ffcda467e12b0b6b7276a7dec82",
+        "666a0efcbeb6d39114d7b09850996dfcbf060a02"
       ],
       "migrations": [
         "supabase/migrations/20261008234851_chat_organization_messages_realtime.sql",
@@ -759,7 +789,8 @@
       "id": "FRONT-2.0-DESIGN-SYSTEM-PRODUCTION-GATE-001",
       "backend_commits": [],
       "frontend_commits": [
-        "b2fc02f6a9f6953fbef47bd7bce3ed741ba0e115"
+        "b2fc02f6a9f6953fbef47bd7bce3ed741ba0e115",
+        "ac9e00e230a8244da762ffbd6a328941b154607f"
       ],
       "migrations": []
     },
@@ -775,6 +806,32 @@
       "migrations": [
         "supabase/migrations/20261010131754_radar_catalogs_and_dynamic_contracts.sql"
       ]
+    },
+    {
+      "id": "FRONT-2.0-SELO-INTEGRIDADE-001",
+      "backend_commits": [],
+      "frontend_commits": [
+        "946f7607447b490318d7e5b9c42fe45e517913f1",
+        "36095ae05c428b57baae06ad7f5e76556047fd4f"
+      ],
+      "migrations": []
+    },
+    {
+      "id": "FRONT-2.0-DESIGN-SYSTEM-RULES-001",
+      "backend_commits": [
+        "4e22684f14ffe1b0214569bec23a1bf4bb8a5998"
+      ],
+      "frontend_commits": [],
+      "migrations": []
+    },
+    {
+      "id": "COR-INDICADORES-LICITACAO-001",
+      "backend_commits": [],
+      "frontend_commits": [
+        "0ecb57efe3f85d717fcaa0e8a981b27e09facab7",
+        "d306111859bcc2d70290a52dc47c06fc347e1307"
+      ],
+      "migrations": []
     }
   ]
 }
