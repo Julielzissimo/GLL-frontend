@@ -5,10 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net; connect-src 'self' https://*.supabase.co wss://*.supabase.co; img-src 'self' data: blob: https://*.supabase.co; frame-src 'self' blob:; style-src 'self'; font-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'; upgrade-insecure-requests" />
     <title>GLL Web</title>
-    <link rel="icon" type="image/svg+xml" href="./assets/favicon.svg" />
+    <link rel="icon" type="image/svg+xml" href="./assets/favicon.svg?v=20261007" sizes="any" />
+    <link rel="icon" type="image/png" sizes="32x32" href="./assets/favicon-32.png?v=20261007" />
+    <link rel="shortcut icon" href="./assets/favicon.ico?v=20261007" />
     <link rel="stylesheet" href="./design-system/tokens.css" />
     <link rel="stylesheet" href="./styles.css" />
     <link rel="stylesheet" href="./design-system/design-system.css" />
+    <link rel="stylesheet" href="./design-system/prototype-theme.css" />
   </head>
   <body>
     <main id="loginView" class="login-view">
@@ -86,44 +89,47 @@
 
     <main id="appView" class="app-view hidden">
       <aside id="appSidebar" class="app-sidebar" aria-label="Navegação principal">
-        <button id="homeIconButton" class="app-logo" type="button" aria-label="Ir para a visão geral">
-          <span class="brand-mark">GLL</span>
-          <strong>Licitações</strong>
-        </button>
-        <nav class="app-nav">
-          <button id="navHomeButton" class="nav-link active" type="button" data-navigation-page="home"><span aria-hidden="true" data-gll-icon="home"></span>Visão geral</button>
-          <button id="navBidsButton" class="nav-link" type="button" data-navigation-page="bids"><span aria-hidden="true" data-gll-icon="bids"></span>Licitações</button>
-          <button id="navQuotationsButton" class="nav-link" type="button" data-navigation-page="quotations"><span aria-hidden="true" data-gll-icon="quotation"></span>Orçamento</button>
-          <div id="documentsNavigationGroup" class="nav-group">
-            <button id="navDocumentsButton" class="nav-link nav-group-toggle" type="button" aria-expanded="false" aria-controls="documentsNavigationItems">
-              <span aria-hidden="true" data-gll-icon="document"></span><span class="nav-group-label">Gerar Documentos</span>
-              <svg class="nav-group-chevron" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="m9 18 6-6-6-6"></path>
-              </svg>
-            </button>
-            <div id="documentsNavigationItems" class="nav-submenu" aria-hidden="true" inert>
-              <div class="nav-submenu-inner">
-                <button id="navCommercialProposalsButton" class="nav-link nav-sublink" type="button" data-navigation-page="commercialProposals"><span class="nav-sublink-icon" aria-hidden="true" data-gll-icon="document"></span>Proposta Comercial</button>
-                <button id="navDeclarationsButton" class="nav-link nav-sublink" type="button" data-navigation-page="declarations"><span class="nav-sublink-icon" aria-hidden="true">▥</span>Declarações</button>
-              </div>
-            </div>
+        <div class="app-brand-row">
+          <button id="homeIconButton" class="app-logo" type="button" aria-label="Ir para a visão geral">
+            <img class="app-logo-image app-logo-image--full" src="./assets/gll-brand.svg" alt="" aria-hidden="true" />
+            <img class="app-logo-image app-logo-image--mark" src="./assets/gll-mark.svg" alt="" aria-hidden="true" />
+          </button>
+          <button id="closeMobileSidebarButton" class="mobile-nav-close" type="button" aria-label="Fechar menu"><span aria-hidden="true" data-gll-icon="close"></span></button>
+        </div>
+        <div id="workspaceSummary" class="workspace-summary" aria-label="Espaço de trabalho">
+          <span id="workspaceInitial" class="workspace-avatar" aria-hidden="true">LS</span>
+          <span class="workspace-copy"><small>ESPAÇO DE TRABALHO</small><strong id="workspaceName">LSMS Suprimentos</strong></span>
+          <span class="workspace-chevron" aria-hidden="true" data-gll-icon="chevronDown"></span>
+        </div>
+        <nav class="app-nav" aria-label="Áreas do GLL">
+          <div class="nav-section">
+            <span class="nav-section-label">ÁREA DE TRABALHO</span>
+            <button id="navHomeButton" class="nav-link active" type="button" title="Visão geral" data-navigation-page="home"><span class="nav-icon" aria-hidden="true" data-gll-icon="layoutDashboard"></span><span class="nav-link-label">Visão geral</span></button>
+            <button id="navBidsButton" class="nav-link" type="button" title="Licitações" data-navigation-page="bids"><span class="nav-icon" aria-hidden="true" data-gll-icon="briefcaseBusiness"></span><span class="nav-link-label">Licitações</span></button>
+            <button id="navQuotationsButton" class="nav-link" type="button" title="Orçamentos" data-navigation-page="quotations"><span class="nav-icon" aria-hidden="true" data-gll-icon="clipboardList"></span><span class="nav-link-label">Orçamentos</span></button>
           </div>
-          <button id="navSuppliersButton" class="nav-link" type="button" data-navigation-page="suppliers"><span aria-hidden="true" data-gll-icon="suppliers"></span>Fornecedores</button>
-          <button id="navUsersButton" class="nav-link" type="button" data-navigation-page="users"><span aria-hidden="true" data-gll-icon="users"></span>Usuários</button>
-          <div id="settingsNavigationGroup" class="nav-group">
-            <button id="navSettingsButton" class="nav-link nav-group-toggle" type="button" aria-expanded="false" aria-controls="settingsNavigationItems">
-              <span aria-hidden="true" data-gll-icon="settings"></span><span class="nav-group-label">Configurações</span>
-              <svg class="nav-group-chevron" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="m9 18 6-6-6-6"></path>
-              </svg>
-            </button>
-            <div id="settingsNavigationItems" class="nav-submenu" aria-hidden="true" inert>
-              <div class="nav-submenu-inner">
-                <button id="navSettingsGeneralButton" class="nav-link nav-sublink" type="button" data-navigation-page="settings">Geral</button>
-                <button id="navCompanyDataButton" class="nav-link nav-sublink" type="button" data-navigation-page="companyData">Dados da Empresa</button>
-                <button id="navDesignSystemButton" class="nav-link nav-sublink" type="button" data-navigation-page="designSystem">Design System</button>
+          <div class="nav-section">
+            <span class="nav-section-label">DOCUMENTOS</span>
+            <button id="navCommercialProposalsButton" class="nav-link" type="button" title="Propostas comerciais" data-navigation-page="commercialProposals"><span class="nav-icon" aria-hidden="true" data-gll-icon="fileText"></span><span class="nav-link-label">Propostas comerciais</span></button>
+            <button id="navDeclarationsButton" class="nav-link" type="button" title="Declarações" data-navigation-page="declarations"><span class="nav-icon" aria-hidden="true" data-gll-icon="fileCheck2"></span><span class="nav-link-label">Declarações</span></button>
+          </div>
+          <div class="nav-section">
+            <span class="nav-section-label">ADMINISTRAÇÃO</span>
+            <button id="navSuppliersButton" class="nav-link" type="button" title="Fornecedores" data-navigation-page="suppliers"><span class="nav-icon" aria-hidden="true" data-gll-icon="package"></span><span class="nav-link-label">Fornecedores</span></button>
+            <button id="navUsersButton" class="nav-link" type="button" title="Usuários" data-navigation-page="users"><span class="nav-icon" aria-hidden="true" data-gll-icon="lucideUsers"></span><span class="nav-link-label">Usuários</span></button>
+            <div id="settingsNavigationGroup" class="nav-group">
+              <button id="navSettingsButton" class="nav-link nav-group-toggle" type="button" title="Configurações" aria-expanded="false" aria-controls="settingsNavigationItems">
+                <span class="nav-icon" aria-hidden="true" data-gll-icon="settings2"></span><span class="nav-link-label">Configurações</span>
+                <span class="nav-group-chevron" aria-hidden="true" data-gll-icon="chevronDown"></span>
+              </button>
+              <div id="settingsNavigationItems" class="nav-submenu" aria-hidden="true" inert>
+                <div class="nav-submenu-inner">
+                  <button id="navSettingsGeneralButton" class="nav-link nav-sublink" type="button" data-navigation-page="settings"><span class="nav-link-label">Geral</span></button>
+                  <button id="navCompanyDataButton" class="nav-link nav-sublink" type="button" data-navigation-page="companyData"><span class="nav-link-label">Dados da Empresa</span></button>
+                </div>
               </div>
             </div>
+            <button id="navDesignSystemButton" class="nav-link" type="button" title="Design System" data-navigation-page="designSystem"><span class="nav-icon" aria-hidden="true" data-gll-icon="bookOpen"></span><span class="nav-link-label">Design System</span></button>
           </div>
         </nav>
         <div class="sidebar-footer">
@@ -136,6 +142,7 @@
           </div>
         </div>
       </aside>
+      <button id="mobileNavigationScrim" class="mobile-navigation-scrim" type="button" aria-label="Fechar menu" hidden></button>
 
       <div class="app-main">
         <header class="topbar">
@@ -148,7 +155,7 @@
               aria-controls="appSidebar"
               aria-expanded="true"
               title="Recolher menu"
-            >☰</button>
+            ><span aria-hidden="true" data-gll-icon="menu"></span></button>
             <nav class="breadcrumb-navigation" aria-label="Navegação estrutural">
               <ol id="breadcrumbList" class="breadcrumb-list">
                 <li aria-current="page"><span class="breadcrumb-current">Visão geral</span></li>
@@ -156,11 +163,19 @@
             </nav>
           </div>
           <div class="topbar-actions">
+            <button id="searchNavigationButton" class="icon-button topbar-icon-button" type="button" aria-label="Pesquisar licitações" title="Pesquisar licitações"><span aria-hidden="true" data-gll-icon="search"></span></button>
+            <button id="organizationChatButton" class="icon-button topbar-icon-button organization-chat-button" type="button" aria-label="Mensagens da organização" title="Mensagens da organização"><span aria-hidden="true" data-gll-icon="messageCircle"></span><span id="organizationChatUnreadCount" class="organization-chat-unread-count" aria-hidden="true" hidden></span></button>
+            <div id="notificationsContainer" class="notification-menu-container">
+              <button id="notificationsButton" class="icon-button topbar-icon-button" type="button" aria-label="Notificações" aria-expanded="false" aria-controls="notificationsMenu" title="Notificações">
+                <span aria-hidden="true" data-gll-icon="bell"></span><span id="notificationIndicator" class="notification-indicator" aria-hidden="true" hidden></span>
+              </button>
+              <div id="notificationsMenu" class="profile-dropdown notification-dropdown hidden" aria-label="Notificações recentes"></div>
+            </div>
             <div id="profileMenuContainer" class="profile-menu-container">
               <button id="profileMenuButton" class="topbar-profile-button" type="button" aria-label="Abrir menu do perfil" aria-expanded="false" aria-controls="profileDropdown">
                 <span id="currentUserAvatar" class="avatar" aria-hidden="true">AD</span>
                 <span class="user-info"><strong id="currentUserName">Administrador</strong><small id="currentUserRole">Administrador</small></span>
-                <svg class="profile-menu-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg>
+                <span class="profile-menu-chevron" aria-hidden="true" data-gll-icon="chevronDown"></span>
               </button>
               <div id="profileDropdown" class="profile-dropdown hidden">
                 <button id="editOwnProfileButton" type="button">Editar meu perfil</button>
@@ -205,6 +220,14 @@
                   <div id="pendingDocumentsList" class="pending-list"></div>
                 </section>
               </div>
+
+              <section class="section-band home-recent-panel" aria-labelledby="homeRecentActivityTitle">
+                <div class="panel-heading">
+                  <div><h2 id="homeRecentActivityTitle">Atualizações dos editais</h2><p>Acompanhe as ações realizadas nos editais.</p></div>
+                  <button id="viewRecentBidsButton" class="text-action" type="button">Abrir licitações →</button>
+                </div>
+                <div id="homeRecentActivitiesList" class="home-activity-feed" aria-live="polite"></div>
+              </section>
             </section>
 
             <section id="bidCatalogPage" class="content-page hidden">
@@ -919,27 +942,11 @@
       </section>
 
       <section id="usersPage" class="users-page hidden">
-        <section class="section-band users-hero">
-          <div class="users-hero-title">
-            <span class="workspace-kicker users-kicker"><span aria-hidden="true"></span>Equipe</span>
-            <h1>Usuários com acesso</h1>
-            <p>Gerencie perfis, níveis de acesso e atribuição de editais.</p>
-          </div>
-          <div class="users-hero-note">
-            <span class="users-icon-tile" aria-hidden="true">ⓘ</span>
-            <p>Cadastre os acessos da equipe e defina quais usuários poderão administrar a organização.</p>
-          </div>
-          <div class="users-total-card" aria-live="polite">
-            <span aria-hidden="true">♟</span>
-            <strong id="usersTotalLabel">0 usuários</strong>
-          </div>
-        </section>
-
         <section class="section-band users-list-panel">
           <div class="users-list-toolbar">
             <div class="users-list-heading">
               <span class="users-icon-tile" aria-hidden="true">♟</span>
-              <h2>Lista de Usuários</h2>
+              <h1>Lista de Usuários</h1>
             </div>
             <div class="users-list-controls">
               <label class="users-search-control">
@@ -957,8 +964,8 @@
                 </select>
               </label>
               <span id="userCountLabel" class="users-visible-count">0 usuários</span>
-              <button id="userCreateOpenButton" class="primary-action user-create-trigger hidden" type="button"><span aria-hidden="true">＋</span>Cadastrar usuário</button>
             </div>
+            <button id="userCreateOpenButton" class="primary-action user-create-trigger hidden" type="button"><span aria-hidden="true">＋</span>Cadastrar usuário</button>
           </div>
           <div class="table-wrap users-table-wrap">
             <table class="users-access-table">
@@ -973,22 +980,6 @@
               </thead>
               <tbody id="usersTableBody"></tbody>
             </table>
-          </div>
-        </section>
-
-        <section class="section-band users-access-guide">
-          <div class="users-guide-intro">
-            <span class="workspace-kicker users-kicker"><span aria-hidden="true"></span>Equipe</span>
-            <h2>Usuários e acessos</h2>
-            <p id="usersOrganizationLabel">Usuários vinculados à organização.</p>
-          </div>
-          <div class="users-guide-item">
-            <span class="users-guide-icon admin" aria-hidden="true">♢</span>
-            <p><strong>Administrador</strong><span>Acesso global a todos os editais e funcionalidades do sistema.</span></p>
-          </div>
-          <div class="users-guide-item">
-            <span class="users-guide-icon analyst" aria-hidden="true">♙</span>
-            <p><strong>Analista</strong><span>Acesso aos editais criados por ele ou atribuídos pelo administrador.</span></p>
           </div>
         </section>
 
@@ -1455,6 +1446,16 @@
       </div>
     </main>
 
+    <dialog id="organizationChatDialog" class="organization-chat-dialog" aria-labelledby="organizationChatTitle">
+      <div class="organization-chat-shell">
+        <header class="organization-chat-header"><div><span class="eyebrow">CONVERSA EM GRUPO</span><h2 id="organizationChatTitle">Mensagens da organização</h2><p id="organizationChatSubtitle"></p></div><button id="closeOrganizationChatButton" class="icon-button" type="button" aria-label="Fechar mensagens"><span aria-hidden="true" data-gll-icon="close"></span></button></header>
+        <div id="organizationChatMessages" class="organization-chat-messages" role="log" aria-label="Mensagens da conversa" aria-live="polite" aria-relevant="additions text"></div>
+        <div id="organizationChatTyping" class="organization-chat-typing" role="status" aria-live="polite" hidden></div>
+        <p id="organizationChatError" class="form-error organization-chat-error" role="alert"></p>
+        <form id="organizationChatForm" class="organization-chat-form"><div id="organizationChatReplyPreview" class="organization-chat-reply-preview" hidden><div><strong id="organizationChatReplyAuthor"></strong><span id="organizationChatReplyBody"></span></div><button id="organizationChatCancelReplyButton" class="icon-button" type="button" aria-label="Cancelar resposta">×</button></div><label for="organizationChatInput">Mensagem</label><div class="organization-chat-compose"><textarea id="organizationChatInput" rows="1" maxlength="2000" placeholder="Escreva uma mensagem para a equipe" required></textarea><button id="organizationChatSendButton" class="primary-action" type="submit">Enviar</button></div></form>
+      </div>
+    </dialog>
+
     <dialog id="logoutConfirmModal" class="quotation-item-discard-modal" aria-labelledby="logoutConfirmModalTitle" aria-describedby="logoutConfirmModalDescription">
       <div class="quotation-item-discard-content">
         <h2 id="logoutConfirmModalTitle">Deseja sair do sistema?</h2>
@@ -1516,6 +1517,7 @@
     <script type="module" src="./company-data.js"></script>
     <script type="module" src="./commercial-proposals.js"></script>
     <script type="module" src="./radar-catalogs.js"></script>
+    <script src="./organization-chat.js"></script>
     <script type="module" src="./app.js"></script>
   </body>
 </html>

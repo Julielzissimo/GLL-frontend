@@ -52,6 +52,7 @@ const DEFAULT_GLL_CONFIG = {
   sessionMaxLifetimeHours: 8,
   suppliersEnabled: true,
   commercialProposalsEnabled: true,
+  designSystemEnabled: true,
 };
 const GLL_CONFIG = {
   ...DEFAULT_GLL_CONFIG,
@@ -128,13 +129,13 @@ const appState = {
   currentSupplierProductId: null,
   sidebarCollapsed: false,
   appNavigationCollapsed: false,
-  documentsNavigationExpanded: false,
   settingsNavigationExpanded: false,
   bids: [],
   items: [],
   documents: [],
   failureHistory: [],
   statusHistory: [],
+  bidActivity: [],
   quotations: [],
   quotationItems: [],
   users: [],
@@ -164,11 +165,11 @@ const refs = {
   storageStatus: $("storageStatus"),
   appSidebar: $("appSidebar"),
   homeIconButton: $("homeIconButton"),
+  workspaceInitial: $("workspaceInitial"),
+  workspaceName: $("workspaceName"),
   navHomeButton: $("navHomeButton"),
   navBidsButton: $("navBidsButton"),
   navQuotationsButton: $("navQuotationsButton"),
-  navDocumentsButton: $("navDocumentsButton"),
-  documentsNavigationItems: $("documentsNavigationItems"),
   navCommercialProposalsButton: $("navCommercialProposalsButton"),
   navSuppliersButton: $("navSuppliersButton"),
   navDeclarationsButton: $("navDeclarationsButton"),
@@ -177,6 +178,13 @@ const refs = {
   settingsNavigationItems: $("settingsNavigationItems"),
   navDesignSystemButton: $("navDesignSystemButton"),
   menuToggleButton: $("menuToggleButton"),
+  closeMobileSidebarButton: $("closeMobileSidebarButton"),
+  mobileNavigationScrim: $("mobileNavigationScrim"),
+  searchNavigationButton: $("searchNavigationButton"),
+  notificationsContainer: $("notificationsContainer"),
+  notificationsButton: $("notificationsButton"),
+  notificationsMenu: $("notificationsMenu"),
+  notificationIndicator: $("notificationIndicator"),
   breadcrumbList: $("breadcrumbList"),
   profileMenuContainer: $("profileMenuContainer"),
   profileMenuButton: $("profileMenuButton"),
@@ -192,7 +200,9 @@ const refs = {
   bidCatalogPage: $("bidCatalogPage"),
   upcomingBidsList: $("upcomingBidsList"),
   pendingDocumentsList: $("pendingDocumentsList"),
+  homeRecentActivitiesList: $("homeRecentActivitiesList"),
   viewAllBidsButton: $("viewAllBidsButton"),
+  viewRecentBidsButton: $("viewRecentBidsButton"),
   homeTotalBids: $("homeTotalBids"),
   homeAnalysisBids: $("homeAnalysisBids"),
   homeDiscardedBids: $("homeDiscardedBids"),
@@ -460,11 +470,9 @@ const refs = {
   quotationItemsTableBody: $("quotationItemsTableBody"),
   quotationItemWonHeader: $("quotationItemWonHeader"),
   userCountLabel: $("userCountLabel"),
-  usersTotalLabel: $("usersTotalLabel"),
   userSearchInput: $("userSearchInput"),
   userRoleFilter: $("userRoleFilter"),
   usersTableBody: $("usersTableBody"),
-  usersOrganizationLabel: $("usersOrganizationLabel"),
   userAssignmentsModal: $("userAssignmentsModal"),
   userAssignmentsForm: $("userAssignmentsForm"),
   userAssignmentsTitle: $("userAssignmentsTitle"),
@@ -668,6 +676,8 @@ class IndexedDbStore {
     const db = await this.open();
     return this.request(db.transaction(storeName).objectStore(storeName).getAll());
   }
+
+  async getBidActivity() { return []; }
 
   async authTx(storeName, mode, callback) {
     const db = await this.openAuth();
@@ -1198,6 +1208,14 @@ class SupabaseStore {
     const query = client.from(tableName).select("*");
     const { data, error } = ["bids", "quotations"].includes(tableName) ? await query.is("deleted_at", null) : await query;
     if (tableName === "failure_history" && isMissingFailureHistoryTableError(error)) return [];
+    assertSupabase(error);
+    return data || [];
+  }
+
+  async getBidActivity() {
+    const client = await this.open();
+    const { data, error } = await client.from("bid_activity").select("*")
+      .order("created_at", { ascending: false }).order("id", { ascending: false }).limit(30);
     assertSupabase(error);
     return data || [];
   }
@@ -1780,6 +1798,14 @@ class SupabaseStore {
 }
 
 const store = createStore();
+const organizationChat = (window.GLLOrganizationChat?.createOrganizationChat || (() => ({
+  bind() {}, close() {}, handleIncomingMessage() {}, refreshUnreadCount() {}, startUnreadTracking() {}, stopUnreadTracking() {},
+})))({
+  getClient: () => (store.requiresAuthenticationBeforeData ? store.client : null),
+  getOrganizationId: () => appState.currentOrganizationId,
+  getOrganizationName: () => appState.currentOrganizationName,
+  getUserId: () => appState.currentUserAuthId,
+});
 const declarationsFeature = createDeclarationsFeature({
   getClient: () => (store.requiresAuthenticationBeforeData ? store.client : null),
   getContext: () => ({
@@ -1806,7 +1832,6 @@ const companyDataFeature = createCompanyDataFeature({
   onOrganizationUpdate: (organization) => {
     appState.currentOrganizationName = organization.name;
     appState.currentOrganizationCnpj = organization.cnpj;
-    refs.usersOrganizationLabel.textContent = organization.name;
     void declarationsFeature.refresh().catch((error) => showToast(error.message, "error"));
   },
   toast: (message, tone) => showToast(message, tone),
@@ -2032,6 +2057,7 @@ function withBlockingLoading(operation, message) {
 }
 
 function bindEvents() {
+  organizationChat.bind();
   bindPasswordVisibility();
   refs.toastDismissButton.innerHTML = GLLDesignSystem.ICONS.close;
   refs.toastDismissButton.addEventListener("click", () => {
@@ -2138,7 +2164,6 @@ function bindEvents() {
   document.querySelectorAll("[data-navigation-page]").forEach((button) => {
     button.addEventListener("click", () => setPage(button.dataset.navigationPage));
   });
-  refs.navDocumentsButton.addEventListener("click", toggleDocumentsNavigation);
   refs.navSettingsButton.addEventListener("click", toggleSettingsNavigation);
   $("openDesignSystemButton").addEventListener("click", () => setPage("designSystem"));
   $("openCompanyDataButton").addEventListener("click", () => setPage("companyData"));
@@ -2148,7 +2173,25 @@ function bindEvents() {
     button.addEventListener("click", () => clearBidForm({ openEditor: true }));
   });
   refs.viewAllBidsButton.addEventListener("click", () => setPage("bids"));
+  refs.viewRecentBidsButton.addEventListener("click", () => setPage("bids"));
   refs.menuToggleButton.addEventListener("click", toggleMainNavigation);
+  refs.closeMobileSidebarButton.addEventListener("click", closeMobileNavigation);
+  refs.mobileNavigationScrim.addEventListener("click", closeMobileNavigation);
+  refs.searchNavigationButton.addEventListener("click", () => {
+    setPage("bids");
+    requestAnimationFrame(() => refs.filterSearch.focus());
+  });
+  refs.notificationsButton.addEventListener("click", () => {
+    setNotificationsMenuOpen(refs.notificationsMenu.classList.contains("hidden"));
+  });
+  refs.notificationsContainer.addEventListener("keydown", handleNotificationsKeydown);
+  refs.notificationsMenu.addEventListener("click", handleNotificationClick);
+  document.addEventListener("pointerdown", (event) => {
+    if (!refs.notificationsContainer.contains(event.target)) setNotificationsMenuOpen(false);
+  });
+  document.addEventListener("focusin", (event) => {
+    if (!refs.notificationsContainer.contains(event.target)) setNotificationsMenuOpen(false);
+  });
   window.addEventListener("resize", updateMainNavigationState);
   window.addEventListener("resize", () => renderBreadcrumb(appState.activePage));
   refs.toggleSidebarButton.addEventListener("click", toggleSidebar);
@@ -3018,6 +3061,7 @@ async function logout() {
 }
 
 function resetAuthenticatedView() {
+  organizationChat.close();
   sessionEpoch += 1;
   stopSessionPolicyMonitoring();
   window.localStorage.removeItem(sessionPolicyStorageKey);
@@ -3054,6 +3098,10 @@ function resetAuthenticatedView() {
   refs.currentUserName.textContent = "";
   refs.currentUserRole.textContent = "";
   refs.currentUserAvatar.textContent = "";
+  refs.workspaceName.textContent = "Organização";
+  refs.workspaceInitial.textContent = "G";
+  setNotificationsMenuOpen(false);
+  updateNotificationsIndicator();
   userProfileReturnPage = "home";
   userProfileReturnFocusTarget = null;
   setSyncNotice("");
@@ -3080,29 +3128,29 @@ function updateMainNavigationState() {
   const isExpanded = isMobile
     ? refs.appView.classList.contains("mobile-nav-open")
     : !appState.appNavigationCollapsed;
-  const actionLabel = isExpanded ? "Recolher menu" : "Expandir menu";
+  const actionLabel = isMobile
+    ? isExpanded ? "Fechar menu" : "Abrir menu"
+    : isExpanded ? "Recolher menu" : "Expandir menu";
   refs.menuToggleButton.setAttribute("aria-expanded", String(isExpanded));
   refs.menuToggleButton.setAttribute("aria-label", actionLabel);
   refs.menuToggleButton.title = actionLabel;
   refs.appSidebar.setAttribute("aria-hidden", String(!isExpanded));
   refs.appSidebar.inert = !isExpanded;
+  refs.mobileNavigationScrim.hidden = !isMobile || !isExpanded;
 }
 
-function toggleDocumentsNavigation() {
-  appState.documentsNavigationExpanded = !appState.documentsNavigationExpanded;
-  updateDocumentsNavigation();
-}
-
-function updateDocumentsNavigation() {
-  const isExpanded = appState.documentsNavigationExpanded;
-  refs.navDocumentsButton.setAttribute("aria-expanded", String(isExpanded));
-  refs.navDocumentsButton.classList.remove("active");
-  refs.documentsNavigationItems.classList.toggle("is-expanded", isExpanded);
-  refs.documentsNavigationItems.setAttribute("aria-hidden", String(!isExpanded));
-  refs.documentsNavigationItems.inert = !isExpanded;
+function closeMobileNavigation() {
+  if (!isMobileNavigation()) return;
+  refs.appView.classList.remove("mobile-nav-open");
+  updateMainNavigationState();
+  refs.menuToggleButton.focus({ preventScroll: true });
 }
 
 function toggleSettingsNavigation() {
+  if (window.matchMedia("(min-width: 621px) and (max-width: 820px)").matches) {
+    setPage("settings");
+    return;
+  }
   appState.settingsNavigationExpanded = !appState.settingsNavigationExpanded;
   updateSettingsNavigation();
 }
@@ -3116,6 +3164,87 @@ function updateSettingsNavigation() {
   refs.settingsNavigationItems.inert = !isExpanded;
 }
 
+function organizationInitials(name) {
+  const parts = String(name || "").trim().split(/\s+/).filter(Boolean);
+  if (!parts.length) return "G";
+  return (parts.length === 1 ? parts[0][0] : `${parts[0][0]}${parts.at(-1)[0]}`).toLocaleUpperCase("pt-BR");
+}
+
+function navigationNotifications() {
+  const now = Date.now();
+  const endOfWeek = new Date();
+  endOfWeek.setDate(endOfWeek.getDate() + ((7 - endOfWeek.getDay()) % 7));
+  endOfWeek.setHours(23, 59, 59, 999);
+
+  const pendingDocuments = appState.documents
+    .filter((document) => !document.has_document)
+    .map((document) => ({ document, bid: appState.bids.find((row) => row.id === document.bid_id) }))
+    .filter(({ bid }) => bid)
+    .slice(0, 3);
+  const upcomingBids = appState.bids
+    .filter((bid) => {
+      const sessionTime = parseStoredDateTime(bid.session_datetime).getTime();
+      return sessionTime >= now && sessionTime <= endOfWeek.getTime();
+    })
+    .sort((a, b) => parseStoredDateTime(a.session_datetime) - parseStoredDateTime(b.session_datetime))
+    .slice(0, 3);
+
+  return [
+    ...pendingDocuments.map(({ document, bid }) => ({
+      bidId: bid.id,
+      page: "documents",
+      icon: "fileText",
+      title: `Documento pendente · ${document.document_type || "Documento"}`,
+      description: bidDisplayNumber(bid),
+    })),
+    ...upcomingBids.map((bid) => ({
+      bidId: bid.id,
+      page: "items",
+      icon: "briefcaseBusiness",
+      title: `Sessão prevista · ${bidDisplayNumber(bid)}`,
+      description: formatDateTime(bid.session_datetime),
+    })),
+  ];
+}
+
+function updateNotificationsIndicator() {
+  const count = navigationNotifications().length;
+  refs.notificationIndicator.hidden = count === 0;
+  refs.notificationsButton.setAttribute("aria-label", count ? `Notificações, ${count} itens pendentes` : "Notificações");
+}
+
+function setNotificationsMenuOpen(open) {
+  if (open) {
+    const notifications = navigationNotifications();
+    refs.notificationsMenu.innerHTML = notifications.length
+      ? `<div class="notification-menu-heading">Notificações</div>${notifications.map((notification) => `
+          <button class="notification-menu-item" type="button" data-notification-bid="${escapeHtml(notification.bidId)}" data-notification-page="${escapeHtml(notification.page)}">
+            <span class="notification-menu-icon" aria-hidden="true">${GLLDesignSystem.iconMarkup(notification.icon)}</span>
+            <span><strong>${escapeHtml(notification.title)}</strong><small>${escapeHtml(notification.description)}</small></span>
+          </button>`).join("")}`
+      : `<div class="notification-menu-heading">Notificações</div><p class="notification-menu-empty" role="status">Nenhuma notificação nova.</p>`;
+  }
+  refs.notificationsMenu.classList.toggle("hidden", !open);
+  refs.notificationsButton.setAttribute("aria-expanded", String(open));
+}
+
+function handleNotificationClick(event) {
+  const button = event.target.closest("[data-notification-bid]");
+  if (!button) return;
+  const bidId = button.dataset.notificationBid;
+  const page = button.dataset.notificationPage;
+  setNotificationsMenuOpen(false);
+  loadBid(bidId);
+  if (page === "documents") setPage("documents");
+}
+
+function handleNotificationsKeydown(event) {
+  if (event.key !== "Escape" || refs.notificationsMenu.classList.contains("hidden")) return;
+  event.preventDefault();
+  setNotificationsMenuOpen(false);
+  refs.notificationsButton.focus();
+}
+
 function normalizeUserRole(role) {
   return role === USER_ROLES.ANALYST ? USER_ROLES.ANALYST : USER_ROLES.ADMIN;
 }
@@ -3127,6 +3256,7 @@ function isCurrentUserAdmin() {
 function resolveAuthorizedPage(page) {
   if (page === "suppliers" && GLL_CONFIG.suppliersEnabled === false) return "home";
   if (page === "commercialProposals" && GLL_CONFIG.commercialProposalsEnabled === false) return "home";
+  if (page === "designSystem" && GLL_CONFIG.designSystemEnabled === false) return "home";
   if (page === "users" && !isCurrentUserAdmin()) return "home";
   if (page === "userProfile" && refs.userCreateForm.dataset.mode === "create" && !isCurrentUserAdmin()) return "home";
   if (page === "designSystem" && !isCurrentUserAdmin()) return "settings";
@@ -3169,35 +3299,35 @@ function breadcrumbItems(page) {
   }
   if (page === "commercialProposals") {
     return compact
-      ? [{ label: "Documentos" }, { label: "Proposta Comercial" }]
-      : [home, { label: "Gerar Documentos" }, { label: "Proposta Comercial" }];
+      ? [{ label: "Propostas comerciais" }]
+      : [home, { label: "Propostas comerciais" }];
   }
   if (page === "declarations") {
     return compact
       ? [{ label: "Declarações" }]
-      : [home, { label: "Gerar Documentos" }, { label: "Declarações" }];
+      : [home, { label: "Declarações" }];
   }
   if (["declarationLibrary", "declarationSettings", "declarationHistory"].includes(page)) {
     if (compact) return [{ label: "Declarações", page: "declarations" }, { label: pageLabels[page] }];
     return [
       home,
-      { label: "Gerar Documentos" },
       { label: "Declarações", page: "declarations" },
       { label: pageLabels[page] },
     ];
   }
-  if (["companyData", "designSystem"].includes(page)) {
+  if (page === "companyData") {
     if (compact) return [{ label: "Configurações", page: "settings" }, { label: pageLabels[page] }];
     return [home, { label: "Configurações", page: "settings" }, { label: pageLabels[page] }];
   }
   const topLevelLabels = {
     home: "Visão geral",
     bids: "Licitações",
-    quotations: "Orçamento",
-    commercialProposals: "Proposta Comercial",
+    quotations: "Orçamentos",
+    commercialProposals: "Propostas comerciais",
     suppliers: "Fornecedores",
     users: "Usuários",
     settings: "Configurações",
+    designSystem: "Design System",
   };
   if (compact || page === "home") return [{ label: topLevelLabels[page] || topLevelLabels.home }];
   return [home, { label: topLevelLabels[page] || topLevelLabels.home }];
@@ -3207,6 +3337,13 @@ function renderBreadcrumb(page) {
   const items = breadcrumbItems(page);
   const nodes = items.map((item, index) => {
     const listItem = document.createElement("li");
+    if (index > 0) {
+      const separator = document.createElement("span");
+      separator.className = "breadcrumb-separator";
+      separator.setAttribute("aria-hidden", "true");
+      separator.innerHTML = GLLDesignSystem.iconMarkup("chevronRight");
+      listItem.append(separator);
+    }
     if (index === items.length - 1) {
       listItem.setAttribute("aria-current", "page");
       const current = document.createElement("span");
@@ -3260,20 +3397,26 @@ function creatorTagMarkup(record) {
 
 function updateAccessInterface() {
   const showUserManagement = isCurrentUserAdmin();
+  const showDesignSystemAccess = showUserManagement && GLL_CONFIG.designSystemEnabled !== false;
   refs.navUsersButton.classList.toggle("hidden", !showUserManagement);
   refs.navUsersButton.disabled = !showUserManagement;
   refs.navUsersButton.setAttribute("aria-hidden", String(!showUserManagement));
-  refs.navDesignSystemButton.classList.toggle("hidden", !showUserManagement);
-  refs.navDesignSystemButton.setAttribute("aria-hidden", String(!showUserManagement));
-  refs.designSystemAccessCard.classList.toggle("hidden", !showUserManagement);
-  refs.designSystemAccessCard.setAttribute("aria-hidden", String(!showUserManagement));
-  refs.usersOrganizationLabel.textContent = appState.currentOrganizationName || "Organização";
+  refs.navDesignSystemButton.classList.toggle("hidden", !showDesignSystemAccess);
+  refs.navDesignSystemButton.disabled = !showDesignSystemAccess;
+  refs.navDesignSystemButton.setAttribute("aria-hidden", String(!showDesignSystemAccess));
+  refs.navDesignSystemButton.setAttribute("aria-disabled", String(!showDesignSystemAccess));
+  refs.designSystemAccessCard.classList.toggle("hidden", !showDesignSystemAccess);
+  refs.designSystemAccessCard.setAttribute("aria-hidden", String(!showDesignSystemAccess));
+  refs.workspaceName.textContent = appState.currentOrganizationName || "Organização";
+  refs.workspaceInitial.textContent = organizationInitials(appState.currentOrganizationName);
 }
 
-const DATA_KEYS = ["bids", "items", "documents", "failureHistory", "statusHistory", "quotations", "quotationItems", "users", "suppliers", "supplierProducts"];
+const DATA_KEYS = ["bids", "items", "documents", "failureHistory", "statusHistory", "bidActivity", "quotations", "quotationItems", "users", "suppliers", "supplierProducts"];
 let sessionEpoch = 0;
 let dataRequest = 0;
+let liveSubscriptionRequest = 0;
 let liveChannel = null;
+let chatBroadcastChannel = null;
 let liveTimer = null;
 let liveDebounce = null;
 let backgroundRefreshActive = false;
@@ -3311,6 +3454,7 @@ function selectedDataSignature(data) {
 
 function scheduleLiveRefresh() {
   if (!appState.authenticated || liveDebounce) return;
+  if (!document.hidden) void organizationChat.refreshUnreadCount();
   liveDebounce = setTimeout(() => {
     liveDebounce = null;
     void refreshInBackground();
@@ -3331,13 +3475,53 @@ async function refreshInBackground() {
   }
 }
 
-function startLiveUpdates() {
+async function startLiveUpdates() {
   stopLiveUpdates();
   if (!store.requiresAuthenticationBeforeData) return;
-  // Only invalidations travel over this channel. Actual records remain protected by RLS.
-  liveChannel = store.client.channel("gll-data-updates", { config: { broadcast: { self: false } } })
+  const request = ++liveSubscriptionRequest;
+  const client = store.client;
+  const organizationId = appState.currentOrganizationId;
+  const epoch = sessionEpoch;
+  void organizationChat.startUnreadTracking();
+  try {
+    await client.realtime.setAuth();
+  } catch (error) {
+    console.warn("Não foi possível atualizar a autorização dos canais Realtime.", error);
+  }
+  if (
+    request !== liveSubscriptionRequest
+    || client !== store.client
+    || epoch !== sessionEpoch
+    || !appState.authenticated
+    || organizationId !== appState.currentOrganizationId
+  ) return;
+  // Data changes and org-scoped chat events use this authenticated channel; records remain protected by RLS.
+  liveChannel = client.channel("gll-data-updates", { config: { broadcast: { self: false } } })
     .on("broadcast", { event: "data-changed" }, scheduleLiveRefresh)
-    .subscribe((status) => { if (status === "SUBSCRIBED") scheduleLiveRefresh(); });
+    .on("postgres_changes", {
+      event: "INSERT",
+      schema: "public",
+      table: "organization_messages",
+      filter: `organization_id=eq.${appState.currentOrganizationId}`,
+    }, organizationChat.handleIncomingMessage)
+    .subscribe((status, error) => {
+      if (status === "SUBSCRIBED") {
+        scheduleLiveRefresh();
+      } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
+        console.warn("A conexão Realtime do GLL falhou.", status, error);
+      }
+    });
+  if (organizationId) {
+    chatBroadcastChannel = client.channel(`organization:${organizationId}`, {
+      config: { private: true, broadcast: { self: false } },
+    })
+      .on("broadcast", { event: "organization-message-inserted" }, organizationChat.handleIncomingMessage)
+      .subscribe((status, error) => {
+        if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
+          console.warn("A conexão Realtime das mensagens da organização falhou.", status, error);
+        }
+      });
+  }
   liveTimer = setInterval(scheduleLiveRefresh, 15000);
   window.addEventListener("online", scheduleLiveRefresh);
   window.addEventListener("focus", scheduleLiveRefresh);
@@ -3345,6 +3529,7 @@ function startLiveUpdates() {
 }
 
 function stopLiveUpdates() {
+  liveSubscriptionRequest += 1;
   clearInterval(liveTimer);
   clearTimeout(liveDebounce);
   liveTimer = null;
@@ -3352,6 +3537,9 @@ function stopLiveUpdates() {
   backgroundRefreshActive = false;
   if (liveChannel) void store.client.removeChannel(liveChannel);
   liveChannel = null;
+  if (chatBroadcastChannel) void store.client.removeChannel(chatBroadcastChannel);
+  chatBroadcastChannel = null;
+  organizationChat.stopUnreadTracking();
   window.removeEventListener("online", scheduleLiveRefresh);
   window.removeEventListener("focus", scheduleLiveRefresh);
   document.removeEventListener("visibilitychange", scheduleLiveRefresh);
@@ -3363,7 +3551,7 @@ async function reloadData({ background = false } = {}) {
   const rows = await Promise.all([
     store.getAll("bids"), store.getAll("items"), store.getAll("documents"),
     store.getAll("failure_history"), store.getAll("quotations"), store.getAll("quotation_items"),
-    store.getUsers(), store.getAll("suppliers"), store.getAll("supplier_products"), store.getAll("bid_status_history"),
+    store.getUsers(), store.getAll("suppliers"), store.getAll("supplier_products"), store.getAll("bid_status_history"), store.getBidActivity(),
   ]);
   // Discard stale responses after logout, another login, or a newer refresh.
   if (epoch !== sessionEpoch || request !== dataRequest || !appState.authenticated) return;
@@ -3389,6 +3577,7 @@ async function reloadData({ background = false } = {}) {
     .map(normalizeStatusHistoryRecord)
     .filter((entry) => visibleBidIds.has(entry.bid_id))
     .sort((a, b) => String(b.changed_at).localeCompare(String(a.changed_at)));
+  next.bidActivity = (rows[10] || []).filter((entry) => visibleBidIds.has(entry.bid_id));
   next.quotations = rows[4]
     .map(normalizeQuotationRecord)
     .filter((quotation) => !quotation.deleted_at)
@@ -3412,6 +3601,7 @@ async function reloadData({ background = false } = {}) {
     setSyncNotice("O registro aberto foi alterado ou excluído em outra sessão. Seu formulário foi preservado. Reabra o registro pela lista para conferir a versão atual antes de salvar.");
   }
   Object.assign(appState, next);
+  updateNotificationsIndicator();
   updateCurrentUserProfile();
   if (appState.activePage === "userProfile") updateUserProfileAccessActions();
   renderBids();
@@ -3519,9 +3709,6 @@ function setPage(page, options = {}) {
     return;
   }
   appState.activePage = page;
-  if (["commercialProposals", ...declarationPages].includes(page)) {
-    appState.documentsNavigationExpanded = true;
-  }
   if (["settings", "companyData", "designSystem"].includes(page)) {
     appState.settingsNavigationExpanded = true;
   }
@@ -3569,7 +3756,6 @@ function setPage(page, options = {}) {
   document.querySelectorAll("[data-navigation-page]").forEach((button) => {
     button.classList.toggle("active", button.dataset.navigationPage === activeNavigationPage);
   });
-  updateDocumentsNavigation();
   updateSettingsNavigation();
   refs.appView.classList.remove("mobile-nav-open");
   updateMainNavigationState();
@@ -3940,6 +4126,23 @@ function loadBid(bidId, options = {}) {
   if (["home", "bids", "edit"].includes(appState.activePage)) setPage("items", { history: options.history });
 }
 
+function bidActivityDescription(entry) {
+  const edital = `edital ${entry.edital_number || entry.bid_id} de ${entry.buyer_agency || "órgão comprador não informado"}`;
+  return {
+    bid_created: `cadastrou o ${edital}`,
+    bid_updated: `atualizou o ${edital}`,
+    bid_deleted: `excluiu o ${edital}`,
+    file_added: `adicionou o arquivo “${entry.detail || "sem nome"}” ao ${edital}`,
+    file_removed: `excluiu o arquivo “${entry.detail || "sem nome"}” do ${edital}`,
+    status_changed: `alterou o status do ${edital} de ${entry.previous_value || "—"} para ${entry.next_value || "—"}`,
+    quotation_item_added: `adicionou o item ${entry.detail || "—"} ao orçamento do ${edital}`,
+    quotation_item_updated: `alterou o item ${entry.detail || "—"} do orçamento do ${edital}`,
+    quotation_item_removed: `excluiu o item ${entry.detail || "—"} do orçamento do ${edital}`,
+    item_won: `marcou o item ${entry.detail || "—"} como vencido no ${edital}`,
+    item_unwon: `removeu a marcação de vencido do item ${entry.detail || "—"} no ${edital}`,
+  }[entry.event_type] || `atualizou o ${edital}`;
+}
+
 function renderHomeSummary() {
   const counts = appState.bids.reduce(
     (acc, bid) => {
@@ -3961,10 +4164,6 @@ function renderHomeSummary() {
   refs.homeBilledBids.textContent = String(counts.billed);
   refs.homeDisqualifiedBids.textContent = String(counts.disqualified);
   refs.homeDisputedBids.textContent = String(counts.disputed);
-  document.querySelectorAll("[data-home-status]").forEach((button) => {
-    button.classList.toggle("active", refs.filterStatus.value === button.dataset.homeStatus);
-  });
-
   const upcoming = appState.bids
     .filter((bid) => parseStoredDateTime(bid.session_datetime).getTime() >= Date.now() - 86400000)
     .sort((a, b) => parseStoredDateTime(a.session_datetime) - parseStoredDateTime(b.session_datetime))
@@ -3998,6 +4197,25 @@ function renderHomeSummary() {
       loadBid(button.dataset.pendingBid);
       setPage("documents");
     });
+  });
+
+  refs.homeRecentActivitiesList.innerHTML = appState.bidActivity.length
+    ? appState.bidActivity.map((entry) => {
+        const actor = entry.actor_name || "Usuário";
+        const initials = actor.trim().split(/\s+/).filter(Boolean).map((part) => part[0]).filter(Boolean);
+        const user = appState.users.find((profile) => profile.auth_user_id === entry.actor_id);
+        const avatar = user?.avatar_signed_url
+          ? `<img src="${escapeHtml(user.avatar_signed_url)}" alt="" loading="lazy" decoding="async" />`
+          : escapeHtml((initials.length > 1 ? `${initials[0]}${initials.at(-1)}` : initials[0] || "?").toLocaleUpperCase("pt-BR"));
+        const action = bidActivityDescription(entry);
+        return `<button class="home-activity-entry" type="button" data-recent-activity-bid="${escapeHtml(entry.bid_id)}">
+          <span class="home-activity-avatar" aria-hidden="true">${avatar}</span>
+          <span class="home-activity-copy"><span><strong>${escapeHtml(actor)}</strong> ${escapeHtml(action)}</span><time datetime="${escapeHtml(entry.created_at)}">${escapeHtml(formatDateTime(entry.created_at))}</time></span>
+        </button>`;
+      }).join("")
+    : `<div class="empty-state compact-empty">Ainda não há atualizações de editais disponíveis.</div>`;
+  refs.homeRecentActivitiesList.querySelectorAll("[data-recent-activity-bid]").forEach((button) => {
+    button.addEventListener("click", () => loadBid(button.dataset.recentActivityBid));
   });
 }
 
@@ -5804,7 +6022,6 @@ function renderUsers() {
     const searchableText = normalizeSearchText(`${displayName} ${user.full_name || ""} ${user.email || ""}`);
     return matchesRole && (!query || searchableText.includes(query));
   });
-  refs.usersTotalLabel.textContent = totalLabel;
   refs.userCountLabel.textContent = query || roleFilter !== "all"
     ? `${visibleUsers.length} de ${totalLabel}`
     : totalLabel;
@@ -6288,6 +6505,10 @@ function attachmentMetadata(attachment) {
 
 function bidDisplayNumber(bid) {
   return String(bid?.edital_number || bid?.id || "").trim();
+}
+
+function bidActivityTimestamp(bid) {
+  return Date.parse(bid?.updated_at || bid?.created_at || "") || 0;
 }
 
 function normalizeItemRecord(record) {

@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "release_id": "2026-10-05-promocao-homolog",
+  "release_id": "2026-10-07-front-2.0-reformulacao-visual",
   "environment": "production",
   "target_branch": "main",
   "items": [
@@ -513,6 +513,207 @@
       "backend_commits": [],
       "frontend_commits": [
         "a7d278f0bdafa873ec2d36b8b16c1074d56d1f09"
+      ],
+      "migrations": []
+    },
+    {
+      "id": "FRONT-2.0-NAVBAR-001",
+      "backend_commits": [],
+      "frontend_commits": [
+        "c793dad2a8b9f31b13e2fdd432646531f029714b",
+        "8c9cda088f743364a3d24ebac8bf1a713f52014a"
+      ],
+      "migrations": []
+    },
+    {
+      "id": "USERS-INFO-001",
+      "backend_commits": [],
+      "frontend_commits": [
+        "4461efe7a1b67cf402a034a7dad63bbc50f9da98",
+        "1c9e1bb1ad03e75b0fe2aa72eb640c81dc7baf6f"
+      ],
+      "migrations": []
+    },
+    {
+      "id": "FRONT-2.0-ATIVIDADE-RECENTE-001",
+      "backend_commits": [],
+      "frontend_commits": [
+        "8c0a5da97aa6ee49adac9838cf79787108c7eabb"
+      ],
+      "migrations": []
+    },
+    {
+      "id": "FRONT-2.0-DESIGN-SYSTEM-001",
+      "backend_commits": [],
+      "frontend_commits": [
+        "8727ae96701bab05109db48d6ec0cdfd521d00f6"
+      ],
+      "migrations": []
+    },
+    {
+      "id": "FRONT-2.0-CREATOR-TAG-001",
+      "backend_commits": [],
+      "frontend_commits": [
+        "e8602807a475940e1f260c8b4dc3d88943843ac8"
+      ],
+      "migrations": []
+    },
+    {
+      "id": "FRONT-2.0-IDENTIDADE-VISUAL-GLL-001",
+      "backend_commits": [],
+      "frontend_commits": [
+        "946f7607447b490318d7e5b9c42fe45e517913f1"
+      ],
+      "migrations": []
+    },
+    {
+      "id": "FRONT-2.0-SELO-INTEGRIDADE-001",
+      "backend_commits": [],
+      "frontend_commits": [
+        "946f7607447b490318d7e5b9c42fe45e517913f1",
+        "36095ae05c428b57baae06ad7f5e76556047fd4f"
+      ],
+      "migrations": []
+    },
+    {
+      "id": "FRONT-2.0-DESIGN-SYSTEM-RULES-001",
+      "backend_commits": [
+        "4e22684f14ffe1b0214569bec23a1bf4bb8a5998"
+      ],
+      "frontend_commits": [],
+      "migrations": []
+    },
+    {
+      "id": "FRONT-2.0-ASSINATURA-LOGO-GLL-001",
+      "backend_commits": [],
+      "frontend_commits": [
+        "d561015f05d324a035386fb8387d8110f47d65a3"
+      ],
+      "migrations": []
+    },
+    {
+      "id": "FRONT-2.0-CARDS-STATUS-001",
+      "backend_commits": [],
+      "frontend_commits": [
+        "b77062c77c013ca08eb4ed48a673104b636d5998"
+      ],
+      "migrations": []
+    },
+    {
+      "id": "FRONT-2.0-CABECALHOS-LICITACOES-001",
+      "backend_commits": [],
+      "frontend_commits": [
+        "0f8dd011a3bf4a1444128c60d453b8016b4344e5"
+      ],
+      "migrations": []
+    },
+    {
+      "id": "FRONT-2.0-USUARIOS-RESPONSIVIDADE-001",
+      "backend_commits": [],
+      "frontend_commits": [
+        "1e832f12a25cd46fb8d96bbba80ce3f3cc88816f"
+      ],
+      "migrations": []
+    },
+    {
+      "id": "FRONT-2.0-CHAT-ORGANIZACAO-001",
+      "backend_commits": [
+        "b82270f88ab2e9119c03d50c0359fb6f9a947c2a"
+      ],
+      "frontend_commits": [
+        "45fd102ecb2656d10b1c7e7b276b06f47e4943ff",
+        "3a672f92c450f526e6144c89c3ffef0242e7d338"
+      ],
+      "migrations": [
+        "supabase/migrations/20261007185817_organization_messages.sql"
+      ]
+    },
+    {
+      "id": "FRONT-2.0-FEED-EDITAIS-001",
+      "backend_commits": [
+        "68745f57d1b4f9a16c6f28546886644e81448fa4"
+      ],
+      "frontend_commits": [
+        "c2ad0f3232029f70ca65271ca13e383e0ea98e58"
+      ],
+      "migrations": [
+        "supabase/migrations/20261007210000_bid_activity_feed.sql"
+      ]
+    },
+    {
+      "id": "FRONT-2.0-USUARIOS-CABECALHO-001",
+      "backend_commits": [],
+      "frontend_commits": [
+        "8f15fc6300daf0aa9c134d9fca952fbd11caf9ab"
+      ],
+      "migrations": []
+    },
+    {
+      "id": "FRONT-2.0-CHAT-INTERACOES-001",
+      "backend_commits": [
+        "9c0cc2b4402818d08cffd815d5788e76266e068c"
+      ],
+      "frontend_commits": [
+        "3ba3bc8e4778362de6cc61f36967c5168f56372d"
+      ],
+      "migrations": [
+        "supabase/migrations/20261007204101_organization_message_interactions.sql"
+      ]
+    },
+    {
+      "id": "FRONT-2.0-CHAT-FECHAMENTO-EXTERNO-001",
+      "backend_commits": [],
+      "frontend_commits": [
+        "06d00d613633b8a58bba7b0cee9d9791a25d4806"
+      ],
+      "migrations": []
+    },
+    {
+      "id": "FRONT-2.0-CHAT-ACOES-HOVER-001",
+      "backend_commits": [],
+      "frontend_commits": [
+        "396bcfef14faf376a27defb86f4d1d6defa914c2"
+      ],
+      "migrations": []
+    },
+    {
+      "id": "FRONT-2.0-CHAT-NAO-LIDAS-001",
+      "backend_commits": [],
+      "frontend_commits": [
+        "67d32f76b253133670207a4ad35c822ca994e4f8",
+        "3e54326f0a4183f94e0166704e6bd1dc3e76433e"
+      ],
+      "migrations": []
+    },
+    {
+      "id": "FRONT-2.0-CHAT-COMPOSER-001",
+      "backend_commits": [],
+      "frontend_commits": [
+        "508237459ae0527b39d96827071ef9b8814e1fde"
+      ],
+      "migrations": []
+    },
+    {
+      "id": "FRONT-2.0-CHAT-REALTIME-001",
+      "backend_commits": [
+        "b9c3c22cb7223cab1e809e6226d5a4f402fd31fb",
+        "189e71b7672b270683bdbb7015cf362364e30d7f"
+      ],
+      "frontend_commits": [
+        "6d5c8206ac4d8e2649c867db2cd8d2bb2880b786",
+        "972c6ebb45db3ffcda467e12b0b6b7276a7dec82",
+        "666a0efcbeb6d39114d7b09850996dfcbf060a02"
+      ],
+      "migrations": [
+        "supabase/migrations/20261008234851_chat_organization_messages_realtime.sql",
+        "supabase/migrations/20261009003322_organization_message_broadcast_notifications.sql"
+      ]
+    },
+    {
+      "id": "FRONT-2.0-DESIGN-SYSTEM-PRODUCTION-GATE-001",
+      "backend_commits": [],
+      "frontend_commits": [
+        "ac9e00e230a8244da762ffbd6a328941b154607f"
       ],
       "migrations": []
     }

@@ -8,6 +8,17 @@ const html = await readFile(new URL("../web/index.html", import.meta.url), "utf8
 const application = source.slice(0, source.lastIndexOf('withBlockingLoading(main, "Verificando sessão…")'));
 const user = { email: "test@example.test", name: "Teste" };
 
+test("feed descreve alterações específicas do edital e do orçamento", () => {
+  const { bidActivityDescription } = client();
+  const event = { bid_id: "bid-1", edital_number: "10/2026", buyer_agency: "Prefeitura", detail: "3", previous_value: "Em Analise", next_value: "Aprovada" };
+  assert.equal(bidActivityDescription({ ...event, event_type: "bid_updated" }), "atualizou o edital 10/2026 de Prefeitura");
+  assert.equal(bidActivityDescription({ ...event, event_type: "quotation_item_updated" }), "alterou o item 3 do orçamento do edital 10/2026 de Prefeitura");
+  assert.equal(bidActivityDescription({ ...event, event_type: "file_added" }), "adicionou o arquivo “3” ao edital 10/2026 de Prefeitura");
+  assert.equal(bidActivityDescription({ ...event, event_type: "file_removed" }), "excluiu o arquivo “3” do edital 10/2026 de Prefeitura");
+  assert.equal(bidActivityDescription({ ...event, event_type: "status_changed" }), "alterou o status do edital 10/2026 de Prefeitura de Em Analise para Aprovada");
+  assert.equal(bidActivityDescription({ ...event, event_type: "item_won" }), "marcou o item 3 como vencido no edital 10/2026 de Prefeitura");
+});
+
 test("número do edital é separado do identificador interno e aceita repetição", () => {
   const app = client();
   const first = app.normalizeBidRecord({ id: "internal-1", edital_number: "10/2026" });
@@ -150,7 +161,7 @@ function backend() {
   };
 }
 
-function client(db = backend(), auth = { session: { user } }) {
+function client(db = backend(), auth = { session: { user } }, config = {}) {
   const elements = new Map();
   const listeners = new Map();
   const timers = new Map();
@@ -194,7 +205,7 @@ function client(db = backend(), auth = { session: { user } }) {
   };
   const context = vm.createContext({
     console, URL, URLSearchParams, Intl, Date,
-    window: { GLL_CONFIG: { supabaseUrl: "https://test.invalid", supabaseAnonKey: "test", sessionIdleTimeoutMinutes: 30, sessionMaxLifetimeHours: 8 }, location, history, localStorage, ...events },
+    window: { GLL_CONFIG: { supabaseUrl: "https://test.invalid", supabaseAnonKey: "test", sessionIdleTimeoutMinutes: 30, sessionMaxLifetimeHours: 8, ...config }, location, history, localStorage, ...events },
     document: { hidden: false, getElementById: element, querySelectorAll: () => [], createElement: () => element("syncNotice"), ...events },
     setTimeout: (fn) => { timers.set(++nextTimer, fn); return nextTimer; },
     clearTimeout: (id) => timers.delete(id),
@@ -202,15 +213,17 @@ function client(db = backend(), auth = { session: { user } }) {
     clearInterval: (id) => timers.delete(id),
   });
   vm.runInContext(application, context);
-  const api = vm.runInContext(`({ store, appState, restoreSession, logout, reloadData, refreshInBackground, startLiveUpdates, stopLiveUpdates, resetAuthenticatedView, scheduleLiveRefresh, calculateBidSummary, calculateLineTotal, calculateItemProfit, calculateProfitMargin, calculateValueWithMargin, parseDecimal, parseProfitMargin, money, formatDateTime, toDateTimeInputValue, fromDateTimeInputValue, readNavigationRoute, writeNavigationRoute, resolveAuthorizedPage, normalizeBidRecord, normalizeBidAttachments, validateEditalFiles, bidDisplayNumber, bidMatchesSearch, creatorName, creatorInitials, creatorTagMarkup, normalizeQuotationRecord, normalizeQuotationItemRecord, quotationItemToBidItem, bidItemToQuotationItem, normalizeTechnicalSpecifications, quotationSaveError, sessionPolicyStorageKey, enforceSessionPolicy, availableBidQuotations })`, context);
+  const api = vm.runInContext(`({ store, appState, restoreSession, logout, reloadData, refreshInBackground, startLiveUpdates, stopLiveUpdates, resetAuthenticatedView, scheduleLiveRefresh, calculateBidSummary, calculateLineTotal, calculateItemProfit, calculateProfitMargin, calculateValueWithMargin, parseDecimal, parseProfitMargin, money, formatDateTime, toDateTimeInputValue, fromDateTimeInputValue, readNavigationRoute, writeNavigationRoute, resolveAuthorizedPage, normalizeBidRecord, normalizeBidAttachments, validateEditalFiles, bidDisplayNumber, bidMatchesSearch, bidActivityDescription, creatorName, creatorInitials, creatorTagMarkup, normalizeQuotationRecord, normalizeQuotationItemRecord, quotationItemToBidItem, bidItemToQuotationItem, normalizeTechnicalSpecifications, quotationSaveError, sessionPolicyStorageKey, enforceSessionPolicy, availableBidQuotations })`, context);
   vm.runInContext(`
     renderSuppliers = renderBids = renderDetails = renderQuotations = renderUsers = () => {};
     clearBidForm = clearQuotationForm = setPage = updateMainNavigationState = () => {};
   `, context);
   api.store.getAll = async (table) => structuredClone(db.tables[table]);
+  api.store.getBidActivity = async () => structuredClone(db.tables.bid_activity || []);
   api.store.getUsers = async () => structuredClone(db.users);
   api.store.getUser = async () => db.users[0] || null;
   api.store.client = {
+    realtime: { setAuth: async () => {} },
     functions: {
       invoke: async (name) => ({
         data: name === "password-reset-status" ? { mustChangePassword: auth.mustChangePassword === true } : { ok: true },
@@ -223,7 +236,11 @@ function client(db = backend(), auth = { session: { user } }) {
     },
     channel: () => {
       const channel = {
-        on: (_type, _filter, handler) => { channel.receive = handler; return channel; },
+        on: (type, _filter, handler) => {
+          if (type === "broadcast") channel.receive = handler;
+          else if (type === "postgres_changes") channel.receivePostgresChange = handler;
+          return channel;
+        },
         subscribe: (callback) => { db.channels.add(channel); callback("SUBSCRIBED"); return channel; },
         send: async (message) => {
           assert.deepEqual(Object.keys(message.payload), []);
@@ -243,6 +260,25 @@ function client(db = backend(), auth = { session: { user } }) {
   };
 }
 
+test("sets the Realtime JWT before subscribing to the private organization channel", async () => {
+  const app = client();
+  app.appState.authenticated = true;
+  app.appState.currentOrganizationId = "org-1";
+  const calls = [];
+  app.store.client.realtime = { setAuth: async () => { calls.push("set-auth"); } };
+  const channel = app.store.client.channel.bind(app.store.client);
+  app.store.client.channel = (topic, options) => {
+    calls.push({ topic, options });
+    return channel(topic, options);
+  };
+
+  await app.startLiveUpdates();
+
+  assert.equal(calls[0], "set-auth");
+  const privateChannel = calls.find((call) => typeof call === "object" && call.topic === "organization:org-1");
+  assert.deepEqual(JSON.parse(JSON.stringify(privateChannel.options)), { config: { private: true, broadcast: { self: false } } });
+  app.stopLiveUpdates();
+});
 test("navigation writes readable URLs without discarding unrelated parameters", () => {
   const app = client();
   app.appState.authenticated = true;
@@ -262,6 +298,14 @@ test("design system route is available to administrators and blocked for analyst
   assert.equal(app.resolveAuthorizedPage("designSystem"), "designSystem");
   app.appState.currentUserRole = "Analista";
   assert.equal(app.resolveAuthorizedPage("designSystem"), "settings");
+});
+
+test("production blocks the Design System route for every profile", () => {
+  const app = client(backend(), { session: { user } }, { designSystemEnabled: false });
+  for (const role of ["Administrador", "Analista"]) {
+    app.appState.currentUserRole = role;
+    assert.equal(app.resolveAuthorizedPage("designSystem"), "home");
+  }
 });
 
 test("quotation normalization preserves the delivery deadline", () => {
