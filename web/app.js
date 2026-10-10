@@ -79,6 +79,14 @@ const createRadarSearchFeature = window.GLLRadarSearch?.createRadarSearchFeature
   showPage: async () => undefined,
   reset: () => undefined,
 }));
+const createRadarDetailsFeature = window.GLLRadarDetails?.createRadarDetailsFeature || (() => ({
+  open: () => undefined,
+  loadFavoriteIds: async () => [],
+  loadFavoritesPage: async () => ({ results: [], favoriteIds: [], totalCount: 0, hasMore: false }),
+  setFavorite: async () => false,
+  isFavorite: () => false,
+  reset: () => undefined,
+}));
 
 const PAGE_ROUTE_NAMES = {
   home: "visao-geral",
@@ -1909,10 +1917,25 @@ const commercialProposalsFeature = createCommercialProposalsFeature({
   toast: (message, tone) => showToast(message, tone),
   runBusy: (operation, message) => withBlockingLoading(operation, message)(),
 });
-const radarSearchFeature = createRadarSearchFeature({
+let radarSearchFeature = null;
+const radarDetailsFeature = createRadarDetailsFeature({
+  getClient: () => (store.requiresAuthenticationBeforeData ? store.client : null),
+  toast: (message, tone) => showToast(message, tone),
+  onFavoriteChanged: (identifier, isFavorite) => radarSearchFeature?.syncFavorite(identifier, isFavorite),
+});
+radarSearchFeature = createRadarSearchFeature({
   getClient: () => (store.requiresAuthenticationBeforeData ? store.client : null),
   getUserRole: () => appState.currentUserRole,
   toast: (message, tone) => showToast(message, tone),
+  actions: {
+    onOpenDetails: (result) => { void radarDetailsFeature.open(result); },
+    loadFavoriteIds: (identifiers) => radarDetailsFeature.loadFavoriteIds(identifiers),
+    loadFavoritesPage: (options) => radarDetailsFeature.loadFavoritesPage(options),
+    setFavorite: (result, shouldFavorite) => radarDetailsFeature.setFavorite(result.numberControlPncp, shouldFavorite),
+    isFavorite: (identifier) => radarDetailsFeature.isFavorite(identifier),
+    syncDetailRoute: () => radarDetailsFeature.syncRoute(),
+    resetDetails: () => radarDetailsFeature.reset(),
+  },
 });
 
 const SESSION_ACTIVITY_EVENTS = ["pointerdown", "keydown", "input"];

@@ -685,9 +685,14 @@
       </section>
 
       <section id="radarSearchPage" class="users-page radar-page hidden" aria-labelledby="radarTitle">
+        <div id="radarListView">
         <div class="page-heading radar-page-heading">
           <div><span class="eyebrow">OPORTUNIDADES DO PNCP</span><h1 id="radarTitle">Radar de Licitações</h1><p>Pesquise contratações pelo objeto, com cobertura nacional e filtros oficiais do Radar.</p></div>
           <button id="radarUpdateButton" class="quiet-action radar-update-button" type="button" data-radar-action="refresh" disabled><span aria-hidden="true">↻</span> Atualizar</button>
+        </div>
+        <div class="radar-view-switch" role="group" aria-label="Visualização do Radar">
+          <button id="radarSearchViewButton" class="quiet-action compact-action" type="button" data-radar-action="show-search" aria-pressed="true">Pesquisar</button>
+          <button id="radarFavoritesViewButton" class="quiet-action compact-action" type="button" data-radar-action="show-favorites" aria-pressed="false">Favoritos</button>
         </div>
         <div class="radar-page-meta">
           <p id="radarLastUpdated">Última atualização da base: ainda não confirmada</p>
@@ -779,6 +784,20 @@
           <div id="radarResultsContent"></div>
           <nav id="radarPagination" class="radar-pagination" aria-label="Paginação dos resultados do Radar" hidden></nav>
         </section>
+        </div>
+
+        <div id="radarDetailsView" class="radar-details-view" aria-labelledby="radarDetailsTitle" hidden>
+          <div class="page-heading radar-page-heading">
+            <div><span class="eyebrow">OPORTUNIDADES DO PNCP</span><h1 id="radarDetailsTitle">Detalhes da contratação</h1><p>Dados oficiais carregados sob demanda; atualize para consultar novamente o PNCP.</p></div>
+            <div class="radar-detail-actions">
+              <button id="radarDetailsBackButton" class="quiet-action" type="button">Voltar</button>
+              <button id="radarDetailsFavoriteButton" class="quiet-action" type="button" aria-pressed="false" disabled>Favoritar</button>
+              <button id="radarDetailsRefreshButton" class="primary-action" type="button"><span aria-hidden="true">↻</span> Atualizar dados</button>
+            </div>
+          </div>
+          <p id="radarDetailsFeedback" class="radar-feedback" data-tone="info" role="status" aria-live="polite" hidden></p>
+          <div id="radarDetailsContent" class="radar-details-content"></div>
+        </div>
       </section>
 
       <section id="quotationsPage" class="users-page quotations-page hidden">
@@ -1616,6 +1635,7 @@
     <script type="module" src="./company-data.js"></script>
     <script type="module" src="./commercial-proposals.js"></script>
     <script type="module" src="./radar-catalogs.js"></script>
+    <script type="module" src="./radar-details.js"></script>
     <script type="module" src="./radar-search.js"></script>
     <script src="./organization-chat.js"></script>
     <script type="module" src="./app.js"></script>
