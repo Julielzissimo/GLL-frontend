@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "release_id": "2026-10-07-chat-interactions",
+  "release_id": "2026-10-10-radar-fase3-coletor",
   "environment": "homolog",
   "target_branch": "homolog",
   "items": [
@@ -850,6 +850,16 @@
         "0f88eeb83604e08d8169273c1a78ccd84aee6cbb"
       ],
       "migrations": []
+    },
+    {
+      "id": "RADAR-03-COLETOR-001",
+      "backend_commits": [
+        "d51db4b7f814b01dfbdf7b0e59c8f415cc7214e8"
+      ],
+      "frontend_commits": [],
+      "migrations": [
+        "supabase/migrations/20261010162217_radar_collector_incremental_sync.sql"
+      ]
     }
   ]
 }
