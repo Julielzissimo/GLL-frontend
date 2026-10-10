@@ -181,7 +181,7 @@ A saída `storybook-static/` é ignorada pelo Git e não é publicada pelo workf
 
 ## Acesso dentro do GLL
 
-Administradores acessam **Configurações → Design System**. A rota canônica usa `?page=configuracoes%2Fdesign-system`, compatível com o roteamento existente por query string. Analistas não veem o card e são redirecionados para Configurações ao tentar abrir a rota diretamente.
+Em homologação, Administradores acessam **Configurações → Design System**. A rota canônica usa `?page=configuracoes%2Fdesign-system`, compatível com o roteamento existente por query string. Analistas não veem o card e são redirecionados para Configurações ao tentar abrir a rota diretamente. Em produção, `designSystemEnabled: false` oculta o atalho e o card e redireciona tentativas de abrir a rota para a página inicial.
 
 O catálogo interno e o Storybook usam o mesmo `tokens.css`, `styles.css`, `design-system.css` e `components.js`.
 
