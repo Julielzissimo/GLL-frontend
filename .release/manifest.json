@@ -746,6 +746,14 @@
       "migrations": [
         "supabase/migrations/20261009223408_r2_file_objects_and_quota.sql"
       ]
+    },
+    {
+      "id": "FRONT-2.0-MODAL-CLOSE-001",
+      "backend_commits": [],
+      "frontend_commits": [
+        "dcdfaaf4bef483ec7974d24df4508b099d6ccf60"
+      ],
+      "migrations": []
     }
   ]
 }
