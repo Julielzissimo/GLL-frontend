@@ -47,10 +47,26 @@ test("homologação envia, lê e exclui somente um arquivo sintético no R2", as
   }, null, { timeout: 35_000 });
   let signedPutUrl = "";
   const networkFailures = [];
+  const r2Requests = new Map();
+  const browserErrors = [];
+  page.on("console", (message) => {
+    if (message.type() === "error" && /cors|failed to load resource/i.test(message.text())) {
+      browserErrors.push(message.text().replace(/https?:\/\/[^\s'"()]+/g, "[url]"));
+    }
+  });
   const devtools = await page.context().newCDPSession(page);
   await devtools.send("Network.enable");
+  devtools.on("Network.requestWillBeSent", (event) => {
+    try {
+      if (new URL(event.request.url).hostname.endsWith(".r2.cloudflarestorage.com")) {
+        r2Requests.set(event.requestId, event.request.method);
+      }
+    } catch { /* ignore non-URL browser events */ }
+  });
   devtools.on("Network.loadingFailed", (event) => {
+    if (!r2Requests.has(event.requestId)) return;
     networkFailures.push({
+      method: r2Requests.get(event.requestId),
       error: event.errorText,
       cors: event.corsErrorStatus?.corsError || "",
       blocked: event.blockedReason || "",
@@ -119,8 +135,9 @@ test("homologação envia, lê e exclui somente um arquivo sintético no R2", as
       }, { supabaseUrl: config.supabaseUrl, anonKey: config.supabaseAnonKey, accessToken: session.access_token });
     } catch (error) {
       for (const failure of networkFailures.slice(-3)) {
-        console.log(`Falha do navegador: ${failure.error}; CORS=${failure.cors || "não indicado"}; bloqueio=${failure.blocked || "não indicado"}`);
+        console.log(`Falha R2 ${failure.method}: ${failure.error}; CORS=${failure.cors || "não indicado"}; bloqueio=${failure.blocked || "não indicado"}`);
       }
+      for (const browserError of browserErrors.slice(-3)) console.log(`Console navegador: ${browserError}`);
       signedPutUrl ||= await page.evaluate(() => window.__gllR2SmokeUpload?.url || "");
       if (signedPutUrl) {
         const preflight = await page.request.fetch(signedPutUrl, {
