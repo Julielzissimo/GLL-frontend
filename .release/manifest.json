@@ -952,13 +952,15 @@
       "backend_commits": [
         "2de15b8dc1f232552b3636c4272c10d0b14cd973",
         "3c363980629d3370363e8f06a71f1f8c4545c570",
-        "f24aefbc69c631195062ca943388ba52d2adb968"
+        "f24aefbc69c631195062ca943388ba52d2adb968",
+        "91b2e1d991f9693439355cd699bfee562d23ddc5"
       ],
       "frontend_commits": [
         "96ca3b954335a17175b952c0ed6ac1a5cf5f2009"
       ],
       "migrations": [
-        "supabase/migrations/20261010223000_radar_platform_identification.sql"
+        "supabase/migrations/20261010223000_radar_platform_identification.sql",
+        "supabase/migrations/20261010235000_index_radar_platform_domains.sql"
       ]
     }
   ]
