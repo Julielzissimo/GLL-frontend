@@ -106,6 +106,7 @@
             <span class="nav-section-label">ÁREA DE TRABALHO</span>
             <button id="navHomeButton" class="nav-link active" type="button" title="Visão geral" data-navigation-page="home"><span class="nav-icon" aria-hidden="true" data-gll-icon="layoutDashboard"></span><span class="nav-link-label">Visão geral</span></button>
             <button id="navBidsButton" class="nav-link" type="button" title="Licitações" data-navigation-page="bids"><span class="nav-icon" aria-hidden="true" data-gll-icon="briefcaseBusiness"></span><span class="nav-link-label">Licitações</span></button>
+            <button id="navRadarSearchButton" class="nav-link" type="button" title="Radar de Licitações" data-navigation-page="radarSearch"><span class="nav-icon" aria-hidden="true" data-gll-icon="search"></span><span class="nav-link-label">Radar de Licitações</span></button>
             <button id="navQuotationsButton" class="nav-link" type="button" title="Orçamentos" data-navigation-page="quotations"><span class="nav-icon" aria-hidden="true" data-gll-icon="clipboardList"></span><span class="nav-link-label">Orçamentos</span></button>
           </div>
           <div class="nav-section">
@@ -681,6 +682,103 @@
 
         </section>
 
+      </section>
+
+      <section id="radarSearchPage" class="users-page radar-page hidden" aria-labelledby="radarTitle">
+        <div class="page-heading radar-page-heading">
+          <div><span class="eyebrow">OPORTUNIDADES DO PNCP</span><h1 id="radarTitle">Radar de Licitações</h1><p>Pesquise contratações pelo objeto, com cobertura nacional e filtros oficiais do Radar.</p></div>
+          <button id="radarUpdateButton" class="quiet-action radar-update-button" type="button" data-radar-action="refresh" disabled><span aria-hidden="true">↻</span> Atualizar</button>
+        </div>
+        <div class="radar-page-meta">
+          <p id="radarLastUpdated">Última atualização da base: ainda não confirmada</p>
+          <p id="radarSharedDefaultSummary">Padrão compartilhado: últimos 30 dias.</p>
+        </div>
+        <p id="radarAnnouncement" class="sr-only" role="status" aria-live="polite"></p>
+        <div id="radarCatalogFeedback" class="radar-feedback" data-tone="info" role="status" aria-live="polite" hidden></div>
+
+        <form id="radarSearchForm" class="section-band radar-search-form" novalidate>
+          <div class="radar-section-heading"><div><h2>Pesquisar contratações</h2><p>Os termos são combinados com OU e consultados somente em <code>objetoCompra</code>.</p></div></div>
+          <div class="radar-filter-grid">
+            <div class="radar-tag-field">
+              <label for="radarTagInput">Objeto da contratação</label>
+              <div class="radar-tag-entry"><input id="radarTagInput" type="text" maxlength="200" autocomplete="off" placeholder="Ex.: aquisição de computadores" aria-describedby="radarTagsHelp" /><button class="quiet-action compact-action" type="button" data-radar-action="add-tag">Adicionar termo</button></div>
+              <small id="radarTagsHelp">Pressione Enter ou separe termos por vírgula. Até 25 termos, combinados com OU.</small>
+              <ul id="radarTagList" class="radar-tag-list" aria-label="Termos adicionados à pesquisa"></ul>
+              <p id="radarTagsError" class="form-error" role="alert"></p>
+            </div>
+
+            <details id="radarModalityDetails" class="radar-modality-filter">
+              <summary><span>Modalidades</span><strong id="radarModalitySummary">Todas as modalidades ativas</strong></summary>
+              <div class="radar-modality-menu">
+                <button class="quiet-action compact-action" type="button" data-radar-action="select-all-modalities">Selecionar todas</button>
+                <div id="radarModalities" class="radar-modality-list" role="group" aria-label="Modalidades ativas"></div>
+              </div>
+            </details>
+
+            <label for="radarUf">Estado
+              <select id="radarUf"><option value="">Brasil inteiro</option></select>
+            </label>
+            <label for="radarMunicipality">Município
+              <select id="radarMunicipality" disabled><option value="">Selecione uma UF primeiro</option></select>
+              <small id="radarMunicipalityHelp">Escolha uma UF para habilitar este campo.</small>
+            </label>
+            <label for="radarPublishedFrom">Publicação a partir de
+              <input id="radarPublishedFrom" type="date" aria-describedby="radarDateError" />
+            </label>
+            <label for="radarPublishedTo">Publicação até
+              <input id="radarPublishedTo" type="date" aria-describedby="radarDateError" />
+            </label>
+            <label for="radarSituation">Situação das propostas
+              <select id="radarSituation">
+                <option value="open" selected>Recebendo propostas</option>
+                <option value="upcoming">Propostas futuras</option>
+                <option value="closed">Propostas encerradas</option>
+                <option value="unknown">Prazo não informado</option>
+                <option value="all">Todos os prazos</option>
+              </select>
+            </label>
+          </div>
+          <p id="radarDateError" class="form-error" role="alert"></p>
+          <div class="radar-form-footer">
+            <button id="radarUseDefaultPeriodButton" class="quiet-action compact-action" type="button" data-radar-action="apply-default-period">Usar período padrão</button>
+            <div class="button-row end">
+              <button class="quiet-action" type="button" data-radar-action="clear">Limpar filtros</button>
+              <button id="radarSearchButton" class="primary-action" type="submit" disabled>Pesquisar</button>
+            </div>
+          </div>
+        </form>
+
+        <details id="radarDefaultSettings" class="section-band radar-default-settings" hidden>
+          <summary>Configurações compartilhadas do Radar</summary>
+          <p>Este valor preenche o período inicial para todos os usuários ativos. Alterar as datas no formulário de pesquisa não modifica esta configuração.</p>
+          <div class="radar-default-settings-controls">
+            <label for="radarDefaultPeriodDays">Período padrão de publicação (dias)
+              <input id="radarDefaultPeriodDays" type="number" min="1" max="365" step="1" inputmode="numeric" />
+            </label>
+            <button id="radarSaveDefaultPeriodButton" class="quiet-action" type="button" data-radar-action="save-default-period">Salvar padrão compartilhado</button>
+          </div>
+          <p id="radarDefaultSettingsStatus" class="form-error" role="status" aria-live="polite"></p>
+        </details>
+
+        <section class="section-band radar-results-panel" aria-labelledby="radarResultsTitle">
+          <div class="radar-results-heading">
+            <div><h2 id="radarResultsTitle">Resultados</h2><p id="radarResultsCount" aria-live="polite">Configure os filtros para iniciar uma pesquisa.</p></div>
+            <div class="radar-results-controls">
+              <label for="radarSortBy">Ordenar por
+                <select id="radarSortBy"><option value="publishedAt">Data de publicação</option><option value="proposalEndsAt">Encerramento das propostas</option><option value="updatedAt">Atualização no PNCP</option><option value="estimatedValue">Valor estimado</option><option value="organizationName">Órgão responsável</option><option value="object">Objeto da contratação</option><option value="situationCode">Situação</option></select>
+              </label>
+              <label for="radarSortDirection">Direção
+                <select id="radarSortDirection"><option value="desc">Mais recente / maior primeiro</option><option value="asc">Mais antigo / menor primeiro</option></select>
+              </label>
+              <label for="radarPageSize">Resultados por página
+                <select id="radarPageSize"><option value="20">20</option><option value="50">50</option><option value="100">100</option></select>
+              </label>
+            </div>
+          </div>
+          <div id="radarCoverageFeedback" class="radar-feedback" data-tone="info" role="status" aria-live="polite" hidden></div>
+          <div id="radarResultsContent"></div>
+          <nav id="radarPagination" class="radar-pagination" aria-label="Paginação dos resultados do Radar" hidden></nav>
+        </section>
       </section>
 
       <section id="quotationsPage" class="users-page quotations-page hidden">
@@ -1517,6 +1615,7 @@
     <script type="module" src="./company-data.js"></script>
     <script type="module" src="./commercial-proposals.js"></script>
     <script type="module" src="./radar-catalogs.js"></script>
+    <script type="module" src="./radar-search.js"></script>
     <script src="./organization-chat.js"></script>
     <script type="module" src="./app.js"></script>
   </body>
