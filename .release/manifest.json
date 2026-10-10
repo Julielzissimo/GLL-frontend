@@ -819,6 +819,31 @@
         "f6abc3a1160586fa8e0f2485dc229e7154768241"
       ],
       "migrations": []
+    },
+    {
+      "id": "RADAR-07-IMPORTACAO-001",
+      "backend_commits": [
+        "799c6b93689d8af1840b5d6a093b3579c9ff4220",
+        "6fa9fa725a2a43129d3377b33e0ba331e65fc5b8",
+        "e3fd836e04b8f5e7f34a83e062907b018b42af87",
+        "30d9a6f95845c8a659842bd425a1a3c14cce18d9",
+        "b87b4c120cb10a36551863b0dec9d0f082d6b223",
+        "c0e41ca79e2518ddb7eb9e66897fd1934598b677",
+        "f450da3ff4d1b19e80ccfc94d8aa016ec763ee27",
+        "9a8dfd063b92e5309c20f96db9e8077520593a3b",
+        "44d247be3a0d819aff07d3515e327af23829110f",
+        "22eeee72932419de44925ac5535b9dab39d617fd",
+        "66f123fd61b37b6549a311b74a5fed022eff599d"
+      ],
+      "frontend_commits": [
+        "69dbe192aad2086b166b7bb0c7c3557ada185bbc"
+      ],
+      "migrations": [
+        "supabase/migrations/20261010203112_radar_importacao_transacional.sql",
+        "supabase/migrations/20261010205946_radar_import_lock_privilege_fix.sql",
+        "supabase/migrations/20261010211500_radar_import_rpc_definer.sql",
+        "supabase/migrations/20261010213000_radar_import_revoke_direct_insert.sql"
+      ]
     }
   ]
 }
