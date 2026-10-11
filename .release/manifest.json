@@ -753,7 +753,7 @@
         "a530bff2156e297a12ff4ab7c0e21b070dc75dc1"
       ],
       "migrations": [
-        "supabase/migrations/20261011174520_user_invitation_operations.sql"
+        "supabase/migrations/20261011180704_user_invitation_operations.sql"
       ]
     }
   ]
