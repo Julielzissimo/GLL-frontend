@@ -883,6 +883,22 @@
         "5c77535c0d679f355a305f134f276c0b58200556"
       ],
       "migrations": []
+    },
+    {
+      "id": "RADAR-12-ENRIQUECIMENTO-AUTOMATICO-001",
+      "backend_commits": [
+        "c2ee3a32b36ca36d79505cce2b95796afa3a1589",
+        "aad62830ad88bfc3c8178ec59c351bfadfd8f120",
+        "83bbc76851976199f8ad18a666223ed2917389dc",
+        "b4172d82b4e721dec235efda3fc1e0ca08cc2b30",
+        "5aeb28edb20ef86e25cd8f13367e1a9e0faa9058",
+        "4402ffbfe51d03719eed430d7430a10aa742dae9",
+        "8730ca0f899cb7efe055cb760dd48aa5a7a5f945"
+      ],
+      "frontend_commits": [],
+      "migrations": [
+        "supabase/migrations/20261011015020_radar_platform_enrichment.sql"
+      ]
     }
   ]
 }
