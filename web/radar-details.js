@@ -546,7 +546,7 @@ export function createRadarDetailsFeature({ getClient, toast = () => {}, onFavor
       return;
     }
     const loadedAt = dateTimeFormatter.format(new Date(state.data.retrievedAt));
-    content.innerHTML = `<p class="radar-detail-source">Fonte: <a href="${escapeHtml(state.data.sources.detail)}" target="_blank" rel="noopener noreferrer">API oficial do PNCP</a> · Consulta realizada em ${escapeHtml(loadedAt)}.</p>
+    content.innerHTML = `<p class="radar-detail-source">Fonte: Dados coletados em PNCP · Consulta realizada em ${escapeHtml(loadedAt)}.</p>
       ${renderGeneral(state.data.contract, state.data.sources, state.data.platform)}
       ${renderItems(state.data.items)}
       ${renderDocuments(state.data.documents)}`;
