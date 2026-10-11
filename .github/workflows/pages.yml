@@ -291,7 +291,7 @@ jobs:
 
       - name: Testar arquivo sintético no R2 de homologação
         id: r2_test
-        if: github.ref_name == 'homolog' && vars.GLL_STORAGE_PROVIDER_HOMOLOG == 'r2'
+        if: always() && github.ref_name == 'homolog' && vars.GLL_STORAGE_PROVIDER_HOMOLOG == 'r2'
         env:
           GLL_E2E_BASE_URL: ${{ needs.deploy.outputs.target_url }}
           GLL_E2E_EMAIL: ${{ secrets.GLL_E2E_EMAIL }}
