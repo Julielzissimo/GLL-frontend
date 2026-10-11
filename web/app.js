@@ -148,6 +148,10 @@ const $ = (id) => document.getElementById(id);
 
 const refs = {
   loginView: $("loginView"),
+  invitationAcceptView: $("invitationAcceptView"),
+  invitationAcceptError: $("invitationAcceptError"),
+  acceptInvitationButton: $("acceptInvitationButton"),
+  cancelInvitationButton: $("cancelInvitationButton"),
   passwordResetView: $("passwordResetView"),
   firstAccessView: $("firstAccessView"),
   firstAccessForm: $("firstAccessForm"),
@@ -156,6 +160,7 @@ const refs = {
   firstAccessFields: $("firstAccessFields"),
   firstAccessFullName: $("firstAccessFullName"),
   firstAccessDisplayName: $("firstAccessDisplayName"),
+  firstAccessUsername: $("firstAccessUsername"),
   firstAccessPassword: $("firstAccessPassword"),
   firstAccessPasswordConfirm: $("firstAccessPasswordConfirm"),
   firstAccessError: $("firstAccessError"),
@@ -508,6 +513,7 @@ const userAvatarUrlCache = new Map();
 let userProfileReturnPage = "home";
 let userProfileReturnFocusTarget = null;
 let pendingSessionRestore = null;
+let pendingInvitationAcceptance = null;
 let profilePhotoState = {
   image: null,
   objectUrl: "",
@@ -1410,14 +1416,16 @@ class SupabaseStore {
     return invokeSupabaseFunction(client, "complete-first-access", { action: "status" });
   }
 
-  async completeFirstAccess({ fullName, displayName, password }) {
+  async completeFirstAccess({ fullName, displayName, username, password, avatarBlob }) {
     const client = await this.open();
-    return invokeSupabaseFunction(client, "complete-first-access", {
-      action: "complete",
-      fullName: fullName.trim(),
-      displayName: displayName.trim(),
-      password,
-    });
+    const body = new FormData();
+    body.set("action", "complete");
+    body.set("fullName", fullName);
+    body.set("displayName", displayName);
+    body.set("username", username);
+    body.set("password", password);
+    if (avatarBlob) body.set("avatar", avatarBlob, "profile.webp");
+    return invokeSupabaseFunction(client, "complete-first-access", body);
   }
 
   async setUserAccess({ targetUserId, action, reason, temporaryPassword }) {
@@ -2014,8 +2022,8 @@ async function main() {
       }
     });
     try {
-      await consumeInvitationCallback();
-      await restoreSession();
+      const hasPendingInvitation = await consumeInvitationCallback();
+      if (!hasPendingInvitation) await restoreSession();
     } catch (error) {
       setLoginMessage("Não foi possível recuperar sua sessão. Verifique a conexão e tente novamente.");
     }
@@ -2032,19 +2040,81 @@ async function consumeInvitationCallback() {
   const params = new URLSearchParams(hash);
   if (params.get("type") !== "invite") return false;
 
+  const tokenHash = params.get("gll_invite") || "";
   const accessToken = params.get("access_token") || "";
   const refreshToken = params.get("refresh_token") || "";
   window.history.replaceState({}, document.title, `${window.location.pathname}${window.location.search}`);
-  if (!accessToken || !refreshToken) {
-    setLoginMessage("O link de convite está incompleto. Solicite um novo convite ao administrador.");
-    return true;
+  pendingInvitationAcceptance = tokenHash
+    ? { kind: "token_hash", tokenHash }
+    : accessToken && refreshToken
+      ? { kind: "session", accessToken, refreshToken }
+      : null;
+  showInvitationAcceptView(pendingInvitationAcceptance
+    ? ""
+    : "Este link está incompleto ou expirou. Solicite um novo convite ao administrador.");
+  return true;
+}
+
+function showInvitationAcceptView(message = "") {
+  refs.loginView.classList.add("hidden");
+  refs.passwordResetView.classList.add("hidden");
+  refs.firstAccessView.classList.add("hidden");
+  refs.appView.classList.add("hidden");
+  refs.invitationAcceptView.classList.remove("hidden");
+  refs.invitationAcceptError.textContent = message;
+  refs.acceptInvitationButton.disabled = !pendingInvitationAcceptance;
+  refs.acceptInvitationButton.focus();
+}
+
+async function handleInvitationAcceptance(event) {
+  refs.invitationAcceptError.textContent = "";
+  if (!event?.isTrusted) {
+    refs.invitationAcceptError.textContent = "Clique em Confirmar convite e continuar para validar o link.";
+    return;
+  }
+  if (!(store instanceof SupabaseStore) || !pendingInvitationAcceptance) {
+    refs.invitationAcceptError.textContent = "Este link está incompleto ou expirou. Solicite um novo convite ao administrador.";
+    refs.acceptInvitationButton.disabled = true;
+    return;
   }
 
-  const { error } = await store.client.auth.setSession({ access_token: accessToken, refresh_token: refreshToken });
-  if (error) {
-    setLoginMessage("O link de convite expirou ou já foi usado. Solicite um novo convite ao administrador.");
+  let error = null;
+  if (pendingInvitationAcceptance.kind === "token_hash") {
+    ({ error } = await store.client.auth.verifyOtp({
+      token_hash: pendingInvitationAcceptance.tokenHash,
+      type: "invite",
+    }));
+  } else {
+    ({ error } = await store.client.auth.setSession({
+      access_token: pendingInvitationAcceptance.accessToken,
+      refresh_token: pendingInvitationAcceptance.refreshToken,
+    }));
   }
-  return true;
+  if (error) {
+    refs.invitationAcceptError.textContent = "Este convite expirou ou já foi usado. Solicite um novo convite ao administrador.";
+    return;
+  }
+
+  pendingInvitationAcceptance = null;
+  refs.invitationAcceptView.classList.add("hidden");
+  await restoreSession();
+  if (refs.firstAccessView.classList.contains("hidden") && !appState.authenticated) {
+    refs.invitationAcceptError.textContent = "Não foi possível confirmar os dados deste convite. Contate o administrador.";
+    refs.invitationAcceptView.classList.remove("hidden");
+  }
+}
+
+async function handleCancelInvitationAcceptance() {
+  pendingInvitationAcceptance = null;
+  refs.invitationAcceptView.classList.add("hidden");
+  resetAuthenticatedView();
+  if (store instanceof SupabaseStore) {
+    try {
+      await restoreSession();
+    } catch {
+      setLoginMessage("Não foi possível recuperar sua sessão. Verifique a conexão e tente novamente.");
+    }
+  }
 }
 
 function applyEnvironmentConfig() {
@@ -2165,6 +2235,8 @@ function bindEvents() {
   bindAutoGrowTextareas(refs.supplierProductForm);
   document.getElementById("blockingLoadingModal").addEventListener("cancel", (event) => event.preventDefault());
   refs.loginForm.addEventListener("submit", withBlockingLoading(handleLogin, "Entrando no sistema…"));
+  refs.acceptInvitationButton.addEventListener("click", withBlockingLoading(handleInvitationAcceptance, "Validando convite…"));
+  refs.cancelInvitationButton.addEventListener("click", handleCancelInvitationAcceptance);
   refs.passwordResetForm.addEventListener("submit", withBlockingLoading(handlePasswordReset, "Atualizando sua senha…"));
   refs.passwordResetSignOutButton.addEventListener("click", logout);
   refs.firstAccessForm.addEventListener("submit", withBlockingLoading(handleFirstAccessCompletion, "Configurando seu acesso…"));
@@ -2187,6 +2259,14 @@ function bindEvents() {
   refs.userCreateForm.addEventListener("submit", withBlockingLoading(handleUserCreate, "Salvando perfil…"));
   refs.firstAccessFullName.addEventListener("input", updateProfilePhotoFallback);
   refs.firstAccessDisplayName.addEventListener("input", updateProfilePhotoFallback);
+  refs.firstAccessUsername.addEventListener("input", () => {
+    refs.firstAccessUsername.value = refs.firstAccessUsername.value.toLowerCase().replace(/\s+/gu, "");
+    refs.firstAccessUsername.removeAttribute("aria-invalid");
+  });
+  refs.firstAccessFullName.addEventListener("input", () => refs.firstAccessFullName.removeAttribute("aria-invalid"));
+  refs.firstAccessDisplayName.addEventListener("input", () => refs.firstAccessDisplayName.removeAttribute("aria-invalid"));
+  refs.firstAccessPassword.addEventListener("input", () => refs.firstAccessPassword.removeAttribute("aria-invalid"));
+  refs.firstAccessPasswordConfirm.addEventListener("input", () => refs.firstAccessPasswordConfirm.removeAttribute("aria-invalid"));
   refs.toggleOwnPasswordButton.addEventListener("click", () => setOwnPasswordEditorOpen(refs.ownPasswordForm.classList.contains("hidden")));
   refs.cancelOwnPasswordButton.addEventListener("click", () => {
     setOwnPasswordEditorOpen(false);
@@ -3044,6 +3124,7 @@ async function handleUserAccessChange(event) {
 
 function showPasswordResetView(email) {
   resetAuthenticatedView();
+  refs.invitationAcceptView.classList.add("hidden");
   refs.loginView.classList.add("hidden");
   refs.firstAccessView.classList.add("hidden");
   refs.passwordResetView.classList.remove("hidden");
@@ -3061,6 +3142,7 @@ function moveProfilePhotoEditor(target) {
 
 function showFirstAccessView(status) {
   refs.loginView.classList.add("hidden");
+  refs.invitationAcceptView.classList.add("hidden");
   refs.passwordResetView.classList.add("hidden");
   refs.appView.classList.add("hidden");
   refs.firstAccessView.classList.remove("hidden");
@@ -3086,47 +3168,67 @@ async function handleFirstAccessCompletion(event) {
     refs.firstAccessError.textContent = "Não foi possível validar a sessão do convite.";
     return;
   }
-  if (refs.firstAccessPassword.value !== refs.firstAccessPasswordConfirm.value) {
-    refs.firstAccessError.textContent = "As senhas não coincidem.";
-    refs.firstAccessPasswordConfirm.setAttribute("aria-invalid", "true");
+  const fullName = refs.firstAccessFullName.value.trim().replace(/\s+/gu, " ");
+  const displayName = refs.firstAccessDisplayName.value.trim().replace(/\s+/gu, " ");
+  const username = refs.firstAccessUsername.value.trim().toLowerCase();
+  const password = refs.firstAccessPassword.value;
+  const fullNamePattern = /^[\p{L}\p{M}][\p{L}\p{M} .’'-]*[\p{L}\p{M}.]$/u;
+  const usernamePattern = /^[a-z0-9][a-z0-9._-]{1,28}[a-z0-9]$/;
+  const reservedUsernames = new Set([
+    "admin", "administrator", "administrador", "administracao", "api", "auth", "gll",
+    "help", "login", "logout", "null", "profile", "root", "security", "signup",
+    "suporte", "support", "system", "undefined", "user", "users", "usuario", "usuarios",
+  ]);
+  const failField = (field, message) => {
+    refs.firstAccessError.textContent = message;
+    field.setAttribute("aria-invalid", "true");
+    field.focus();
+  };
+
+  if (fullName.length < 2 || fullName.length > 160 || !fullNamePattern.test(fullName)) {
+    failField(refs.firstAccessFullName, "Informe seu nome completo usando letras, espaços, hífen, apóstrofo ou ponto.");
     return;
   }
-  const fullName = refs.firstAccessFullName.value.trim();
-  const displayName = refs.firstAccessDisplayName.value.trim();
-  if (fullName.length < 2 || displayName.length < 2) {
-    refs.firstAccessError.textContent = "Informe seu nome completo e seu nome de exibição.";
+  if (displayName.length < 2 || displayName.length > 100 || /\p{Cc}/u.test(displayName)) {
+    failField(refs.firstAccessDisplayName, "Informe um nome de exibição entre 2 e 100 caracteres.");
+    return;
+  }
+  if (!usernamePattern.test(username)) {
+    failField(refs.firstAccessUsername, "Use de 3 a 30 letras minúsculas, números, ponto, hífen ou sublinhado; comece e termine com letra ou número.");
+    return;
+  }
+  if (reservedUsernames.has(username)) {
+    failField(refs.firstAccessUsername, "Este nome de usuário é reservado. Escolha outro.");
+    return;
+  }
+  if (new TextEncoder().encode(password).length < 8 || new TextEncoder().encode(password).length > 72) {
+    failField(refs.firstAccessPassword, "A senha deve ter entre 8 e 72 bytes.");
+    return;
+  }
+  if (password !== refs.firstAccessPasswordConfirm.value) {
+    failField(refs.firstAccessPasswordConfirm, "As senhas não coincidem.");
     return;
   }
 
-  let avatarBlob;
+  let avatarBlob = null;
   try {
     avatarBlob = await prepareProfilePhotoBlob();
     await store.completeFirstAccess({
       fullName,
       displayName,
-      password: refs.firstAccessPassword.value,
+      username,
+      password,
+      avatarBlob,
     });
   } catch (error) {
     refs.firstAccessError.textContent = error.message;
+    if (/nome de usuário já está em uso/i.test(error.message)) {
+      refs.firstAccessUsername.setAttribute("aria-invalid", "true");
+      refs.firstAccessUsername.focus();
+    }
     return;
   }
 
-  let photoMessage = "";
-  if (avatarBlob) {
-    try {
-      const { data, error } = await store.client.auth.getUser();
-      assertSupabase(error);
-      if (!data.user?.id) throw new Error("A sessão do convite expirou.");
-      await store.updateUserProfile({
-        targetAuthUserId: data.user.id,
-        fullName,
-        displayName,
-        avatarBlob,
-      });
-    } catch {
-      photoMessage = " A foto não pôde ser salva; você poderá adicioná-la ao editar seu perfil.";
-    }
-  }
   refs.firstAccessForm.reset();
   moveProfilePhotoEditor("profile");
   refs.profilePhotoEditor.classList.add("hidden");
@@ -3136,7 +3238,7 @@ async function handleFirstAccessCompletion(event) {
     // A configuração foi salva; se a sessão não retomar, o usuário pode entrar com a nova senha.
   }
   if (appState.authenticated) {
-    showToast(`Acesso configurado.${photoMessage}`);
+    showToast("Seu acesso foi configurado com sucesso. Bem-vindo ao GLL!");
   } else {
     await returnToLoginAfterPasswordReset();
   }
@@ -3205,6 +3307,7 @@ async function enterAuthenticatedView(user) {
     updateCurrentUserProfile();
     refs.currentUserRole.textContent = appState.currentUserRole;
     refs.loginView.classList.add("hidden");
+    refs.invitationAcceptView.classList.add("hidden");
     refs.passwordResetView.classList.add("hidden");
     refs.firstAccessView.classList.add("hidden");
     refs.appView.classList.remove("hidden");
@@ -3233,6 +3336,7 @@ async function logout() {
 }
 
 function resetAuthenticatedView() {
+  pendingInvitationAcceptance = null;
   organizationChat.close();
   sessionEpoch += 1;
   stopSessionPolicyMonitoring();
@@ -3247,6 +3351,7 @@ function resetAuthenticatedView() {
   appState.currentOrganizationName = null;
   appState.currentOrganizationCnpj = null;
   refs.appView.classList.add("hidden");
+  refs.invitationAcceptView.classList.add("hidden");
   refs.passwordResetView.classList.add("hidden");
   refs.firstAccessView.classList.add("hidden");
   refs.loginView.classList.remove("hidden");
