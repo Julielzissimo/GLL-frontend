@@ -955,6 +955,22 @@
         "77d613cc1c528d050e26bd3bd5c58a96dd7e06ad"
       ],
       "migrations": []
+    },
+    {
+      "id": "RADAR-19-FASE-1-PERSISTENCIA-SYNC-ITENS-001",
+      "backend_commits": [
+        "7c33f442b082073aad4a105211c3bb5962c1bac3",
+        "d5e46940e58f00d0bb6715c13a8e1a37634b17b8",
+        "6e3c47b2dd4775a67f94bd6420f8c25018ec48ca",
+        "be4f2c269e5de04cb20a5b7ea46edb5492340cd3",
+        "3944f464233bc45cc1147f0af2667793f40a9ffe",
+        "27852a54810c3e0139c78f026961eb559aa11953",
+        "ae30c8920b8f15151f5d166b05ffb9d7781b0a7f"
+      ],
+      "frontend_commits": [],
+      "migrations": [
+        "supabase/migrations/20261011180000_radar_item_cache_async_sync.sql"
+      ]
     }
   ]
 }
