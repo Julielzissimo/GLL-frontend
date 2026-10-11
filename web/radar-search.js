@@ -355,38 +355,18 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
     }
   }
 
-  function updatePlatformSummary() {
-    const summary = byId("radarPlatformSummary");
-    if (!summary) return;
-    if (state.selectedPlatformIds === null) {
-      summary.textContent = "Todas as plataformas";
-      return;
-    }
-    const selected = state.platforms.filter((platform) => state.selectedPlatformIds.includes(platform.id));
-    const names = selected.map((platform) => platform.nome);
-    const includeUnknown = byId("radarIncludeUnidentified")?.checked === true;
-    if (!names.length && includeUnknown) summary.textContent = "Somente não identificadas";
-    else if (!names.length) summary.textContent = "Todas as plataformas";
-    else if (names.length <= 2) summary.textContent = names.join(", ");
-    else summary.textContent = `${names.length} plataformas${includeUnknown ? " e não identificadas" : ""}`;
-    if (names.length <= 2 && includeUnknown && names.length) summary.textContent += " + não identificadas";
-  }
-
   function renderPlatformOptions() {
     const list = byId("radarPlatforms");
     if (!list) return;
-    const search = String(byId("radarPlatformSearch")?.value || "").trim().toLocaleLowerCase("pt-BR");
     const active = state.platforms.filter((platform) => platform.ativo);
     const selected = state.selectedPlatformIds === null
       ? new Set(active.map((platform) => platform.id))
       : new Set(state.selectedPlatformIds);
-    const visible = active.filter((platform) => !search || platform.nome.toLocaleLowerCase("pt-BR").includes(search));
-    list.innerHTML = visible.length ? visible.map((platform) => `
+    list.innerHTML = active.length ? active.map((platform) => `
       <label class="radar-modality-option">
         <input type="checkbox" name="radarPlatform" value="${escapeHtml(platform.id)}"${selected.has(platform.id) ? " checked" : ""} />
         <span>${escapeHtml(platform.nome)}</span>
-      </label>`).join("") : '<p class="radar-empty-state">Nenhuma plataforma corresponde à pesquisa.</p>';
-    updatePlatformSummary();
+      </label>`).join("") : '<p class="radar-empty-state">Nenhuma plataforma ativa disponível.</p>';
   }
 
   function renderPlatformAdmin() {
@@ -648,7 +628,6 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
 
   function renderResultCard(result) {
     const object = String(result.object || "Objeto não informado");
-    const excerpt = object.length > 220 ? `${object.slice(0, 217).trimEnd()}…` : object;
     const number = result.procurementNumber || result.numberControlPncp || "—";
     const year = result.year ? `/${escapeHtml(result.year)}` : "";
     const receipt = RECEIPT_STATUS_LABELS[result.proposalReceiptStatus] || RECEIPT_STATUS_LABELS.unknown;
@@ -657,7 +636,7 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
       ? `<small>${escapeHtml(result.administrativeUnitName)}</small>` : "";
     return `<article class="radar-result-card">
       <div class="radar-result-card-heading">
-        <div><p class="radar-result-number"><strong>Edital ${escapeHtml(number)}${year}</strong><span>PNCP ${escapeHtml(result.numberControlPncp || "—")}</span></p><h3>${escapeHtml(excerpt)}</h3>${object.length > 220 ? `<details class="radar-object-details"><summary>Ver objeto completo</summary><p>${escapeHtml(object)}</p></details>` : ""}</div>
+        <div><p class="radar-result-number"><strong>Edital ${escapeHtml(number)}${year}</strong><span>PNCP ${escapeHtml(result.numberControlPncp || "—")}</span></p><h3 class="radar-result-object">${escapeHtml(object)}</h3><details class="radar-object-details" hidden><summary>Ver objeto completo</summary><p>${escapeHtml(object)}</p></details></div>
         <span class="radar-receipt-status" data-status="${escapeHtml(result.proposalReceiptStatus || "unknown")}">${escapeHtml(receipt)}</span>
       </div>
       <dl class="radar-result-fields">
@@ -670,6 +649,18 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
       </dl>
       <div class="radar-result-card-footer"><div class="radar-result-value"><small>Valor estimado</small><strong>${escapeHtml(formatMoney(result.estimatedValue))}</strong></div>${renderResultActions(result)}</div>
     </article>`;
+  }
+
+  function updateResultObjectDisclosures() {
+    root?.querySelectorAll(".radar-result-object").forEach((heading) => {
+      heading.classList.remove("is-truncated");
+      const style = window.getComputedStyle(heading);
+      const lineHeight = Number.parseFloat(style.lineHeight) || Number.parseFloat(style.fontSize) * 1.4;
+      const shouldTruncate = heading.scrollHeight > lineHeight * 2 + 1;
+      heading.classList.toggle("is-truncated", shouldTruncate);
+      const disclosure = heading.nextElementSibling;
+      if (disclosure?.matches(".radar-object-details")) disclosure.hidden = !shouldTruncate;
+    });
   }
 
   function renderPagination() {
@@ -758,6 +749,7 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
       const total = Number(state.favoritesPagination?.totalCount ?? rows.length);
       if (count) count.textContent = `${total.toLocaleString("pt-BR")} licitações favoritas nesta conta.`;
       target.innerHTML = `<div class="radar-result-list">${rows.map(renderResultCard).join("")}</div>`;
+      updateResultObjectDisclosures();
       renderPagination();
       renderCoverage();
       return;
@@ -790,6 +782,7 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
         : `${Number(state.pagination.totalCount).toLocaleString("pt-BR")} licitações encontradas.`;
     }
     target.innerHTML = `<div class="radar-result-list">${rows.map(renderResultCard).join("")}</div>`;
+    updateResultObjectDisclosures();
     renderPagination();
     renderCoverage();
   }
@@ -1193,9 +1186,6 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
       } else if (target.dataset.radarFavoritesPage !== undefined) {
         const page = Number(target.dataset.radarFavoritesPage);
         if (page >= 1 && page !== state.favoritesPage) void loadFavoritesPage(page);
-      } else if (target.dataset.radarAction === "add-tag") {
-        collectPendingTags();
-        byId("radarTagInput").focus();
       } else if (target.dataset.radarAction === "clear") {
         resetFilters();
       } else if (target.dataset.radarAction === "reload-catalogs") {
@@ -1266,17 +1256,22 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
         state.selectedPlatformIds = selected.size === activePlatforms.length || (selected.size === 0 && !includeUnknown)
           ? null
           : [...selected];
-        updatePlatformSummary();
       } else if (event.target?.id === "radarIncludeUnidentified") {
         if (!event.target.checked && state.selectedPlatformIds?.length === 0) state.selectedPlatformIds = null;
-        updatePlatformSummary();
       } else if (event.target?.id === "radarPageSize" && state.hasSearched) {
         void runSearch({ page: 1 });
       } else if (["radarSortBy", "radarSortDirection"].includes(event.target?.id) && state.hasSearched) {
         void runSearch({ page: 1 });
       }
     });
-    byId("radarPlatformSearch")?.addEventListener("input", renderPlatformOptions);
+    let resultDisclosureFrame = 0;
+    window.addEventListener("resize", () => {
+      if (resultDisclosureFrame) window.cancelAnimationFrame(resultDisclosureFrame);
+      resultDisclosureFrame = window.requestAnimationFrame(() => {
+        resultDisclosureFrame = 0;
+        updateResultObjectDisclosures();
+      });
+    });
     byId("radarTagInput")?.addEventListener("keydown", (event) => {
       if (event.key === "Enter") {
         event.preventDefault();

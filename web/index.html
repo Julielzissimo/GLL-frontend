@@ -708,9 +708,8 @@
           <div class="radar-filter-grid">
             <div class="radar-tag-field">
               <label for="radarTagInput">Objeto da contratação</label>
-              <div class="radar-tag-entry"><input id="radarTagInput" type="text" maxlength="200" autocomplete="off" placeholder="Ex.: aquisição de computadores" aria-describedby="radarTagsHelp" /><button class="quiet-action compact-action" type="button" data-radar-action="add-tag">Adicionar termo</button></div>
-              <small id="radarTagsHelp">Pressione Enter ou separe termos por vírgula. Até 25 termos, combinados com OU.</small>
-              <ul id="radarTagList" class="radar-tag-list" aria-label="Termos adicionados à pesquisa"></ul>
+              <div class="radar-tag-entry"><ul id="radarTagList" class="radar-tag-list" aria-label="Termos adicionados à pesquisa"></ul><input id="radarTagInput" type="text" maxlength="200" autocomplete="off" placeholder="Digite um termo e pressione Enter" aria-describedby="radarTagsHelp" /></div>
+              <small id="radarTagsHelp">Até 25 termos · a busca combina os termos com OU e consulta o objeto do edital.</small>
               <p id="radarTagsError" class="form-error" role="alert"></p>
             </div>
 
@@ -723,11 +722,8 @@
             </details>
 
             <details id="radarPlatformDetails" class="radar-modality-filter">
-              <summary><span>Plataforma de disputa</span><strong id="radarPlatformSummary">Todas as plataformas</strong></summary>
+              <summary><span>Plataforma de disputa</span><strong id="radarPlatformSummary">Selecionar plataformas</strong></summary>
               <div class="radar-modality-menu">
-                <label for="radarPlatformSearch">Pesquisar plataformas
-                  <input id="radarPlatformSearch" type="search" autocomplete="off" />
-                </label>
                 <div id="radarPlatforms" class="radar-modality-list" role="group" aria-label="Plataformas de disputa ativas"></div>
                 <label class="radar-modality-option"><input id="radarIncludeUnidentified" type="checkbox" /><span>Incluir licitações sem plataforma</span></label>
               </div>
