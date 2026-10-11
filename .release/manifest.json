@@ -991,6 +991,16 @@
         "88c8598ec7301f525f0391c289a89aa1f8d5deb8"
       ],
       "migrations": []
+    },
+    {
+      "id": "RADAR-12-ENRIQUECIMENTO-AUTOMATICO-001",
+      "backend_commits": [
+        "b6bf166240e610e643c893ee3e3d77a9c851423a"
+      ],
+      "frontend_commits": [],
+      "migrations": [
+        "supabase/migrations/20261011015020_radar_platform_enrichment.sql"
+      ]
     }
   ]
 }
