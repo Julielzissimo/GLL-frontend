@@ -19,7 +19,14 @@ const FAVORITE_METADATA_FIELDS = [
   "data_atualizacao_fonte",
   "plataforma_id",
   "link_sistema_origem",
+  "link_sistema_origem_manual",
   "plataforma_status",
+  "plataforma_confianca",
+  "plataforma_metodo_classificacao",
+  "plataforma_fonte_evidencia",
+  "plataforma_evidencia",
+  "plataforma_conflito",
+  "plataforma_confirmada_em",
 ].join(", ");
 
 const escapeHtml = (value) => String(value ?? "")
@@ -48,6 +55,43 @@ function dateValue(value, formatter = dateTimeFormatter) {
   if (!value) return "Não informado";
   const date = new Date(value);
   return Number.isNaN(date.getTime()) ? "Não informado" : formatter.format(date);
+}
+
+function platformStatusLabel(status) {
+  if (status === "identified") return "Identificada";
+  if (status === "unidentified") return "Não identificada";
+  if (status === "link_not_informed") return "Link não informado pelo PNCP";
+  return "Pendente de verificação";
+}
+
+function platformMethodLabel(method) {
+  return ({
+    manual_confirmed: "Confirmação manual por Administrador",
+    source_domain: "Domínio da URL informada pelo PNCP",
+    complementary_text: "Referência explícita no texto complementar do PNCP",
+    user_name_hint: "Indício no nome informado pelo PNCP",
+    ambiguous_reference: "Referência ambígua no texto do PNCP",
+    domain_conflict: "Conflito entre domínios informados",
+    source_conflict: "Conflito entre fontes do PNCP",
+    unmatched_domain: "Domínio sem correspondência no catálogo",
+    invalid_url: "URL inválida ou insegura",
+    missing_url: "O PNCP não informou uma URL",
+    pncp_detail: "Detalhe consultado no PNCP",
+  })[method] || (method ? String(method) : "Não informado");
+}
+
+function platformEvidenceSourceLabel(source) {
+  return ({
+    linkSistemaOrigem: "Link de origem do PNCP",
+    informacaoComplementar: "Informação complementar do PNCP",
+    objetoCompra: "Objeto da contratação",
+    nomeComprador: "Nome informado pelo PNCP",
+    manual: "Confirmação manual",
+  })[source] || (source ? String(source) : "Fonte não informada");
+}
+
+function platformConfidenceLabel(confidence) {
+  return ({ high: "Alta", medium: "Média", low: "Baixa" })[confidence] || "Não informada";
 }
 
 function moneyValue(value) {
@@ -155,8 +199,15 @@ export function mapRadarFavoriteMetadata(row, platformNames = new Map()) {
     sourceUrl: "",
     platformId: row?.plataforma_id || null,
     platformName: platformNames.get(row?.plataforma_id) || null,
-    platformSourceUrl: row?.link_sistema_origem || null,
+    platformSourceUrl: row?.link_sistema_origem_manual || row?.link_sistema_origem || null,
+    platformSourceUrlFromPncp: row?.link_sistema_origem || null,
     platformStatus: row?.plataforma_status || "pending_verification",
+    platformConfidence: row?.plataforma_confianca || null,
+    platformClassificationMethod: row?.plataforma_metodo_classificacao || null,
+    platformEvidenceSource: row?.plataforma_fonte_evidencia || null,
+    platformEvidence: Array.isArray(row?.plataforma_evidencia) ? row.plataforma_evidencia : [],
+    platformConflict: row?.plataforma_conflito === true,
+    platformConfirmedAt: row?.plataforma_confirmada_em || null,
   };
 }
 
@@ -258,7 +309,7 @@ export function createRadarFavoritesService({ getClient } = {}) {
   });
 }
 
-export function createRadarDetailsFeature({ getClient, toast = () => {}, onFavoriteChanged = () => {}, onOpenBid = () => {} } = {}) {
+export function createRadarDetailsFeature({ getClient, getUserRole = () => null, toast = () => {}, onFavoriteChanged = () => {}, onClassificationChanged = () => {}, onOpenBid = () => {} } = {}) {
   const root = globalThis.document?.getElementById("radarSearchPage");
   const favorites = createRadarFavoritesService({ getClient });
   const imports = globalThis.window?.GLLRadarImport?.createRadarImportService({ getClient }) || null;
@@ -282,6 +333,7 @@ export function createRadarDetailsFeature({ getClient, toast = () => {}, onFavor
     confirmingImport: false,
     importing: false,
     lastImport: null,
+    platformChoices: [],
   };
 
   function byId(id) {
@@ -373,16 +425,47 @@ export function createRadarDetailsFeature({ getClient, toast = () => {}, onFavor
     const officialUrl = validatedOfficialPncpUrl(sources?.official);
     const platformStatus = platform.status === "identified"
       ? platform.name || "Plataforma identificada"
-      : platform.status === "pending_verification" ? "Pendente de verificação" : "Não identificada";
-    const platformUrl = validatedPlatformSourceUrl(platform.sourceUrl || contract.linkSistemaOrigem);
+      : platformStatusLabel(platform.status);
+    const platformUrl = validatedPlatformSourceUrl(platform.sourceUrl);
+    const pncpPlatformUrl = validatedPlatformSourceUrl(platform.sourceUrlFromPncp || contract.linkSistemaOrigem);
+    const processUrl = validatedPlatformSourceUrl(platform.processUrl || contract.linkProcessoEletronico);
+    const evidence = Array.isArray(platform.evidence) ? platform.evidence.filter((item) => item && typeof item === "object") : [];
+    const evidenceMarkup = evidence.length
+      ? `<ul class="radar-platform-evidence">${evidence.map((item) => {
+        const excerpt = item.value_excerpt || item.matched_value || item.url;
+        if (!excerpt) return "";
+        return `<li><strong>${escapeHtml(platformEvidenceSourceLabel(item.source))}:</strong> ${escapeHtml(excerpt)}</li>`;
+      }).filter(Boolean).join("")}</ul>`
+      : "";
+    const previousAutomatic = platform.previousAutomatic && typeof platform.previousAutomatic === "object"
+      ? platform.previousAutomatic
+      : null;
+    const previousAutomaticMarkup = previousAutomatic
+      ? `<p class="radar-platform-previous">Identificação automática anterior: <strong>${escapeHtml(previousAutomatic.name || platformStatusLabel(previousAutomatic.status))}</strong>${previousAutomatic.classifiedAt ? ` · ${escapeHtml(dateValue(previousAutomatic.classifiedAt))}` : ""}.</p>`
+      : "";
+    const confirmationMarkup = platform.confirmedAt
+      ? `<p>Confirmação manual registrada em ${escapeHtml(dateValue(platform.confirmedAt))}.</p>`
+      : "";
     return `<section class="section-band radar-detail-section" aria-labelledby="radarGeneralTitle">
       <div class="radar-detail-section-heading"><div><h2 id="radarGeneralTitle">Informações gerais</h2><p>Dados consultados diretamente no PNCP.</p></div></div>
       <dl class="radar-detail-grid">${values.map(([label, value]) => `<div><dt>${escapeHtml(label)}</dt><dd${label === "Objeto da contratação" ? ' class="radar-detail-object"' : ""}>${escapeHtml(value || "Não informado")}</dd></div>`).join("")}</dl>
       <section class="radar-platform-detail" aria-labelledby="radarPlatformDetailTitle">
         <h3 id="radarPlatformDetailTitle">Plataforma de disputa</h3>
         <p><strong>${escapeHtml(platformStatus)}</strong></p>
-        ${platformUrl ? `<p>Link de origem informado pelo PNCP: <a href="${escapeHtml(platformUrl)}" target="_blank" rel="noopener noreferrer">Acessar plataforma <span aria-hidden="true">↗</span></a></p>` : "<p>O PNCP não informou um link de origem seguro para abrir.</p>"}
-        <small>A identificação automática corresponde ao domínio da URL. Ela não confirma que o endereço seja a sessão efetiva de disputa.</small>
+        ${platformUrl && platform.sourceUrlManuallyConfirmed ? `<p>URL corrigida manualmente: <a href="${escapeHtml(platformUrl)}" target="_blank" rel="noopener noreferrer">Abrir URL corrigida <span aria-hidden="true">↗</span></a></p>` : ""}
+        ${pncpPlatformUrl ? `<p>Link de origem informado pelo PNCP: <a href="${escapeHtml(pncpPlatformUrl)}" target="_blank" rel="noopener noreferrer">Abrir link do PNCP <span aria-hidden="true">↗</span></a></p>` : !platform.sourceUrlManuallyConfirmed ? "<p>O PNCP não informou um link de origem seguro para abrir.</p>" : ""}
+        ${processUrl ? `<p>Link do processo eletrônico: <a href="${escapeHtml(processUrl)}" target="_blank" rel="noopener noreferrer">Abrir processo <span aria-hidden="true">↗</span></a></p>` : ""}
+        <dl class="radar-platform-metadata">
+          ${platform.method ? `<div><dt>Método</dt><dd>${escapeHtml(platformMethodLabel(platform.method))}</dd></div>` : ""}
+          ${platform.evidenceSource ? `<div><dt>Fonte da identificação</dt><dd>${escapeHtml(platformEvidenceSourceLabel(platform.evidenceSource))}</dd></div>` : ""}
+          ${platform.confidence ? `<div><dt>Confiança</dt><dd>${escapeHtml(platformConfidenceLabel(platform.confidence))}</dd></div>` : ""}
+          ${platform.classifiedAt ? `<div><dt>Identificada em</dt><dd>${escapeHtml(dateValue(platform.classifiedAt))}</dd></div>` : ""}
+        </dl>
+        ${platform.conflict ? '<p class="radar-platform-conflict" role="status">As fontes consultadas indicam plataformas diferentes. Confira o edital antes de usar o link.</p>' : ""}
+        ${evidenceMarkup ? `<div><strong>Evidências encontradas</strong>${evidenceMarkup}</div>` : ""}
+        ${previousAutomaticMarkup}${confirmationMarkup}
+        <small>${platform.sourceUrlManuallyConfirmed ? "A correção manual foi registrada por um Administrador e fica preservada nas próximas sincronizações." : "A identificação automática corresponde aos dados disponíveis do PNCP; domínio e referências textuais não confirmam uma sessão efetiva de disputa."}</small>
+        ${getUserRole() === "Administrador" ? '<button class="quiet-action compact-action" type="button" data-radar-platform-confirm>Confirmar ou corrigir plataforma</button>' : ""}
       </section>
       ${officialUrl ? `<a class="quiet-action compact-action radar-official-link" href="${escapeHtml(officialUrl)}" target="_blank" rel="noopener noreferrer">Abrir contratação no PNCP <span aria-hidden="true">↗</span></a>` : ""}
     </section>`;
@@ -624,6 +707,124 @@ export function createRadarDetailsFeature({ getClient, toast = () => {}, onFavor
     }
   }
 
+  async function openPlatformConfirmation() {
+    if (getUserRole() !== "Administrador" || !state.data?.platform) return;
+    const dialog = byId("radarPlatformConfirmDialog");
+    const select = byId("radarPlatformConfirmSelect");
+    const summary = byId("radarPlatformConfirmSummary");
+    const error = byId("radarPlatformConfirmError");
+    const status = byId("radarPlatformConfirmStatus");
+    if (!dialog || !select || !summary || !error || !status) return;
+    error.textContent = "";
+    status.hidden = true;
+    status.replaceChildren();
+    const currentPlatform = state.data.platform;
+    const currentName = currentPlatform.name || platformStatusLabel(currentPlatform.status);
+    const originalLink = validatedPlatformSourceUrl(currentPlatform.sourceUrlFromPncp);
+    summary.textContent = `Identificação atual: ${currentName}. Método: ${platformMethodLabel(currentPlatform.method)}.${originalLink ? " O link do PNCP será mantido separado da URL corrigida." : " O PNCP não informou um link de origem seguro."}`;
+    const closeButtons = dialog.querySelectorAll("[data-radar-platform-dialog-close]");
+    closeButtons.forEach((button) => { button.disabled = false; });
+    const urlInput = byId("radarPlatformConfirmUrl");
+    if (urlInput) urlInput.value = "";
+    select.replaceChildren(new Option("Não identificada", ""));
+    const submitButton = dialog.querySelector('button[type="submit"]');
+    if (submitButton) submitButton.disabled = true;
+    status.hidden = false;
+    status.dataset.tone = "info";
+    status.textContent = "Carregando plataformas ativas…";
+    try {
+      const { data, error: queryError } = await getClient().from("radar_plataformas")
+        .select("id, nome")
+        .eq("ativo", true)
+        .order("nome", { ascending: true });
+      if (queryError) throw new Error("Não foi possível carregar o catálogo de plataformas.");
+      state.platformChoices = (Array.isArray(data) ? data : []).filter((item) => typeof item.id === "string" && typeof item.nome === "string");
+      state.platformChoices.forEach((item) => select.add(new Option(item.nome, item.id)));
+      if (currentPlatform.status === "identified" && currentPlatform.id
+        && state.platformChoices.some((item) => item.id === currentPlatform.id)) select.value = currentPlatform.id;
+      status.hidden = true;
+      if (submitButton) submitButton.disabled = false;
+    } catch (loadError) {
+      status.dataset.tone = "error";
+      status.textContent = loadError instanceof Error ? loadError.message : "Não foi possível carregar o catálogo de plataformas.";
+    }
+    if (typeof dialog.showModal === "function" && !dialog.open) dialog.showModal();
+  }
+
+  async function submitPlatformConfirmation(event) {
+    event.preventDefault();
+    if (getUserRole() !== "Administrador") {
+      byId("radarPlatformConfirmError").textContent = "Somente Administradores podem confirmar uma plataforma.";
+      return;
+    }
+    const dialog = byId("radarPlatformConfirmDialog");
+    const select = byId("radarPlatformConfirmSelect");
+    const urlInput = byId("radarPlatformConfirmUrl");
+    const error = byId("radarPlatformConfirmError");
+    const status = byId("radarPlatformConfirmStatus");
+    const submitButton = dialog?.querySelector('button[type="submit"]');
+    const platformId = String(select?.value || "") || null;
+    const sourceUrlInput = String(urlInput?.value || "").trim();
+    const sourceUrl = sourceUrlInput ? validatedPlatformSourceUrl(sourceUrlInput) : null;
+    error.textContent = "";
+    if (sourceUrlInput && !sourceUrl) {
+      error.textContent = "Informe uma URL HTTPS válida, sem credenciais.";
+      urlInput?.focus();
+      return;
+    }
+    if (sourceUrlInput.length > 2048) {
+      error.textContent = "A URL deve ter até 2.048 caracteres.";
+      urlInput?.focus();
+      return;
+    }
+    if (platformId && !state.platformChoices.some((item) => item.id === platformId)) {
+      error.textContent = "Selecione uma plataforma ativa do catálogo.";
+      select?.focus();
+      return;
+    }
+    if (!state.current || !identityIsValid(currentId())) {
+      error.textContent = "A identificação PNCP desta licitação é inválida.";
+      return;
+    }
+    if (submitButton) submitButton.disabled = true;
+    dialog?.querySelectorAll("[data-radar-platform-dialog-close]").forEach((button) => { button.disabled = true; });
+    status.hidden = false;
+    status.dataset.tone = "info";
+    status.textContent = "Salvando confirmação…";
+    try {
+      const body = {
+        action: "confirm_platform",
+        numberControlPncp: currentId(),
+        platformId,
+        status: platformId ? "identified" : "unidentified",
+        origin: "radar_details_ui",
+        observation: "Confirmação individual no detalhamento do Radar.",
+        ...(sourceUrl ? { sourceUrl } : {}),
+      };
+      const { data, error: functionError } = await getClient().functions.invoke("radar-collector", { body });
+      if (functionError) {
+        let message = "Não foi possível salvar a confirmação.";
+        try {
+          const response = await functionError.context?.json?.();
+          if (typeof response?.error === "string") message = response.error;
+        } catch { /* A resposta pode já ter sido consumida pelo cliente. */ }
+        throw new Error(message);
+      }
+      if (data?.ok !== true) throw new Error("O Radar não confirmou a gravação da classificação.");
+      dialog?.close();
+      toast("Plataforma confirmada e registrada no Radar.", "success");
+      const identifier = currentId();
+      await refresh();
+      onClassificationChanged(identifier);
+      byId("radarDetailsContent")?.querySelector("[data-radar-platform-confirm]")?.focus();
+    } catch (saveError) {
+      status.dataset.tone = "error";
+      status.textContent = saveError instanceof Error ? saveError.message : "Não foi possível salvar a confirmação.";
+      if (submitButton) submitButton.disabled = false;
+      dialog?.querySelectorAll("[data-radar-platform-dialog-close]").forEach((button) => { button.disabled = false; });
+    }
+  }
+
   async function setCurrentFavorite() {
     const id = currentId();
     const nextValue = !favorites.isFavorite(id);
@@ -724,6 +925,7 @@ export function createRadarDetailsFeature({ getClient, toast = () => {}, onFavor
     state.confirmingImport = false;
     state.importing = false;
     state.lastImport = null;
+    state.platformChoices = [];
     if (!keepSelection) {
       state.itemsPage = 1;
       state.selectedItemNumbers.clear();
@@ -778,7 +980,11 @@ export function createRadarDetailsFeature({ getClient, toast = () => {}, onFavor
     if (!root || root.dataset.radarDetailsBound === "true") return;
     root.dataset.radarDetailsBound = "true";
     root.addEventListener("click", (event) => {
-      if (event.target.closest("#radarDetailsBackButton")) {
+      if (event.target.closest("[data-radar-platform-confirm]")) {
+        void openPlatformConfirmation();
+      } else if (event.target.closest("[data-radar-platform-dialog-close]")) {
+        byId("radarPlatformConfirmDialog")?.close();
+      } else if (event.target.closest("#radarDetailsBackButton")) {
         closeView();
       } else if (event.target.closest("#radarDetailsRefreshButton") || event.target.closest("[data-radar-details-refresh]")) {
         void refresh();
@@ -836,6 +1042,10 @@ export function createRadarDetailsFeature({ getClient, toast = () => {}, onFavor
       [...(byId("radarDetailsContent")?.querySelectorAll("[data-radar-select-item]") || [])]
         .find((input) => input.dataset.radarSelectItem === number)?.focus();
     });
+    root.addEventListener("submit", (event) => {
+      if (!event.target.matches?.("#radarPlatformConfirmForm")) return;
+      void submitPlatformConfirmation(event);
+    });
     if (typeof window !== "undefined") window.addEventListener("popstate", syncRoute);
   }
 
@@ -850,6 +1060,7 @@ export function createRadarDetailsFeature({ getClient, toast = () => {}, onFavor
     setFavorite: favorites.setFavorite,
     isFavorite: favorites.isFavorite,
     resetFavorites: favorites.reset,
+    refreshCurrent: () => state.opened ? refresh() : Promise.resolve(),
     reset,
   });
 }

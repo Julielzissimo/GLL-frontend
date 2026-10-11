@@ -5,6 +5,7 @@ import {
   parseRadarTags,
   radarDefaultPeriodDates,
   radarEmptyResultState,
+  radarPlatformSummary,
   validatedPncpSourceUrl,
   validatedPlatformSourceUrl,
 } from "../web/radar-search.js";
@@ -78,6 +79,44 @@ test("envia seleção múltipla de plataformas e a opção de incluir registros 
   const unknownOnly = buildRadarSearchPayload({ platformIds: [], includeUnidentified: true });
   assert.deepEqual(unknownOnly.platformIds, []);
   assert.equal(unknownOnly.includeUnidentified, true);
+});
+
+test("combina filtro de plataforma com os demais filtros e mantém a página selecionada", () => {
+  const platformId = "10000000-0000-4000-8000-000000000001";
+  const payload = buildRadarSearchPayload({
+    tags: ["computador"],
+    modalities: [6],
+    uf: "ES",
+    municipalityIbgeId: "3205309",
+    platformIds: [platformId],
+    includeUnidentified: true,
+    publishedFrom: "2026-10-01",
+    publishedTo: "2026-10-10",
+    proposalReceiptState: "open",
+  }, { page: 3, activeModalities: [1, 6] });
+  assert.equal(payload.page, 3);
+  assert.deepEqual(payload.platformIds, [platformId]);
+  assert.equal(payload.includeUnidentified, true);
+  assert.equal(payload.uf, "ES");
+  assert.equal(payload.municipalityIbgeId, 3205309);
+  assert.deepEqual(payload.tags, ["computador"]);
+  assert.deepEqual(payload.modalities, [6]);
+  assert.equal(payload.publishedFrom, "2026-10-01");
+  assert.equal(payload.publishedTo, "2026-10-10");
+});
+
+test("resume estado e confiança da plataforma para os cards de resultados", () => {
+  assert.deepEqual(radarPlatformSummary({ platformStatus: "identified", platformName: "Licitanet" }), {
+    label: "Licitanet", note: "",
+  });
+  assert.deepEqual(radarPlatformSummary({ platformStatus: "identified", platformName: "Licitanet", platformConfidence: "low" }), {
+    label: "Licitanet", note: "Confiança baixa; confira o edital.",
+  });
+  assert.deepEqual(radarPlatformSummary({ platformStatus: "identified", platformConflict: true }), {
+    label: "Plataforma identificada", note: "Fontes divergentes; confira o edital.",
+  });
+  assert.equal(radarPlatformSummary({ platformStatus: "unidentified" }).label, "Não identificada");
+  assert.equal(radarPlatformSummary({ platformStatus: "link_not_informed" }).label, "Link da plataforma não informado");
 });
 
 test("gera período inclusivo compartilhado no fuso de São Paulo e valida limites", () => {

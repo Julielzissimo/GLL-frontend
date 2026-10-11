@@ -765,7 +765,7 @@
           <summary>Gerenciar plataformas de disputa</summary>
           <section class="radar-platform-admin" aria-labelledby="radarPlatformAdminTitle">
             <h3 id="radarPlatformAdminTitle">Catálogo de plataformas de disputa</h3>
-            <p>As regras identificam a plataforma pelo hostname informado pelo PNCP. A identificação pelo domínio não confirma a existência de uma sessão de disputa.</p>
+            <p>A identificação considera o domínio da URL e referências explícitas nos dados do PNCP. Esses indícios não confirmam a existência de uma sessão efetiva de disputa.</p>
             <form id="radarPlatformForm" class="radar-platform-admin-form">
               <input id="radarPlatformId" type="hidden" />
               <label for="radarPlatformName">Nome da plataforma
@@ -845,6 +845,31 @@
           <p id="radarDetailsFeedback" class="radar-feedback" data-tone="info" role="status" aria-live="polite" hidden></p>
           <div id="radarDetailsContent" class="radar-details-content"></div>
         </div>
+
+        <dialog id="radarPlatformConfirmDialog" class="quotation-item-modal radar-platform-confirmation-modal" aria-labelledby="radarPlatformConfirmTitle" aria-describedby="radarPlatformConfirmSummary">
+          <div class="quotation-item-modal-shell">
+            <div class="quotation-item-modal-header">
+              <div><span class="eyebrow">REVISÃO DO RADAR</span><h2 id="radarPlatformConfirmTitle">Confirmar plataforma de disputa</h2></div>
+              <button class="quotation-item-modal-close modal-close-button" type="button" data-radar-platform-dialog-close aria-label="Fechar confirmação"><span data-gll-icon="close" aria-hidden="true"></span></button>
+            </div>
+            <form id="radarPlatformConfirmForm" class="radar-platform-confirmation-form">
+              <p id="radarPlatformConfirmSummary" class="radar-platform-confirmation-summary"></p>
+              <label for="radarPlatformConfirmSelect">Plataforma confirmada
+                <select id="radarPlatformConfirmSelect"><option value="">Não identificada</option></select>
+              </label>
+              <label for="radarPlatformConfirmUrl">URL corrigida da disputa (opcional)
+                <input id="radarPlatformConfirmUrl" type="url" maxlength="2048" autocomplete="off" placeholder="https://plataforma.gov.br/processo" aria-describedby="radarPlatformConfirmUrlHelp" />
+              </label>
+              <small id="radarPlatformConfirmUrlHelp">Use HTTPS. Deixe em branco para manter a URL corrigida anteriormente ou usar apenas o link informado pelo PNCP.</small>
+              <p id="radarPlatformConfirmError" class="form-error" role="alert"></p>
+              <p id="radarPlatformConfirmStatus" class="radar-feedback" data-tone="info" role="status" aria-live="polite" hidden></p>
+              <div class="button-row end">
+                <button class="quiet-action" type="button" data-radar-platform-dialog-close>Cancelar</button>
+                <button class="primary-action" type="submit">Salvar confirmação</button>
+              </div>
+            </form>
+          </div>
+        </dialog>
       </section>
 
       <section id="quotationsPage" class="users-page quotations-page hidden">

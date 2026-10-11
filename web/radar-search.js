@@ -156,6 +156,23 @@ export function validatedPlatformSourceUrl(value) {
   }
 }
 
+export function radarPlatformSummary(result = {}) {
+  const status = result.platformStatus || "pending_verification";
+  const label = status === "identified"
+    ? result.platformName || "Plataforma identificada"
+    : status === "unidentified"
+      ? "Não identificada"
+      : status === "link_not_informed"
+        ? "Link da plataforma não informado"
+        : "Identificação pendente";
+  const note = result.platformConflict === true
+    ? "Fontes divergentes; confira o edital."
+    : status === "identified" && result.platformConfidence === "low"
+      ? "Confiança baixa; confira o edital."
+      : "";
+  return { label, note };
+}
+
 function todayInSaoPaulo(now = new Date()) {
   return new Intl.DateTimeFormat("en-CA", {
     year: "numeric", month: "2-digit", day: "2-digit", timeZone: "America/Sao_Paulo",
@@ -634,6 +651,7 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
     const municipality = `${escapeHtml(resolveMunicipalityName(result))}${result.uf ? ` - ${escapeHtml(result.uf)}` : ""}`;
     const administrative = result.administrativeUnitName && result.administrativeUnitName !== result.agencyName
       ? `<small>${escapeHtml(result.administrativeUnitName)}</small>` : "";
+    const platform = radarPlatformSummary(result);
     return `<article class="radar-result-card">
       <div class="radar-result-card-heading">
         <div><p class="radar-result-number"><strong>Edital ${escapeHtml(number)}${year}</strong><span>PNCP ${escapeHtml(result.numberControlPncp || "—")}</span></p><h3 class="radar-result-object">${escapeHtml(object)}</h3><details class="radar-object-details" hidden><summary>Ver objeto completo</summary><p>${escapeHtml(object)}</p></details></div>
@@ -643,6 +661,7 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
         <div><dt>Município - UF</dt><dd>${municipality}</dd></div>
         <div><dt>Órgão responsável</dt><dd>${escapeHtml(result.agencyName || result.administrativeUnitName || "Órgão não informado")}${administrative}</dd></div>
         <div><dt>Modalidade</dt><dd>${escapeHtml(resolveModalityName(result.modalityId))}</dd></div>
+        <div><dt>Plataforma</dt><dd>${escapeHtml(platform.label)}${platform.note ? `<small class="radar-platform-card-note">${escapeHtml(platform.note)}</small>` : ""}</dd></div>
         <div><dt>Abertura das propostas</dt><dd>${escapeHtml(formatDateTime(result.proposalsStartAt))}</dd></div>
         <div><dt>Encerramento das propostas</dt><dd>${escapeHtml(formatDateTime(result.proposalsEndAt))}</dd></div>
         <div><dt>Publicação no PNCP</dt><dd>${escapeHtml(formatDate(result.publishedAt))}</dd></div>
@@ -1302,6 +1321,10 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
       actions.syncDetailRoute?.();
     },
     syncFavorite,
+    async refreshCurrentView() {
+      if (state.view === "favorites") return await loadFavoritesPage(state.favoritesPage);
+      if (state.hasSearched) return await runSearch({ page: Number(state.pagination?.page || 1) });
+    },
     reset() {
       state.initialized = false;
       state.catalogsLoaded = false;

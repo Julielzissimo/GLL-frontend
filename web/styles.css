@@ -7873,6 +7873,22 @@ button.history-row:hover {
 .radar-platform-detail p { margin: 0; }
 .radar-platform-detail small { color: var(--color-text-secondary); line-height: var(--line-height-normal); }
 .radar-platform-detail a { display: inline-flex; align-items: center; gap: var(--space-xs); }
+.radar-platform-metadata { display: grid; grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr)); gap: var(--space-sm) var(--space-lg); margin: 0; }
+.radar-platform-metadata > div { min-width: 0; }
+.radar-platform-metadata dt { color: var(--color-text-secondary); font-size: var(--font-size-xs); }
+.radar-platform-metadata dd { margin: var(--space-2xs, 0.125rem) 0 0; overflow-wrap: anywhere; }
+.radar-platform-evidence { display: grid; gap: var(--space-xs); margin: var(--space-xs) 0 0; padding-left: var(--space-lg); }
+.radar-platform-evidence li,
+.radar-platform-previous { overflow-wrap: anywhere; }
+.radar-platform-conflict { color: var(--color-warning); }
+.radar-platform-confirmation-modal { width: min(var(--dialog-width-md), calc(100vw - 32px)); }
+.radar-platform-confirmation-form { display: grid; gap: var(--space-md); padding: var(--space-lg); }
+.radar-platform-confirmation-form > label { display: grid; gap: var(--space-xs); font-size: var(--font-size-sm); font-weight: var(--font-weight-semibold); }
+.radar-platform-confirmation-form input,
+.radar-platform-confirmation-form select { width: 100%; min-width: 0; min-height: var(--control-height-md); }
+.radar-platform-confirmation-form > small { color: var(--color-text-secondary); line-height: var(--line-height-normal); }
+.radar-platform-confirmation-summary { margin: 0; line-height: var(--line-height-normal); }
+.radar-platform-card-note { display: block; margin-top: var(--space-2xs, 0.125rem); color: var(--color-text-secondary); font-size: var(--font-size-xs); }
 .radar-platform-admin { display: grid; gap: var(--space-md); padding-top: var(--space-lg); border-top: var(--border-default); }
 .radar-platform-admin > h3,
 .radar-platform-admin > h4,
