@@ -932,6 +932,14 @@
         "cff1de14bdb6271d9ead8d9042c9bb5ecf608422"
       ],
       "migrations": []
+    },
+    {
+      "id": "RADAR-17-DETALHE-PLATAFORMA-001",
+      "backend_commits": [],
+      "frontend_commits": [
+        "77d613cc1c528d050e26bd3bd5c58a96dd7e06ad"
+      ],
+      "migrations": []
     }
   ]
 }
