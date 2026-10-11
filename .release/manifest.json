@@ -1091,6 +1091,16 @@
       "migrations": [
         "supabase/migrations/20261011174520_user_invitation_operations.sql"
       ]
+    },
+    {
+      "id": "RADAR-19-FASE-1-PERSISTENCIA-SYNC-ITENS-001",
+      "backend_commits": [
+        "8b04c2d863c2b1bd528a310752c060313a279625"
+      ],
+      "frontend_commits": [],
+      "migrations": [
+        "supabase/migrations/20261011180000_radar_item_cache_async_sync.sql"
+      ]
     }
   ]
 }
