@@ -1125,6 +1125,18 @@
       "migrations": [
         "supabase/migrations/20261011184318_first_access_username_avatar.sql"
       ]
+    },
+    {
+      "id": "EMAIL-06",
+      "backend_commits": [
+        "2f9d4cac83b6333abc02aac4f80691fd7a8c4d83",
+        "c6ee81bb9795db8ec943c400690f342c13e109bd",
+        "adcdfcb01456683fc01e780753326c34e293cae3"
+      ],
+      "frontend_commits": [],
+      "migrations": [
+        "supabase/migrations/20261011201757_record_user_invitation_acceptance.sql"
+      ]
     }
   ]
 }
