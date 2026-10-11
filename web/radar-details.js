@@ -184,6 +184,22 @@ export function formatRadarContractEstimatedValue(contract) {
   return radarContractBudgetIsSecret(contract) ? "Orçamento sigiloso" : moneyValue(contract?.valorTotalEstimado);
 }
 
+export function radarItemSyncMessage(itemSync = {}, hasSnapshot = false) {
+  if (!hasSnapshot) return "";
+  if (itemSync.status === "pending") return "Exibindo a última versão completa enquanto uma atualização é processada.";
+  if (itemSync.status === "processing") return "Exibindo a última versão completa enquanto o Radar atualiza os itens.";
+  if (itemSync.status === "partial") return "A atualização está parcial; a última versão completa continua disponível.";
+  if (itemSync.status === "failed") return "A última tentativa de atualização falhou; esta é a versão completa preservada no cache.";
+  return "";
+}
+
+export function radarItemsPendingMessage(itemSync = {}) {
+  if (itemSync.status === "processing") return "A sincronização dos itens está em andamento. Nenhum conjunto parcial será apresentado.";
+  if (itemSync.status === "partial") return "A sincronização está parcial. Os itens serão exibidos quando uma versão completa estiver pronta.";
+  if (itemSync.status === "failed") return "A sincronização falhou temporariamente. Tente consultar novamente mais tarde.";
+  return "A sincronização dos itens foi solicitada e continuará em segundo plano.";
+}
+
 export function validatedOfficialPncpUrl(value) {
   try {
     const url = new URL(String(value || ""));
@@ -362,6 +378,8 @@ export function createRadarDetailsFeature({ getClient, getUserRole = () => null,
     error: "",
     favoriteError: false,
     requestId: 0,
+    itemStatusRequestId: 0,
+    documentRequestId: 0,
     historyEntry: false,
     itemsPage: 1,
     selectedItemNumbers: createRadarItemSelectionState(),
@@ -423,8 +441,8 @@ export function createRadarDetailsFeature({ getClient, getUserRole = () => null,
       feedback.hidden = false;
       feedback.dataset.tone = state.data ? "warning" : "error";
       feedback.innerHTML = state.data
-        ? `<strong>Atualização indisponível</strong><span>O PNCP não respondeu. Os dados carregados em ${escapeHtml(oldDataDate)} permanecem visíveis; tente atualizar novamente.</span>`
-        : `<strong>PNCP indisponível</strong><span>${escapeHtml(state.error)} Tente atualizar os detalhes novamente.</span>`;
+        ? `<strong>Atualização indisponível</strong><span>O Radar não respondeu. Os dados carregados em ${escapeHtml(oldDataDate)} permanecem visíveis; tente atualizar novamente.</span>`
+        : `<strong>Detalhes do Radar indisponíveis</strong><span>${escapeHtml(state.error)} Tente atualizar os detalhes novamente.</span>`;
       if (state.favoriteError) {
         feedback.insertAdjacentHTML("beforeend", '<span>Também não foi possível consultar o estado dos seus favoritos.</span><button class="quiet-action compact-action" type="button" data-radar-favorite-retry>Atualizar favoritos</button>');
       }
@@ -480,7 +498,7 @@ export function createRadarDetailsFeature({ getClient, getUserRole = () => null,
       ? `<p>Confirmação manual registrada em ${escapeHtml(dateValue(platform.confirmedAt))}.</p>`
       : "";
     return `<section class="section-band radar-detail-section" aria-labelledby="radarGeneralTitle">
-      <div class="radar-detail-section-heading"><div><h2 id="radarGeneralTitle">Informações gerais</h2><p>Dados consultados diretamente no PNCP.</p></div></div>
+      <div class="radar-detail-section-heading"><div><h2 id="radarGeneralTitle">Informações gerais</h2><p>Dados disponíveis no cache centralizado do Radar.</p></div></div>
       <dl class="radar-detail-grid">${values.map(([label, value]) => `<div><dt>${escapeHtml(label)}</dt><dd${label === "Objeto da contratação" ? ' class="radar-detail-object"' : ""}>${escapeHtml(value || "Não informado")}</dd></div>`).join("")}</dl>
       <section class="radar-platform-detail" aria-labelledby="radarPlatformDetailTitle">
         <h3 id="radarPlatformDetailTitle">Plataforma de disputa</h3>
@@ -501,18 +519,35 @@ export function createRadarDetailsFeature({ getClient, getUserRole = () => null,
     </section>`;
   }
 
-  function renderItems(itemsState) {
+  function renderItems(itemsState, itemSync = {}) {
+    const hasSnapshot = itemsState?.status === "available" && itemsState.complete === true;
+    const syncNotice = radarItemSyncMessage(itemSync, hasSnapshot);
+    if (itemsState?.status === "pending") {
+      const label = radarItemsPendingMessage(itemSync);
+      return `<section class="section-band radar-detail-section" aria-labelledby="radarItemsTitle">
+        <div class="radar-detail-section-heading"><div><h2 id="radarItemsTitle">Itens da contratação</h2><p>${escapeHtml(label)}</p></div></div>
+        <button class="quiet-action compact-action" type="button" data-radar-item-status-refresh>Consultar estado dos itens</button>
+      </section>`;
+    }
+    if (itemsState?.status === "not_published") {
+      return `<section class="section-band radar-detail-section" aria-labelledby="radarItemsTitle">
+        <div class="radar-detail-section-heading"><div><h2 id="radarItemsTitle">Itens da contratação</h2><p>O PNCP confirmou que não há itens publicados para esta contratação.</p></div></div>
+      </section>`;
+    }
     if (itemsState?.status === "unavailable" || itemsState?.status === "pagination_error") {
-      const label = itemsState.status === "pagination_error" ? "Não foi possível concluir a paginação dos itens." : "Os itens estão indisponíveis no PNCP neste momento.";
+      const label = itemsState.status === "pagination_error" ? "Não foi possível concluir a paginação dos itens." : "Os itens estão indisponíveis no cache do Radar neste momento.";
       return `<section class="section-band radar-detail-section" aria-labelledby="radarItemsTitle">
         <div class="radar-detail-section-heading"><div><h2 id="radarItemsTitle">Itens da contratação</h2><p>${escapeHtml(label)}</p></div></div>
         ${itemsState.items?.length ? renderItemTable(itemsState.items) : ""}
         <button class="quiet-action compact-action" type="button" data-radar-details-refresh>Atualizar itens</button>
       </section>`;
     }
-    if (!itemsState || itemsState.status === "not_published" || !itemsState.items?.length) {
+    if (!itemsState || !itemsState.items?.length) {
+      const label = hasSnapshot
+        ? "A sincronização confirmou que esta contratação não possui itens."
+        : "Não há itens disponíveis no cache do Radar.";
       return `<section class="section-band radar-detail-section" aria-labelledby="radarItemsTitle">
-        <div class="radar-detail-section-heading"><div><h2 id="radarItemsTitle">Itens da contratação</h2><p>O PNCP não publicou itens para esta contratação.</p></div></div>
+        <div class="radar-detail-section-heading"><div><h2 id="radarItemsTitle">Itens da contratação</h2><p>${escapeHtml(label)}</p></div></div>
       </section>`;
     }
     if (itemsState.status !== "available" || itemsState.complete !== true) {
@@ -528,7 +563,7 @@ export function createRadarDetailsFeature({ getClient, getUserRole = () => null,
     const page = paginateRadarItems(itemsState.items, state.itemsPage, itemsPerPage);
     state.itemsPage = page.page;
     return `<section class="section-band radar-detail-section" aria-labelledby="radarItemsTitle">
-      <div class="radar-detail-section-heading"><div><h2 id="radarItemsTitle">Itens da contratação</h2><p>${itemsState.items.length.toLocaleString("pt-BR")} itens consultados em ${Number(itemsState.pagesLoaded || 1).toLocaleString("pt-BR")} ${itemsState.pagesLoaded === 1 ? "página" : "páginas"} do PNCP.</p></div></div>
+      <div class="radar-detail-section-heading"><div><h2 id="radarItemsTitle">Itens da contratação</h2><p>${itemsState.items.length.toLocaleString("pt-BR")} itens carregados do cache.${syncNotice ? ` ${escapeHtml(syncNotice)}` : ""}</p></div></div>
       ${secretCount ? `<p class="radar-feedback" data-tone="warning" role="status"><strong>Orçamento sigiloso</strong><span>O PNCP informou orçamento sigiloso em ${secretCount.toLocaleString("pt-BR")} ${secretCount === 1 ? "item" : "itens"}; valores não serão tratados como preço.</span></p>` : ""}
       ${renderItemTable(page.items, { selectable: true })}
       ${renderItemPagination(page.pageCount)}
@@ -539,9 +574,15 @@ export function createRadarDetailsFeature({ getClient, getUserRole = () => null,
     const available = itemsState?.status === "available" && itemsState.complete === true && itemsState.items?.length;
     const body = available
       ? renderImportControls(itemsState.items)
-      : `<p>${itemsState?.status === "not_published" || !itemsState?.items?.length
-        ? "O PNCP não publicou itens disponíveis para importação nesta contratação."
-        : "A importação ficará disponível quando o PNCP retornar todos os itens da contratação."}</p>`;
+      : `<p>${itemsState?.status === "pending"
+        ? "A importação ficará disponível após a sincronização completa dos itens."
+        : itemsState?.status === "not_published"
+          ? "O PNCP confirmou que não há itens publicados para importação."
+          : itemsState?.status === "available" && itemsState.complete === true
+            ? "A sincronização confirmou que esta contratação não possui itens para importar."
+            : itemsState?.status === "unavailable"
+              ? "Os itens estão temporariamente indisponíveis no cache do Radar."
+              : "A importação ficará disponível após a sincronização completa dos itens."}</p>`;
     return `<section class="section-band radar-detail-section" aria-labelledby="radarImportPanelTitle">
       <div class="radar-detail-section-heading"><div><h2 id="radarImportPanelTitle">Importação para o GLL</h2><p>Selecione os itens do edital para importar.</p></div></div>
       ${body}
@@ -608,10 +649,16 @@ export function createRadarDetailsFeature({ getClient, getUserRole = () => null,
   }
 
   function renderDocuments(documentsState) {
+    if (documentsState?.status === "pending") {
+      return `<section class="section-band radar-detail-section" aria-labelledby="radarDocumentsTitle">
+        <div class="radar-detail-section-heading"><div><h2 id="radarDocumentsTitle">Documentos do edital</h2><p>Carregando documentos do PNCP separadamente dos itens.</p></div></div>
+        <button class="quiet-action compact-action" type="button" data-radar-documents-refresh>Atualizar documentos</button>
+      </section>`;
+    }
     if (documentsState?.status === "unavailable") {
       return `<section class="section-band radar-detail-section" aria-labelledby="radarDocumentsTitle">
         <div class="radar-detail-section-heading"><div><h2 id="radarDocumentsTitle">Documentos do edital</h2><p>Os documentos estão indisponíveis no PNCP neste momento.</p></div></div>
-        <button class="quiet-action compact-action" type="button" data-radar-details-refresh>Atualizar documentos</button>
+        <button class="quiet-action compact-action" type="button" data-radar-documents-refresh>Atualizar documentos</button>
       </section>`;
     }
     if (!documentsState || documentsState.status === "not_published" || !documentsState.documents?.length) {
@@ -666,19 +713,86 @@ export function createRadarDetailsFeature({ getClient, getUserRole = () => null,
     }
     if (!state.data) {
       content.innerHTML = state.loading
-        ? '<div class="radar-loading" role="status"><span class="radar-spinner" aria-hidden="true"></span><span>Carregando detalhes, itens e documentos do PNCP…</span></div>'
+        ? '<div class="radar-loading" role="status"><span class="radar-spinner" aria-hidden="true"></span><span>Carregando detalhes e itens do Radar…</span></div>'
         : "";
       return;
     }
     const loadedAt = dateTimeFormatter.format(new Date(state.data.retrievedAt));
-    content.innerHTML = `<p class="radar-detail-source">Fonte: Dados coletados em PNCP · Consulta realizada em ${escapeHtml(loadedAt)}.</p>
+    content.innerHTML = `<p class="radar-detail-source">Fonte: Dados centralizados no Radar · Consulta realizada em ${escapeHtml(loadedAt)}.</p>
       <div class="radar-detail-layout">
-        <main class="radar-detail-main">${renderGeneral(state.data.contract, state.data.sources, state.data.platform)}${renderItems(state.data.items)}</main>
+        <main class="radar-detail-main">${renderGeneral(state.data.contract, state.data.sources, state.data.platform)}${renderItems(state.data.items, state.data.itemSync)}</main>
         <aside class="radar-detail-aside">${renderDocuments(state.data.documents)}${renderImportPanel(state.data.items)}</aside>
       </div>`;
   }
 
-  async function refresh() {
+  async function loadDocuments(numberControlPncp = currentId(), detailsRequestId = state.requestId) {
+    if (!identityIsValid(numberControlPncp)) return;
+    const documentRequestId = ++state.documentRequestId;
+    if (state.data && currentId() === numberControlPncp) {
+      state.data = { ...state.data, documents: { status: "pending", documents: [], errorCode: null } };
+      render();
+    }
+    let documentsState;
+    try {
+      const { data, error } = await getClient().functions.invoke("radar-details", {
+        body: { action: "documents", numberControlPncp },
+      });
+      if (detailsRequestId !== state.requestId || documentRequestId !== state.documentRequestId) return;
+      if (error) {
+        let responseBody = null;
+        try { responseBody = await error.context?.json?.(); } catch { /* Response bodies may already be consumed. */ }
+        throw new Error(responseBody?.error || "Não foi possível consultar os documentos do PNCP.");
+      }
+      if (!data || data.status !== "available" || !data.documents) {
+        throw new Error("O PNCP retornou uma resposta incompatível com o contrato de documentos.");
+      }
+      documentsState = data.documents;
+    } catch {
+      documentsState = { status: "unavailable", documents: [], errorCode: "DOCUMENTS_UPSTREAM_UNAVAILABLE" };
+    }
+    if (detailsRequestId !== state.requestId || documentRequestId !== state.documentRequestId || !state.data) return;
+    state.data = { ...state.data, documents: documentsState };
+    render();
+  }
+
+  async function loadMetadata(numberControlPncp = currentId(), detailsRequestId = state.requestId) {
+    if (!identityIsValid(numberControlPncp)) return;
+    try {
+      const { data, error } = await getClient().functions.invoke("radar-details", {
+        body: { action: "metadata", numberControlPncp },
+      });
+      if (error || !data || data.status !== "available" || !data.contract) return;
+      if (detailsRequestId !== state.requestId || !state.data || currentId() !== numberControlPncp) return;
+      state.data = {
+        ...state.data,
+        contract: { ...state.data.contract, ...data.contract },
+        platform: data.platform || state.data.platform,
+        metadataRetrievedAt: data.retrievedAt || null,
+      };
+      render();
+    } catch {
+      // The central contract and cached items remain usable when PNCP metadata is unavailable.
+    }
+  }
+
+  async function refreshItemsStatus(numberControlPncp = currentId(), detailsRequestId = state.requestId) {
+    if (!identityIsValid(numberControlPncp)) return;
+    const itemStatusRequestId = ++state.itemStatusRequestId;
+    try {
+      const { data, error } = await getClient().functions.invoke("radar-details", {
+        body: { action: "sync-status", numberControlPncp },
+      });
+      if (error || !data || data.status !== "available" || !data.items || !data.itemSync) return;
+      if (detailsRequestId !== state.requestId || itemStatusRequestId !== state.itemStatusRequestId
+        || !state.data || currentId() !== numberControlPncp) return;
+      state.data = { ...state.data, items: data.items, itemSync: data.itemSync };
+      render();
+    } catch {
+      // A failed status read leaves the currently displayed complete snapshot untouched.
+    }
+  }
+
+  async function refresh({ loadExtras = true } = {}) {
     const id = currentId();
     if (!identityIsValid(id)) {
       state.error = "O identificador PNCP desta licitação é inválido.";
@@ -704,7 +818,7 @@ export function createRadarDetailsFeature({ getClient, getUserRole = () => null,
           state.data = null;
           return;
         }
-        throw new Error(responseBody?.error || "Não foi possível consultar os detalhes no PNCP.");
+        throw new Error(responseBody?.error || "Não foi possível consultar os detalhes centralizados no Radar.");
       }
       if (!data || data.status !== "available" || !data.contract || !data.items || !data.documents) {
         if (data?.status === "not_found") {
@@ -712,11 +826,16 @@ export function createRadarDetailsFeature({ getClient, getUserRole = () => null,
           state.data = null;
           return;
         }
-        throw new Error("O PNCP retornou uma resposta incompatível com o contrato de detalhes.");
+        throw new Error("O Radar retornou uma resposta incompatível com o contrato de detalhes.");
       }
       state.data = data;
       state.error = "";
       state.notFound = false;
+      render();
+      if (loadExtras) {
+        void loadDocuments(id, requestId);
+        void loadMetadata(id, requestId);
+      }
       if (imports) {
         try {
           state.importStatus = await imports.loadImportStatus(id);
@@ -984,6 +1103,7 @@ export function createRadarDetailsFeature({ getClient, getUserRole = () => null,
 
   function reset() {
     state.requestId += 1;
+    state.documentRequestId += 1;
     state.current = null;
     state.data = null;
     state.opened = false;
@@ -1015,8 +1135,14 @@ export function createRadarDetailsFeature({ getClient, getUserRole = () => null,
         byId("radarPlatformConfirmDialog")?.close();
       } else if (event.target.closest("#radarDetailsBackButton")) {
         closeView();
-      } else if (event.target.closest("#radarDetailsRefreshButton") || event.target.closest("[data-radar-details-refresh]")) {
+      } else if (event.target.closest("[data-radar-documents-refresh]")) {
+        void loadDocuments(currentId(), state.requestId);
+      } else if (event.target.closest("[data-radar-item-status-refresh]")) {
+        void refreshItemsStatus(currentId(), state.requestId);
+      } else if (event.target.closest("#radarDetailsRefreshButton")) {
         void refresh();
+      } else if (event.target.closest("[data-radar-details-refresh]")) {
+        void refresh({ loadExtras: false });
       } else if (event.target.closest("#radarDetailsFavoriteButton")) {
         void setCurrentFavorite();
       } else if (event.target.closest("[data-radar-favorite-retry]")) {
