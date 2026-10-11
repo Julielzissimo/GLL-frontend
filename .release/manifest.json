@@ -1096,7 +1096,13 @@
     {
       "id": "RADAR-19-FASE-1-PERSISTENCIA-SYNC-ITENS-001",
       "backend_commits": [
-        "8b04c2d863c2b1bd528a310752c060313a279625"
+        "8b04c2d863c2b1bd528a310752c060313a279625",
+        "6f09f80e4318c1987087f98f3b7b4b8c57a95321",
+        "d9b283a2d8a8ede6cf6aecb314f1f631d48b1c74",
+        "b0d337f2b63a80b2366b8b05354861b721b0872c",
+        "eeb4eb4f607d92b87e40b8792b648fa13e66dc3f",
+        "af60aa3af15cd966ca51f9c9546fe98717d7e5e1",
+        "bf9a880fcc323b41241f248004c52d7da57fca91"
       ],
       "frontend_commits": [],
       "migrations": [
