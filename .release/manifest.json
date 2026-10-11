@@ -1051,6 +1051,14 @@
       "migrations": [
         "supabase/migrations/20261011142855_radar_pdf_platform_identification.sql"
       ]
+    },
+    {
+      "id": "RADAR-17-DETALHE-PLATAFORMA-001",
+      "backend_commits": [],
+      "frontend_commits": [
+        "abbfa68c277534058b78ac20e9472e0250a98052"
+      ],
+      "migrations": []
     }
   ]
 }

@@ -151,6 +151,9 @@ test("detalhes da evidência PDF mostram documento, versão, página, método e 
     confidence: "high",
     processed_at: "2026-10-11T12:05:00Z",
     value_excerpt: "A sessão pública será realizada na plataforma <Licitanet>.",
+  }, {
+    source: "manual",
+    value_excerpt: "Confirmação manual preservada",
   }]);
   assert.match(html, /Edital &lt;atual&gt;/);
   assert.match(html, /Documento 42/);
@@ -159,6 +162,7 @@ test("detalhes da evidência PDF mostram documento, versão, página, método e 
   assert.match(html, /Instrução contextual do edital em PDF/);
   assert.match(html, /plataforma &lt;Licitanet&gt;/);
   assert.doesNotMatch(html, /<Licitanet>/);
+  assert.doesNotMatch(html, /Confirmação manual preservada/);
 });
 
 test("detalhes mostram limitações de digitalização mesmo sem trecho extraído", () => {
