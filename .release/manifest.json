@@ -1039,6 +1039,18 @@
       "migrations": [
         "supabase/migrations/20261011134423_radar_manual_platform_url_override.sql"
       ]
+    },
+    {
+      "id": "RADAR-16-EDITAL-PDF-001",
+      "backend_commits": [
+        "fe11e72"
+      ],
+      "frontend_commits": [
+        "b2516b5dbab8b9e313352672a18d31ae0abc8abb"
+      ],
+      "migrations": [
+        "supabase/migrations/20261011142855_radar_pdf_platform_identification.sql"
+      ]
     }
   ]
 }
