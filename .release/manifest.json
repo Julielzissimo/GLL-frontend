@@ -1109,6 +1109,18 @@
       "migrations": [
         "supabase/migrations/20261011180000_radar_item_cache_async_sync.sql"
       ]
+    },
+    {
+      "id": "EMAIL-03",
+      "backend_commits": [
+        "b414b9dc2b4853bb7185a8884f03aab9e93210ea"
+      ],
+      "frontend_commits": [
+        "0a7198220b45d55506364ce74f38f2ef31bd27dc"
+      ],
+      "migrations": [
+        "supabase/migrations/20261011184318_first_access_username_avatar.sql"
+      ]
     }
   ]
 }
