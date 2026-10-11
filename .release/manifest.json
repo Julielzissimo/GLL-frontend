@@ -859,6 +859,22 @@
       "migrations": [
         "supabase/migrations/20261010232844_radar_import_create_linked_quotation.sql"
       ]
+    },
+    {
+      "id": "RADAR-09-PLATAFORMAS-001",
+      "backend_commits": [
+        "e481946ae0e5987565f6c976614cd01018798b79",
+        "28e83ebd0e1ceb3244998a187fbcad30e528eff3",
+        "1b403f21ecdf452f45d124c29b2fc1b0548226dc",
+        "4330ce32f3187f49fa1d082bc8e3944233fdfb41"
+      ],
+      "frontend_commits": [
+        "935f184dbc498b9f5dd9febbc7a5bcdce23c85c3"
+      ],
+      "migrations": [
+        "supabase/migrations/20261010223000_radar_platform_identification.sql",
+        "supabase/migrations/20261010235000_index_radar_platform_domains.sql"
+      ]
     }
   ]
 }
