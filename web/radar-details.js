@@ -1,3 +1,12 @@
+import {
+  canRequestRadarItemSyncUpdate,
+  createRadarItemSyncPoller,
+  isCompleteRadarItemSnapshot,
+  radarItemSyncPresentation,
+  retainCompleteRadarItemSnapshot,
+  shouldPollRadarItemSync,
+} from "./radar-item-sync.js";
+
 const FAVORITE_METADATA_FIELDS = [
   "numero_controle_pncp",
   "numero_compra",
@@ -152,6 +161,12 @@ export function createRadarItemSelectionState() {
     delete: (number) => selected.delete(String(number)),
     clear: () => selected.clear(),
     values: () => [...selected],
+    retain: (items, excluded = new Set()) => {
+      const allowed = new Set((Array.isArray(items) ? items : [])
+        .map((item) => String(item?.number ?? ""))
+        .filter((number) => number && !excluded.has(number)));
+      selected.forEach((number) => { if (!allowed.has(number)) selected.delete(number); });
+    },
     selectAll: (items, excluded = new Set()) => {
       selected.clear();
       (Array.isArray(items) ? items : []).forEach((item) => {
@@ -182,22 +197,6 @@ export function radarContractBudgetIsSecret(contract) {
 
 export function formatRadarContractEstimatedValue(contract) {
   return radarContractBudgetIsSecret(contract) ? "Orçamento sigiloso" : moneyValue(contract?.valorTotalEstimado);
-}
-
-export function radarItemSyncMessage(itemSync = {}, hasSnapshot = false) {
-  if (!hasSnapshot) return "";
-  if (itemSync.status === "pending") return "Exibindo a última versão completa enquanto uma atualização é processada.";
-  if (itemSync.status === "processing") return "Exibindo a última versão completa enquanto o Radar atualiza os itens.";
-  if (itemSync.status === "partial") return "A atualização está parcial; a última versão completa continua disponível.";
-  if (itemSync.status === "failed") return "A última tentativa de atualização falhou; esta é a versão completa preservada no cache.";
-  return "";
-}
-
-export function radarItemsPendingMessage(itemSync = {}) {
-  if (itemSync.status === "processing") return "A sincronização dos itens está em andamento. Nenhum conjunto parcial será apresentado.";
-  if (itemSync.status === "partial") return "A sincronização está parcial. Os itens serão exibidos quando uma versão completa estiver pronta.";
-  if (itemSync.status === "failed") return "A sincronização falhou temporariamente. Tente consultar novamente mais tarde.";
-  return "A sincronização dos itens foi solicitada e continuará em segundo plano.";
 }
 
 export function validatedOfficialPncpUrl(value) {
@@ -389,9 +388,77 @@ export function createRadarDetailsFeature({ getClient, getUserRole = () => null,
     importFeedbackTone: "success",
     confirmingImport: false,
     importing: false,
+    syncRequestInProgress: false,
+    itemStatusCommunicationError: false,
+    itemPollingLimitReached: false,
     lastImport: null,
     platformChoices: [],
   };
+
+  const itemStatusPoller = createRadarItemSyncPoller({
+    poll: () => refreshItemsStatus(currentId(), state.requestId),
+    shouldContinue: () => state.opened && Boolean(state.data)
+      && shouldPollRadarItemSync(state.data.items, state.data.itemSync),
+    onError: () => {
+      if (!state.opened || !state.data) return;
+      state.itemStatusCommunicationError = true;
+      render();
+    },
+    onWindowExpired: () => {
+      if (!state.opened || !state.data) return;
+      state.itemPollingLimitReached = true;
+      render();
+    },
+  });
+
+  function syncItemStatusPolling({ restart = false } = {}) {
+    if (!state.opened || !state.data
+      || !shouldPollRadarItemSync(state.data.items, state.data.itemSync)) {
+      itemStatusPoller.stop();
+      state.itemPollingLimitReached = false;
+      return;
+    }
+    if (restart) {
+      itemStatusPoller.stop();
+      state.itemPollingLimitReached = false;
+    }
+    if (!state.itemPollingLimitReached) itemStatusPoller.start();
+  }
+
+  function captureFocusedDetailsControl(container) {
+    const active = globalThis.document?.activeElement;
+    if (!active || !container?.contains(active)) return null;
+    if (active.id) return { type: "id", value: active.id };
+    for (const attribute of [
+      "data-radar-select-item",
+      "data-radar-items-page",
+      "data-radar-select-all",
+      "data-radar-select-none",
+      "data-radar-import-start",
+      "data-radar-import-confirm",
+      "data-radar-import-cancel",
+      "data-radar-open-bid",
+      "data-radar-item-sync-request",
+      "data-radar-item-sync-watch",
+    ]) {
+      if (active.hasAttribute?.(attribute)) return { type: "attribute", attribute, value: active.getAttribute(attribute) };
+    }
+    return null;
+  }
+
+  function restoreFocusedDetailsControl(container, focusTarget) {
+    if (!focusTarget || !container) return;
+    let replacement = null;
+    if (focusTarget.type === "id") replacement = container.querySelector(`#${globalThis.CSS?.escape?.(focusTarget.value) || focusTarget.value}`);
+    else {
+      replacement = [...container.querySelectorAll(`[${focusTarget.attribute}]`)]
+        .find((element) => element.getAttribute(focusTarget.attribute) === focusTarget.value)
+        || (focusTarget.attribute === "data-radar-items-page"
+          ? container.querySelector("[data-radar-items-page]")
+          : null);
+    }
+    if (replacement && !replacement.disabled) replacement.focus({ preventScroll: true });
+  }
 
   function byId(id) {
     return root?.querySelector(`#${id}`) || null;
@@ -427,7 +494,7 @@ export function createRadarDetailsFeature({ getClient, getUserRole = () => null,
     if (state.loading && !state.data) {
       feedback.hidden = false;
       feedback.dataset.tone = "info";
-      feedback.innerHTML = '<span class="radar-spinner" aria-hidden="true"></span><span>Consultando contratação, itens e documentos no PNCP…</span>';
+      feedback.innerHTML = '<span class="radar-spinner" aria-hidden="true"></span><span>Carregando dados do edital no Radar…</span>';
       return;
     }
     if (state.notFound) {
@@ -437,7 +504,7 @@ export function createRadarDetailsFeature({ getClient, getUserRole = () => null,
       return;
     }
     if (state.error) {
-      const oldDataDate = state.data?.retrievedAt ? dateTimeFormatter.format(new Date(state.data.retrievedAt)) : "";
+      const oldDataDate = state.data?.retrievedAt ? dateValue(state.data.retrievedAt) : "";
       feedback.hidden = false;
       feedback.dataset.tone = state.data ? "warning" : "error";
       feedback.innerHTML = state.data
@@ -519,51 +586,50 @@ export function createRadarDetailsFeature({ getClient, getUserRole = () => null,
     </section>`;
   }
 
+  function renderItemSyncNotice(itemsState, itemSync = {}) {
+    const presentation = radarItemSyncPresentation(itemsState, itemSync, {
+      communicationError: state.itemStatusCommunicationError,
+    });
+    const canRequestUpdate = canRequestRadarItemSyncUpdate(itemsState, itemSync);
+    const canResumePolling = state.itemPollingLimitReached && presentation.syncActive;
+    if (!presentation.message && !presentation.runningMessage && !presentation.progress
+      && !canRequestUpdate && !canResumePolling) return "";
+
+    const tone = presentation.kind === "error" ? "error" : "info";
+    const showSpinner = presentation.kind === "running"
+      || (presentation.kind === "stale" && Boolean(presentation.runningMessage));
+    return `<div class="radar-feedback" data-tone="${tone}">
+      ${showSpinner ? '<span class="radar-spinner" aria-hidden="true"></span>' : ""}
+      <div role="status" aria-live="polite"><span>${escapeHtml(presentation.message)}</span>${presentation.runningMessage ? `<span>${escapeHtml(presentation.runningMessage)}</span>` : ""}${presentation.progress ? `<small>${escapeHtml(presentation.progress)}</small>` : ""}</div>
+      ${canResumePolling ? '<button class="quiet-action compact-action" type="button" data-radar-item-sync-watch>Continuar acompanhamento</button>' : ""}
+      ${canRequestUpdate ? `<button class="quiet-action compact-action" type="button" data-radar-item-sync-request aria-disabled="${state.loading || state.syncRequestInProgress ? "true" : "false"}">${state.syncRequestInProgress ? "Solicitando atualização…" : "Solicitar nova atualização"}</button>` : ""}
+    </div>`;
+  }
+
   function renderItems(itemsState, itemSync = {}) {
-    const hasSnapshot = itemsState?.status === "available" && itemsState.complete === true;
-    const syncNotice = radarItemSyncMessage(itemSync, hasSnapshot);
-    if (itemsState?.status === "pending") {
-      const label = radarItemsPendingMessage(itemSync);
-      return `<section class="section-band radar-detail-section" aria-labelledby="radarItemsTitle">
-        <div class="radar-detail-section-heading"><div><h2 id="radarItemsTitle">Itens da contratação</h2><p>${escapeHtml(label)}</p></div></div>
-        <button class="quiet-action compact-action" type="button" data-radar-item-status-refresh>Consultar estado dos itens</button>
-      </section>`;
-    }
+    const hasSnapshot = isCompleteRadarItemSnapshot(itemsState);
+    const statusNotice = renderItemSyncNotice(itemsState, itemSync);
+    const heading = `<div class="radar-detail-section-heading"><div><h2 id="radarItemsTitle">Itens da contratação</h2></div></div>`;
+
     if (itemsState?.status === "not_published") {
-      return `<section class="section-band radar-detail-section" aria-labelledby="radarItemsTitle">
-        <div class="radar-detail-section-heading"><div><h2 id="radarItemsTitle">Itens da contratação</h2><p>O PNCP confirmou que não há itens publicados para esta contratação.</p></div></div>
-      </section>`;
+      return `<section class="section-band radar-detail-section" aria-labelledby="radarItemsTitle">${heading}${statusNotice}</section>`;
     }
     if (itemsState?.status === "unavailable" || itemsState?.status === "pagination_error") {
-      const label = itemsState.status === "pagination_error" ? "Não foi possível concluir a paginação dos itens." : "Os itens estão indisponíveis no cache do Radar neste momento.";
-      return `<section class="section-band radar-detail-section" aria-labelledby="radarItemsTitle">
-        <div class="radar-detail-section-heading"><div><h2 id="radarItemsTitle">Itens da contratação</h2><p>${escapeHtml(label)}</p></div></div>
-        ${itemsState.items?.length ? renderItemTable(itemsState.items) : ""}
-        <button class="quiet-action compact-action" type="button" data-radar-details-refresh>Atualizar itens</button>
-      </section>`;
+      return `<section class="section-band radar-detail-section" aria-labelledby="radarItemsTitle">${heading}${statusNotice}</section>`;
     }
-    if (!itemsState || !itemsState.items?.length) {
-      const label = hasSnapshot
-        ? "A sincronização confirmou que esta contratação não possui itens."
-        : "Não há itens disponíveis no cache do Radar.";
-      return `<section class="section-band radar-detail-section" aria-labelledby="radarItemsTitle">
-        <div class="radar-detail-section-heading"><div><h2 id="radarItemsTitle">Itens da contratação</h2><p>${escapeHtml(label)}</p></div></div>
-      </section>`;
+    if (hasSnapshot && !itemsState.items.length) {
+      return `<section class="section-band radar-detail-section" aria-labelledby="radarItemsTitle">${heading}${statusNotice}</section>`;
     }
-    if (itemsState.status !== "available" || itemsState.complete !== true) {
-      const label = itemsState.status === "pagination_error"
-        ? "A paginação não foi concluída; atualize os itens antes de importar."
-        : "A importação ficará disponível quando o PNCP retornar todos os itens.";
-      return `<section class="section-band radar-detail-section" aria-labelledby="radarItemsTitle">
-        <div class="radar-detail-section-heading"><div><h2 id="radarItemsTitle">Itens da contratação</h2><p>${escapeHtml(label)}</p></div></div>
-        ${itemsState.items?.length ? renderItemTable(itemsState.items, { selectable: false }) : ""}
-      </section>`;
+    if (!hasSnapshot) {
+      return `<section class="section-band radar-detail-section" aria-labelledby="radarItemsTitle">${heading}${statusNotice}</section>`;
     }
+
     const secretCount = itemsState.items.filter((item) => item.budgetSecret).length;
     const page = paginateRadarItems(itemsState.items, state.itemsPage, itemsPerPage);
     state.itemsPage = page.page;
     return `<section class="section-band radar-detail-section" aria-labelledby="radarItemsTitle">
-      <div class="radar-detail-section-heading"><div><h2 id="radarItemsTitle">Itens da contratação</h2><p>${itemsState.items.length.toLocaleString("pt-BR")} itens carregados do cache.${syncNotice ? ` ${escapeHtml(syncNotice)}` : ""}</p></div></div>
+      <div class="radar-detail-section-heading"><div><h2 id="radarItemsTitle">Itens da contratação</h2><p>${itemsState.items.length.toLocaleString("pt-BR")} itens carregados do cache.</p></div></div>
+      ${statusNotice}
       ${secretCount ? `<p class="radar-feedback" data-tone="warning" role="status"><strong>Orçamento sigiloso</strong><span>O PNCP informou orçamento sigiloso em ${secretCount.toLocaleString("pt-BR")} ${secretCount === 1 ? "item" : "itens"}; valores não serão tratados como preço.</span></p>` : ""}
       ${renderItemTable(page.items, { selectable: true })}
       ${renderItemPagination(page.pageCount)}
@@ -571,13 +637,13 @@ export function createRadarDetailsFeature({ getClient, getUserRole = () => null,
   }
 
   function renderImportPanel(itemsState) {
-    const available = itemsState?.status === "available" && itemsState.complete === true && itemsState.items?.length;
+    const available = isCompleteRadarItemSnapshot(itemsState) && itemsState.items.length > 0;
     const body = available
       ? renderImportControls(itemsState.items)
       : `<p>${itemsState?.status === "pending"
         ? "A importação ficará disponível após a sincronização completa dos itens."
         : itemsState?.status === "not_published"
-          ? "O PNCP confirmou que não há itens publicados para importação."
+          ? "O PNCP ainda não disponibilizou itens para importação."
           : itemsState?.status === "available" && itemsState.complete === true
             ? "A sincronização confirmou que esta contratação não possui itens para importar."
             : itemsState?.status === "unavailable"
@@ -717,12 +783,14 @@ export function createRadarDetailsFeature({ getClient, getUserRole = () => null,
         : "";
       return;
     }
+    const focusTarget = captureFocusedDetailsControl(content);
     const loadedAt = dateTimeFormatter.format(new Date(state.data.retrievedAt));
     content.innerHTML = `<p class="radar-detail-source">Fonte: Dados centralizados no Radar · Consulta realizada em ${escapeHtml(loadedAt)}.</p>
       <div class="radar-detail-layout">
         <main class="radar-detail-main">${renderGeneral(state.data.contract, state.data.sources, state.data.platform)}${renderItems(state.data.items, state.data.itemSync)}</main>
         <aside class="radar-detail-aside">${renderDocuments(state.data.documents)}${renderImportPanel(state.data.items)}</aside>
       </div>`;
+    restoreFocusedDetailsControl(content, focusTarget);
   }
 
   async function loadDocuments(numberControlPncp = currentId(), detailsRequestId = state.requestId) {
@@ -782,13 +850,27 @@ export function createRadarDetailsFeature({ getClient, getUserRole = () => null,
       const { data, error } = await getClient().functions.invoke("radar-details", {
         body: { action: "sync-status", numberControlPncp },
       });
-      if (error || !data || data.status !== "available" || !data.items || !data.itemSync) return;
-      if (detailsRequestId !== state.requestId || itemStatusRequestId !== state.itemStatusRequestId
-        || !state.data || currentId() !== numberControlPncp) return;
-      state.data = { ...state.data, items: data.items, itemSync: data.itemSync };
+      const isCurrent = detailsRequestId === state.requestId
+        && itemStatusRequestId === state.itemStatusRequestId
+        && state.opened && state.data && currentId() === numberControlPncp;
+      if (!isCurrent) return;
+      if (error || !data || data.status !== "available" || !Array.isArray(data.items?.items)
+        || !data.itemSync || typeof data.itemSync !== "object") {
+        state.itemStatusCommunicationError = true;
+        render();
+        return;
+      }
+      const safeItems = retainCompleteRadarItemSnapshot(state.data.items, data.items);
+      state.data = { ...state.data, items: safeItems, itemSync: data.itemSync };
+      state.selectedItemNumbers.retain(safeItems.items, state.importStatus?.itemNumbers || new Set());
+      state.itemStatusCommunicationError = false;
+      state.itemPollingLimitReached = false;
+      syncItemStatusPolling();
       render();
     } catch {
-      // A failed status read leaves the currently displayed complete snapshot untouched.
+      if (detailsRequestId !== state.requestId || !state.opened || currentId() !== numberControlPncp) return;
+      state.itemStatusCommunicationError = true;
+      render();
     }
   }
 
@@ -800,6 +882,10 @@ export function createRadarDetailsFeature({ getClient, getUserRole = () => null,
       render();
       return;
     }
+    itemStatusPoller.stop();
+    state.itemStatusRequestId += 1;
+    state.itemStatusCommunicationError = false;
+    state.itemPollingLimitReached = false;
     const requestId = ++state.requestId;
     state.loading = true;
     state.error = "";
@@ -820,7 +906,8 @@ export function createRadarDetailsFeature({ getClient, getUserRole = () => null,
         }
         throw new Error(responseBody?.error || "Não foi possível consultar os detalhes centralizados no Radar.");
       }
-      if (!data || data.status !== "available" || !data.contract || !data.items || !data.documents) {
+      if (!data || data.status !== "available" || !data.contract
+        || !Array.isArray(data.items?.items) || !data.itemSync || !data.documents) {
         if (data?.status === "not_found") {
           state.notFound = true;
           state.data = null;
@@ -828,9 +915,14 @@ export function createRadarDetailsFeature({ getClient, getUserRole = () => null,
         }
         throw new Error("O Radar retornou uma resposta incompatível com o contrato de detalhes.");
       }
-      state.data = data;
+      const safeItems = retainCompleteRadarItemSnapshot(state.data?.items, data.items);
+      state.data = { ...data, items: safeItems };
+      state.selectedItemNumbers.retain(safeItems.items, state.importStatus?.itemNumbers || new Set());
       state.error = "";
       state.notFound = false;
+      state.itemStatusCommunicationError = Boolean(data.itemSync.errorCode === "ITEMS_SYNC_QUEUE_FAILED"
+        || data.itemSync.errorCode === "ITEMS_PERSISTENCE_FAILED");
+      syncItemStatusPolling({ restart: true });
       render();
       if (loadExtras) {
         void loadDocuments(id, requestId);
@@ -840,6 +932,7 @@ export function createRadarDetailsFeature({ getClient, getUserRole = () => null,
         try {
           state.importStatus = await imports.loadImportStatus(id);
           state.importStatusError = "";
+          state.selectedItemNumbers.retain(state.data?.items?.items, state.importStatus?.itemNumbers || new Set());
         } catch {
           state.importStatus = null;
           state.importStatusError = "Não foi possível consultar o estado anterior da importação.";
@@ -851,6 +944,26 @@ export function createRadarDetailsFeature({ getClient, getUserRole = () => null,
     } finally {
       if (requestId === state.requestId) {
         state.loading = false;
+        render();
+      }
+    }
+  }
+
+  async function requestItemSync() {
+    const id = currentId();
+    if (!state.opened || !identityIsValid(id) || state.loading || state.syncRequestInProgress
+      || !canRequestRadarItemSyncUpdate(state.data?.items, state.data?.itemSync)) return;
+
+    state.syncRequestInProgress = true;
+    state.itemStatusCommunicationError = false;
+    state.itemPollingLimitReached = false;
+    render();
+    try {
+      await refresh({ loadExtras: false });
+    } finally {
+      if (state.opened && currentId() === id) {
+        state.syncRequestInProgress = false;
+        if (state.error) state.itemStatusCommunicationError = true;
         render();
       }
     }
@@ -988,7 +1101,7 @@ export function createRadarDetailsFeature({ getClient, getUserRole = () => null,
   }
 
   async function executeImport() {
-    if (!imports || !state.data?.items?.complete || state.data.items.status !== "available") {
+    if (!imports || !isCompleteRadarItemSnapshot(state.data?.items) || !state.data.items.items.length) {
       state.importFeedback = "Atualize os itens completos do PNCP antes de importar.";
       state.importFeedbackTone = "warning";
       render();
@@ -1039,8 +1152,11 @@ export function createRadarDetailsFeature({ getClient, getUserRole = () => null,
   }
 
   function closeView({ updateHistory = true } = {}) {
+    itemStatusPoller.stop();
+    state.itemStatusRequestId += 1;
     state.opened = false;
     state.loading = false;
+    state.itemPollingLimitReached = false;
     state.requestId += 1;
     if (updateHistory) {
       if (state.historyEntry && typeof window !== "undefined"
@@ -1061,6 +1177,11 @@ export function createRadarDetailsFeature({ getClient, getUserRole = () => null,
       toast("Esta contratação não tem um identificador PNCP válido.", "error");
       return;
     }
+    itemStatusPoller.stop();
+    state.itemStatusRequestId += 1;
+    state.itemStatusCommunicationError = false;
+    state.itemPollingLimitReached = false;
+    state.syncRequestInProgress = false;
     const keepSelection = currentId() === id;
     state.current = typeof result === "string" ? id : result;
     state.data = null;
@@ -1102,12 +1223,17 @@ export function createRadarDetailsFeature({ getClient, getUserRole = () => null,
   }
 
   function reset() {
+    itemStatusPoller.stop();
     state.requestId += 1;
+    state.itemStatusRequestId += 1;
     state.documentRequestId += 1;
     state.current = null;
     state.data = null;
     state.opened = false;
     state.loading = false;
+    state.itemStatusCommunicationError = false;
+    state.itemPollingLimitReached = false;
+    state.syncRequestInProgress = false;
     state.notFound = false;
     state.error = "";
     state.favoriteError = false;
@@ -1137,8 +1263,12 @@ export function createRadarDetailsFeature({ getClient, getUserRole = () => null,
         closeView();
       } else if (event.target.closest("[data-radar-documents-refresh]")) {
         void loadDocuments(currentId(), state.requestId);
-      } else if (event.target.closest("[data-radar-item-status-refresh]")) {
-        void refreshItemsStatus(currentId(), state.requestId);
+      } else if (event.target.closest("[data-radar-item-sync-request]")) {
+        void requestItemSync();
+      } else if (event.target.closest("[data-radar-item-sync-watch]")) {
+        state.itemPollingLimitReached = false;
+        syncItemStatusPolling({ restart: true });
+        render();
       } else if (event.target.closest("#radarDetailsRefreshButton")) {
         void refresh();
       } else if (event.target.closest("[data-radar-details-refresh]")) {
