@@ -912,6 +912,14 @@
       "migrations": [
         "supabase/migrations/20261011032719_radar_platform_metadata_evidence.sql"
       ]
+    },
+    {
+      "id": "RADAR-15-OBJETO-EXPANSIVEL-001",
+      "backend_commits": [],
+      "frontend_commits": [
+        "cff1de14bdb6271d9ead8d9042c9bb5ecf608422"
+      ],
+      "migrations": []
     }
   ]
 }
