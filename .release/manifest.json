@@ -1079,6 +1079,16 @@
       ],
       "frontend_commits": [],
       "migrations": []
+    },
+    {
+      "id": "EMAIL-02",
+      "backend_commits": [
+        "76f8df2ef2dbae84256d0d5167297a2db228e409"
+      ],
+      "frontend_commits": [
+        "b3205594361934d3f901ea36c8c515e33a245395"
+      ],
+      "migrations": []
     }
   ]
 }
