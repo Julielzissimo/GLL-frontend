@@ -972,6 +972,16 @@
       "migrations": [
         "supabase/migrations/20261011180000_radar_item_cache_async_sync.sql"
       ]
+    },
+    {
+      "id": "RADAR-19-FASE-3-DETALHES-CACHE-ITENS-001",
+      "backend_commits": [
+        "a03e7df5b6264d4f6d235eabd3829819ac2c9abd"
+      ],
+      "frontend_commits": [
+        "8aa2e4376fd696bb0ec5b92fd754dd65f9e1594a"
+      ],
+      "migrations": []
     }
   ]
 }
