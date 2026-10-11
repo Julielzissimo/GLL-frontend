@@ -124,18 +124,21 @@ async function validateRadarSearchPage(page) {
   await expect(resultCard.locator(".radar-result-value")).toContainText("Valor estimado");
   await expect(resultCard).toContainText("Ver itens");
   await expect(resultCard.locator(".radar-receipt-status")).toHaveCSS("border-top-style", "solid");
-  const objectHeading = resultCard.locator(".radar-result-object");
-  const objectDisclosure = resultCard.locator(".radar-object-details");
   const longDescription = Array.from({ length: 8 }, () => "Contratação de serviços especializados para fornecimento, instalação e manutenção de equipamentos destinados às unidades administrativas do município.").join(" ");
-  await objectHeading.evaluate((heading, text) => {
+  const objectDisclosureState = await resultCard.evaluate(async (card, text) => {
+    const heading = card.querySelector(".radar-result-object");
+    const disclosure = heading?.nextElementSibling;
+    if (!heading || !disclosure?.matches(".radar-object-details")) throw new Error("O card não contém a descrição completa do objeto.");
     heading.textContent = text;
-    heading.nextElementSibling.querySelector("p").textContent = text;
+    disclosure.querySelector("p").textContent = text;
     window.dispatchEvent(new Event("resize"));
+    await new Promise((resolve) => window.requestAnimationFrame(resolve));
+    const isTruncated = heading.classList.contains("is-truncated");
+    const isVisible = !disclosure.hidden;
+    disclosure.querySelector("summary").click();
+    return { isTruncated, isVisible, isOpen: disclosure.open, description: disclosure.querySelector("p").textContent };
   }, longDescription);
-  await expect(objectHeading).toHaveClass(/is-truncated/);
-  await expect(objectDisclosure).toBeVisible();
-  await objectDisclosure.locator("summary").click();
-  await expect(objectDisclosure.locator("p")).toHaveText(longDescription);
+  expect(objectDisclosureState).toEqual({ isTruncated: true, isVisible: true, isOpen: true, description: longDescription });
 
   await page.locator("#radarTagInput").fill("aquisição");
   await page.locator("#radarTagInput").press("Enter");
