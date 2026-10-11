@@ -995,7 +995,10 @@
     {
       "id": "RADAR-12-ENRIQUECIMENTO-AUTOMATICO-001",
       "backend_commits": [
-        "b6bf166240e610e643c893ee3e3d77a9c851423a"
+        "b6bf166240e610e643c893ee3e3d77a9c851423a",
+        "3c7cff656d4820c154b21345e4d3795b0ff6e868",
+        "d4a74cbe93f309dca102fe13c939e2b284e86b17",
+        "6f88a0ba625d2e9a733908a6388ff14416d49199"
       ],
       "frontend_commits": [],
       "migrations": [
