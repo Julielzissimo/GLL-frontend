@@ -7889,10 +7889,9 @@ button.history-row:hover {
 .radar-platform-admin-entry li button { margin-left: var(--space-xs); }
 .radar-platform-admin-entry code { overflow-wrap: anywhere; }
 .radar-platform-admin .button-row { flex-wrap: wrap; }
-.radar-object-text { display: -webkit-box; overflow: hidden; overflow-wrap: anywhere; -webkit-box-orient: vertical; -webkit-line-clamp: 5; }
-.radar-object-details summary { display: -webkit-box; overflow: hidden; cursor: pointer; overflow-wrap: anywhere; -webkit-box-orient: vertical; -webkit-line-clamp: 5; }
-.radar-object-details[open] summary { display: block; }
-.radar-object-details p { margin: var(--space-sm) 0 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+.radar-object-details summary { display: -webkit-box; overflow: hidden; cursor: pointer; overflow-wrap: anywhere; white-space: normal; -webkit-box-orient: vertical; -webkit-line-clamp: 2; list-style: none; }
+.radar-object-details summary::-webkit-details-marker { display: none; }
+.radar-object-details[open] summary { display: block; overflow: visible; }
 .radar-receipt-status { display: inline-flex; max-width: 14rem; padding: var(--space-xs) var(--space-sm); border-radius: var(--radius-pill); background: var(--color-info-surface); color: var(--color-info); font-size: var(--font-size-xs); font-weight: var(--font-weight-semibold); }
 .radar-receipt-status[data-status="open"] { background: var(--color-success-surface); color: var(--color-success); }
 .radar-receipt-status[data-status="closed"] { background: var(--color-warning-surface); color: var(--color-warning); }
