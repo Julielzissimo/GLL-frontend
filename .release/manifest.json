@@ -1043,7 +1043,9 @@
     {
       "id": "RADAR-16-EDITAL-PDF-001",
       "backend_commits": [
-        "fe11e723f8e629da2a23aaf819f64406e80aaaf6"
+        "fe11e723f8e629da2a23aaf819f64406e80aaaf6",
+        "f7337c0213f19bcc4181c378210691d4e5b823d2",
+        "32f9232daf7eed57827c4369b82943b57250595e"
       ],
       "frontend_commits": [
         "b2516b5dbab8b9e313352672a18d31ae0abc8abb"
