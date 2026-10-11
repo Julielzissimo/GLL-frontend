@@ -1,4 +1,4 @@
-import { test } from "@playwright/test";
+import { expect, test } from "@playwright/test";
 
 function required(name) {
   const value = process.env[name]?.trim();
@@ -182,5 +182,135 @@ test("homologação envia, lê e exclui somente um arquivo sintético no R2", as
       localStorage.clear();
       sessionStorage.clear();
     }, { supabaseUrl: config.supabaseUrl, anonKey: config.supabaseAnonKey, accessToken: session.access_token });
+  }
+});
+
+test("homologação anexa e baixa um arquivo de edital pela interface usando R2", async ({ page }) => {
+  const baseUrl = required("GLL_E2E_BASE_URL");
+  const email = required("GLL_E2E_EMAIL");
+  const password = required("GLL_E2E_PASSWORD");
+  if (required("GLL_E2E_EXPECTED_ENVIRONMENT") !== "homolog") {
+    throw new Error("O teste de anexos R2 só pode executar em homologação.");
+  }
+
+  test.setTimeout(180_000);
+  await page.goto(baseUrl, { waitUntil: "domcontentloaded" });
+  const config = await page.evaluate(() => window.GLL_CONFIG);
+  if (config?.environment !== "homolog" || config.storageProvider !== "r2" ||
+    new URL(config.supabaseUrl).hostname !== "dwotbzrjcetizyygzoty.supabase.co") {
+    throw new Error("O teste de anexos R2 não está na homologação com R2 ativado.");
+  }
+
+  await page.waitForFunction(() => {
+    const badge = document.querySelector("#environmentBadge");
+    const loadingModal = document.querySelector("#blockingLoadingModal");
+    return badge?.dataset.environment === "homolog" && !loadingModal?.open &&
+      Boolean(document.querySelector("#loginForm button[type='submit']"));
+  }, null, { timeout: 30_000 });
+  await page.locator("#loginEmail").fill(email);
+  await page.locator("#loginPassword").fill(password);
+  const authResponsePromise = page.waitForResponse(
+    (response) => response.url().includes("/auth/v1/token") && response.request().method() === "POST",
+    { timeout: 30_000 },
+  );
+  await page.locator("#loginForm button[type='submit']").click();
+  const authResponse = await authResponsePromise;
+  if (!authResponse.ok()) throw new Error("Login da conta de teste foi recusado.");
+  const session = await authResponse.json();
+  if (!session.access_token || session.user?.email?.toLowerCase() !== email.toLowerCase()) {
+    throw new Error("A sessão não corresponde à conta de teste.");
+  }
+
+  let createdBid = false;
+  try {
+    await page.waitForFunction(() => {
+      const appView = document.querySelector("#appView");
+      const loadingModal = document.querySelector("#blockingLoadingModal");
+      return appView && !appView.classList.contains("hidden") && !loadingModal?.open;
+    }, null, { timeout: 35_000 });
+
+    const organizations = await page.evaluate(async ({ supabaseUrl, anonKey, accessToken }) => {
+      const response = await fetch(`${supabaseUrl}/rest/v1/organizations?select=id`, {
+        headers: { apikey: anonKey, Authorization: `Bearer ${accessToken}` },
+      });
+      return response.ok ? response.json() : null;
+    }, { supabaseUrl: config.supabaseUrl, anonKey: config.supabaseAnonKey, accessToken: session.access_token });
+    if (!Array.isArray(organizations) || organizations.length !== 1) {
+      throw new Error("A conta de teste não está isolada em uma única organização.");
+    }
+
+    const r2Methods = [];
+    page.on("request", (request) => {
+      try {
+        if (new URL(request.url()).hostname.endsWith(".r2.cloudflarestorage.com")) {
+          r2Methods.push(request.method());
+        }
+      } catch { /* ignore non-URL browser requests */ }
+    });
+
+    const bidNumber = `R2-E2E-${Date.now()}`;
+    const fileName = `anexo-r2-teste-${Date.now()}.png`;
+    const fileBytes = Buffer.from(
+      "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/lS8AAAAASUVORK5CYII=",
+      "base64",
+    );
+
+    await page.locator("#navBidsButton").click();
+    await expect(page.locator("#bidCatalogPage")).toBeVisible();
+    await page.locator("#bidCatalogPage [data-open-new]").click();
+    await expect(page.locator("#bidForm")).toBeVisible();
+    const futureSession = await page.evaluate(() => {
+      const date = new Date(Date.now() + 48 * 60 * 60 * 1000);
+      const localDate = new Date(date.getTime() - date.getTimezoneOffset() * 60_000);
+      return localDate.toISOString().slice(0, 16);
+    });
+    await page.locator("#bidId").fill(bidNumber);
+    await page.locator("#buyerAgency").fill("QA automatizado — dados sintéticos");
+    await page.locator("#sessionDatetime").fill(futureSession);
+    await page.locator("#bidForm button[type='submit']").click();
+    await expect(page.locator("#selectedBidLabel")).toHaveText(bidNumber, { timeout: 35_000 });
+    createdBid = true;
+
+    await page.locator("#editalFile").setInputFiles({ name: fileName, mimeType: "image/png", buffer: fileBytes });
+    await page.locator("#bidForm button[type='submit']").click();
+    await expect(page.locator("#editalAttachmentList .attachment-panel")).toHaveCount(1, { timeout: 45_000 });
+    await expect(page.locator("#editalAttachmentList strong")).toHaveText(fileName);
+
+    const [download] = await Promise.all([
+      page.waitForEvent("download", { timeout: 30_000 }),
+      page.locator("#editalAttachmentList [data-attachment-action='download']").click(),
+    ]);
+    expect(download.suggestedFilename()).toBe(fileName);
+    const downloadStream = await download.createReadStream();
+    if (!downloadStream) throw new Error("O navegador não disponibilizou o arquivo baixado para validação.");
+    const chunks = [];
+    for await (const chunk of downloadStream) chunks.push(Buffer.from(chunk));
+    expect(Buffer.concat(chunks)).toEqual(fileBytes);
+    expect(r2Methods).toEqual(expect.arrayContaining(["PUT", "GET"]));
+
+    console.log("Anexo de edital validado na interface: upload PUT e download GET no R2 com conteúdo íntegro.");
+  } finally {
+    try {
+      const removeAttachment = page.locator("#editalAttachmentList [data-attachment-action='delete']");
+      if (await removeAttachment.count()) {
+        await removeAttachment.first().click();
+        await page.locator("#confirmDeleteBidAttachmentButton").click();
+        await expect(page.locator("#editalAttachmentList .attachment-panel")).toHaveCount(0, { timeout: 30_000 });
+      }
+      if (createdBid && await page.locator("#deleteBidButton").isEnabled()) {
+        await page.locator("#deleteBidButton").click();
+        await page.locator("#confirmDeleteBidButton").click();
+        await expect(page.locator("#homePage")).toBeVisible({ timeout: 30_000 });
+      }
+    } finally {
+      await page.evaluate(async ({ supabaseUrl, anonKey, accessToken }) => {
+        await fetch(`${supabaseUrl}/auth/v1/logout?scope=local`, {
+          method: "POST",
+          headers: { apikey: anonKey, Authorization: `Bearer ${accessToken}` },
+        }).catch(() => undefined);
+        localStorage.clear();
+        sessionStorage.clear();
+      }, { supabaseUrl: config.supabaseUrl, anonKey: config.supabaseAnonKey, accessToken: session.access_token }).catch(() => undefined);
+    }
   }
 });
