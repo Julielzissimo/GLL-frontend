@@ -660,10 +660,7 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
 
   function renderResultRow(result) {
     const object = String(result.object || "Objeto não informado");
-    const excerpt = object.length > 220 ? `${object.slice(0, 217).trimEnd()}…` : object;
-    const objectMarkup = object.length > 220
-      ? `<details class="radar-object-details"><summary>${escapeHtml(excerpt)}</summary><p>${escapeHtml(object)}</p></details>`
-      : `<span class="radar-object-text">${escapeHtml(object)}</span>`;
+    const objectMarkup = `<details class="radar-object-details"><summary>${escapeHtml(object)}</summary></details>`;
     const number = result.procurementNumber || result.numberControlPncp || "—";
     const year = result.year ? `/${escapeHtml(result.year)}` : "";
     const administrative = result.administrativeSituationName

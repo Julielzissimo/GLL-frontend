@@ -87,7 +87,31 @@ async function validateRadarSearchPage(page) {
   await expect(page.locator("#radarTagList li")).toHaveCount(1);
   const simple = await submitRadarSearch(page, (payload) => payload.tags?.length === 1);
   if (simple.body.results.length === 0) throw new Error("A busca real por pavimentação no Espírito Santo não retornou registros conhecidos.");
-  await expect(page.locator("#radarResultsContent tbody tr").first()).toBeVisible();
+  const firstResult = page.locator("#radarResultsContent tbody tr").first();
+  await expect(firstResult).toBeVisible();
+  const longDescription = Array.from({ length: 8 }, () => "Contratação de serviços especializados para fornecimento, instalação e manutenção de equipamentos destinados às unidades administrativas do município.").join(" ");
+  const objectDisclosureState = await firstResult.evaluate((row, text) => {
+    const details = row.querySelector(".radar-object-details");
+    const summary = details?.querySelector("summary");
+    if (!details || !summary) throw new Error("A linha não contém o objeto expansível.");
+    summary.textContent = text;
+    const collapsedClamp = window.getComputedStyle(summary).getPropertyValue("-webkit-line-clamp");
+    const collapsedHeight = summary.getBoundingClientRect().height;
+    summary.click();
+    const expanded = details.open;
+    const expandedHeight = summary.getBoundingClientRect().height;
+    summary.click();
+    return {
+      collapsedClamp,
+      expanded,
+      collapsed: details.open,
+      collapsedHeight,
+      expandedHeight,
+      description: summary.textContent,
+    };
+  }, longDescription);
+  expect(objectDisclosureState).toMatchObject({ collapsedClamp: "2", expanded: true, collapsed: false, description: longDescription });
+  expect(objectDisclosureState.expandedHeight).toBeGreaterThan(objectDisclosureState.collapsedHeight);
 
   await page.locator("#radarTagInput").fill("aquisição");
   await page.locator("#radarTagInput").press("Enter");
