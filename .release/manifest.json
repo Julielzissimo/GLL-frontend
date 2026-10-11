@@ -1061,6 +1061,15 @@
         "abbfa68c277534058b78ac20e9472e0250a98052"
       ],
       "migrations": []
+    },
+    {
+      "id": "RADAR-18-FASE-5-REPROCESSAMENTO-VALIDACAO-001",
+      "backend_commits": [
+        "efc9ca45326a9abcb1536813461d636299478bea",
+        "c2f26164d3b86ca05eb7f03f2725fa06161a13ae"
+      ],
+      "frontend_commits": [],
+      "migrations": []
     }
   ]
 }
