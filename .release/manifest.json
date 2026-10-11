@@ -1010,7 +1010,8 @@
     {
       "id": "RADAR-13-METADADOS-EVIDENCIAS-001",
       "backend_commits": [
-        "84ee9f58243febce5bb44b2985dd27cd8bdccafb"
+        "84ee9f58243febce5bb44b2985dd27cd8bdccafb",
+        "92dc2799fc8f67e440ad727d3c010cfa1558f6f4"
       ],
       "frontend_commits": [],
       "migrations": [
