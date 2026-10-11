@@ -725,6 +725,36 @@
         "d0a379e59d11fb5480fb61089a928c4162fea7e8"
       ],
       "migrations": []
+    },
+    {
+      "id": "EMAIL-01",
+      "backend_commits": [
+        "c558521ad30bd580fd044a5b1c4def0584191a80"
+      ],
+      "frontend_commits": [],
+      "migrations": [
+        "supabase/migrations/20261011164028_email_invitation_access.sql"
+      ]
+    },
+    {
+      "id": "EMAIL-05",
+      "backend_commits": [
+        "c194994252bcfad1de79e8a0241eb543234beaff"
+      ],
+      "frontend_commits": [],
+      "migrations": []
+    },
+    {
+      "id": "EMAIL-02",
+      "backend_commits": [
+        "98c41a8ad635b5ce2ec053298bb391304c920903"
+      ],
+      "frontend_commits": [
+        "a530bff2156e297a12ff4ab7c0e21b070dc75dc1"
+      ],
+      "migrations": [
+        "supabase/migrations/20261011174520_user_invitation_operations.sql"
+      ]
     }
   ]
 }
