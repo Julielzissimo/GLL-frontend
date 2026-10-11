@@ -1041,6 +1041,18 @@
       ]
     },
     {
+      "id": "RADAR-16-EDITAL-PDF-001",
+      "backend_commits": [
+        "fe11e723f8e629da2a23aaf819f64406e80aaaf6"
+      ],
+      "frontend_commits": [
+        "b2516b5dbab8b9e313352672a18d31ae0abc8abb"
+      ],
+      "migrations": [
+        "supabase/migrations/20261011142855_radar_pdf_platform_identification.sql"
+      ]
+    },
+    {
       "id": "RADAR-17-DETALHE-PLATAFORMA-001",
       "backend_commits": [],
       "frontend_commits": [
