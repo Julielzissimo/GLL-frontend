@@ -7876,8 +7876,6 @@ button.history-row:hover {
 .radar-platform-metadata > div { min-width: 0; }
 .radar-platform-metadata dt { color: var(--color-text-secondary); font-size: var(--font-size-xs); }
 .radar-platform-metadata dd { margin: var(--space-2xs, 0.125rem) 0 0; overflow-wrap: anywhere; }
-.radar-platform-evidence { display: grid; gap: var(--space-xs); margin: var(--space-xs) 0 0; padding-left: var(--space-lg); }
-.radar-platform-evidence li,
 .radar-platform-previous { overflow-wrap: anywhere; }
 .radar-platform-conflict { color: var(--color-warning); }
 .radar-platform-confirmation-modal { width: min(var(--dialog-width-md), calc(100vw - 32px)); }
