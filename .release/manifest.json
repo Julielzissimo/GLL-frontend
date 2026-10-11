@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "release_id": "2026-10-10-radar-fase9-plataformas",
+  "release_id": "2026-10-10-radar-fase10-interface",
   "environment": "homolog",
   "target_branch": "homolog",
   "items": [
@@ -977,6 +977,14 @@
       "migrations": [
         "supabase/migrations/20261010232844_radar_import_create_linked_quotation.sql"
       ]
+    },
+    {
+      "id": "RADAR-10-INTERFACE-001",
+      "backend_commits": [],
+      "frontend_commits": [
+        "6ad3db9147e4bdb4cd4477c49f13254c848aaf93"
+      ],
+      "migrations": []
     }
   ]
 }
