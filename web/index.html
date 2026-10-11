@@ -701,8 +701,10 @@
         <p id="radarAnnouncement" class="sr-only" role="status" aria-live="polite"></p>
         <div id="radarCatalogFeedback" class="radar-feedback" data-tone="info" role="status" aria-live="polite" hidden></div>
 
+        <div id="radarWorkbench" class="radar-workbench">
+          <aside id="radarFilterRail" class="radar-filter-rail" aria-label="Filtros da pesquisa">
         <form id="radarSearchForm" class="section-band radar-search-form" novalidate>
-          <div class="radar-section-heading"><div><h2>Pesquisar contratações</h2><p>Os termos são combinados com OU e consultados somente em <code>objetoCompra</code>.</p></div></div>
+          <div class="radar-section-heading"><div><h2>Filtros da pesquisa</h2><p>Refine oportunidades publicadas no PNCP.</p></div></div>
           <div class="radar-filter-grid">
             <div class="radar-tag-field">
               <label for="radarTagInput">Objeto da contratação</label>
@@ -723,13 +725,11 @@
             <details id="radarPlatformDetails" class="radar-modality-filter">
               <summary><span>Plataforma de disputa</span><strong id="radarPlatformSummary">Todas as plataformas</strong></summary>
               <div class="radar-modality-menu">
-                <button class="quiet-action compact-action" type="button" data-radar-action="select-all-platforms">Todas as plataformas</button>
                 <label for="radarPlatformSearch">Pesquisar plataformas
                   <input id="radarPlatformSearch" type="search" autocomplete="off" />
                 </label>
                 <div id="radarPlatforms" class="radar-modality-list" role="group" aria-label="Plataformas de disputa ativas"></div>
                 <label class="radar-modality-option"><input id="radarIncludeUnidentified" type="checkbox" /><span>Incluir licitações sem plataforma</span></label>
-                <small>O filtro combina com os demais filtros e é aplicado antes da paginação.</small>
               </div>
             </details>
 
@@ -758,9 +758,9 @@
           </div>
           <p id="radarDateError" class="form-error" role="alert"></p>
           <div class="radar-form-footer">
-            <div class="button-row end">
-              <button class="quiet-action" type="button" data-radar-action="clear">Limpar filtros</button>
+            <div class="button-row radar-filter-actions">
               <button id="radarSearchButton" class="primary-action" type="submit" disabled>Pesquisar</button>
+              <button class="quiet-action" type="button" data-radar-action="clear">Limpar filtros</button>
             </div>
           </div>
         </form>
@@ -813,8 +813,9 @@
             <p id="radarPlatformMetrics" role="status" aria-live="polite">Métricas ainda não carregadas.</p>
           </section>
         </details>
+          </aside>
 
-        <section class="section-band radar-results-panel" aria-labelledby="radarResultsTitle">
+        <section class="radar-results-panel" aria-labelledby="radarResultsTitle">
           <div class="radar-results-heading">
             <div><h2 id="radarResultsTitle">Resultados</h2><p id="radarResultsCount" aria-live="polite">Configure os filtros para iniciar uma pesquisa.</p></div>
             <div class="radar-results-controls">
@@ -824,7 +825,7 @@
               <label for="radarSortDirection">Direção
                 <select id="radarSortDirection"><option value="desc">Mais recente / maior primeiro</option><option value="asc">Mais antigo / menor primeiro</option></select>
               </label>
-              <label for="radarPageSize">Resultados por página
+              <label for="radarPageSize">Por página
                 <select id="radarPageSize"><option value="20">20</option><option value="50">50</option><option value="100">100</option></select>
               </label>
             </div>
@@ -833,6 +834,7 @@
           <div id="radarResultsContent"></div>
           <nav id="radarPagination" class="radar-pagination" aria-label="Paginação dos resultados do Radar" hidden></nav>
         </section>
+        </div>
         </div>
 
         <div id="radarDetailsView" class="radar-details-view" aria-labelledby="radarDetailsTitle" hidden>

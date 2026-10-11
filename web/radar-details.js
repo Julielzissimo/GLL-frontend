@@ -417,9 +417,21 @@ export function createRadarDetailsFeature({ getClient, toast = () => {}, onFavor
     return `<section class="section-band radar-detail-section" aria-labelledby="radarItemsTitle">
       <div class="radar-detail-section-heading"><div><h2 id="radarItemsTitle">Itens da contratação</h2><p>${itemsState.items.length.toLocaleString("pt-BR")} itens consultados em ${Number(itemsState.pagesLoaded || 1).toLocaleString("pt-BR")} ${itemsState.pagesLoaded === 1 ? "página" : "páginas"} do PNCP.</p></div></div>
       ${secretCount ? `<p class="radar-feedback" data-tone="warning" role="status"><strong>Orçamento sigiloso</strong><span>O PNCP informou orçamento sigiloso em ${secretCount.toLocaleString("pt-BR")} ${secretCount === 1 ? "item" : "itens"}; valores não serão tratados como preço.</span></p>` : ""}
-      ${renderImportControls(itemsState.items)}
       ${renderItemTable(page.items, { selectable: true })}
       ${renderItemPagination(page.pageCount)}
+    </section>`;
+  }
+
+  function renderImportPanel(itemsState) {
+    const available = itemsState?.status === "available" && itemsState.complete === true && itemsState.items?.length;
+    const body = available
+      ? renderImportControls(itemsState.items)
+      : `<p>${itemsState?.status === "not_published" || !itemsState?.items?.length
+        ? "O PNCP não publicou itens disponíveis para importação nesta contratação."
+        : "A importação ficará disponível quando o PNCP retornar todos os itens da contratação."}</p>`;
+    return `<section class="section-band radar-detail-section" aria-labelledby="radarImportPanelTitle">
+      <div class="radar-detail-section-heading"><div><h2 id="radarImportPanelTitle">Importação para o GLL</h2><p>Selecione os itens do edital para importar.</p></div></div>
+      ${body}
     </section>`;
   }
 
@@ -547,9 +559,10 @@ export function createRadarDetailsFeature({ getClient, toast = () => {}, onFavor
     }
     const loadedAt = dateTimeFormatter.format(new Date(state.data.retrievedAt));
     content.innerHTML = `<p class="radar-detail-source">Fonte: <a href="${escapeHtml(state.data.sources.detail)}" target="_blank" rel="noopener noreferrer">API oficial do PNCP</a> · Consulta realizada em ${escapeHtml(loadedAt)}.</p>
-      ${renderGeneral(state.data.contract, state.data.sources, state.data.platform)}
-      ${renderItems(state.data.items)}
-      ${renderDocuments(state.data.documents)}`;
+      <div class="radar-detail-layout">
+        <main class="radar-detail-main">${renderGeneral(state.data.contract, state.data.sources, state.data.platform)}${renderItems(state.data.items)}</main>
+        <aside class="radar-detail-aside">${renderDocuments(state.data.documents)}${renderImportPanel(state.data.items)}</aside>
+      </div>`;
   }
 
   async function refresh() {

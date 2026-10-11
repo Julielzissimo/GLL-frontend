@@ -629,19 +629,20 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
 
   function renderResultActions(result) {
     const buttons = [];
-    if (typeof actions.onOpenDetails === "function") {
-      buttons.push(`<button type="button" class="quiet-action compact-action" data-radar-detail="${escapeHtml(result.numberControlPncp)}">Ver itens</button>`);
-    }
     if (typeof actions.setFavorite === "function") {
       const favorite = state.favoriteIds.has(result.numberControlPncp);
       const updating = state.favoriteUpdatingIds.has(result.numberControlPncp);
       const unavailable = state.favoriteState === "error";
       const loading = state.favoriteState === "loading";
       const label = unavailable ? "Favorito indisponível" : loading ? "Carregando…" : updating ? "Atualizando…" : favorite ? "Desfavoritar" : "Favoritar";
-      buttons.push(`<button type="button" class="quiet-action compact-action" data-radar-favorite="${escapeHtml(result.numberControlPncp)}" aria-pressed="${favorite}"${updating || unavailable || loading ? " disabled" : ""}>${label}</button>`);
+      const symbol = loading || updating ? "…" : favorite ? "★" : "☆";
+      buttons.push(`<button type="button" class="icon-button radar-favorite-action${favorite ? " is-favorited" : ""}" data-radar-favorite="${escapeHtml(result.numberControlPncp)}" aria-label="${escapeHtml(label)}" title="${escapeHtml(label)}" aria-pressed="${favorite}"${updating || unavailable || loading ? " disabled" : ""}><span aria-hidden="true">${symbol}</span></button>`);
     }
     const sourceUrl = validatedPncpSourceUrl(result.sourceUrl);
     if (sourceUrl) buttons.push(`<a class="quiet-action compact-action radar-source-link" href="${escapeHtml(sourceUrl)}" target="_blank" rel="noopener noreferrer">PNCP <span aria-hidden="true">↗</span></a>`);
+    if (typeof actions.onOpenDetails === "function") {
+      buttons.push(`<button type="button" class="primary-action compact-action" data-radar-detail="${escapeHtml(result.numberControlPncp)}">Ver itens</button>`);
+    }
     return buttons.length ? `<div class="radar-row-actions">${buttons.join("")}</div>` : '<span class="radar-no-actions" aria-label="Ações disponíveis na Fase 6">Disponível na Fase 6</span>';
   }
 
@@ -651,33 +652,23 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
     const number = result.procurementNumber || result.numberControlPncp || "—";
     const year = result.year ? `/${escapeHtml(result.year)}` : "";
     const receipt = RECEIPT_STATUS_LABELS[result.proposalReceiptStatus] || RECEIPT_STATUS_LABELS.unknown;
-    const platformSourceUrl = result.platformStatus === "identified" ? validatedPlatformSourceUrl(result.platformSourceUrl) : null;
-    const platformLabel = result.platformStatus === "identified"
-      ? result.platformName || "Plataforma identificada"
-      : result.platformStatus === "pending_verification" ? "Pendente de verificação" : "Não identificada";
-    const platformMarkup = platformSourceUrl
-      ? `<a href="${escapeHtml(platformSourceUrl)}" target="_blank" rel="noopener noreferrer">${escapeHtml(platformLabel)} <span aria-hidden="true">↗</span></a>`
-      : escapeHtml(platformLabel);
     const municipality = `${escapeHtml(resolveMunicipalityName(result))}${result.uf ? ` - ${escapeHtml(result.uf)}` : ""}`;
     const administrative = result.administrativeUnitName && result.administrativeUnitName !== result.agencyName
       ? `<small>${escapeHtml(result.administrativeUnitName)}</small>` : "";
     return `<article class="radar-result-card">
       <div class="radar-result-card-heading">
-        <div><p class="radar-result-number">Edital ${escapeHtml(number)}${year}</p><h3>${escapeHtml(excerpt)}</h3>${object.length > 220 ? `<details class="radar-object-details"><summary>Ver objeto completo</summary><p>${escapeHtml(object)}</p></details>` : ""}</div>
+        <div><p class="radar-result-number"><strong>Edital ${escapeHtml(number)}${year}</strong><span>PNCP ${escapeHtml(result.numberControlPncp || "—")}</span></p><h3>${escapeHtml(excerpt)}</h3>${object.length > 220 ? `<details class="radar-object-details"><summary>Ver objeto completo</summary><p>${escapeHtml(object)}</p></details>` : ""}</div>
         <span class="radar-receipt-status" data-status="${escapeHtml(result.proposalReceiptStatus || "unknown")}">${escapeHtml(receipt)}</span>
       </div>
       <dl class="radar-result-fields">
         <div><dt>Município - UF</dt><dd>${municipality}</dd></div>
-        <div><dt>Abertura das propostas</dt><dd>${escapeHtml(formatDateTime(result.proposalsStartAt))}</dd></div>
-        <div><dt>Encerramento das propostas</dt><dd>${escapeHtml(formatDateTime(result.proposalsEndAt))}</dd></div>
         <div><dt>Órgão responsável</dt><dd>${escapeHtml(result.agencyName || result.administrativeUnitName || "Órgão não informado")}${administrative}</dd></div>
         <div><dt>Modalidade</dt><dd>${escapeHtml(resolveModalityName(result.modalityId))}</dd></div>
-        <div><dt>Plataforma de disputa</dt><dd>${platformMarkup}</dd></div>
-        <div><dt>Valor estimado</dt><dd>${escapeHtml(formatMoney(result.estimatedValue))}</dd></div>
+        <div><dt>Abertura das propostas</dt><dd>${escapeHtml(formatDateTime(result.proposalsStartAt))}</dd></div>
+        <div><dt>Encerramento das propostas</dt><dd>${escapeHtml(formatDateTime(result.proposalsEndAt))}</dd></div>
         <div><dt>Publicação no PNCP</dt><dd>${escapeHtml(formatDate(result.publishedAt))}</dd></div>
-        <div><dt>Situação no PNCP</dt><dd>${escapeHtml(result.administrativeSituationName || "Divulgada no PNCP")}</dd></div>
       </dl>
-      <div class="radar-result-card-footer"><small>Identificador PNCP: ${escapeHtml(result.numberControlPncp || "—")}</small>${renderResultActions(result)}</div>
+      <div class="radar-result-card-footer"><div class="radar-result-value"><small>Valor estimado</small><strong>${escapeHtml(formatMoney(result.estimatedValue))}</strong></div>${renderResultActions(result)}</div>
     </article>`;
   }
 
@@ -729,8 +720,12 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
     const favoritesView = state.view === "favorites";
     const rows = favoritesView ? state.favoritesResults : state.results;
     const searchForm = byId("radarSearchForm");
+    const workbench = byId("radarWorkbench");
+    const filterRail = byId("radarFilterRail");
     const platformAdminSettings = byId("radarPlatformAdminSettings");
     const resultControls = root?.querySelector(".radar-results-controls");
+    workbench?.classList.toggle("is-favorites", favoritesView);
+    if (filterRail) filterRail.hidden = favoritesView;
     if (searchForm) searchForm.hidden = favoritesView;
     if (platformAdminSettings) platformAdminSettings.hidden = favoritesView || getUserRole?.() !== "Administrador";
     if (resultControls) resultControls.hidden = favoritesView;
@@ -1212,9 +1207,6 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
           : state.selectedModalities.length;
         state.selectedModalities = selectedCount === state.modalities.length ? [] : null;
         renderModalityOptions();
-      } else if (target.dataset.radarAction === "select-all-platforms") {
-        state.selectedPlatformIds = null;
-        renderPlatformOptions();
       } else if (target.dataset.radarAction === "reset-platform-form") {
         resetPlatformForm();
       } else if (target.dataset.radarAction === "reset-domain-form") {
