@@ -1039,6 +1039,14 @@
       "migrations": [
         "supabase/migrations/20261011134423_radar_manual_platform_url_override.sql"
       ]
+    },
+    {
+      "id": "RADAR-17-DETALHE-PLATAFORMA-001",
+      "backend_commits": [],
+      "frontend_commits": [
+        "abbfa68c277534058b78ac20e9472e0250a98052"
+      ],
+      "migrations": []
     }
   ]
 }
