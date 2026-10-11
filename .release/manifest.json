@@ -1139,6 +1139,16 @@
       "migrations": [
         "supabase/migrations/20261011201757_record_user_invitation_acceptance.sql"
       ]
+    },
+    {
+      "id": "RADAR-19-FASE-3-DETALHES-CACHE-ITENS-001",
+      "backend_commits": [
+        "a6bf76a4cb94f6e34dc5a6543d762466610f6f08"
+      ],
+      "frontend_commits": [
+        "a307ccb3bd56c3a7f0573bf70a781f51cf2b3131"
+      ],
+      "migrations": []
     }
   ]
 }
