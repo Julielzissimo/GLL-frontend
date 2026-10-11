@@ -2261,6 +2261,18 @@ textarea[aria-invalid="true"]:focus {
   width: 100%;
 }
 
+.first-access-fields {
+  display: grid;
+  gap: 10px;
+}
+
+.first-access-help {
+  margin: -6px 0 2px;
+  color: var(--gll-ink-soft);
+  font-size: var(--gll-text-xs);
+  line-height: 1.45;
+}
+
 .app-view {
   display: grid;
   grid-template-columns: var(--sidebar-width) minmax(0, 1fr);

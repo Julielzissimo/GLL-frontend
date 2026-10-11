@@ -23,10 +23,29 @@ test("create-user form only asks for invited email and role", () => {
 
 test("invite callback scrubs its token fragment before establishing the session", () => {
   const callback = source.slice(source.indexOf("async function consumeInvitationCallback()"), source.indexOf("function applyEnvironmentConfig()"));
+  const consume = callback.slice(0, callback.indexOf("function showInvitationAcceptView("));
+  const accept = callback.slice(callback.indexOf("async function handleInvitationAcceptance("), callback.indexOf("async function handleCancelInvitationAcceptance()"));
   assert.ok(callback.includes('params.get("type") !== "invite"'));
   assert.ok(callback.indexOf("history.replaceState") < callback.indexOf("auth.setSession"));
+  assert.match(consume, /gll_invite/);
+  assert.doesNotMatch(consume, /verifyOtp|setSession/);
+  assert.match(accept, /event\?\.isTrusted/);
+  assert.match(accept, /verifyOtp\(\{[\s\S]*token_hash:[\s\S]*type: "invite"/);
+  assert.match(accept, /Este convite expirou ou já foi usado/);
   assert.match(callback, /access_token/);
   assert.match(callback, /refresh_token/);
+});
+
+test("first access shows trusted identity fields and requires a unique username and confirmed password", () => {
+  assert.match(html, /<h1>Configure seu acesso ao GLL<\/h1>/);
+  assert.match(html, /id="firstAccessEmail"[^>]*readonly/);
+  assert.match(html, /id="firstAccessRole"[^>]*readonly/);
+  assert.match(html, /id="firstAccessUsername"[^>]*minlength="3"[^>]*maxlength="30"[^>]*required/);
+  assert.match(html, /id="firstAccessPasswordConfirm"[^>]*autocomplete="new-password"[^>]*required/);
+  assert.match(html, /id="firstAccessPhotoMount"/);
+  assert.match(source, /As senhas não coincidem\./);
+  assert.match(source, /nome de usuário já está em uso/i);
+  assert.match(source, /Seu acesso foi configurado com sucesso\. Bem-vindo ao GLL!/);
 });
 
 test("invitation list includes status, responsible admin and guarded actions", () => {

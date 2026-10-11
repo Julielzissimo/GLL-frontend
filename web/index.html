@@ -50,6 +50,22 @@
       </form>
     </main>
 
+    <main id="invitationAcceptView" class="login-view hidden">
+      <section class="login-brand" aria-label="Aceitação do convite GLL">
+        <span class="brand-mark">GLL</span>
+        <h1>Aceite seu convite</h1>
+        <p>Confirme o convite para configurar seu acesso ao sistema.</p>
+      </section>
+      <section class="login-panel login-form invitation-accept-panel" aria-labelledby="invitationAcceptTitle">
+        <span class="eyebrow">CONVITE GLL</span>
+        <h2 id="invitationAcceptTitle">Continuar com segurança</h2>
+        <p>O link só será validado quando você acionar este botão. Depois, você poderá configurar seu perfil e sua senha.</p>
+        <p id="invitationAcceptError" class="form-error" role="alert" aria-live="assertive"></p>
+        <button id="acceptInvitationButton" class="primary-action full-action" type="button">Confirmar convite e continuar</button>
+        <button id="cancelInvitationButton" class="quiet-action full-action" type="button">Voltar ao login</button>
+      </section>
+    </main>
+
     <main id="passwordResetView" class="login-view hidden">
       <section class="login-brand" aria-label="Primeiro acesso ao sistema">
         <span class="brand-mark">GLL</span>
@@ -90,18 +106,21 @@
     <main id="firstAccessView" class="login-view hidden">
       <section class="login-brand" aria-label="Configuração do primeiro acesso">
         <span class="brand-mark">GLL</span>
-        <h1>Configure seu acesso</h1>
-        <p>Confirme seus dados pessoais e crie uma senha para entrar no GLL.</p>
+        <h1>Configure seu acesso ao GLL</h1>
+        <p>Preencha seus dados e crie sua senha para acessar o sistema.</p>
       </section>
-      <form id="firstAccessForm" class="login-panel login-form">
-        <span class="eyebrow">PRIMEIRO ACESSO</span>
-        <h2>Finalize seu cadastro</h2>
-        <p id="firstAccessDescription">Seu convite foi validado. Defina os dados que serão usados no seu perfil.</p>
-        <div id="firstAccessFields">
-        <label>E-mail<input id="firstAccessEmail" type="email" readonly /></label>
-        <label>Tipo de usuário<input id="firstAccessRole" type="text" readonly /></label>
-        <label>Nome completo<input id="firstAccessFullName" autocomplete="name" maxlength="160" required /></label>
-        <label>Nome de exibição<input id="firstAccessDisplayName" autocomplete="nickname" maxlength="100" required /></label>
+      <form id="firstAccessForm" class="login-panel login-form" novalidate>
+        <span class="eyebrow">PRIMEIRO ACESSO · ETAPA 1 DE 3</span>
+        <h2>Finalize sua configuração</h2>
+        <p id="firstAccessDescription">O convite foi validado. Seu e-mail e seu tipo de usuário vêm do convite e não podem ser alterados.</p>
+        <div id="firstAccessFields" class="first-access-fields">
+        <label for="firstAccessEmail">E-mail vinculado<input id="firstAccessEmail" type="email" readonly aria-readonly="true" /></label>
+        <label for="firstAccessRole">Tipo de usuário<input id="firstAccessRole" type="text" readonly aria-readonly="true" /></label>
+        <label for="firstAccessFullName">Nome completo<input id="firstAccessFullName" autocomplete="name" maxlength="160" required aria-describedby="firstAccessFullNameHelp" /></label>
+        <small id="firstAccessFullNameHelp" class="first-access-help">Use seu nome completo. Espaços extras serão removidos.</small>
+        <label for="firstAccessDisplayName">Nome de exibição<input id="firstAccessDisplayName" autocomplete="nickname" maxlength="100" required /></label>
+        <label for="firstAccessUsername">Login / nome de usuário<input id="firstAccessUsername" name="username" autocomplete="username" autocapitalize="none" spellcheck="false" minlength="3" maxlength="30" pattern="[a-z0-9][a-z0-9._-]{1,28}[a-z0-9]" required aria-describedby="firstAccessUsernameHelp" /></label>
+        <small id="firstAccessUsernameHelp" class="first-access-help">Use 3 a 30 letras minúsculas, números, ponto, hífen ou sublinhado. Você continuará entrando com o e-mail vinculado.</small>
         <div class="password-field">
           <label for="firstAccessPassword">Senha</label>
           <span class="password-input-wrap">
@@ -126,7 +145,7 @@
         </div>
         <p id="firstAccessError" class="form-error" role="alert"></p>
         <p id="firstAccessExpiredNotice" class="form-error hidden" role="status">Este convite expirou. Solicite um novo convite ao administrador.</p>
-        <button id="firstAccessSubmitButton" class="primary-action full-action" type="submit">Salvar e acessar o GLL</button>
+        <button id="firstAccessSubmitButton" class="primary-action full-action" type="submit">Concluir configuração</button>
         <button id="firstAccessSignOutButton" class="quiet-action full-action" type="button">Voltar ao login</button>
       </form>
     </main>
