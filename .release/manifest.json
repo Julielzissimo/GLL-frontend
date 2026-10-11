@@ -1022,7 +1022,8 @@
       "id": "RADAR-15-OBJETO-EXPANSIVEL-001",
       "backend_commits": [],
       "frontend_commits": [
-        "cb5b1189aa1227a891767c247a5011299072be67"
+        "cb5b1189aa1227a891767c247a5011299072be67",
+        "f10f20754995253ecba2a2ddeacc3e19ef969d4c"
       ],
       "migrations": []
     }
