@@ -167,9 +167,7 @@ export function radarPlatformSummary(result = {}) {
         : "Identificação pendente";
   const note = result.platformConflict === true
     ? "Fontes divergentes; confira o edital."
-    : status === "identified" && result.platformConfidence === "low"
-      ? "Confiança baixa; confira o edital."
-      : "";
+    : "";
   return { label, note };
 }
 
