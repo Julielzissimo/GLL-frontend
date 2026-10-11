@@ -912,6 +912,18 @@
       "migrations": [
         "supabase/migrations/20261011032719_radar_platform_metadata_evidence.sql"
       ]
+    },
+    {
+      "id": "RADAR-14-INTERFACE-001",
+      "backend_commits": [
+        "7bab11bddb9778ca430e757e55c394c14a40fb1b"
+      ],
+      "frontend_commits": [
+        "4319c65cf685a8d2e51506af75737ae4fb916104"
+      ],
+      "migrations": [
+        "supabase/migrations/20261011134423_radar_manual_platform_url_override.sql"
+      ]
     }
   ]
 }
