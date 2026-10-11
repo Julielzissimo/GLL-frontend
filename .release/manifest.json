@@ -1006,6 +1006,16 @@
       "migrations": [
         "supabase/migrations/20261011015020_radar_platform_enrichment.sql"
       ]
+    },
+    {
+      "id": "RADAR-13-METADADOS-EVIDENCIAS-001",
+      "backend_commits": [
+        "84ee9f58243febce5bb44b2985dd27cd8bdccafb"
+      ],
+      "frontend_commits": [],
+      "migrations": [
+        "supabase/migrations/20261011032719_radar_platform_metadata_evidence.sql"
+      ]
     }
   ]
 }
