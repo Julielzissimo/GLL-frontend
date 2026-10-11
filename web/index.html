@@ -693,15 +693,10 @@
         <div id="radarListView">
         <div class="page-heading radar-page-heading">
           <div><span class="eyebrow">OPORTUNIDADES DO PNCP</span><h1 id="radarTitle">Radar de Licitações</h1><p>Pesquise contratações pelo objeto, com cobertura nacional e filtros oficiais do Radar.</p></div>
-          <button id="radarUpdateButton" class="quiet-action radar-update-button" type="button" data-radar-action="refresh" disabled><span aria-hidden="true">↻</span> Atualizar</button>
         </div>
         <div class="radar-view-switch" role="group" aria-label="Visualização do Radar">
           <button id="radarSearchViewButton" class="quiet-action compact-action" type="button" data-radar-action="show-search" aria-pressed="true">Pesquisar</button>
           <button id="radarFavoritesViewButton" class="quiet-action compact-action" type="button" data-radar-action="show-favorites" aria-pressed="false">Favoritos</button>
-        </div>
-        <div class="radar-page-meta">
-          <p id="radarLastUpdated">Última atualização da base: ainda não confirmada</p>
-          <p id="radarSharedDefaultSummary">Padrão compartilhado: últimos 30 dias.</p>
         </div>
         <p id="radarAnnouncement" class="sr-only" role="status" aria-live="polite"></p>
         <div id="radarCatalogFeedback" class="radar-feedback" data-tone="info" role="status" aria-live="polite" hidden></div>
@@ -720,7 +715,7 @@
             <details id="radarModalityDetails" class="radar-modality-filter">
               <summary><span>Modalidades</span><strong id="radarModalitySummary">Todas as modalidades ativas</strong></summary>
               <div class="radar-modality-menu">
-                <button class="quiet-action compact-action" type="button" data-radar-action="select-all-modalities">Selecionar todas</button>
+                <button id="radarModalityToggle" class="quiet-action compact-action radar-modality-bulk-action" type="button" data-radar-action="toggle-modalities">Desmarcar todas</button>
                 <div id="radarModalities" class="radar-modality-list" role="group" aria-label="Modalidades ativas"></div>
               </div>
             </details>
@@ -733,7 +728,7 @@
                   <input id="radarPlatformSearch" type="search" autocomplete="off" />
                 </label>
                 <div id="radarPlatforms" class="radar-modality-list" role="group" aria-label="Plataformas de disputa ativas"></div>
-                <label class="radar-modality-option"><input id="radarIncludeUnidentified" type="checkbox" /><span>Incluir licitações sem plataforma identificada</span></label>
+                <label class="radar-modality-option"><input id="radarIncludeUnidentified" type="checkbox" /><span>Incluir licitações sem plataforma</span></label>
                 <small>O filtro combina com os demais filtros e é aplicado antes da paginação.</small>
               </div>
             </details>
@@ -763,7 +758,6 @@
           </div>
           <p id="radarDateError" class="form-error" role="alert"></p>
           <div class="radar-form-footer">
-            <button id="radarUseDefaultPeriodButton" class="quiet-action compact-action" type="button" data-radar-action="apply-default-period">Usar período padrão</button>
             <div class="button-row end">
               <button class="quiet-action" type="button" data-radar-action="clear">Limpar filtros</button>
               <button id="radarSearchButton" class="primary-action" type="submit" disabled>Pesquisar</button>
@@ -771,16 +765,8 @@
           </div>
         </form>
 
-        <details id="radarDefaultSettings" class="section-band radar-default-settings" hidden>
-          <summary>Configurações compartilhadas do Radar</summary>
-          <p>Este valor preenche o período inicial para todos os usuários ativos. Alterar as datas no formulário de pesquisa não modifica esta configuração.</p>
-          <div class="radar-default-settings-controls">
-            <label for="radarDefaultPeriodDays">Período padrão de publicação (dias)
-              <input id="radarDefaultPeriodDays" type="number" min="1" max="365" step="1" inputmode="numeric" />
-            </label>
-            <button id="radarSaveDefaultPeriodButton" class="quiet-action" type="button" data-radar-action="save-default-period">Salvar padrão compartilhado</button>
-          </div>
-          <p id="radarDefaultSettingsStatus" class="form-error" role="status" aria-live="polite"></p>
+        <details id="radarPlatformAdminSettings" class="section-band radar-default-settings radar-platform-admin-settings" hidden>
+          <summary>Gerenciar plataformas de disputa</summary>
           <section class="radar-platform-admin" aria-labelledby="radarPlatformAdminTitle">
             <h3 id="radarPlatformAdminTitle">Catálogo de plataformas de disputa</h3>
             <p>As regras identificam a plataforma pelo hostname informado pelo PNCP. A identificação pelo domínio não confirma a existência de uma sessão de disputa.</p>
