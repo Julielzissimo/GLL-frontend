@@ -7827,7 +7827,6 @@ button.history-row:hover {
 .radar-result-card-heading > div { min-width: 0; }
 .radar-result-number { margin: 0 0 var(--space-xs); color: var(--color-text-secondary); font-size: var(--font-size-sm); }
 .radar-result-card h3 { margin: 0; color: var(--color-text-primary); font-size: var(--font-size-lg); line-height: var(--line-height-normal); overflow-wrap: anywhere; }
-.radar-result-card .radar-object-details { margin-top: var(--space-sm); }
 .radar-result-fields { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-md) var(--space-lg); margin: 0; }
 .radar-result-fields > div { display: grid; min-width: 0; align-content: start; gap: var(--space-xs); }
 .radar-result-fields dt { color: var(--color-text-secondary); font-size: var(--font-size-xs); font-weight: var(--font-weight-semibold); }
@@ -7892,11 +7891,9 @@ button.history-row:hover {
 .radar-platform-admin-entry code { overflow-wrap: anywhere; }
 .radar-platform-admin .button-row { flex-wrap: wrap; }
 .radar-object-text { display: -webkit-box; overflow: hidden; overflow-wrap: anywhere; -webkit-box-orient: vertical; -webkit-line-clamp: 5; }
-.radar-result-object.is-truncated { display: -webkit-box; overflow: hidden; overflow-wrap: anywhere; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
-.radar-object-details { margin-top: var(--space-xs); }
-.radar-object-details[hidden] { display: none !important; }
-.radar-object-details summary { width: fit-content; color: var(--color-primary); cursor: pointer; font-size: var(--font-size-sm); }
-.radar-object-details p { margin: var(--space-sm) 0 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+.radar-result-object-text { display: block; }
+.radar-result-object-toggle { display: block; width: 100%; padding: 0; border: 0; background: transparent; color: inherit; font: inherit; line-height: inherit; text-align: left; cursor: pointer; }
+.radar-result-object-toggle.is-truncated { display: -webkit-box; overflow: hidden; overflow-wrap: anywhere; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
 .radar-receipt-status { display: inline-flex; max-width: 14rem; align-items: center; gap: var(--space-xs); padding: var(--space-xs) var(--space-sm); border: var(--border-default); border-radius: var(--radius-sm); background: var(--color-info-surface); color: var(--color-info); font-size: var(--font-size-sm); font-weight: var(--font-weight-semibold); }
 .radar-receipt-status::before { width: 0.375rem; height: 0.375rem; flex: 0 0 auto; border-radius: var(--radius-pill); background: currentColor; content: ""; }
 .radar-receipt-status[data-status="open"] { border-color: var(--gll-success-bg); background: var(--color-success-surface); color: var(--color-success); }
