@@ -1149,6 +1149,16 @@
         "a307ccb3bd56c3a7f0573bf70a781f51cf2b3131"
       ],
       "migrations": []
+    },
+    {
+      "id": "RADAR-19-FASE-4-UX-CARREGAMENTO-ITENS-001",
+      "backend_commits": [
+        "d9bfbaecfc6e5313f3101cbf728a0d23686cf046"
+      ],
+      "frontend_commits": [
+        "de9a36b47e74b8e8ec36ddcf53b5b06981cbac77"
+      ],
+      "migrations": []
     }
   ]
 }
