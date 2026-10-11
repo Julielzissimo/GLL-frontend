@@ -156,6 +156,23 @@ export function validatedPlatformSourceUrl(value) {
   }
 }
 
+export function radarPlatformSummary(result = {}) {
+  const status = result.platformStatus || "pending_verification";
+  const label = status === "identified"
+    ? result.platformName || "Plataforma identificada"
+    : status === "unidentified"
+      ? "Não identificada"
+      : status === "link_not_informed"
+        ? "Link da plataforma não informado"
+        : "Identificação pendente";
+  const note = result.platformConflict === true
+    ? "Fontes divergentes; confira o edital."
+    : status === "identified" && result.platformConfidence === "low"
+      ? "Confiança baixa; confira o edital."
+      : "";
+  return { label, note };
+}
+
 function todayInSaoPaulo(now = new Date()) {
   return new Intl.DateTimeFormat("en-CA", {
     year: "numeric", month: "2-digit", day: "2-digit", timeZone: "America/Sao_Paulo",
@@ -671,12 +688,11 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
       : "";
     const receipt = RECEIPT_STATUS_LABELS[result.proposalReceiptStatus] || RECEIPT_STATUS_LABELS.unknown;
     const platformSourceUrl = result.platformStatus === "identified" ? validatedPlatformSourceUrl(result.platformSourceUrl) : null;
-    const platformLabel = result.platformStatus === "identified"
-      ? result.platformName || "Plataforma identificada"
-      : result.platformStatus === "pending_verification" ? "Pendente de verificação" : "Não identificada";
-    const platformMarkup = platformSourceUrl
-      ? `<a href="${escapeHtml(platformSourceUrl)}" target="_blank" rel="noopener noreferrer">${escapeHtml(platformLabel)} <span aria-hidden="true">↗</span></a>`
-      : escapeHtml(platformLabel);
+    const platform = radarPlatformSummary(result);
+    const platformLabel = platformSourceUrl
+      ? `<a href="${escapeHtml(platformSourceUrl)}" target="_blank" rel="noopener noreferrer">${escapeHtml(platform.label)} <span aria-hidden="true">↗</span></a>`
+      : escapeHtml(platform.label);
+    const platformMarkup = `${platformLabel}${platform.note ? `<small class="radar-platform-card-note">${escapeHtml(platform.note)}</small>` : ""}`;
     return `<tr>
       <td><strong>${escapeHtml(number)}${year}</strong><small>${escapeHtml(result.numberControlPncp || "")}</small></td>
       <td><strong>${escapeHtml(result.agencyName || result.administrativeUnitName || "Órgão não informado")}</strong><small>${escapeHtml(result.administrativeUnitName || "")}</small></td>
@@ -1375,6 +1391,10 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
       actions.syncDetailRoute?.();
     },
     syncFavorite,
+    async refreshCurrentView() {
+      if (state.view === "favorites") return await loadFavoritesPage(state.favoritesPage);
+      if (state.hasSearched) return await runSearch({ page: Number(state.pagination?.page || 1) });
+    },
     reset() {
       state.initialized = false;
       state.catalogsLoaded = false;

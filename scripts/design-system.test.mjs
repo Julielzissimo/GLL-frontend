@@ -47,6 +47,7 @@ test("the catalog uses the application component source", () => {
   assert.match(ds.COMPONENTS.formField({ id: "field", error: "Obrigatório" }), /aria-invalid="true"/);
   assert.match(ds.COMPONENTS.alert({ tone: "danger" }), /role="alert"/);
   assert.ok(Object.keys(ds.ICONS).length >= 10);
+  assert.equal((html.match(/class="[^"]*modal-close-button/g) || []).length, 1);
 });
 
 test("foundation samples comply with the app content security policy", () => {

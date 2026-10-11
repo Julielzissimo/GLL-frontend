@@ -1869,8 +1869,10 @@ const commercialProposalsFeature = createCommercialProposalsFeature({
 let radarSearchFeature = null;
 const radarDetailsFeature = createRadarDetailsFeature({
   getClient: () => (store.requiresAuthenticationBeforeData ? store.client : null),
+  getUserRole: () => appState.currentUserRole,
   toast: (message, tone) => showToast(message, tone),
   onFavoriteChanged: (identifier, isFavorite) => radarSearchFeature?.syncFavorite(identifier, isFavorite),
+  onClassificationChanged: () => radarSearchFeature?.refreshCurrentView(),
   onOpenBid: async (bidId) => {
     await reloadData();
     loadBid(bidId, { history: "none" });
