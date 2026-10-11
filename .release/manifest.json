@@ -934,6 +934,20 @@
       "migrations": []
     },
     {
+      "id": "RADAR-16-EDITAL-PDF-001",
+      "backend_commits": [
+        "95bcad709418889af3147e715c4b3174a5ed1c80",
+        "b00d50ba55fcafab620d5ebc70b61f3d5b049932",
+        "35fdcb99ff82af251ee8e7fbc3158c7789c20767"
+      ],
+      "frontend_commits": [
+        "efcbea7a5d3501af56229b09533695a153041e1b"
+      ],
+      "migrations": [
+        "supabase/migrations/20261011142855_radar_pdf_platform_identification.sql"
+      ]
+    },
+    {
       "id": "RADAR-17-DETALHE-PLATAFORMA-001",
       "backend_commits": [],
       "frontend_commits": [
