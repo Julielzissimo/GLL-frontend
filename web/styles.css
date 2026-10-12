@@ -437,7 +437,7 @@ input:focus,
 select:focus,
 textarea:focus {
   border-color: var(--primary);
-  box-shadow: 0 0 0 3px rgb(24 61 53 / 14%);
+  box-shadow: 0 0 0 2px rgb(24 61 53 / 14%);
 }
 
 input:disabled,
@@ -2121,7 +2121,7 @@ input:focus-visible,
 select:focus-visible,
 textarea:focus-visible,
 [tabindex="0"]:focus-visible {
-  outline: 3px solid rgb(173 114 55 / 28%);
+  outline: 2px solid rgb(173 114 55 / 28%);
   outline-offset: 2px;
 }
 
@@ -2150,7 +2150,7 @@ textarea[aria-invalid="true"] {
 input[aria-invalid="true"]:focus,
 select[aria-invalid="true"]:focus,
 textarea[aria-invalid="true"]:focus {
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-danger) 18%, transparent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-danger) 18%, transparent);
 }
 
 .eyebrow,
@@ -7038,7 +7038,7 @@ html.is-loading { overflow: hidden; }
 }
 
 .proposal-switch > input:focus-visible + .proposal-switch-control {
-  outline: 3px solid rgb(173 114 55 / 28%);
+  outline: 2px solid rgb(173 114 55 / 28%);
   outline-offset: 2px;
 }
 
