@@ -1,4 +1,4 @@
-function createOrganizationChat({ getClient, getOrganizationId, getOrganizationName, getUserId }) {
+function createOrganizationChat({ getClient, getOrganizationId, getOrganizationName, getUserId, getUserCreatedAt = () => null }) {
   const byId = (id) => document.getElementById(id);
   const emojiOptions = ["❤️", "👍", "😂", "🎉", "👀", "👌"];
   const avatarCache = new Map();
@@ -23,6 +23,7 @@ function createOrganizationChat({ getClient, getOrganizationId, getOrganizationN
   let presence = [];
   let members = new Map();
   let parentMessages = new Map();
+  let parentMessageScope = "";
   let lastRenderSignature = "";
   let unreadCount = 0;
   let unreadTrackingEnabled = false;
@@ -32,6 +33,15 @@ function createOrganizationChat({ getClient, getOrganizationId, getOrganizationN
 
   const formatTime = (value) => new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short" }).format(new Date(value));
   const isRecent = (value, seconds) => value && Date.now() - new Date(value).getTime() < seconds * 1000;
+  function historyStartsAt() {
+    const createdAt = Date.parse(getUserCreatedAt?.() || "");
+    return Number.isFinite(createdAt) ? new Date(createdAt).toISOString() : null;
+  }
+  function isVisibleMessage(row, historyStart = historyStartsAt()) {
+    if (!historyStart) return true;
+    const createdAt = Date.parse(row?.created_at || "");
+    return Number.isFinite(createdAt) && createdAt >= Date.parse(historyStart);
+  }
   const displayName = (member) => member?.display_name || member?.full_name || member?.name || "Integrante";
   const ownName = () => displayName(members.get(getUserId()));
 
@@ -75,12 +85,18 @@ function createOrganizationChat({ getClient, getOrganizationId, getOrganizationN
     }
     const request = ++unreadRefreshRequest;
     try {
-      const [messageResult, readResult] = await Promise.all([
-        client.from("organization_messages").select("id", { count: "exact", head: true })
-          .eq("organization_id", organizationId).neq("sender_id", userId),
-        client.from("organization_message_reads").select("message_id", { count: "exact", head: true })
-          .eq("organization_id", organizationId).eq("reader_id", userId),
-      ]);
+      const historyStart = historyStartsAt();
+      let messageQuery = client.from("organization_messages").select("id", { count: "exact", head: true })
+        .eq("organization_id", organizationId).neq("sender_id", userId);
+      let readQuery = client.from("organization_message_reads").select(
+        historyStart ? "message_id,organization_messages!inner(created_at)" : "message_id",
+        { count: "exact", head: true },
+      ).eq("organization_id", organizationId).eq("reader_id", userId);
+      if (historyStart) {
+        messageQuery = messageQuery.gte("created_at", historyStart);
+        readQuery = readQuery.gte("organization_messages.created_at", historyStart);
+      }
+      const [messageResult, readResult] = await Promise.all([messageQuery, readQuery]);
       if (messageResult.error) throw messageResult.error;
       if (readResult.error) throw readResult.error;
       if (request !== unreadRefreshRequest || client !== getClient() || organizationId !== getOrganizationId() || userId !== getUserId()) return;
@@ -96,7 +112,7 @@ function createOrganizationChat({ getClient, getOrganizationId, getOrganizationN
     const row = payload?.new || payload?.payload?.new || payload?.payload || payload;
     const organizationId = getOrganizationId();
     const userId = getUserId();
-    if (!row || row.organization_id !== organizationId || row.sender_id === userId || row.id == null) return;
+    if (!row || row.organization_id !== organizationId || row.sender_id === userId || row.id == null || !isVisibleMessage(row)) return;
     if (handledIncomingMessageIds.has(row.id)) return;
     handledIncomingMessageIds.add(row.id);
     if (handledIncomingMessageIds.size > 256) handledIncomingMessageIds.delete(handledIncomingMessageIds.values().next().value);
@@ -446,10 +462,18 @@ function createOrganizationChat({ getClient, getOrganizationId, getOrganizationN
     try {
       const client = getClient();
       const organizationId = getOrganizationId();
+      const historyStart = historyStartsAt();
+      const scope = `${organizationId}:${getUserId()}:${historyStart || "all"}`;
+      if (scope !== parentMessageScope) {
+        parentMessages.clear();
+        parentMessageScope = scope;
+      }
+      let messageQuery = client.from("organization_messages").select("id,sender_id,body,created_at,reply_to_id")
+        .eq("organization_id", organizationId);
+      if (historyStart) messageQuery = messageQuery.gte("created_at", historyStart);
       const [memberResult, messageResult, presenceResult] = await Promise.all([
         client.from("app_users").select("auth_user_id,name,full_name,display_name,avatar_path,access_revoked_at").eq("organization_id", organizationId),
-        client.from("organization_messages").select("id,sender_id,body,created_at,reply_to_id").eq("organization_id", organizationId)
-          .order("created_at", { ascending: false }).order("id", { ascending: false }).limit(100),
+        messageQuery.order("created_at", { ascending: false }).order("id", { ascending: false }).limit(100),
         client.from("organization_chat_presence").select("user_id,last_seen_at,typing_at").eq("organization_id", organizationId),
       ]);
       for (const result of [memberResult, messageResult, presenceResult]) if (result.error) throw result.error;
@@ -458,10 +482,14 @@ function createOrganizationChat({ getClient, getOrganizationId, getOrganizationN
       const ids = rows.map((row) => row.id);
       const missingParents = [...new Set(rows.map((row) => row.reply_to_id).filter((id) =>
         id && !rows.some((message) => message.id === id) && !parentMessages.has(id)))];
+      let parentQuery = missingParents.length
+        ? client.from("organization_messages").select("id,sender_id,body,created_at").eq("organization_id", organizationId).in("id", missingParents)
+        : null;
+      if (parentQuery && historyStart) parentQuery = parentQuery.gte("created_at", historyStart);
       const [reactionResult, readResult, parentResult] = await Promise.all([
         ids.length ? client.from("organization_message_reactions").select("message_id,reactor_id,emoji").eq("organization_id", organizationId).in("message_id", ids) : { data: [] },
         ids.length ? client.from("organization_message_reads").select("message_id,reader_id,read_at").eq("organization_id", organizationId).in("message_id", ids) : { data: [] },
-        missingParents.length ? client.from("organization_messages").select("id,sender_id,body").eq("organization_id", organizationId).in("id", missingParents) : { data: [] },
+        parentQuery || { data: [] },
       ]);
       for (const result of [reactionResult, readResult, parentResult]) if (result.error) throw result.error;
       if (!active || request !== requestNumber) return;

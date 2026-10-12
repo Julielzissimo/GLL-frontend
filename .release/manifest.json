@@ -1205,6 +1205,31 @@
       "migrations": [
         "supabase/migrations/20261012023121_radar_items_operational_metrics.sql"
       ]
+    },
+    {
+      "id": "ISSUE-93",
+      "backend_commits": [],
+      "frontend_commits": [
+        "63e85ab7bf09ec1ad369b62dee42a4d6e7603b7c"
+      ],
+      "migrations": []
+    },
+    {
+      "id": "RADAR-20-ABRIR-ITENS-NOVA-GUIA-001",
+      "backend_commits": [],
+      "frontend_commits": [
+        "9df13b91efe0c53fe8bb339522d78bc2016c3baf"
+      ],
+      "migrations": []
+    },
+    {
+      "id": "EMAIL-11",
+      "backend_commits": [
+        "af8466e3968ac0278e88000cfdadbe6c8a7fc8a8",
+        "f95154c2887fa633b4161ef21eae6bb0ae12ced5"
+      ],
+      "frontend_commits": [],
+      "migrations": []
     }
   ]
 }

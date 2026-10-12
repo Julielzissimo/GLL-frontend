@@ -566,7 +566,7 @@ export function createRadarDetailsFeature({ getClient, getUserRole = () => null,
       : "";
     return `<section class="section-band radar-detail-section" aria-labelledby="radarGeneralTitle">
       <div class="radar-detail-section-heading"><div><h2 id="radarGeneralTitle">Informações gerais</h2><p>Dados disponíveis no cache centralizado do Radar.</p></div></div>
-      <dl class="radar-detail-grid">${values.map(([label, value]) => `<div><dt>${escapeHtml(label)}</dt><dd${label === "Objeto da contratação" ? ' class="radar-detail-object"' : ""}>${escapeHtml(value || "Não informado")}</dd></div>`).join("")}</dl>
+      <dl class="radar-detail-grid">${values.map(([label, value]) => `<div${label === "Objeto da contratação" ? ' class="radar-detail-object-field"' : ""}><dt>${escapeHtml(label)}</dt><dd${label === "Objeto da contratação" ? ' class="radar-detail-object"' : ""}>${escapeHtml(value || "Não informado")}</dd></div>`).join("")}</dl>
       <section class="radar-platform-detail" aria-labelledby="radarPlatformDetailTitle">
         <h3 id="radarPlatformDetailTitle">Plataforma de disputa</h3>
         <p><strong>${escapeHtml(platformStatus)}</strong></p>
