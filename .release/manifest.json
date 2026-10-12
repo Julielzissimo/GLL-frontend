@@ -1230,6 +1230,18 @@
       ],
       "frontend_commits": [],
       "migrations": []
+    },
+    {
+      "id": "EMAIL-12",
+      "backend_commits": [
+        "97c4e9e61da6ec2bd748c7f408df91258300fd30"
+      ],
+      "frontend_commits": [
+        "ea5885fcbd81d7b0fd9a92c3f630f4f94c372e9f"
+      ],
+      "migrations": [
+        "supabase/migrations/20261012031234_remove_username_from_first_access.sql"
+      ]
     }
   ]
 }
