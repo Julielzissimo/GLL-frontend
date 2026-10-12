@@ -1014,7 +1014,9 @@
       "backend_commits": [
         "ca2bc1fec0e50acd9a1a29aba953de7fbff2ef6a"
       ],
-      "frontend_commits": [],
+      "frontend_commits": [
+        "2b93e4a78827af7efc46e1ac3fbc0a4f9dc4fadc"
+      ],
       "migrations": [
         "supabase/migrations/20261012023121_radar_items_operational_metrics.sql"
       ]
