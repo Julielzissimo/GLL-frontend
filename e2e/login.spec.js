@@ -27,6 +27,18 @@ function radarSearchResponse(page, predicate = () => true) {
   }, { timeout: 45_000 });
 }
 
+function radarDetailsResponse(page, action) {
+  return page.waitForResponse((response) => {
+    const request = response.request();
+    if (request.method() !== "POST" || !new URL(response.url()).pathname.endsWith("/functions/v1/radar-details")) return false;
+    try {
+      return request.postDataJSON()?.action === action;
+    } catch {
+      return false;
+    }
+  }, { timeout: 45_000 });
+}
+
 async function submitRadarSearch(page, predicate) {
   const responsePromise = radarSearchResponse(page, predicate);
   await page.locator("#radarSearchButton").click();
@@ -125,6 +137,39 @@ async function validateRadarSearchPage(page) {
   await expect(resultCard.locator(".radar-result-value")).toContainText("Valor estimado");
   await expect(resultCard).toContainText("Ver itens");
   await expect(resultCard.locator(".radar-receipt-status")).toHaveCSS("border-top-style", "solid");
+  const favoriteBeforeDetails = await resultCard.locator("[data-radar-favorite]").getAttribute("aria-pressed");
+  const detailsResponsePromise = radarDetailsResponse(page, "details");
+  await resultCard.locator("[data-radar-detail]").click();
+  const detailsResponse = await detailsResponsePromise;
+  if (!detailsResponse.ok()) throw new Error(`A consulta real dos detalhes retornou HTTP ${detailsResponse.status()}.`);
+  const detailsBody = await detailsResponse.json();
+  const itemSyncStatuses = new Set(["pending", "processing", "complete", "partial", "failed"]);
+  if (detailsBody.status !== "available"
+    || !detailsBody.contract
+    || !Array.isArray(detailsBody.items?.items)
+    || !detailsBody.itemSync
+    || !itemSyncStatuses.has(detailsBody.itemSync.status)
+    || !detailsBody.documents) {
+    throw new Error("A consulta real dos detalhes não respeitou o contrato de edital, itens e sincronização.");
+  }
+  await expect(page.locator("#radarDetailsView")).toBeVisible();
+  await expect(page.locator("#radarDetailsTitle")).toBeVisible();
+  await expect(page.locator("#radarDetailsContent #radarItemsTitle")).toBeVisible();
+  await expect(page.locator("#radarDetailsContent #radarImportPanelTitle")).toBeVisible();
+  const renderedItems = await page.locator("#radarDetailsContent [data-radar-select-item]").count();
+  if (detailsBody.items.complete && detailsBody.items.items.length > 0 && renderedItems === 0) {
+    throw new Error("O snapshot completo retornado pela API não foi exibido como itens selecionáveis.");
+  }
+  if (!detailsBody.items.complete && renderedItems !== 0) {
+    throw new Error("A interface permitiu selecionar itens antes de existir um snapshot completo.");
+  }
+  const favoriteOnDetails = await page.locator("#radarDetailsFavoriteButton").getAttribute("aria-pressed");
+  if (favoriteBeforeDetails !== favoriteOnDetails) {
+    throw new Error("Abrir os detalhes alterou o estado do favorito da contratação.");
+  }
+  await page.locator("#radarDetailsBackButton").click();
+  await expect(page.locator("#radarListView")).toBeVisible();
+  await expect(resultCard.locator("[data-radar-favorite]")).toHaveAttribute("aria-pressed", favoriteBeforeDetails);
   const longDescription = Array.from({ length: 8 }, () => "Contratação de serviços especializados para fornecimento, instalação e manutenção de equipamentos destinados às unidades administrativas do município.").join(" ");
   const objectDisclosureState = await resultCard.evaluate(async (card, text) => {
     const heading = card.querySelector(".radar-result-object");
