@@ -1199,7 +1199,9 @@
       "backend_commits": [
         "e3572382f5e6c98b432544c89124ff86725cf62c"
       ],
-      "frontend_commits": [],
+      "frontend_commits": [
+        "d3cd82eb0c1fbcda67e5218b62e5168c78ef9bdb"
+      ],
       "migrations": [
         "supabase/migrations/20261012023121_radar_items_operational_metrics.sql"
       ]
