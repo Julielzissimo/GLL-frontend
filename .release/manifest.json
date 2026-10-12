@@ -1181,6 +1181,18 @@
         "1457637b0e6b560057bb2fdbb5848848e9fd10f3"
       ],
       "migrations": []
+    },
+    {
+      "id": "SYNC-REALTIME-001",
+      "backend_commits": [
+        "a252d37b8b2c7927da184509be76c0ac63406ff8"
+      ],
+      "frontend_commits": [
+        "b6e471b19edd52d63f9e6e5729ca6ba5255f0756"
+      ],
+      "migrations": [
+        "supabase/migrations/20261012020000_broadcast_organization_data_changes.sql"
+      ]
     }
   ]
 }
