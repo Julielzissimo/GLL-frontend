@@ -3514,6 +3514,9 @@ function resetAuthenticatedView() {
   refs.currentUserName.textContent = "";
   refs.currentUserRole.textContent = "";
   refs.currentUserAvatar.textContent = "";
+  delete refs.currentUserAvatar.dataset.avatarPath;
+  delete refs.currentUserAvatar.dataset.avatarHasImage;
+  delete refs.currentUserAvatar.dataset.fallbackInitials;
   updateWorkspaceSummary();
   setNotificationsMenuOpen(false);
   updateNotificationsIndicator();
@@ -6708,9 +6711,27 @@ function updateCurrentUserProfile() {
   const name = user ? userDisplayName(user) : appState.currentUserName || appState.currentUserEmail || "Usuário";
   appState.currentUserName = name;
   refs.currentUserName.textContent = name;
-  refs.currentUserAvatar.innerHTML = user?.avatar_signed_url
-    ? `<img src="${escapeHtml(user.avatar_signed_url)}" alt="" width="38" height="38" decoding="async" />`
-    : escapeHtml(userInitials(name));
+  const avatar = refs.currentUserAvatar;
+  const avatarPath = user?.avatar_path || "";
+  const avatarPathChanged = avatar.dataset.avatarPath !== avatarPath;
+  const signedAvatarAvailable = Boolean(avatarPath && user?.avatar_signed_url);
+
+  if (avatarPathChanged || (signedAvatarAvailable && avatar.dataset.avatarHasImage !== "true")) {
+    avatar.dataset.avatarPath = avatarPath;
+    avatar.dataset.avatarHasImage = String(signedAvatarAvailable);
+    if (signedAvatarAvailable) {
+      avatar.innerHTML = `<img src="${escapeHtml(user.avatar_signed_url)}" alt="" width="38" height="38" decoding="async" />`;
+      delete avatar.dataset.fallbackInitials;
+    } else {
+      const initials = userInitials(name);
+      avatar.textContent = initials;
+      avatar.dataset.fallbackInitials = initials;
+    }
+  } else if (!avatarPath && avatar.dataset.fallbackInitials !== userInitials(name)) {
+    const initials = userInitials(name);
+    avatar.textContent = initials;
+    avatar.dataset.fallbackInitials = initials;
+  }
   setProfileMenuOpen(!refs.profileDropdown.classList.contains("hidden"));
 }
 

@@ -19,6 +19,34 @@ test("feed descreve alterações específicas do edital e do orçamento", () => 
   assert.equal(bidActivityDescription({ ...event, event_type: "item_won" }), "marcou o item 3 como vencido no edital 10/2026 de Prefeitura");
 });
 
+test("avatar do cabeçalho não é remontado quando o link assinado é renovado", () => {
+  const app = client();
+  const profile = {
+    auth_user_id: "auth-user-1",
+    display_name: "Fulana",
+    avatar_path: "auth-user-1/foto.webp",
+    avatar_signed_url: "https://storage.example.test/foto.webp?token=1",
+  };
+  app.appState.currentUserAuthId = profile.auth_user_id;
+  app.appState.users = [profile];
+  app.updateCurrentUserProfile();
+
+  const avatar = app.element("currentUserAvatar");
+  const originalMarkup = avatar.innerHTML;
+  assert.match(originalMarkup, /token=1/);
+  assert.equal(avatar.innerHTMLWrites, 1);
+
+  app.appState.users = [{ ...profile, avatar_signed_url: "https://storage.example.test/foto.webp?token=2" }];
+  app.updateCurrentUserProfile();
+  assert.equal(avatar.innerHTMLWrites, 1);
+  assert.equal(avatar.innerHTML, originalMarkup);
+
+  app.appState.users = [{ ...profile, avatar_path: "auth-user-1/foto-nova.webp", avatar_signed_url: "https://storage.example.test/foto-nova.webp?token=3" }];
+  app.updateCurrentUserProfile();
+  assert.equal(avatar.innerHTMLWrites, 2);
+  assert.match(avatar.innerHTML, /foto-nova\.webp\?token=3/);
+});
+
 test("número do edital é separado do identificador interno e aceita repetição", () => {
   const app = client();
   const first = app.normalizeBidRecord({ id: "internal-1", edital_number: "10/2026" });
@@ -188,13 +216,17 @@ function client(db = backend(), auth = { session: { user } }, config = {}) {
     if (!elements.has(id)) {
       const classes = new Set();
       elements.set(id, {
-        id, value: "", textContent: "", classList: {
+        id, value: "", textContent: "", dataset: {}, _innerHTML: "", innerHTMLWrites: 0, classList: {
           add: (...values) => values.forEach((v) => classes.add(v)),
           remove: (...values) => values.forEach((v) => classes.delete(v)),
           contains: (v) => classes.has(v),
           toggle: (v, on = !classes.has(v)) => on ? classes.add(v) : classes.delete(v),
         },
         querySelector: () => null, querySelectorAll: () => [], setAttribute() {}, insertAdjacentHTML() {}, prepend() {}, reset() {}, close() {},
+      });
+      Object.defineProperty(elements.get(id), "innerHTML", {
+        get() { return this._innerHTML; },
+        set(value) { this.innerHTMLWrites += 1; this._innerHTML = String(value); },
       });
     }
     return elements.get(id);
@@ -214,7 +246,7 @@ function client(db = backend(), auth = { session: { user } }, config = {}) {
   });
   vm.runInContext(application, context);
   element("notificationsMenu").classList.add("hidden");
-  const api = vm.runInContext(`({ store, appState, restoreSession, logout, reloadData, refreshInBackground, startLiveUpdates, stopLiveUpdates, resetAuthenticatedView, scheduleLiveRefresh, calculateBidSummary, calculateLineTotal, calculateItemProfit, calculateProfitMargin, calculateValueWithMargin, parseDecimal, parseProfitMargin, money, formatDateTime, toDateTimeInputValue, fromDateTimeInputValue, readNavigationRoute, writeNavigationRoute, resolveAuthorizedPage, normalizeBidRecord, normalizeBidAttachments, validateEditalFiles, bidDisplayNumber, bidMatchesSearch, bidActivityDescription, creatorName, creatorInitials, creatorTagMarkup, normalizeQuotationRecord, normalizeQuotationItemRecord, quotationItemToBidItem, bidItemToQuotationItem, normalizeTechnicalSpecifications, quotationSaveError, sessionPolicyStorageKey, enforceSessionPolicy, availableBidQuotations, navigationNotifications, clearAllNotifications })`, context);
+  const api = vm.runInContext(`({ store, appState, restoreSession, logout, reloadData, refreshInBackground, startLiveUpdates, stopLiveUpdates, resetAuthenticatedView, scheduleLiveRefresh, calculateBidSummary, calculateLineTotal, calculateItemProfit, calculateProfitMargin, calculateValueWithMargin, parseDecimal, parseProfitMargin, money, formatDateTime, toDateTimeInputValue, fromDateTimeInputValue, readNavigationRoute, writeNavigationRoute, resolveAuthorizedPage, normalizeBidRecord, normalizeBidAttachments, validateEditalFiles, bidDisplayNumber, bidMatchesSearch, bidActivityDescription, creatorName, creatorInitials, creatorTagMarkup, normalizeQuotationRecord, normalizeQuotationItemRecord, quotationItemToBidItem, bidItemToQuotationItem, normalizeTechnicalSpecifications, quotationSaveError, sessionPolicyStorageKey, enforceSessionPolicy, availableBidQuotations, navigationNotifications, clearAllNotifications, updateCurrentUserProfile })`, context);
   vm.runInContext(`
     renderSuppliers = renderBids = renderDetails = renderQuotations = renderUsers = () => {};
     clearBidForm = clearQuotationForm = setPage = updateMainNavigationState = () => {};
