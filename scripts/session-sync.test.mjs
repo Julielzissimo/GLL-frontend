@@ -185,7 +185,8 @@ test("itens não carregam nem enviam os campos antigos de frete", () => {
 function backend() {
   return {
     tables: { bids: [{ id: "TEST-1", buyer_agency: "Original" }], items: [], documents: [], failure_history: [], quotations: [{ id: 1, edital: "Original" }], quotation_items: [], suppliers: [] },
-    users: [user], channels: new Set(), notificationStates: new Map(),
+    users: [{ ...user, auth_user_id: "profile-1", organization_id: "org-1", role: "Administrador", organization: { name: "Teste" } }],
+    channels: new Set(), notificationStates: new Map(),
   };
 }
 
@@ -193,6 +194,7 @@ function client(db = backend(), auth = { session: { user } }, config = {}) {
   const elements = new Map();
   const listeners = new Map();
   const timers = new Map();
+  const intervalDelays = [];
   let nextTimer = 0;
   const location = { pathname: "/homolog/", search: "", hash: "" };
   const updateLocation = (url) => {
@@ -241,12 +243,12 @@ function client(db = backend(), auth = { session: { user } }, config = {}) {
     document: { hidden: false, getElementById: element, querySelectorAll: () => [], createElement: () => element("syncNotice"), ...events },
     setTimeout: (fn) => { timers.set(++nextTimer, fn); return nextTimer; },
     clearTimeout: (id) => timers.delete(id),
-    setInterval: (fn) => { timers.set(++nextTimer, fn); return nextTimer; },
+    setInterval: (fn, delay) => { intervalDelays.push(delay); timers.set(++nextTimer, fn); return nextTimer; },
     clearInterval: (id) => timers.delete(id),
   });
   vm.runInContext(application, context);
   element("notificationsMenu").classList.add("hidden");
-  const api = vm.runInContext(`({ store, appState, restoreSession, logout, reloadData, refreshInBackground, startLiveUpdates, stopLiveUpdates, resetAuthenticatedView, scheduleLiveRefresh, calculateBidSummary, calculateLineTotal, calculateItemProfit, calculateProfitMargin, calculateValueWithMargin, parseDecimal, parseProfitMargin, money, formatDateTime, toDateTimeInputValue, fromDateTimeInputValue, readNavigationRoute, writeNavigationRoute, resolveAuthorizedPage, normalizeBidRecord, normalizeBidAttachments, validateEditalFiles, bidDisplayNumber, bidMatchesSearch, bidActivityDescription, creatorName, creatorInitials, creatorTagMarkup, normalizeQuotationRecord, normalizeQuotationItemRecord, quotationItemToBidItem, bidItemToQuotationItem, normalizeTechnicalSpecifications, quotationSaveError, sessionPolicyStorageKey, enforceSessionPolicy, availableBidQuotations, navigationNotifications, clearAllNotifications, updateCurrentUserProfile })`, context);
+  const api = vm.runInContext(`({ store, appState, restoreSession, logout, reloadData, refreshInBackground, startLiveUpdates, stopLiveUpdates, resetAuthenticatedView, scheduleLiveRefresh, verifyCurrentUserAccess, calculateBidSummary, calculateLineTotal, calculateItemProfit, calculateProfitMargin, calculateValueWithMargin, parseDecimal, parseProfitMargin, money, formatDateTime, toDateTimeInputValue, fromDateTimeInputValue, readNavigationRoute, writeNavigationRoute, resolveAuthorizedPage, normalizeBidRecord, normalizeBidAttachments, validateEditalFiles, bidDisplayNumber, bidMatchesSearch, bidActivityDescription, creatorName, creatorInitials, creatorTagMarkup, normalizeQuotationRecord, normalizeQuotationItemRecord, quotationItemToBidItem, bidItemToQuotationItem, normalizeTechnicalSpecifications, quotationSaveError, sessionPolicyStorageKey, enforceSessionPolicy, availableBidQuotations, navigationNotifications, clearAllNotifications, updateCurrentUserProfile })`, context);
   vm.runInContext(`
     renderSuppliers = renderBids = renderDetails = renderQuotations = renderUsers = () => {};
     clearBidForm = clearQuotationForm = setPage = updateMainNavigationState = () => {};
@@ -270,24 +272,35 @@ function client(db = backend(), auth = { session: { user } }, config = {}) {
       getSession: async () => ({ data: { session: auth.session }, error: null }),
       signOut: async ({ scope }) => { assert.equal(scope, "local"); auth.session = null; return { error: null }; },
     },
-    channel: () => {
+    channel: (topic, options) => {
+      const handlers = new Map();
       const channel = {
-        on: (type, _filter, handler) => {
-          if (type === "broadcast") channel.receive = handler;
+        topic,
+        options,
+        on: (type, filter, handler) => {
+          if (type === "broadcast") handlers.set(filter.event, handler);
           else if (type === "postgres_changes") channel.receivePostgresChange = handler;
           return channel;
         },
         subscribe: (callback) => { db.channels.add(channel); callback("SUBSCRIBED"); return channel; },
+        broadcast: (event, payload) => handlers.get(event)?.({ event, payload }),
         send: async (message) => {
-          assert.deepEqual(Object.keys(message.payload), []);
-          for (const other of db.channels) if (other !== channel) other.receive();
+          for (const other of db.channels) {
+            if (other !== channel && other.topic === topic) other.broadcast(message.event, message.payload);
+          }
         },
+      };
+      db.broadcast ||= (targetTopic, event, payload) => {
+        for (const subscriber of db.channels) {
+          if (subscriber.topic === targetTopic) subscriber.broadcast(event, payload);
+        }
       };
       return channel;
     },
     removeChannel: async (channel) => db.channels.delete(channel),
   };
   return { ...api, db, auth, context, elements, element, timers, listeners, location, history,
+    intervalDelays,
     flush: async () => {
       const pending = [...timers.values()]; timers.clear();
       for (const fn of pending) await fn();
@@ -313,7 +326,15 @@ test("sets the Realtime JWT before subscribing to the private organization chann
   assert.equal(calls[0], "set-auth");
   const privateChannel = calls.find((call) => typeof call === "object" && call.topic === "organization:org-1");
   assert.deepEqual(JSON.parse(JSON.stringify(privateChannel.options)), { config: { private: true, broadcast: { self: false } } });
+  assert.deepEqual(app.intervalDelays, []);
   app.stopLiveUpdates();
+});
+
+test("removes the 15-second full-data polling interval", async () => {
+  const app = client();
+  await app.restoreSession();
+  assert.deepEqual(app.intervalDelays, [60_000]);
+  await app.logout();
 });
 
 test("limpar notificações persiste os avisos dispensados somente para o perfil atual", async () => {
@@ -562,7 +583,7 @@ test("logout ends session, clears cached data/listeners and prevents restoration
   assert.equal(app.appState.authenticated, false);
 });
 
-test("two independent sessions receive bid, quotation, item and deletion changes", async () => {
+test("two independent sessions apply only resources announced by the organization channel", async () => {
   const db = backend();
   const a = client(db), b = client(db);
   await a.restoreSession(); await b.restoreSession();
@@ -570,12 +591,16 @@ test("two independent sessions receive bid, quotation, item and deletion changes
   db.tables.bids[0].buyer_agency = "Atualizado";
   db.tables.quotations[0].edital = "Atualizado";
   db.tables.quotation_items.push({ id: 1, quotation_id: 1, item_number: 1, quantity: 2, final_bid: 15 });
-  await a.reloadData(); await b.flush();
+  db.broadcast("organization:org-1", "organization-data-changed", { resource: "bids" });
+  db.broadcast("organization:org-1", "organization-data-changed", { resource: "quotations" });
+  db.broadcast("organization:org-1", "organization-data-changed", { resource: "quotation_items" });
+  await b.flush();
   assert.equal(b.appState.bids[0].buyer_agency, "Atualizado");
   assert.equal(b.appState.quotations[0].edital, "Atualizado");
   assert.equal(b.appState.quotationItems.length, 1);
   db.tables.bids = [];
-  await a.reloadData(); await b.flush();
+  db.broadcast("organization:org-1", "organization-data-changed", { resource: "bids" });
+  await b.flush();
   assert.equal(b.appState.bids.length, 0);
 });
 
@@ -609,14 +634,38 @@ test("remote edits and deletes preserve drafts and show a persistent warning", a
   assert.match(app.element("syncNotice").textContent, /alterado ou excluído/);
 });
 
-test("polling recovers changes when no realtime notification arrives", async () => {
+test("Realtime fetches only the changed edital resource with its bid filter", async () => {
   const app = client(); await app.restoreSession(); await app.flush();
-  app.db.tables.bids[0].buyer_agency = "Sem aviso";
-  app.scheduleLiveRefresh(); await app.flush();
-  assert.equal(app.appState.bids[0].buyer_agency, "Sem aviso");
+  app.appState.activePage = "items";
+  app.appState.currentBidId = "TEST-1";
+  app.db.tables.items.push({ id: 7, bid_id: "TEST-1", item_number: 1, name: "Item novo" });
+  const calls = [];
+  app.store.getAll = async (table) => { calls.push(["all", table]); return structuredClone(app.db.tables[table] || []); };
+  app.store.getMatching = async (table, field, value) => {
+    calls.push(["matching", table, field, value]);
+    return structuredClone((app.db.tables[table] || []).filter((row) => String(row[field]) === String(value)));
+  };
+
+  app.scheduleLiveRefresh({ resource: "items" });
+  await app.flush();
+
+  assert.deepEqual(calls, [["matching", "items", "bid_id", "TEST-1"]]);
+  assert.equal(app.appState.items[0].name, "Item novo");
 });
 
-test("network failure keeps session and data; retry applies a complete snapshot", async () => {
+test("a revoked user is signed out after the organization access event", async () => {
+  const app = client(); await app.restoreSession(); await app.flush();
+  app.db.users[0].access_revoked_at = new Date().toISOString();
+  app.db.users[0].auth_access_status = "revoked";
+
+  app.scheduleLiveRefresh({ resource: "app_users" });
+  await app.flush();
+
+  assert.equal(app.appState.authenticated, false);
+  assert.match(app.element("loginError").textContent, /acesso não está mais disponível/);
+});
+
+test("network failure keeps session and data; retry applies the current view", async () => {
   const app = client(); await app.restoreSession();
   const getAll = app.store.getAll;
   app.db.tables.bids[0].buyer_agency = "Novo";
@@ -669,7 +718,8 @@ test("background refresh pauses in hidden tabs and during a save", async () => {
 test("access removal closes the authenticated view", async () => {
   const app = client(); await app.restoreSession();
   app.db.users = [];
-  await app.refreshInBackground();
+  app.scheduleLiveRefresh({ resource: "app_users" });
+  await app.flush();
   assert.equal(app.appState.authenticated, false);
   assert.equal(app.appState.bids.length, 0);
 });
@@ -688,7 +738,8 @@ test("supplier updates synchronize between sessions and clear on logout", async 
   await a.restoreSession();
   await b.restoreSession();
   db.tables.suppliers.push({ id: 1, name: "Loja de teste", website: "", contact: "", tags: ["papelaria"] });
-  await a.reloadData();
+  b.appState.activePage = "suppliers";
+  db.broadcast("organization:org-1", "organization-data-changed", { resource: "suppliers" });
   await b.flush();
   assert.equal(b.appState.suppliers[0].name, "Loja de teste");
   await b.logout();

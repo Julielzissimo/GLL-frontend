@@ -1183,6 +1183,18 @@
       "migrations": []
     },
     {
+      "id": "SYNC-REALTIME-001",
+      "backend_commits": [
+        "a252d37b8b2c7927da184509be76c0ac63406ff8"
+      ],
+      "frontend_commits": [
+        "b6e471b19edd52d63f9e6e5729ca6ba5255f0756"
+      ],
+      "migrations": [
+        "supabase/migrations/20261012020000_broadcast_organization_data_changes.sql"
+      ]
+    },
+    {
       "id": "RADAR-19-FASE-6-VALIDACAO-HOMOLOGACAO-001",
       "backend_commits": [
         "e3572382f5e6c98b432544c89124ff86725cf62c"
