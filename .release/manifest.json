@@ -1255,6 +1255,17 @@
       "migrations": [
         "supabase/migrations/20261012170244_add_ready_for_dispute_bid_status.sql"
       ]
+    },
+    {
+      "id": "RECONCILE-APPLIED-RADAR-MIGRATIONS-001",
+      "backend_commits": [
+        "eb90ba7247bb0439b6eba7643cd8bebf6f8c931c"
+      ],
+      "frontend_commits": [],
+      "migrations": [
+        "supabase/migrations/20261012161530_radar_engine_ingest_receiver.sql",
+        "supabase/migrations/20261012161930_radar_engine_identity_hydration_fix.sql"
+      ]
     }
   ]
 }
