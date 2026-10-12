@@ -596,10 +596,11 @@ export function createRadarDetailsFeature({ getClient, getUserRole = () => null,
       && !canRequestUpdate && !canResumePolling) return "";
 
     const tone = presentation.kind === "error" ? "error" : "info";
-    const showSpinner = presentation.kind === "running"
+    const showSpinner = presentation.kind === "pending" || presentation.kind === "running"
       || (presentation.kind === "stale" && Boolean(presentation.runningMessage));
+    const spinnerClass = presentation.kind === "pending" ? "ds-spinner" : "radar-spinner";
     return `<div class="radar-feedback" data-tone="${tone}">
-      ${showSpinner ? '<span class="radar-spinner" aria-hidden="true"></span>' : ""}
+      ${showSpinner ? `<span class="${spinnerClass}" aria-hidden="true"></span>` : ""}
       <div role="status" aria-live="polite"><span>${escapeHtml(presentation.message)}</span>${presentation.runningMessage ? `<span>${escapeHtml(presentation.runningMessage)}</span>` : ""}${presentation.progress ? `<small>${escapeHtml(presentation.progress)}</small>` : ""}</div>
       ${canResumePolling ? '<button class="quiet-action compact-action" type="button" data-radar-item-sync-watch>Continuar acompanhamento</button>' : ""}
       ${canRequestUpdate ? `<button class="quiet-action compact-action" type="button" data-radar-item-sync-request aria-disabled="${state.loading || state.syncRequestInProgress ? "true" : "false"}">${state.syncRequestInProgress ? "Solicitando atualização…" : "Solicitar nova atualização"}</button>` : ""}
