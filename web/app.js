@@ -162,7 +162,6 @@ const refs = {
   firstAccessFields: $("firstAccessFields"),
   firstAccessFullName: $("firstAccessFullName"),
   firstAccessDisplayName: $("firstAccessDisplayName"),
-  firstAccessUsername: $("firstAccessUsername"),
   firstAccessPassword: $("firstAccessPassword"),
   firstAccessPasswordConfirm: $("firstAccessPasswordConfirm"),
   firstAccessError: $("firstAccessError"),
@@ -1418,13 +1417,12 @@ class SupabaseStore {
     return invokeSupabaseFunction(client, "complete-first-access", { action: "status" });
   }
 
-  async completeFirstAccess({ fullName, displayName, username, password, avatarBlob }) {
+  async completeFirstAccess({ fullName, displayName, password, avatarBlob }) {
     const client = await this.open();
     const body = new FormData();
     body.set("action", "complete");
     body.set("fullName", fullName);
     body.set("displayName", displayName);
-    body.set("username", username);
     body.set("password", password);
     if (avatarBlob) body.set("avatar", avatarBlob, "profile.webp");
     return invokeSupabaseFunction(client, "complete-first-access", body);
@@ -2261,10 +2259,6 @@ function bindEvents() {
   refs.userCreateForm.addEventListener("submit", withBlockingLoading(handleUserCreate, "Salvando perfil…"));
   refs.firstAccessFullName.addEventListener("input", updateProfilePhotoFallback);
   refs.firstAccessDisplayName.addEventListener("input", updateProfilePhotoFallback);
-  refs.firstAccessUsername.addEventListener("input", () => {
-    refs.firstAccessUsername.value = refs.firstAccessUsername.value.toLowerCase().replace(/\s+/gu, "");
-    refs.firstAccessUsername.removeAttribute("aria-invalid");
-  });
   refs.firstAccessFullName.addEventListener("input", () => refs.firstAccessFullName.removeAttribute("aria-invalid"));
   refs.firstAccessDisplayName.addEventListener("input", () => refs.firstAccessDisplayName.removeAttribute("aria-invalid"));
   refs.firstAccessPassword.addEventListener("input", () => refs.firstAccessPassword.removeAttribute("aria-invalid"));
@@ -3174,15 +3168,8 @@ async function handleFirstAccessCompletion(event) {
   }
   const fullName = refs.firstAccessFullName.value.trim().replace(/\s+/gu, " ");
   const displayName = refs.firstAccessDisplayName.value.trim().replace(/\s+/gu, " ");
-  const username = refs.firstAccessUsername.value.trim().toLowerCase();
   const password = refs.firstAccessPassword.value;
   const fullNamePattern = /^[\p{L}\p{M}][\p{L}\p{M} .’'-]*[\p{L}\p{M}.]$/u;
-  const usernamePattern = /^[a-z0-9][a-z0-9._-]{1,28}[a-z0-9]$/;
-  const reservedUsernames = new Set([
-    "admin", "administrator", "administrador", "administracao", "api", "auth", "gll",
-    "help", "login", "logout", "null", "profile", "root", "security", "signup",
-    "suporte", "support", "system", "undefined", "user", "users", "usuario", "usuarios",
-  ]);
   const failField = (field, message) => {
     refs.firstAccessError.textContent = message;
     field.setAttribute("aria-invalid", "true");
@@ -3195,14 +3182,6 @@ async function handleFirstAccessCompletion(event) {
   }
   if (displayName.length < 2 || displayName.length > 100 || /\p{Cc}/u.test(displayName)) {
     failField(refs.firstAccessDisplayName, "Informe um nome de exibição entre 2 e 100 caracteres.");
-    return;
-  }
-  if (!usernamePattern.test(username)) {
-    failField(refs.firstAccessUsername, "Use de 3 a 30 letras minúsculas, números, ponto, hífen ou sublinhado; comece e termine com letra ou número.");
-    return;
-  }
-  if (reservedUsernames.has(username)) {
-    failField(refs.firstAccessUsername, "Este nome de usuário é reservado. Escolha outro.");
     return;
   }
   if (new TextEncoder().encode(password).length < 8 || new TextEncoder().encode(password).length > 72) {
@@ -3220,16 +3199,11 @@ async function handleFirstAccessCompletion(event) {
     await store.completeFirstAccess({
       fullName,
       displayName,
-      username,
       password,
       avatarBlob,
     });
   } catch (error) {
     refs.firstAccessError.textContent = error.message;
-    if (/nome de usuário já está em uso/i.test(error.message)) {
-      refs.firstAccessUsername.setAttribute("aria-invalid", "true");
-      refs.firstAccessUsername.focus();
-    }
     return;
   }
 

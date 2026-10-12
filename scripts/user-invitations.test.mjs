@@ -36,15 +36,17 @@ test("invite callback scrubs its token fragment before establishing the session"
   assert.match(callback, /refresh_token/);
 });
 
-test("first access shows trusted identity fields and requires a unique username and confirmed password", () => {
+test("first access uses the invited email and requires profile details and a confirmed password", () => {
   assert.match(html, /<h1>Configure seu acesso ao GLL<\/h1>/);
   assert.match(html, /id="firstAccessEmail"[^>]*readonly/);
   assert.match(html, /id="firstAccessRole"[^>]*readonly/);
-  assert.match(html, /id="firstAccessUsername"[^>]*minlength="3"[^>]*maxlength="30"[^>]*required/);
+  assert.doesNotMatch(html, /firstAccessUsername|Login \/ nome de usuário/);
+  assert.match(html, /id="loginEmail" name="email" type="email" autocomplete="email" required/);
   assert.match(html, /id="firstAccessPasswordConfirm"[^>]*autocomplete="new-password"[^>]*required/);
   assert.match(html, /id="firstAccessPhotoMount"/);
+  assert.match(source, /auth\.signInWithPassword\(\{\s*email: normalizeEmail\(email\)/);
+  assert.doesNotMatch(source, /firstAccessUsername|usernamePattern|reservedUsernames/);
   assert.match(source, /As senhas não coincidem\./);
-  assert.match(source, /nome de usuário já está em uso/i);
   assert.match(source, /Seu acesso foi configurado com sucesso\. Bem-vindo ao GLL!/);
 });
 
