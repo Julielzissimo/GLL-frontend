@@ -523,7 +523,7 @@ export function createRadarDetailsFeature({ getClient, getUserRole = () => null,
     if (itemsState?.status === "pending") {
       const label = radarItemsPendingMessage(itemSync);
       return `<section class="section-band radar-detail-section" aria-labelledby="radarItemsTitle">
-        <div class="radar-detail-section-heading"><div><h2 id="radarItemsTitle">Itens da contratação</h2><p>${escapeHtml(label)}</p></div></div>
+        <div class="radar-detail-section-heading"><div><h2 id="radarItemsTitle">Itens da contratação</h2><div class="ds-loading" role="status"><span class="ds-spinner" aria-hidden="true"></span><span>${escapeHtml(label)}</span></div></div></div>
         <button class="quiet-action compact-action" type="button" data-radar-item-status-refresh>Consultar estado dos itens</button>
       </section>`;
     }
