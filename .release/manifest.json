@@ -1215,6 +1215,14 @@
       "migrations": []
     },
     {
+      "id": "RADAR-20-ABRIR-ITENS-NOVA-GUIA-001",
+      "backend_commits": [],
+      "frontend_commits": [
+        "9df13b91efe0c53fe8bb339522d78bc2016c3baf"
+      ],
+      "migrations": []
+    },
+    {
       "id": "EMAIL-11",
       "backend_commits": [
         "af8466e3968ac0278e88000cfdadbe6c8a7fc8a8",
