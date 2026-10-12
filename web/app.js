@@ -1,12 +1,12 @@
-﻿const STATUS_OPTIONS = ["Em Analise", "Aprovada", "Desclassificado", "Disputada"];
+﻿const STATUS_OPTIONS = ["Em Analise", "Aguard. Disputa", "Descartada", "Aprovada", "Faturado", "Desclassificado", "Disputada"];
 const storageBucket = globalThis.window?.GLLFileStorage?.storageBucket || ((client, bucket) => client.storage.from(bucket));
 const WON_ITEM_STATUSES = ["Aprovada", "Faturado", "Desclassificado", "Disputada"];
-STATUS_OPTIONS.splice(1, 0, "Descartada");
-STATUS_OPTIONS.splice(3, 0, "Faturado");
 const WON_ITEM_TOTAL_STATUSES = ["Descartada", "Aprovada", "Faturado", "Disputada"];
 const FINAL_BID_STATUS = "Faturado";
+const BID_STATUS_LABELS = Object.freeze({ "Em Analise": "Em Cadastro", "Aguard. Disputa": "Aguard. Disputa" });
 const BID_STATUS_TRANSITIONS = Object.freeze({
-  "Em Analise": ["Descartada", "Aprovada", "Desclassificado", "Disputada"],
+  "Em Analise": ["Aguard. Disputa", "Descartada", "Aprovada", "Desclassificado", "Disputada"],
+  "Aguard. Disputa": ["Em Analise", "Descartada", "Aprovada", "Desclassificado", "Disputada"],
   Descartada: ["Em Analise", "Disputada"],
   Aprovada: ["Em Analise", "Faturado", "Desclassificado", "Disputada"],
   Faturado: ["Aprovada"],
@@ -245,7 +245,8 @@ const refs = {
   viewAllBidsButton: $("viewAllBidsButton"),
   viewRecentBidsButton: $("viewRecentBidsButton"),
   homeTotalBids: $("homeTotalBids"),
-  homeAnalysisBids: $("homeAnalysisBids"),
+  homeRegistrationBids: $("homeRegistrationBids"),
+  homeReadyToDisputeBids: $("homeReadyToDisputeBids"),
   homeDiscardedBids: $("homeDiscardedBids"),
   homeApprovedBids: $("homeApprovedBids"),
   homeBilledBids: $("homeBilledBids"),
@@ -2299,8 +2300,8 @@ function applyEnvironmentConfig() {
 }
 
 function populateOptions() {
-  refs.filterStatus.innerHTML = optionList(["Todos", ...STATUS_OPTIONS]);
-  refs.bidStatus.innerHTML = optionList(STATUS_OPTIONS);
+  refs.filterStatus.innerHTML = statusOptionList(["Todos", ...STATUS_OPTIONS]);
+  refs.bidStatus.innerHTML = statusOptionList(STATUS_OPTIONS);
   refs.salesUnit.innerHTML = optionList(SALES_UNIT_OPTIONS);
 }
 
@@ -2344,6 +2345,15 @@ function bidTypeLabel(value) {
 
 function optionList(values) {
   return values.map((value) => `<option value="${escapeHtml(value)}">${escapeHtml(value)}</option>`).join("");
+}
+
+function statusOptionList(values) {
+  return values.map((value) => {
+    const option = document.createElement("option");
+    option.value = value;
+    option.textContent = value === "Todos" ? value : statusLabel(value);
+    return option.outerHTML;
+  }).join("");
 }
 
 function setSalesUnit(value) {
@@ -4950,7 +4960,7 @@ function bidActivityDescription(entry) {
     bid_deleted: `excluiu o ${edital}`,
     file_added: `adicionou o arquivo “${entry.detail || "sem nome"}” ao ${edital}`,
     file_removed: `excluiu o arquivo “${entry.detail || "sem nome"}” do ${edital}`,
-    status_changed: `alterou o status do ${edital} de ${entry.previous_value || "—"} para ${entry.next_value || "—"}`,
+    status_changed: `alterou o status do ${edital} de ${entry.previous_value ? statusLabel(entry.previous_value) : "—"} para ${entry.next_value ? statusLabel(entry.next_value) : "—"}`,
     quotation_item_added: `adicionou o item ${entry.detail || "—"} ao orçamento do ${edital}`,
     quotation_item_updated: `alterou o item ${entry.detail || "—"} do orçamento do ${edital}`,
     quotation_item_removed: `excluiu o item ${entry.detail || "—"} do orçamento do ${edital}`,
@@ -4963,7 +4973,8 @@ function renderHomeSummary() {
   const counts = appState.bids.reduce(
     (acc, bid) => {
       acc.total += 1;
-      if (bid.status === "Em Analise") acc.analysis += 1;
+      if (bid.status === "Em Analise") acc.registration += 1;
+      if (bid.status === "Aguard. Disputa") acc.readyToDispute += 1;
       if (bid.status === "Descartada") acc.discarded += 1;
       if (bid.status === "Aprovada") acc.approved += 1;
       if (bid.status === "Faturado") acc.billed += 1;
@@ -4971,10 +4982,11 @@ function renderHomeSummary() {
       if (bid.status === "Disputada") acc.disputed += 1;
       return acc;
     },
-    { total: 0, analysis: 0, discarded: 0, approved: 0, billed: 0, disqualified: 0, disputed: 0 }
+    { total: 0, registration: 0, readyToDispute: 0, discarded: 0, approved: 0, billed: 0, disqualified: 0, disputed: 0 }
   );
   refs.homeTotalBids.textContent = String(counts.total);
-  refs.homeAnalysisBids.textContent = String(counts.analysis);
+  refs.homeRegistrationBids.textContent = String(counts.registration);
+  refs.homeReadyToDisputeBids.textContent = String(counts.readyToDispute);
   refs.homeDiscardedBids.textContent = String(counts.discarded);
   refs.homeApprovedBids.textContent = String(counts.approved);
   refs.homeBilledBids.textContent = String(counts.billed);
@@ -7362,16 +7374,12 @@ function zonedDateTimeParts(date) {
 }
 
 function statusDisplay(status) {
+  return statusLabel(status).toUpperCase();
+}
+
+function statusLabel(status) {
   const normalizedStatus = normalizeBidStatus(status);
-  const map = {
-    "Em Analise": "ANÁLISE",
-    Descartada: "DESCARTADA",
-    Aprovada: "APROVADA",
-    Faturado: "FATURADO",
-    Desclassificado: "DESCLASSIFICADO",
-    Disputada: "DISPUTADA",
-  };
-  return map[normalizedStatus] || String(normalizedStatus || "").toUpperCase();
+  return BID_STATUS_LABELS[normalizedStatus] || String(normalizedStatus || "");
 }
 
 function normalizeBidStatus(status) {

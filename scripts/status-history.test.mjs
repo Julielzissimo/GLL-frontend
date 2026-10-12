@@ -26,6 +26,12 @@ test("toda transição de status exige motivo", () => {
   assert.doesNotThrow(() => context.validate("Em Analise", "Disputada", "Sessão concluída"));
 });
 
+test("edital cadastrado pode aguardar disputa, voltar para cadastro ou seguir para disputa", () => {
+  assert.doesNotThrow(() => context.validate("Em Analise", "Aguard. Disputa", "Edital e orçamento concluídos"));
+  assert.doesNotThrow(() => context.validate("Aguard. Disputa", "Em Analise", "Corrigir os dados do edital"));
+  assert.doesNotThrow(() => context.validate("Aguard. Disputa", "Disputada", "Sessão de disputa realizada"));
+});
+
 test("persistência remota usa a operação auditável de status", () => {
   assert.match(source, /client\.rpc\("change_bid_status"/);
   assert.match(source, /change_reason: statusReason\.trim\(\)/);
