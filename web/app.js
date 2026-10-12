@@ -118,6 +118,7 @@ const appState = {
   activePage: "home",
   currentUserEmail: null,
   currentUserAuthId: null,
+  currentUserCreatedAt: null,
   currentUserRole: null,
   currentUserName: null,
   currentOrganizationId: null,
@@ -1259,7 +1260,7 @@ class SupabaseStore {
       return { email: data.user.email, mustChangePassword: true };
     }
     const profile = await this.getUser(data.user.email);
-    if (profile) return profile;
+    if (profile) return { ...profile, authUserCreatedAt: data.user.created_at };
     await client.auth.signOut();
     return null;
   }
@@ -1955,6 +1956,7 @@ const organizationChat = (window.GLLOrganizationChat?.createOrganizationChat || 
   getOrganizationId: () => appState.currentOrganizationId,
   getOrganizationName: () => appState.currentOrganizationName,
   getUserId: () => appState.currentUserAuthId,
+  getUserCreatedAt: () => appState.currentUserCreatedAt,
 });
 const declarationsFeature = createDeclarationsFeature({
   getClient: () => (store.requiresAuthenticationBeforeData ? store.client : null),
@@ -3468,7 +3470,7 @@ async function restoreSessionInternal() {
     await logout();
     return;
   }
-  await enterAuthenticatedView(user);
+  await enterAuthenticatedView(user, data.session.user.created_at);
 }
 
 function restoreSession() {
@@ -3479,11 +3481,12 @@ function restoreSession() {
   return pendingSessionRestore;
 }
 
-async function enterAuthenticatedView(user) {
+async function enterAuthenticatedView(user, authUserCreatedAt = user.authUserCreatedAt) {
   const epoch = ++sessionEpoch;
   appState.authenticated = true;
   appState.currentUserEmail = user.email;
   appState.currentUserAuthId = user.auth_user_id || user.email;
+  appState.currentUserCreatedAt = authUserCreatedAt || null;
   appState.dismissedNotificationIds = [];
   appState.currentUserRole = normalizeUserRole(user.role);
   appState.currentUserName = userDisplayName(user);
@@ -3536,6 +3539,7 @@ function resetAuthenticatedView() {
   appState.authenticated = false;
   appState.currentUserEmail = null;
   appState.currentUserAuthId = null;
+  appState.currentUserCreatedAt = null;
   appState.dismissedNotificationIds = [];
   appState.currentUserRole = null;
   appState.currentUserName = null;
