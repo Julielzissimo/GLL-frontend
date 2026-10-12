@@ -18,6 +18,7 @@ const TARGETS = {
     suppliersEnabled: true,
     commercialProposalsEnabled: true,
     designSystemEnabled: true,
+    radarDetailsFallbackEnabled: false,
   },
   production: {
     outputDir: "prod",
@@ -33,6 +34,7 @@ const TARGETS = {
     suppliersEnabled: false,
     commercialProposalsEnabled: false,
     designSystemEnabled: false,
+    radarDetailsFallbackEnabled: false,
   },
   prod: null,
 };
@@ -61,6 +63,9 @@ if (configuredKey && configuredKey === otherTarget.supabaseAnonKey) {
 }
 const storageProvider = process.env[`GLL_STORAGE_PROVIDER_${target.environment === "homolog" ? "HOMOLOG" : "PRODUCTION"}`] || "supabase";
 if (!["supabase", "r2"].includes(storageProvider)) throw new Error("Provedor de armazenamento inválido.");
+const fallbackEnvironment = target.environment === "homolog" ? "HOMOLOG" : "PRODUCTION";
+const fallbackSetting = (process.env[`GLL_RADAR_DETAILS_FALLBACK_${fallbackEnvironment}`] || "false").trim().toLowerCase();
+if (!["true", "false"].includes(fallbackSetting)) throw new Error("A flag de contingência do Radar deve ser true ou false.");
 
 const scriptDir = dirname(fileURLToPath(import.meta.url));
 const rootDir = resolve(scriptDir, "..");
@@ -86,6 +91,7 @@ const runtimeConfig = {
   suppliersEnabled: target.suppliersEnabled,
   commercialProposalsEnabled: target.commercialProposalsEnabled,
   designSystemEnabled: target.designSystemEnabled,
+  radarDetailsFallbackEnabled: fallbackSetting === "true",
 };
 
 await writeFile(
@@ -102,6 +108,8 @@ const assetVersion = createHash("sha256")
   .update(await readFile(resolve(sourceDir, "company-data.js")))
   .update(await readFile(resolve(sourceDir, "commercial-proposals.js")))
   .update(await readFile(resolve(sourceDir, "radar-details.js")))
+  .update(await readFile(resolve(sourceDir, "radar-preprocessed.js")))
+  .update(await readFile(resolve(sourceDir, "radar-item-sync.js")))
   .update(await readFile(resolve(sourceDir, "styles.css")))
   .update(await readFile(resolve(sourceDir, "design-system", "tokens.css")))
   .update(await readFile(resolve(sourceDir, "design-system", "design-system.css")))
@@ -110,6 +118,15 @@ const assetVersion = createHash("sha256")
   .digest("hex")
   .slice(0, 12);
 const outputIndexPath = resolve(outputDir, "index.html");
+const outputDetailsPath = resolve(outputDir, "radar-details.js");
+const outputDetails = await readFile(outputDetailsPath, "utf8");
+await writeFile(
+  outputDetailsPath,
+  outputDetails
+    .replaceAll('"./radar-preprocessed.js"', `"./radar-preprocessed.js?v=${assetVersion}"`)
+    .replaceAll('"./radar-item-sync.js"', `"./radar-item-sync.js?v=${assetVersion}"`),
+  "utf8",
+);
 const outputIndex = await readFile(outputIndexPath, "utf8");
 await writeFile(
   outputIndexPath,

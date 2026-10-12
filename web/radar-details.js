@@ -6,6 +6,7 @@ import {
   retainCompleteRadarItemSnapshot,
   shouldPollRadarItemSync,
 } from "./radar-item-sync.js";
+import { createRadarPreprocessedService } from "./radar-preprocessed.js";
 
 const FAVORITE_METADATA_FIELDS = [
   "numero_controle_pncp",
@@ -363,9 +364,10 @@ export function createRadarFavoritesService({ getClient } = {}) {
   });
 }
 
-export function createRadarDetailsFeature({ getClient, getUserRole = () => null, toast = () => {}, onFavoriteChanged = () => {}, onClassificationChanged = () => {}, onOpenBid = () => {} } = {}) {
+export function createRadarDetailsFeature({ getClient, getUserRole = () => null, toast = () => {}, onFavoriteChanged = () => {}, onClassificationChanged = () => {}, onOpenBid = () => {}, fallbackEnabled = globalThis.window?.GLL_CONFIG?.radarDetailsFallbackEnabled === true } = {}) {
   const root = globalThis.document?.getElementById("radarSearchPage");
   const favorites = createRadarFavoritesService({ getClient });
+  const preprocessed = createRadarPreprocessedService({ getClient });
   const imports = globalThis.window?.GLLRadarImport?.createRadarImportService({ getClient }) || null;
   const itemsPerPage = 20;
   const state = {
@@ -494,13 +496,13 @@ export function createRadarDetailsFeature({ getClient, getUserRole = () => null,
     if (state.loading && !state.data) {
       feedback.hidden = false;
       feedback.dataset.tone = "info";
-      feedback.innerHTML = '<span class="radar-spinner" aria-hidden="true"></span><span>Carregando dados do edital no Radar…</span>';
+      feedback.innerHTML = '<span class="radar-spinner" aria-hidden="true"></span><span>Carregando dados armazenados no Radar…</span>';
       return;
     }
     if (state.notFound) {
       feedback.hidden = false;
       feedback.dataset.tone = "warning";
-      feedback.innerHTML = "<strong>Contratação não encontrada</strong><span>O PNCP não localizou esta contratação. Volte aos resultados e atualize a pesquisa.</span>";
+      feedback.innerHTML = "<strong>Contratação não encontrada</strong><span>Este edital não está disponível no cache atual do Radar. Volte aos resultados e atualize a pesquisa.</span>";
       return;
     }
     if (state.error) {
@@ -508,8 +510,8 @@ export function createRadarDetailsFeature({ getClient, getUserRole = () => null,
       feedback.hidden = false;
       feedback.dataset.tone = state.data ? "warning" : "error";
       feedback.innerHTML = state.data
-        ? `<strong>Atualização indisponível</strong><span>O Radar não respondeu. Os dados carregados em ${escapeHtml(oldDataDate)} permanecem visíveis; tente atualizar novamente.</span>`
-        : `<strong>Detalhes do Radar indisponíveis</strong><span>${escapeHtml(state.error)} Tente atualizar os detalhes novamente.</span>`;
+        ? `<strong>Leitura do cache indisponível</strong><span>Os dados carregados em ${escapeHtml(oldDataDate)} permanecem visíveis; tente ler o cache novamente.</span>`
+        : `<strong>Detalhes do Radar indisponíveis</strong><span>${escapeHtml(state.error)} Tente carregar os dados armazenados novamente.</span>`;
       if (state.favoriteError) {
         feedback.insertAdjacentHTML("beforeend", '<span>Também não foi possível consultar o estado dos seus favoritos.</span><button class="quiet-action compact-action" type="button" data-radar-favorite-retry>Atualizar favoritos</button>');
       }
@@ -543,13 +545,13 @@ export function createRadarDetailsFeature({ getClient, getUserRole = () => null,
       ["Publicação no PNCP", dateValue(contract.dataPublicacaoPncp, dateFormatter)],
       ["Abertura das propostas", dateValue(contract.dataAberturaProposta)],
       ["Encerramento das propostas", dateValue(contract.dataEncerramentoProposta)],
-      ["Última atualização no PNCP", dateValue(contract.dataAtualizacaoGlobal || contract.dataAtualizacao)],
+      ["Atualização dos dados no Radar", dateValue(platform.dataUpdatedAt || contract.dataAtualizacaoGlobal || contract.dataAtualizacao)],
       ["Situação", contract.situacaoCompraNome],
     ];
     const officialUrl = validatedOfficialPncpUrl(sources?.official);
-    const platformStatus = platform.status === "identified"
-      ? platform.name || "Plataforma identificada"
-      : platformStatusLabel(platform.status);
+    const platformStatus = platform.status === "identified" && platform.name
+      ? platform.name
+      : "Não identificada";
     const platformUrl = validatedPlatformSourceUrl(platform.sourceUrl);
     const pncpPlatformUrl = validatedPlatformSourceUrl(platform.sourceUrlFromPncp || contract.linkSistemaOrigem);
     const processUrl = validatedPlatformSourceUrl(platform.processUrl || contract.linkProcessoEletronico);
@@ -603,7 +605,7 @@ export function createRadarDetailsFeature({ getClient, getUserRole = () => null,
       ${showSpinner ? `<span class="${spinnerClass}" aria-hidden="true"></span>` : ""}
       <div role="status" aria-live="polite"><span>${escapeHtml(presentation.message)}</span>${presentation.runningMessage ? `<span>${escapeHtml(presentation.runningMessage)}</span>` : ""}${presentation.progress ? `<small>${escapeHtml(presentation.progress)}</small>` : ""}</div>
       ${canResumePolling ? '<button class="quiet-action compact-action" type="button" data-radar-item-sync-watch>Continuar acompanhamento</button>' : ""}
-      ${canRequestUpdate ? `<button class="quiet-action compact-action" type="button" data-radar-item-sync-request aria-disabled="${state.loading || state.syncRequestInProgress ? "true" : "false"}">${state.syncRequestInProgress ? "Solicitando atualização…" : "Solicitar nova atualização"}</button>` : ""}
+      ${fallbackEnabled && canRequestUpdate ? `<button class="quiet-action compact-action" type="button" data-radar-item-sync-request ${state.loading || state.syncRequestInProgress ? "disabled" : ""}>${state.syncRequestInProgress ? "Solicitando contingência…" : "Solicitar atualização em contingência"}</button>` : ""}
     </div>`;
   }
 
@@ -629,7 +631,7 @@ export function createRadarDetailsFeature({ getClient, getUserRole = () => null,
     const page = paginateRadarItems(itemsState.items, state.itemsPage, itemsPerPage);
     state.itemsPage = page.page;
     return `<section class="section-band radar-detail-section" aria-labelledby="radarItemsTitle">
-      <div class="radar-detail-section-heading"><div><h2 id="radarItemsTitle">Itens da contratação</h2><p>${itemsState.items.length.toLocaleString("pt-BR")} itens carregados do cache.</p></div></div>
+      <div class="radar-detail-section-heading"><div><h2 id="radarItemsTitle">Itens da contratação</h2><p>${itemsState.items.length.toLocaleString("pt-BR")} ${itemsState.items.length === 1 ? "item disponível" : "itens disponíveis"} no cache do Radar.</p>${itemSync.retrievedAt ? `<small>Itens atualizados em ${escapeHtml(dateValue(itemSync.retrievedAt))}.</small>` : ""}</div></div>
       ${statusNotice}
       ${secretCount ? `<p class="radar-feedback" data-tone="warning" role="status"><strong>Orçamento sigiloso</strong><span>O PNCP informou orçamento sigiloso em ${secretCount.toLocaleString("pt-BR")} ${secretCount === 1 ? "item" : "itens"}; valores não serão tratados como preço.</span></p>` : ""}
       ${renderItemTable(page.items, { selectable: true })}
@@ -658,7 +660,7 @@ export function createRadarDetailsFeature({ getClient, getUserRole = () => null,
 
   function renderItemTable(items, { selectable = false } = {}) {
     return `<div class="table-wrap radar-detail-items-wrap" role="region" tabindex="0" aria-label="Itens da contratação; use a rolagem horizontal para ver todas as colunas."><table class="radar-results-table radar-items-table">
-      <caption class="sr-only">Itens da contratação retornados pelo PNCP</caption>
+      <caption class="sr-only">Itens da contratação armazenados no Radar</caption>
       <thead><tr>${selectable ? '<th scope="col">Importar</th>' : ""}<th scope="col">Item</th><th scope="col">Descrição</th><th scope="col" class="numeric">Quantidade</th><th scope="col">Unidade</th><th scope="col" class="numeric">Valor unitário estimado</th><th scope="col" class="numeric">Valor total</th><th scope="col">Situação</th><th scope="col">Critério de julgamento</th><th scope="col">Informação complementar</th></tr></thead>
       <tbody>${items.map((item) => `<tr>
         ${selectable ? renderItemSelection(item) : ""}
@@ -716,21 +718,26 @@ export function createRadarDetailsFeature({ getClient, getUserRole = () => null,
   }
 
   function renderDocuments(documentsState) {
+    if (!documentsState || documentsState.status === "not_loaded") {
+      return `<section class="section-band radar-detail-section" aria-labelledby="radarDocumentsTitle">
+        <div class="radar-detail-section-heading"><div><h2 id="radarDocumentsTitle">Documentos do edital</h2><p>${fallbackEnabled ? "A consulta externa de documentos está disponível como ação de contingência." : "A consulta externa de documentos está desativada nesta etapa."}</p></div></div>
+        ${fallbackEnabled ? '<button class="quiet-action compact-action" type="button" data-radar-documents-refresh>Consultar documentos no PNCP</button>' : ""}
+      </section>`;
+    }
     if (documentsState?.status === "pending") {
       return `<section class="section-band radar-detail-section" aria-labelledby="radarDocumentsTitle">
-        <div class="radar-detail-section-heading"><div><h2 id="radarDocumentsTitle">Documentos do edital</h2><p>Carregando documentos do PNCP separadamente dos itens.</p></div></div>
-        <button class="quiet-action compact-action" type="button" data-radar-documents-refresh>Atualizar documentos</button>
+        <div class="radar-detail-section-heading"><div><h2 id="radarDocumentsTitle">Documentos do edital</h2><p>Consultando documentos separadamente dos itens.</p></div></div>
       </section>`;
     }
     if (documentsState?.status === "unavailable") {
       return `<section class="section-band radar-detail-section" aria-labelledby="radarDocumentsTitle">
-        <div class="radar-detail-section-heading"><div><h2 id="radarDocumentsTitle">Documentos do edital</h2><p>Os documentos estão indisponíveis no PNCP neste momento.</p></div></div>
-        <button class="quiet-action compact-action" type="button" data-radar-documents-refresh>Atualizar documentos</button>
+        <div class="radar-detail-section-heading"><div><h2 id="radarDocumentsTitle">Documentos do edital</h2><p>Não foi possível consultar os documentos agora.</p></div></div>
+        ${fallbackEnabled ? '<button class="quiet-action compact-action" type="button" data-radar-documents-refresh>Consultar novamente</button>' : ""}
       </section>`;
     }
     if (!documentsState || documentsState.status === "not_published" || !documentsState.documents?.length) {
       return `<section class="section-band radar-detail-section" aria-labelledby="radarDocumentsTitle">
-        <div class="radar-detail-section-heading"><div><h2 id="radarDocumentsTitle">Documentos do edital</h2><p>Nenhum documento foi publicado para esta contratação.</p></div></div>
+        <div class="radar-detail-section-heading"><div><h2 id="radarDocumentsTitle">Documentos do edital</h2><p>A consulta não encontrou documentos publicados para esta contratação.</p></div></div>
       </section>`;
     }
     return `<section class="section-band radar-detail-section" aria-labelledby="radarDocumentsTitle">
@@ -748,6 +755,7 @@ export function createRadarDetailsFeature({ getClient, getUserRole = () => null,
     const content = byId("radarDetailsContent");
     const back = byId("radarDetailsBackButton");
     const refresh = byId("radarDetailsRefreshButton");
+    const contingency = byId("radarDetailsContingencyButton");
     const favorite = byId("radarDetailsFavoriteButton");
     if (!detailView || !content) return;
     detailView.hidden = !state.opened;
@@ -764,7 +772,12 @@ export function createRadarDetailsFeature({ getClient, getUserRole = () => null,
       refresh.disabled = state.loading;
       refresh.innerHTML = state.loading
         ? '<span class="radar-spinner" aria-hidden="true"></span> Atualizando…'
-        : '<span aria-hidden="true">↻</span> Atualizar dados';
+        : '<span aria-hidden="true">↻</span> Atualizar dados do Radar';
+    }
+    if (contingency) {
+      contingency.hidden = !fallbackEnabled;
+      contingency.disabled = state.loading || state.syncRequestInProgress;
+      contingency.textContent = state.syncRequestInProgress ? "Solicitando contingência…" : "Contingência PNCP";
     }
     if (favorite) {
       const isFavorite = favorites.isFavorite(id);
@@ -780,13 +793,13 @@ export function createRadarDetailsFeature({ getClient, getUserRole = () => null,
     }
     if (!state.data) {
       content.innerHTML = state.loading
-        ? '<div class="radar-loading" role="status"><span class="radar-spinner" aria-hidden="true"></span><span>Carregando detalhes e itens do Radar…</span></div>'
+        ? '<div class="radar-loading" role="status"><span class="radar-spinner" aria-hidden="true"></span><span>Carregando dados armazenados no Radar…</span></div>'
         : "";
       return;
     }
     const focusTarget = captureFocusedDetailsControl(content);
-    const loadedAt = dateTimeFormatter.format(new Date(state.data.retrievedAt));
-    content.innerHTML = `<p class="radar-detail-source">Fonte: Dados centralizados no Radar · Consulta realizada em ${escapeHtml(loadedAt)}.</p>
+    const loadedAt = dateValue(state.data.retrievedAt || state.data.dataUpdatedAt);
+    content.innerHTML = `<p class="radar-detail-source">Fonte: Cache centralizado do Radar · Edital atualizado em ${escapeHtml(loadedAt)}.</p>
       <div class="radar-detail-layout">
         <main class="radar-detail-main">${renderGeneral(state.data.contract, state.data.sources, state.data.platform)}${renderItems(state.data.items, state.data.itemSync)}</main>
         <aside class="radar-detail-aside">${renderDocuments(state.data.documents)}${renderImportPanel(state.data.items)}</aside>
@@ -795,7 +808,7 @@ export function createRadarDetailsFeature({ getClient, getUserRole = () => null,
   }
 
   async function loadDocuments(numberControlPncp = currentId(), detailsRequestId = state.requestId) {
-    if (!identityIsValid(numberControlPncp)) return;
+    if (!fallbackEnabled || !identityIsValid(numberControlPncp)) return;
     const documentRequestId = ++state.documentRequestId;
     if (state.data && currentId() === numberControlPncp) {
       state.data = { ...state.data, documents: { status: "pending", documents: [], errorCode: null } };
@@ -810,10 +823,10 @@ export function createRadarDetailsFeature({ getClient, getUserRole = () => null,
       if (error) {
         let responseBody = null;
         try { responseBody = await error.context?.json?.(); } catch { /* Response bodies may already be consumed. */ }
-        throw new Error(responseBody?.error || "Não foi possível consultar os documentos do PNCP.");
+        throw new Error(responseBody?.error || "Não foi possível consultar os documentos.");
       }
       if (!data || data.status !== "available" || !data.documents) {
-        throw new Error("O PNCP retornou uma resposta incompatível com o contrato de documentos.");
+        throw new Error("A contingência retornou uma resposta incompatível com o contrato de documentos.");
       }
       documentsState = data.documents;
     } catch {
@@ -824,45 +837,31 @@ export function createRadarDetailsFeature({ getClient, getUserRole = () => null,
     render();
   }
 
-  async function loadMetadata(numberControlPncp = currentId(), detailsRequestId = state.requestId) {
-    if (!identityIsValid(numberControlPncp)) return;
-    try {
-      const { data, error } = await getClient().functions.invoke("radar-details", {
-        body: { action: "metadata", numberControlPncp },
-      });
-      if (error || !data || data.status !== "available" || !data.contract) return;
-      if (detailsRequestId !== state.requestId || !state.data || currentId() !== numberControlPncp) return;
-      state.data = {
-        ...state.data,
-        contract: { ...state.data.contract, ...data.contract },
-        platform: data.platform || state.data.platform,
-        metadataRetrievedAt: data.retrievedAt || null,
-      };
-      render();
-    } catch {
-      // The central contract and cached items remain usable when PNCP metadata is unavailable.
-    }
-  }
-
   async function refreshItemsStatus(numberControlPncp = currentId(), detailsRequestId = state.requestId) {
     if (!identityIsValid(numberControlPncp)) return;
     const itemStatusRequestId = ++state.itemStatusRequestId;
     try {
-      const { data, error } = await getClient().functions.invoke("radar-details", {
-        body: { action: "sync-status", numberControlPncp },
+      const data = await preprocessed.loadItemSyncSnapshot(numberControlPncp, {
+        knownVersion: state.data?.itemSync?.publishedVersion ?? null,
       });
       const isCurrent = detailsRequestId === state.requestId
         && itemStatusRequestId === state.itemStatusRequestId
         && state.opened && state.data && currentId() === numberControlPncp;
       if (!isCurrent) return;
-      if (error || !data || data.status !== "available" || !Array.isArray(data.items?.items)
-        || !data.itemSync || typeof data.itemSync !== "object") {
+      if (!data || data.status !== "available" || !data.itemSync || typeof data.itemSync !== "object") {
         state.itemStatusCommunicationError = true;
         render();
         return;
       }
-      const safeItems = retainCompleteRadarItemSnapshot(state.data.items, data.items);
-      state.data = { ...state.data, items: safeItems, itemSync: data.itemSync };
+      const safeItems = data.items
+        ? retainCompleteRadarItemSnapshot(state.data.items, data.items)
+        : state.data.items;
+      state.data = {
+        ...state.data,
+        items: safeItems,
+        itemSync: data.itemSync,
+        itemVersion: data.version,
+      };
       state.selectedItemNumbers.retain(safeItems.items, state.importStatus?.itemNumbers || new Set());
       state.itemStatusCommunicationError = false;
       state.itemPollingLimitReached = false;
@@ -875,7 +874,7 @@ export function createRadarDetailsFeature({ getClient, getUserRole = () => null,
     }
   }
 
-  async function refresh({ loadExtras = true } = {}) {
+  async function refresh() {
     const id = currentId();
     if (!identityIsValid(id)) {
       state.error = "O identificador PNCP desta licitação é inválido.";
@@ -893,22 +892,15 @@ export function createRadarDetailsFeature({ getClient, getUserRole = () => null,
     state.notFound = false;
     render();
     try {
-      const { data, error } = await getClient().functions.invoke("radar-details", {
-        body: { action: "details", numberControlPncp: id },
-      });
+      const data = await preprocessed.load(id);
       if (requestId !== state.requestId) return;
-      if (error) {
-        let responseBody = null;
-        try { responseBody = await error.context?.json?.(); } catch { /* Response bodies may already be consumed. */ }
-        if (responseBody?.status === "not_found") {
-          state.notFound = true;
-          state.data = null;
-          return;
-        }
-        throw new Error(responseBody?.error || "Não foi possível consultar os detalhes centralizados no Radar.");
+      if (data?.status === "not_found") {
+        state.notFound = true;
+        state.data = null;
+        return;
       }
       if (!data || data.status !== "available" || !data.contract
-        || !Array.isArray(data.items?.items) || !data.itemSync || !data.documents) {
+        || !Array.isArray(data.items?.items) || !data.itemSync) {
         if (data?.status === "not_found") {
           state.notFound = true;
           state.data = null;
@@ -917,18 +909,17 @@ export function createRadarDetailsFeature({ getClient, getUserRole = () => null,
         throw new Error("O Radar retornou uma resposta incompatível com o contrato de detalhes.");
       }
       const safeItems = retainCompleteRadarItemSnapshot(state.data?.items, data.items);
-      state.data = { ...data, items: safeItems };
+      state.data = {
+        ...data,
+        items: safeItems,
+        documents: state.data?.documents || { status: "not_loaded", documents: [], errorCode: null },
+      };
       state.selectedItemNumbers.retain(safeItems.items, state.importStatus?.itemNumbers || new Set());
       state.error = "";
       state.notFound = false;
-      state.itemStatusCommunicationError = Boolean(data.itemSync.errorCode === "ITEMS_SYNC_QUEUE_FAILED"
-        || data.itemSync.errorCode === "ITEMS_PERSISTENCE_FAILED");
+      state.itemStatusCommunicationError = data.itemSync.errorCode === "ITEMS_PERSISTENCE_FAILED";
       syncItemStatusPolling({ restart: true });
       render();
-      if (loadExtras) {
-        void loadDocuments(id, requestId);
-        void loadMetadata(id, requestId);
-      }
       if (imports) {
         try {
           state.importStatus = await imports.loadImportStatus(id);
@@ -941,7 +932,7 @@ export function createRadarDetailsFeature({ getClient, getUserRole = () => null,
         if (requestId !== state.requestId) return;
       }
     } catch (error) {
-      if (requestId === state.requestId) state.error = error instanceof Error ? error.message : "Não foi possível atualizar os detalhes.";
+      if (requestId === state.requestId) state.error = error instanceof Error ? error.message : "Não foi possível carregar o cache do Radar.";
     } finally {
       if (requestId === state.requestId) {
         state.loading = false;
@@ -952,7 +943,7 @@ export function createRadarDetailsFeature({ getClient, getUserRole = () => null,
 
   async function requestItemSync() {
     const id = currentId();
-    if (!state.opened || !identityIsValid(id) || state.loading || state.syncRequestInProgress
+    if (!fallbackEnabled || !state.opened || !identityIsValid(id) || state.loading || state.syncRequestInProgress
       || !canRequestRadarItemSyncUpdate(state.data?.items, state.data?.itemSync)) return;
 
     state.syncRequestInProgress = true;
@@ -960,11 +951,46 @@ export function createRadarDetailsFeature({ getClient, getUserRole = () => null,
     state.itemPollingLimitReached = false;
     render();
     try {
-      await refresh({ loadExtras: false });
+      await requestDetailsFallback(id);
+      await refresh();
+    } catch (error) {
+      state.itemStatusCommunicationError = true;
+      toast(error instanceof Error ? error.message : "A contingência do Radar está indisponível.", "error");
     } finally {
       if (state.opened && currentId() === id) {
         state.syncRequestInProgress = false;
         if (state.error) state.itemStatusCommunicationError = true;
+        render();
+      }
+    }
+  }
+
+  async function requestDetailsFallback(numberControlPncp = currentId()) {
+    if (!fallbackEnabled || !identityIsValid(numberControlPncp)) return false;
+    const { error } = await getClient().functions.invoke("radar-details", {
+      body: { action: "details", numberControlPncp },
+    });
+    if (error) {
+      let responseBody = null;
+      try { responseBody = await error.context?.json?.(); } catch { /* Response bodies may already be consumed. */ }
+      throw new Error(responseBody?.error || "A contingência do Radar está indisponível.");
+    }
+    return true;
+  }
+
+  async function runDetailsFallback() {
+    const id = currentId();
+    if (!fallbackEnabled || !state.opened || !identityIsValid(id) || state.loading || state.syncRequestInProgress) return;
+    state.syncRequestInProgress = true;
+    render();
+    try {
+      await requestDetailsFallback(id);
+      await refresh();
+    } catch (error) {
+      toast(error instanceof Error ? error.message : "A contingência do Radar está indisponível.", "error");
+    } finally {
+      if (state.opened && currentId() === id) {
+        state.syncRequestInProgress = false;
         render();
       }
     }
@@ -1262,6 +1288,8 @@ export function createRadarDetailsFeature({ getClient, getUserRole = () => null,
         byId("radarPlatformConfirmDialog")?.close();
       } else if (event.target.closest("#radarDetailsBackButton")) {
         closeView();
+      } else if (event.target.closest("#radarDetailsContingencyButton")) {
+        void runDetailsFallback();
       } else if (event.target.closest("[data-radar-documents-refresh]")) {
         void loadDocuments(currentId(), state.requestId);
       } else if (event.target.closest("[data-radar-item-sync-request]")) {
@@ -1273,7 +1301,7 @@ export function createRadarDetailsFeature({ getClient, getUserRole = () => null,
       } else if (event.target.closest("#radarDetailsRefreshButton")) {
         void refresh();
       } else if (event.target.closest("[data-radar-details-refresh]")) {
-        void refresh({ loadExtras: false });
+        void refresh();
       } else if (event.target.closest("#radarDetailsFavoriteButton")) {
         void setCurrentFavorite();
       } else if (event.target.closest("[data-radar-favorite-retry]")) {

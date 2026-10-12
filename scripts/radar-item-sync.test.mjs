@@ -63,7 +63,7 @@ test("processing reports reliable page progress and stale snapshots remain visib
     { status: "available", complete: true, items: [{ number: "1" }] },
     { status: "processing", retrievedAt: "2026-10-11T15:00:00.000Z", pagesProcessed: 3, pagesTotal: 7 },
   );
-  assert.match(stale.message, /^Última atualização: .+\. Verificando novas informações\.$/u);
+  assert.match(stale.message, /^Versão publicada em .+; há uma atualização em andamento\.$/u);
   assert.equal(stale.runningMessage, RADAR_ITEM_SYNC_RUNNING_MESSAGE);
   assert.equal(stale.progress, "Páginas processadas: 3 de 7.");
   assert.equal(stale.hasSnapshot, true);
@@ -87,7 +87,7 @@ test("an empty complete result is confirmed; not-published is not treated as abs
     { status: "pending", sourceAvailability: "not_published" },
   );
   assert.equal(unpublished.kind, "not-published");
-  assert.match(unpublished.message, /ainda não disponibilizou/u);
+  assert.match(unpublished.message, /ainda não registrou itens publicados/u);
   assert.doesNotMatch(unpublished.message, /confirmou/u);
   assert.equal(shouldPollRadarItemSync(
     { status: "not_published" },
@@ -99,7 +99,7 @@ test("an empty complete result is confirmed; not-published is not treated as abs
     { status: "complete", sourceAvailability: "no_items_confirmed" },
   );
   assert.equal(emptyConfirmed.kind, "empty-confirmed");
-  assert.match(emptyConfirmed.message, /confirmou/u);
+  assert.match(emptyConfirmed.message, /registrou/u);
 
   const emptyUnknown = radarItemSyncPresentation(
     { status: "available", items: [], complete: true },

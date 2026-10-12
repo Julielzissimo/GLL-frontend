@@ -57,6 +57,7 @@ const DEFAULT_GLL_CONFIG = {
   suppliersEnabled: true,
   commercialProposalsEnabled: true,
   designSystemEnabled: true,
+  radarDetailsFallbackEnabled: false,
 };
 const GLL_CONFIG = {
   ...DEFAULT_GLL_CONFIG,

@@ -7,9 +7,9 @@ const dateTimeFormatter = new Intl.DateTimeFormat("pt-BR", {
   timeStyle: "short",
 });
 
-export const RADAR_ITEM_SYNC_PENDING_MESSAGE = "Os itens deste edital estão sendo consultados. A atualização ocorrerá automaticamente.";
-export const RADAR_ITEM_SYNC_RUNNING_MESSAGE = "Sincronizando itens do edital...";
-export const RADAR_ITEM_SYNC_ERROR_MESSAGE = "Não foi possível atualizar os itens agora. O sistema tentará novamente.";
+export const RADAR_ITEM_SYNC_PENDING_MESSAGE = "A sincronização dos itens está pendente no Radar.";
+export const RADAR_ITEM_SYNC_RUNNING_MESSAGE = "Sincronizando itens no Radar...";
+export const RADAR_ITEM_SYNC_ERROR_MESSAGE = "Não foi possível ler a sincronização dos itens no Radar.";
 
 export function isCompleteRadarItemSnapshot(itemsState) {
   return itemsState?.status === "available"
@@ -28,14 +28,20 @@ export function radarItemSyncProgress(itemSync = {}) {
   const total = itemSync.pagesTotal === null || itemSync.pagesTotal === undefined
     ? null
     : Number(itemSync.pagesTotal);
-  if (!Number.isSafeInteger(processed) || processed < 0) return "";
+  const expectedItems = itemSync.expectedItemCount === null || itemSync.expectedItemCount === undefined
+    ? NaN
+    : Number(itemSync.expectedItemCount);
+  const itemCount = Number.isSafeInteger(expectedItems) && expectedItems >= 0
+    ? `Itens esperados: ${expectedItems.toLocaleString("pt-BR")}.`
+    : "";
+  if (!Number.isSafeInteger(processed) || processed < 0) return itemCount;
   if (total !== null && Number.isSafeInteger(total) && total > 0 && processed <= total) {
-    return `Páginas processadas: ${processed.toLocaleString("pt-BR")} de ${total.toLocaleString("pt-BR")}.`;
+    return [`Páginas processadas: ${processed.toLocaleString("pt-BR")} de ${total.toLocaleString("pt-BR")}.`, itemCount].filter(Boolean).join(" ");
   }
   if (processed > 0 && (total === null || !Number.isSafeInteger(total))) {
-    return `Páginas processadas: ${processed.toLocaleString("pt-BR")}.`;
+    return [`Páginas processadas: ${processed.toLocaleString("pt-BR")}.`, itemCount].filter(Boolean).join(" ");
   }
-  return "";
+  return itemCount;
 }
 
 function formattedDateTime(value) {
@@ -68,7 +74,7 @@ export function radarItemSyncPresentation(itemsState, itemSync = {}, { communica
   if (itemsState?.status === "not_published" || itemSync.sourceAvailability === "not_published") {
     return {
       kind: "not-published",
-      message: "O PNCP ainda não disponibilizou itens para esta contratação.",
+      message: "O Radar ainda não registrou itens publicados para esta contratação.",
       progress: "",
       syncActive: false,
       hasSnapshot: false,
@@ -79,7 +85,7 @@ export function radarItemSyncPresentation(itemsState, itemSync = {}, { communica
     && itemSync.sourceAvailability === "no_items_confirmed") {
     return {
       kind: "empty-confirmed",
-      message: "O PNCP confirmou que esta contratação não possui itens publicados.",
+      message: "O Radar registrou que esta contratação não possui itens publicados.",
       progress: "",
       syncActive: false,
       hasSnapshot: true,
@@ -101,10 +107,12 @@ export function radarItemSyncPresentation(itemsState, itemSync = {}, { communica
     return {
       kind: "stale",
       message: lastUpdated
-        ? `Última atualização: ${lastUpdated}. Verificando novas informações.`
-        : "Verificando novas informações.",
+        ? `Versão publicada em ${lastUpdated}; há uma atualização em andamento.`
+        : "Uma atualização dos itens está em andamento.",
       runningMessage: itemSync.status === "processing" || itemSync.status === "partial"
-        ? RADAR_ITEM_SYNC_RUNNING_MESSAGE
+        ? itemSync.status === "partial"
+          ? "A atualização está parcial. Os itens publicados anteriormente continuam disponíveis."
+          : RADAR_ITEM_SYNC_RUNNING_MESSAGE
         : "",
       progress,
       syncActive: true,
@@ -115,9 +123,21 @@ export function radarItemSyncPresentation(itemsState, itemSync = {}, { communica
   if (itemSync.status === "processing" || itemSync.status === "partial") {
     return {
       kind: "running",
-      message: RADAR_ITEM_SYNC_RUNNING_MESSAGE,
+      message: itemSync.status === "partial"
+        ? "A sincronização dos itens está parcial no Radar."
+        : RADAR_ITEM_SYNC_RUNNING_MESSAGE,
       progress,
       syncActive: true,
+      hasSnapshot: false,
+    };
+  }
+
+  if (itemSync.status === "not_started") {
+    return {
+      kind: "not-cached",
+      message: "Os itens ainda não estão disponíveis no cache do Radar.",
+      progress: "",
+      syncActive: false,
       hasSnapshot: false,
     };
   }
