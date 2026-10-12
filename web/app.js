@@ -2020,7 +2020,7 @@ radarSearchFeature = createRadarSearchFeature({
   getUserRole: () => appState.currentUserRole,
   toast: (message, tone) => showToast(message, tone),
   actions: {
-    onOpenDetails: (result) => { void radarDetailsFeature.open(result); },
+    detailsEnabled: true,
     loadFavoriteIds: (identifiers) => radarDetailsFeature.loadFavoriteIds(identifiers),
     loadFavoritesPage: (options) => radarDetailsFeature.loadFavoritesPage(options),
     setFavorite: (result, shouldFavorite) => radarDetailsFeature.setFavorite(result.numberControlPncp, shouldFavorite),
