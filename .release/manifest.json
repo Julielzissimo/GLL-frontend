@@ -1163,13 +1163,15 @@
     {
       "id": "EMAIL-10",
       "backend_commits": [
-        "45a17b63d1054d6f67ff9336c0835ab7bf0c6a94"
+        "45a17b63d1054d6f67ff9336c0835ab7bf0c6a94",
+        "b96117a3c46686cbe1b45163e1f907403ffe016f"
       ],
       "frontend_commits": [
         "d2d9ed37c5803a00f2a3ca1b2269a8cf15232f51"
       ],
       "migrations": [
-        "supabase/migrations/20261012012343_email_invitation_resend_cooldown_15_seconds.sql"
+        "supabase/migrations/20261012012343_email_invitation_resend_cooldown_15_seconds.sql",
+        "supabase/migrations/20261012014150_email_invitation_resend_security_definer_fix.sql"
       ]
     },
     {
