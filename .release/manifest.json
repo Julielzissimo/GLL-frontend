@@ -785,6 +785,14 @@
         "supabase/migrations/20261012012343_email_invitation_resend_cooldown_15_seconds.sql",
         "supabase/migrations/20261012014150_email_invitation_resend_security_definer_fix.sql"
       ]
+    },
+    {
+      "id": "EMAIL-11",
+      "backend_commits": [
+        "25df25eab80f66ca527a98c3cd55ce848d4a4b9c"
+      ],
+      "frontend_commits": [],
+      "migrations": []
     }
   ]
 }
