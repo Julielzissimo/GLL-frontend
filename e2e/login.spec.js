@@ -27,16 +27,14 @@ function radarSearchResponse(page, predicate = () => true) {
   }, { timeout: 45_000 });
 }
 
-function radarDetailsResponse(context, action) {
+function radarCacheResponse(context, table, numberControlPncp) {
   return context.waitForEvent("response", {
     predicate(response) {
       const request = response.request();
-      if (request.method() !== "POST" || !new URL(response.url()).pathname.endsWith("/functions/v1/radar-details")) return false;
-      try {
-        return request.postDataJSON()?.action === action;
-      } catch {
-        return false;
-      }
+      const url = new URL(response.url());
+      return request.method() === "GET"
+        && url.pathname.endsWith(`/rest/v1/${table}`)
+        && url.searchParams.get("numero_controle_pncp") === `eq.${numberControlPncp}`;
     },
     timeout: 45_000,
   });
@@ -144,21 +142,31 @@ async function validateRadarSearchPage(page) {
   await expect(detailsLink).toHaveAttribute("rel", "noopener noreferrer");
   await expect(resultCard.locator(".radar-receipt-status")).toHaveCSS("border-top-style", "solid");
   const favoriteBeforeDetails = await resultCard.locator("[data-radar-favorite]").getAttribute("aria-pressed");
-  const detailsResponsePromise = radarDetailsResponse(page.context(), "details");
+  const numberControlPncp = simple.body.results[0].numberControlPncp;
+  const context = page.context();
+  const procurementResponsePromise = radarCacheResponse(context, "radar_licitacoes", numberControlPncp);
+  const itemSyncResponsePromise = radarCacheResponse(context, "radar_itens_sync", numberControlPncp);
   const detailsPagePromise = page.context().waitForEvent("page");
   await detailsLink.click();
   const detailsPage = await detailsPagePromise;
-  const detailsResponse = await detailsResponsePromise;
-  if (!detailsResponse.ok()) throw new Error(`A consulta real dos detalhes retornou HTTP ${detailsResponse.status()}.`);
-  const detailsBody = await detailsResponse.json();
+  const [procurementResponse, itemSyncResponse] = await Promise.all([
+    procurementResponsePromise,
+    itemSyncResponsePromise,
+  ]);
+  if (!procurementResponse.ok()) throw new Error(`A leitura autenticada do cache do Radar retornou HTTP ${procurementResponse.status()}.`);
+  if (!itemSyncResponse.ok()) throw new Error(`A leitura autenticada da sincronização do Radar retornou HTTP ${itemSyncResponse.status()}.`);
+  const [procurementBody, itemSyncBody] = await Promise.all([
+    procurementResponse.json(),
+    itemSyncResponse.json(),
+  ]);
+  const procurement = Array.isArray(procurementBody) ? procurementBody[0] : procurementBody;
+  const itemSync = Array.isArray(itemSyncBody) ? itemSyncBody[0] ?? null : itemSyncBody;
   const itemSyncStatuses = new Set(["pending", "processing", "complete", "partial", "failed"]);
-  if (detailsBody.status !== "available"
-    || !detailsBody.contract
-    || !Array.isArray(detailsBody.items?.items)
-    || !detailsBody.itemSync
-    || !itemSyncStatuses.has(detailsBody.itemSync.status)
-    || !detailsBody.documents) {
-    throw new Error("A consulta real dos detalhes não respeitou o contrato de edital, itens e sincronização.");
+  if (!procurement || procurement.numero_controle_pncp !== numberControlPncp) {
+    throw new Error("O cache autenticado não retornou o edital solicitado pelo Radar.");
+  }
+  if (itemSync && !itemSyncStatuses.has(itemSync.status)) {
+    throw new Error("O cache do Radar retornou um estado de sincronização de itens desconhecido.");
   }
   await expect(detailsPage.locator("#radarDetailsView")).toBeVisible();
   await expect(detailsPage.locator("#radarDetailsTitle")).toBeVisible();
@@ -167,11 +175,12 @@ async function validateRadarSearchPage(page) {
   await expect(page.locator("#radarListView")).toBeVisible();
   await expect(page.locator("#radarDetailsView")).toBeHidden();
   const renderedItems = await detailsPage.locator("#radarDetailsContent [data-radar-select-item]").count();
-  if (detailsBody.items.complete && detailsBody.items.items.length > 0 && renderedItems === 0) {
-    throw new Error("O snapshot completo retornado pela API não foi exibido como itens selecionáveis.");
+  const publishedItemCount = Number(itemSync?.quantidade_itens ?? 0);
+  if (itemSync?.versao_sincronizacao && publishedItemCount > 0 && renderedItems === 0) {
+    throw new Error("O snapshot publicado no cache não foi exibido como itens selecionáveis.");
   }
-  if (!detailsBody.items.complete && renderedItems !== 0) {
-    throw new Error("A interface permitiu selecionar itens antes de existir um snapshot completo.");
+  if (!itemSync?.versao_sincronizacao && renderedItems !== 0) {
+    throw new Error("A interface permitiu selecionar itens antes de existir um snapshot completo publicado.");
   }
   const favoriteOnDetails = await detailsPage.locator("#radarDetailsFavoriteButton").getAttribute("aria-pressed");
   if (favoriteBeforeDetails !== favoriteOnDetails) {
