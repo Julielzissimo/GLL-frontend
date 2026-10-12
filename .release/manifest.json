@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "release_id": "2026-10-10-radar-fase10-interface",
+  "release_id": "2026-10-12-status-edital-cadastro-disputa",
   "environment": "homolog",
   "target_branch": "homolog",
   "items": [
@@ -1242,6 +1242,18 @@
       ],
       "migrations": [
         "supabase/migrations/20261012031234_remove_username_from_first_access.sql"
+      ]
+    },
+    {
+      "id": "STATUS-EDITAL-CADASTRO-DISPUTA-001",
+      "backend_commits": [
+        "5a469d9e610e4ca23b125c5c5a3677bf70ccb6b3"
+      ],
+      "frontend_commits": [
+        "a98c69d758df009780ca1c9df25d8ee286d6caeb"
+      ],
+      "migrations": [
+        "supabase/migrations/20261012170244_add_ready_for_dispute_bid_status.sql"
       ]
     }
   ]
