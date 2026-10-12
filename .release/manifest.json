@@ -1171,6 +1171,14 @@
       "migrations": [
         "supabase/migrations/20261012012343_email_invitation_resend_cooldown_15_seconds.sql"
       ]
+    },
+    {
+      "id": "ISSUE-85",
+      "backend_commits": [],
+      "frontend_commits": [
+        "1457637b0e6b560057bb2fdbb5848848e9fd10f3"
+      ],
+      "migrations": []
     }
   ]
 }
