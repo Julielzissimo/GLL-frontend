@@ -771,6 +771,18 @@
       "migrations": [
         "supabase/migrations/20261011184318_first_access_username_avatar.sql"
       ]
+    },
+    {
+      "id": "EMAIL-10",
+      "backend_commits": [
+        "6867366b88ec20f739b00193b9786b7893afc634"
+      ],
+      "frontend_commits": [
+        "0221c7efcb9ebb05ea51d1d73377447c880c77c4"
+      ],
+      "migrations": [
+        "supabase/migrations/20261012012343_email_invitation_resend_cooldown_15_seconds.sql"
+      ]
     }
   ]
 }
