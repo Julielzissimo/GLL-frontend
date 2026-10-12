@@ -79,7 +79,7 @@ A escala usa base de 4 px:
 - Bordas: `--border-default` e `--border-strong`.
 - Sombras: `--gll-shadow-sm` (2 px / 8 px / 5%), `--gll-shadow-md` (14 px / 34 px / 12%) e `--gll-shadow-overlay` (30 px / 70 px / 22%).
 - Sidebar: 258 px. Controles principais: altura mínima de 44 px.
-- Foco: contorno âmbar com `--gll-focus`.
+- Foco dos campos: anel âmbar de 2 px com `--gll-focus`; o foco por teclado mantém contorno visível.
 
 ### Z-index
 

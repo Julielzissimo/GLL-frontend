@@ -179,7 +179,7 @@
   --shadow-sm: var(--gll-shadow-sm);
   --shadow-md: var(--gll-shadow-md);
   --shadow-lg: var(--gll-shadow-overlay);
-  --shadow-focus: 0 0 0 3px var(--color-focus-ring);
+  --shadow-focus: 0 0 0 2px var(--color-focus-ring);
 
   --z-base: 0;
   --z-sticky: 10;
