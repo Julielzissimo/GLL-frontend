@@ -990,6 +990,24 @@
         "f75c4b41ba462d76b2bc554db18c63fe5ecb532b"
       ],
       "migrations": []
+    },
+    {
+      "id": "RADAR-19-FASE-5-AGENDAMENTO-PRIORIDADES-RETENCAO-001",
+      "backend_commits": [
+        "3d140457bfd32b4210a2ec994ceb065e93b3a484",
+        "8784485ad839f884174c00ffa843b3f602074f2f",
+        "ae295ec331cd1ed69260a54947a28dd16ef95609",
+        "76ae1cdfabf3ac0ebdaf4fe4c9a44d0462d3e479",
+        "29590c83678ae2107d9c28b8cff08600bf6ad26c",
+        "9a900e65409659740f725a899e89e897b860f5dc"
+      ],
+      "frontend_commits": [],
+      "migrations": [
+        "supabase/migrations/20261011234630_radar_items_scheduling_priority_storage_retention.sql",
+        "supabase/migrations/20261012002730_radar_items_worker_runtime_latency_tuning.sql",
+        "supabase/migrations/20261012005000_radar_items_worker_request_timeout_buffer.sql",
+        "supabase/migrations/20261012014000_radar_items_worker_extended_runtime_budget.sql"
+      ]
     }
   ]
 }
