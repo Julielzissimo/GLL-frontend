@@ -15,7 +15,7 @@ test("feed descreve alterações específicas do edital e do orçamento", () => 
   assert.equal(bidActivityDescription({ ...event, event_type: "quotation_item_updated" }), "alterou o item 3 do orçamento do edital 10/2026 de Prefeitura");
   assert.equal(bidActivityDescription({ ...event, event_type: "file_added" }), "adicionou o arquivo “3” ao edital 10/2026 de Prefeitura");
   assert.equal(bidActivityDescription({ ...event, event_type: "file_removed" }), "excluiu o arquivo “3” do edital 10/2026 de Prefeitura");
-  assert.equal(bidActivityDescription({ ...event, event_type: "status_changed" }), "alterou o status do edital 10/2026 de Prefeitura de Em Analise para Aprovada");
+  assert.equal(bidActivityDescription({ ...event, event_type: "status_changed" }), "alterou o status do edital 10/2026 de Prefeitura de Em Cadastro para Aprovada");
   assert.equal(bidActivityDescription({ ...event, event_type: "item_won" }), "marcou o item 3 como vencido no edital 10/2026 de Prefeitura");
 });
 
