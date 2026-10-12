@@ -1012,7 +1012,7 @@
     {
       "id": "RADAR-19-FASE-6-VALIDACAO-HOMOLOGACAO-001",
       "backend_commits": [
-        "ca2bc1fdcfc38ef70da6684039521528c2c272aa"
+        "ca2bc1fec0e50acd9a1a29aba953de7fbff2ef6a"
       ],
       "frontend_commits": [],
       "migrations": [
