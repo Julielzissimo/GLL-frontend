@@ -1008,6 +1008,16 @@
         "supabase/migrations/20261012005000_radar_items_worker_request_timeout_buffer.sql",
         "supabase/migrations/20261012014000_radar_items_worker_extended_runtime_budget.sql"
       ]
+    },
+    {
+      "id": "RADAR-19-FASE-6-VALIDACAO-HOMOLOGACAO-001",
+      "backend_commits": [
+        "ca2bc1fdcfc38ef70da6684039521528c2c272aa"
+      ],
+      "frontend_commits": [],
+      "migrations": [
+        "supabase/migrations/20261012023121_radar_items_operational_metrics.sql"
+      ]
     }
   ]
 }
