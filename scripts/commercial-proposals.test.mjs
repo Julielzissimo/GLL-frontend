@@ -33,6 +33,8 @@ test("integra a página independente, navegação e build versionado", async () 
   assert.match(html, /commercial-proposals\.js/);
   assert.match(app, /commercialProposals: "propostas-comerciais"/);
   assert.match(build, /commercial-proposals\.js/);
+  assert.ok(build.includes('.update(await readFile(resolve(sourceDir, "radar-details.js")))'));
+  assert.ok(build.includes(".replace('./radar-details.js', `./radar-details.js?v=${assetVersion}`)"));
   assert.match(build, /production:[\s\S]+commercialProposalsEnabled: false/);
   assert.match(build, /homolog:[\s\S]+commercialProposalsEnabled: true/);
   assert.match(app, /page === "commercialProposals" && GLL_CONFIG\.commercialProposalsEnabled === false/);
