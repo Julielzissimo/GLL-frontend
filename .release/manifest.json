@@ -1181,6 +1181,16 @@
         "1457637b0e6b560057bb2fdbb5848848e9fd10f3"
       ],
       "migrations": []
+    },
+    {
+      "id": "RADAR-19-FASE-6-VALIDACAO-HOMOLOGACAO-001",
+      "backend_commits": [
+        "e3572382f5e6c98b432544c89124ff86725cf62c"
+      ],
+      "frontend_commits": [],
+      "migrations": [
+        "supabase/migrations/20261012023121_radar_items_operational_metrics.sql"
+      ]
     }
   ]
 }
