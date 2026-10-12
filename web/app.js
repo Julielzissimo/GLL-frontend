@@ -31,6 +31,8 @@ const MONEY_FRACTION_DIGITS = 2;
 const QUANTITY_FRACTION_DIGITS = 4;
 const MARGIN_FRACTION_DIGITS = 4;
 const USER_ROLES = { ADMIN: "Administrador", ANALYST: "Analista" };
+const USER_INVITATION_RESEND_COOLDOWN_MS = 15_000;
+let userInvitationResendCooldownTimer = null;
 const DEFAULT_ADMIN = {
   email: "demo@gll.local",
   name: "Usuário local",
@@ -2945,7 +2947,9 @@ async function handleUserCreate(event) {
     if (result?.acceptedByProvider !== true) throw new Error("O provedor não confirmou a aceitação do convite.");
     try { await reloadData(); } catch { /* O envio aceito continua válido; a lista será atualizada na próxima consulta. */ }
     closeUserProfilePage();
-    showToast("Convite enviado. O usuário receberá um e-mail com as instruções para configurar seu acesso.");
+    showToast(result.resent
+      ? "Convite reenviado. O usuário receberá um novo e-mail para configurar seu acesso."
+      : "Convite enviado. O usuário receberá um e-mail com as instruções para configurar seu acesso.");
   } catch (error) {
     refs.userCreateError.textContent = error.message;
   }
@@ -6856,6 +6860,8 @@ function invitationStatusLabel(status) {
 }
 
 function renderUserInvitations() {
+  if (userInvitationResendCooldownTimer) clearTimeout(userInvitationResendCooldownTimer);
+  userInvitationResendCooldownTimer = null;
   const visible = store instanceof SupabaseStore && isCurrentUserAdmin();
   refs.userInvitationsPanel.classList.toggle("hidden", !visible);
   if (!visible) return;
@@ -6864,13 +6870,23 @@ function renderUserInvitations() {
     return;
   }
 
+  const now = Date.now();
+  let nextCooldownMs = Infinity;
   refs.userInvitationsTableBody.innerHTML = appState.userInvitations.map((invitation) => {
     const adminName = invitation.responsibleAdmin?.name || invitation.responsibleAdmin?.email || "Administrador removido";
     const adminEmail = invitation.responsibleAdmin?.email || "";
+    const lastSentAt = Date.parse(invitation.lastSentAt || "");
+    const resendCooldownMs = invitation.canResend && Number.isFinite(lastSentAt)
+      ? Math.max(0, lastSentAt + USER_INVITATION_RESEND_COOLDOWN_MS - now)
+      : 0;
+    if (resendCooldownMs > 0) nextCooldownMs = Math.min(nextCooldownMs, resendCooldownMs);
+    const resendAction = !invitation.canResend
+      ? ""
+      : resendCooldownMs > 0
+        ? `<button class="quiet-action compact-action" type="button" disabled title="Você poderá reenviar este convite em ${Math.ceil(resendCooldownMs / 1000)} segundos.">Reenviar (${Math.ceil(resendCooldownMs / 1000)}s)</button>`
+        : `<button class="quiet-action compact-action" type="button" data-invitation-action="resend" data-invitation-id="${escapeHtml(invitation.id)}">Reenviar</button>`;
     const actionButtons = [
-      invitation.canResend
-        ? `<button class="quiet-action compact-action" type="button" data-invitation-action="resend" data-invitation-id="${escapeHtml(invitation.id)}">Reenviar</button>`
-        : "",
+      resendAction,
       invitation.canRevoke
         ? `<button class="danger-action compact-action" type="button" data-invitation-action="revoke" data-invitation-id="${escapeHtml(invitation.id)}">Revogar</button>`
         : "",
@@ -6890,6 +6906,12 @@ function renderUserInvitations() {
       <td><div class="user-management-actions">${actionButtons || '<span class="muted-text">—</span>'}</div></td>
     </tr>`;
   }).join("");
+  if (Number.isFinite(nextCooldownMs)) {
+    userInvitationResendCooldownTimer = setTimeout(() => {
+      userInvitationResendCooldownTimer = null;
+      renderUserInvitations();
+    }, Math.min(1000, nextCooldownMs));
+  }
 }
 
 async function handleInvitationManagementAction(event) {
