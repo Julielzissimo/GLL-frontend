@@ -1159,6 +1159,18 @@
         "de9a36b47e74b8e8ec36ddcf53b5b06981cbac77"
       ],
       "migrations": []
+    },
+    {
+      "id": "EMAIL-10",
+      "backend_commits": [
+        "45a17b63d1054d6f67ff9336c0835ab7bf0c6a94"
+      ],
+      "frontend_commits": [
+        "d2d9ed37c5803a00f2a3ca1b2269a8cf15232f51"
+      ],
+      "migrations": [
+        "supabase/migrations/20261012012343_email_invitation_resend_cooldown_15_seconds.sql"
+      ]
     }
   ]
 }
