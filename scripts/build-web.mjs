@@ -101,6 +101,7 @@ const assetVersion = createHash("sha256")
   .update(await readFile(resolve(sourceDir, "declarations.js")))
   .update(await readFile(resolve(sourceDir, "company-data.js")))
   .update(await readFile(resolve(sourceDir, "commercial-proposals.js")))
+  .update(await readFile(resolve(sourceDir, "radar-details.js")))
   .update(await readFile(resolve(sourceDir, "styles.css")))
   .update(await readFile(resolve(sourceDir, "design-system", "tokens.css")))
   .update(await readFile(resolve(sourceDir, "design-system", "design-system.css")))
@@ -123,7 +124,8 @@ await writeFile(
     .replace('./commercial-proposals.js', `./commercial-proposals.js?v=${assetVersion}`)
     .replace('./organization-chat.js', `./organization-chat.js?v=${assetVersion}`)
     .replace('./app.js', `./app.js?v=${assetVersion}`)
-    .replace('./file-storage.js', `./file-storage.js?v=${assetVersion}`),
+    .replace('./file-storage.js', `./file-storage.js?v=${assetVersion}`)
+    .replace('./radar-details.js', `./radar-details.js?v=${assetVersion}`),
   "utf8",
 );
 
