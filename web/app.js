@@ -1208,7 +1208,6 @@ class IndexedDbStore {
       ...values,
       bid_id: bidId,
       quotation_item_id: Number(quotationItemId),
-      supplier_id: Object.hasOwn(values, "supplier_id") ? values.supplier_id ? Number(values.supplier_id) : null : existing?.supplier_id || null,
       supplier_name: Object.hasOwn(values, "supplier_name") ? String(values.supplier_name || "").trim() : existing?.supplier_name || "",
       purchase_link: Object.hasOwn(values, "purchase_link") ? String(values.purchase_link || "").trim() : existing?.purchase_link || "",
       purchase_order_number: Object.hasOwn(values, "purchase_order_number") ? String(values.purchase_order_number || "").trim() : existing?.purchase_order_number || "",
@@ -1216,6 +1215,7 @@ class IndexedDbStore {
       created_at: existing?.created_at || timestampNow(),
       updated_at: timestampNow(),
     };
+    delete record.supplier_id;
     let savedId = existing?.id;
     await this.tx("bid_item_fulfillments", "readwrite", (fulfillments) => {
       if (savedId) record.id = Number(savedId);
@@ -1556,13 +1556,13 @@ class SupabaseStore {
       ...values,
       bid_id: bidId,
       quotation_item_id: Number(quotationItemId),
-      supplier_id: Object.hasOwn(values, "supplier_id") ? values.supplier_id ? Number(values.supplier_id) : null : existing?.supplier_id || null,
       supplier_name: Object.hasOwn(values, "supplier_name") ? String(values.supplier_name || "").trim() : existing?.supplier_name || "",
       purchase_link: Object.hasOwn(values, "purchase_link") ? String(values.purchase_link || "").trim() : existing?.purchase_link || "",
       purchase_order_number: Object.hasOwn(values, "purchase_order_number") ? String(values.purchase_order_number || "").trim() : existing?.purchase_order_number || "",
       purchase_date: Object.hasOwn(values, "purchase_date") ? values.purchase_date || null : existing?.purchase_date || null,
       updated_at: new Date().toISOString(),
     };
+    delete record.supplier_id;
     const { data, error } = await client.from("bid_item_fulfillments")
       .upsert(record, { onConflict: "bid_id,quotation_item_id" }).select("id").single();
     assertSupabase(error);
@@ -2237,9 +2237,9 @@ const billingFeature = createBillingFeature({
   getBudgetItems: () => {
     const bid = currentBid();
     if (!bid?.quotation_id) return [];
-    return appState.quotationItems.filter((item) => Number(item.quotation_id) === Number(bid.quotation_id));
+    return appState.quotationItems.filter((item) => Number(item.quotation_id) === Number(bid.quotation_id)
+      && Boolean(Number(bidItemForQuotationItem(item, bid.id)?.is_won)));
   },
-  getSuppliers: () => appState.suppliers,
   store,
   toast: (message, tone) => showToast(message, tone),
   runBusy: (operation, message) => withBlockingLoading(operation, message)(),
@@ -4447,7 +4447,7 @@ function visibleRealtimeResources() {
     ["bids", "items", "documents", "failure_history", "bid_status_history", "bid_activity", "quotations", "quotation_items"]
       .forEach((resource) => resources.add(resource));
     if (appState.activePage === "billing") {
-      ["bid_item_fulfillments", "bid_item_commitments", "bid_item_deliveries", "bid_item_invoices", "suppliers"]
+      ["bid_item_fulfillments", "bid_item_commitments", "bid_item_deliveries", "bid_item_invoices"]
         .forEach((resource) => resources.add(resource));
     }
   } else if (BID_LIST_PAGES.has(appState.activePage)) {
@@ -4612,7 +4612,7 @@ async function fetchLiveResource(resource) {
       return [result("userInvitations", invitations), result("users", visibleUsers)];
     }
     case "suppliers":
-      if (page === "suppliers" || page === "billing") return result("suppliers", normalizeLiveRows(resource, await liveRows("suppliers")));
+      if (page === "suppliers") return result("suppliers", normalizeLiveRows(resource, await liveRows("suppliers")));
       return null;
     case "supplier_products":
       if (page === "suppliers") return result("supplierProducts", normalizeLiveRows(resource, await liveRows("supplier_products")));
@@ -4637,7 +4637,7 @@ function renderLiveUpdates(resources) {
     renderQuotations();
   }
   if ((keys.has("suppliers") || keys.has("supplierProducts")) && appState.activePage === "suppliers") renderSuppliers();
-  if (appState.activePage === "billing" && ["bids", "items", "quotations", "quotationItems", "suppliers"].some((key) => keys.has(key))) {
+  if (appState.activePage === "billing" && ["bids", "items", "quotations", "quotationItems"].some((key) => keys.has(key))) {
     void billingFeature.refresh().catch((error) => showToast(error.message, "error"));
   }
   if (keys.has("users") || keys.has("userInvitations")) {
