@@ -48,7 +48,7 @@ function billingDate(value) {
   return Number.isNaN(date.getTime()) ? billingEscape(value) : new Intl.DateTimeFormat("pt-BR").format(date);
 }
 
-function createBillingFeature({ getBid, getQuotation, getBudgetItems, getSuppliers, store, toast, runBusy, onSaved }) {
+function createBillingFeature({ getBid, getQuotation, getBudgetItems, store, toast, runBusy, onSaved }) {
   const root = document.getElementById("billingRoot");
   const drawer = document.getElementById("billingDrawer");
   const drawerContent = document.getElementById("billingDrawerContent");
@@ -84,8 +84,7 @@ function createBillingFeature({ getBid, getQuotation, getBudgetItems, getSupplie
 
   function supplierName(row) {
     if (!row) return "";
-    const catalogSupplier = (getSuppliers?.() || []).find((supplier) => Number(supplier.id) === Number(row.supplier_id));
-    return String(catalogSupplier?.name || row.supplier_name || "").trim();
+    return String(row.supplier_name || "").trim();
   }
 
   function summaryFor(item) {
@@ -163,7 +162,7 @@ function createBillingFeature({ getBid, getQuotation, getBudgetItems, getSupplie
     const body = document.getElementById("billingTableBody");
     const visible = items.map(summaryFor).filter(matchesFilters);
     if (!items.length) {
-      body.innerHTML = '<tr><td colspan="7"><div class="empty-state compact-empty">Esta licitação ainda não tem itens no orçamento vinculado.</div></td></tr>';
+      body.innerHTML = '<tr><td colspan="7"><div class="empty-state compact-empty">Nenhum item foi marcado como vencido neste edital.</div></td></tr>';
       return;
     }
     if (!visible.length) {
@@ -256,16 +255,12 @@ function createBillingFeature({ getBid, getQuotation, getBudgetItems, getSupplie
     const item = budgetItems().find((row) => Number(row.id) === Number(itemId));
     if (!item) return;
     const row = summaryFor(item);
-    const suppliers = (getSuppliers?.() || []).slice().sort((a, b) => String(a.name).localeCompare(String(b.name), "pt-BR"));
     const fulfillment = row.fulfillment || {};
-    const supplierId = fulfillment.supplier_id ? String(fulfillment.supplier_id) : "";
-    const customSupplier = !supplierId && Boolean(fulfillment.supplier_name);
     const productLink = fulfillment.purchase_link || (Array.isArray(item.supplier_links) ? item.supplier_links[0] : "") || "";
-    const supplierOptions = [`<option value="">Selecione um fornecedor</option>`, ...suppliers.map((supplier) => `<option value="${billingEscape(supplier.id)}" ${String(supplier.id) === supplierId ? "selected" : ""}>${billingEscape(supplier.name)}</option>`), `<option value="__custom" ${customSupplier ? "selected" : ""}>Outro fornecedor</option>`].join("");
     const progress = row.planned > 0 ? Math.min(100, Math.round((row.supplied / row.planned) * 100)) : 0;
     drawerContent.innerHTML = `<div class="billing-drawer-item-summary"><div><span class="eyebrow">ITEM DO ORÇAMENTO</span><h3>Item ${billingEscape(item.item_number)} · ${billingEscape(item.description || "Sem descrição")}</h3><p>${billingEscape([item.manufacturer, item.model].filter(Boolean).join(" · ") || item.unit || "")}</p></div><div class="billing-drawer-item-value"><span>Previsto</span><strong>${billingQuantity(row.planned)} un.</strong><small>${billingMoney(billingNumber(item.final_bid) * row.planned)}</small></div></div>
       <section class="billing-drawer-section" aria-labelledby="billingSupplySummaryTitle"><div class="billing-section-heading"><div><h3 id="billingSupplySummaryTitle">Acompanhamento</h3><p>Fornecimento e faturamento são acompanhados separadamente.</p></div></div><div class="billing-detail-stats"><div><span>Fornecido</span><strong>${billingQuantity(row.supplied)} / ${billingQuantity(row.planned)}</strong><div class="billing-progress" role="progressbar" aria-label="Progresso de fornecimento" aria-valuemin="0" aria-valuemax="${billingEscape(row.planned)}" aria-valuenow="${billingEscape(row.supplied)}"><span style="width:${progress}%"></span></div></div><div><span>Pendente</span><strong>${billingQuantity(row.pending)}</strong></div><div><span>Faturado</span><strong>${billingQuantity(row.billed)} / ${billingQuantity(row.planned)}</strong></div></div><div class="billing-status-pair">${billingBadge(row.supplyStatus, badgeTone(row.supplyStatus))}${billingBadge(row.invoiceStatus, badgeTone(row.invoiceStatus))}</div></section>
-      <section class="billing-drawer-section" aria-labelledby="billingPurchaseTitle"><div class="billing-section-heading"><div><h3 id="billingPurchaseTitle">Fornecedor e compra</h3><p>Reaproveite um fornecedor já cadastrado ou informe outro nome.</p></div></div><form id="billingPurchaseForm" class="billing-entry-form" data-billing-form="purchase"><div class="billing-form-grid"><label class="billing-field billing-field-wide" for="billingSupplierSelect">Fornecedor<select id="billingSupplierSelect" name="supplier_id">${supplierOptions}</select></label><div class="billing-field billing-field-wide ${customSupplier ? "" : "hidden"}" id="billingCustomSupplierField">${fieldMarkup({ id: "billingSupplierName", name: "supplier_name", label: "Nome do fornecedor", value: fulfillment.supplier_name || "" })}</div>${fieldMarkup({ id: "billingPurchaseOrder", name: "purchase_order_number", label: "Número do pedido", value: fulfillment.purchase_order_number || "" })}${fieldMarkup({ id: "billingPurchaseDate", name: "purchase_date", label: "Data da compra", type: "date", value: fulfillment.purchase_date || "" })}${fieldMarkup({ id: "billingPurchaseLink", name: "purchase_link", label: "Link do produto ou pedido", type: "url", value: productLink, wide: true, placeholder: "https://" })}</div><p class="billing-form-error" data-billing-error="purchase" role="alert"></p><div class="button-row end"><button class="primary-action" type="submit">Salvar dados da compra</button></div></form></section>
+      <section class="billing-drawer-section" aria-labelledby="billingPurchaseTitle"><div class="billing-section-heading"><div><h3 id="billingPurchaseTitle">Fornecedor e compra</h3><p>Informe o fornecedor como texto livre.</p></div></div><form id="billingPurchaseForm" class="billing-entry-form" data-billing-form="purchase"><div class="billing-form-grid">${fieldMarkup({ id: "billingSupplierName", name: "supplier_name", label: "Fornecedor", value: fulfillment.supplier_name || "", wide: true })}${fieldMarkup({ id: "billingPurchaseOrder", name: "purchase_order_number", label: "Número do pedido", value: fulfillment.purchase_order_number || "" })}${fieldMarkup({ id: "billingPurchaseDate", name: "purchase_date", label: "Data da compra", type: "date", value: fulfillment.purchase_date || "" })}${fieldMarkup({ id: "billingPurchaseLink", name: "purchase_link", label: "Link do produto ou pedido", type: "url", value: productLink, wide: true, placeholder: "https://" })}</div><p class="billing-form-error" data-billing-error="purchase" role="alert"></p><div class="button-row end"><button class="primary-action" type="submit">Salvar dados da compra</button></div></form></section>
       <section class="billing-drawer-section" aria-labelledby="billingCommitmentsTitle"><div class="billing-section-heading"><div><h3 id="billingCommitmentsTitle">Notas de empenho</h3><p>${row.commitments.length} ${row.commitments.length === 1 ? "empenho registrado" : "empenhos registrados"} · ${billingQuantity(row.committed)} un.</p></div></div>${renderRecordForm("commitment", itemId)}${renderEntryList("commitment", itemId)}</section>
       <section class="billing-drawer-section" aria-labelledby="billingDeliveriesTitle"><div class="billing-section-heading"><div><h3 id="billingDeliveriesTitle">Entregas</h3><p>Registre entregas parciais ou a entrega total.</p></div></div>${renderRecordForm("delivery", itemId)}${renderEntryList("delivery", itemId)}</section>
       <section class="billing-drawer-section" aria-labelledby="billingInvoicesTitle"><div class="billing-section-heading"><div><h3 id="billingInvoicesTitle">Notas fiscais</h3><p>Registre faturamentos parciais ou totais, independentes das entregas.</p></div></div>${renderRecordForm("invoice", itemId)}${renderEntryList("invoice", itemId)}</section>`;
@@ -299,15 +294,6 @@ function createBillingFeature({ getBid, getQuotation, getBudgetItems, getSupplie
     state.editing = { commitment: null, delivery: null, invoice: null };
   }
 
-  function updateCustomSupplierVisibility() {
-    const select = document.getElementById("billingSupplierSelect");
-    const field = document.getElementById("billingCustomSupplierField");
-    if (!select || !field) return;
-    field.classList.toggle("hidden", select.value !== "__custom");
-    const input = document.getElementById("billingSupplierName");
-    if (input) input.required = select.value === "__custom";
-  }
-
   function validateQuantity(kind, itemId, quantity, entryId) {
     const item = budgetItems().find((row) => Number(row.id) === Number(itemId));
     const planned = billingNumber(item?.quantity);
@@ -329,10 +315,6 @@ function createBillingFeature({ getBid, getQuotation, getBudgetItems, getSupplie
 
   async function handlePurchaseSave(form) {
     const values = new FormData(form);
-    const supplierIdValue = String(values.get("supplier_id") || "");
-    const supplier = (getSuppliers?.() || []).find((entry) => String(entry.id) === supplierIdValue);
-    const supplierName = supplier ? supplier.name : supplierIdValue === "__custom" ? String(values.get("supplier_name") || "").trim() : "";
-    if (supplierIdValue === "__custom" && !supplierName) throw new Error("Informe o nome do fornecedor.");
     const purchaseLink = String(values.get("purchase_link") || "").trim();
     if (purchaseLink) {
       let url;
@@ -340,8 +322,7 @@ function createBillingFeature({ getBid, getQuotation, getBudgetItems, getSupplie
       if (!["http:", "https:"].includes(url.protocol)) throw new Error("O link precisa começar com http:// ou https://.");
     }
     await runBusy(() => store.saveBillingFulfillment(state.bidId, state.selectedItemId, {
-      supplier_id: supplier?.id || null,
-      supplier_name: supplierName,
+      supplier_name: String(values.get("supplier_name") || "").trim(),
       purchase_link: purchaseLink,
       purchase_order_number: String(values.get("purchase_order_number") || "").trim(),
       purchase_date: values.get("purchase_date") || null,
@@ -421,9 +402,6 @@ function createBillingFeature({ getBid, getQuotation, getBudgetItems, getSupplie
       if (deleteButton) void handleDelete(deleteButton.dataset.entryKind, Number(deleteButton.dataset.deleteBillingEntry))
         .then(() => renderDrawer())
         .catch((error) => toast(error.message, "error"));
-    });
-    drawer.addEventListener("change", (event) => {
-      if (event.target.id === "billingSupplierSelect") updateCustomSupplierVisibility();
     });
     drawer.addEventListener("submit", (event) => {
       const form = event.target.closest("[data-billing-form]");
