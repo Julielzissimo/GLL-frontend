@@ -1,14 +1,15 @@
-﻿const STATUS_OPTIONS = ["Em Analise", "Aguard. Disputa", "Descartada", "Aprovada", "Faturado", "Desclassificado", "Disputada"];
+﻿const STATUS_OPTIONS = ["Em Analise", "Aguard. Disputa", "Descartada", "Aprovada", "Em Fornecimento", "Faturado", "Desclassificado", "Disputada"];
 const storageBucket = globalThis.window?.GLLFileStorage?.storageBucket || ((client, bucket) => client.storage.from(bucket));
-const WON_ITEM_STATUSES = ["Aprovada", "Faturado", "Desclassificado", "Disputada"];
-const WON_ITEM_TOTAL_STATUSES = ["Descartada", "Aprovada", "Faturado", "Disputada"];
+const WON_ITEM_STATUSES = ["Aprovada", "Em Fornecimento", "Faturado", "Desclassificado", "Disputada"];
+const WON_ITEM_TOTAL_STATUSES = ["Descartada", "Aprovada", "Em Fornecimento", "Faturado", "Disputada"];
 const FINAL_BID_STATUS = "Faturado";
 const BID_STATUS_LABELS = Object.freeze({ "Em Analise": "Em Cadastro", "Aguard. Disputa": "Aguard. Disputa" });
 const BID_STATUS_TRANSITIONS = Object.freeze({
   "Em Analise": ["Aguard. Disputa", "Descartada", "Aprovada", "Desclassificado", "Disputada"],
   "Aguard. Disputa": ["Em Analise", "Descartada", "Aprovada", "Desclassificado", "Disputada"],
   Descartada: ["Em Analise", "Disputada"],
-  Aprovada: ["Em Analise", "Faturado", "Desclassificado", "Disputada"],
+  Aprovada: ["Em Analise", "Em Fornecimento", "Faturado", "Desclassificado", "Disputada"],
+  "Em Fornecimento": ["Aprovada", "Faturado"],
   Faturado: ["Aprovada"],
   Desclassificado: ["Em Analise", "Disputada"],
   Disputada: ["Em Analise", "Descartada", "Aprovada", "Desclassificado"],
@@ -211,6 +212,7 @@ const refs = {
   homeReadyToDisputeBids: $("homeReadyToDisputeBids"),
   homeDiscardedBids: $("homeDiscardedBids"),
   homeApprovedBids: $("homeApprovedBids"),
+  homeSupplyingBids: $("homeSupplyingBids"),
   homeBilledBids: $("homeBilledBids"),
   homeDisqualifiedBids: $("homeDisqualifiedBids"),
   homeDisputedBids: $("homeDisputedBids"),
@@ -4615,18 +4617,20 @@ function renderHomeSummary() {
       if (bid.status === "Aguard. Disputa") acc.readyToDispute += 1;
       if (bid.status === "Descartada") acc.discarded += 1;
       if (bid.status === "Aprovada") acc.approved += 1;
+      if (bid.status === "Em Fornecimento") acc.supplying += 1;
       if (bid.status === "Faturado") acc.billed += 1;
       if (bid.status === "Desclassificado") acc.disqualified += 1;
       if (bid.status === "Disputada") acc.disputed += 1;
       return acc;
     },
-    { total: 0, registration: 0, readyToDispute: 0, discarded: 0, approved: 0, billed: 0, disqualified: 0, disputed: 0 }
+    { total: 0, registration: 0, readyToDispute: 0, discarded: 0, approved: 0, supplying: 0, billed: 0, disqualified: 0, disputed: 0 }
   );
   refs.homeTotalBids.textContent = String(counts.total);
   refs.homeRegistrationBids.textContent = String(counts.registration);
   refs.homeReadyToDisputeBids.textContent = String(counts.readyToDispute);
   refs.homeDiscardedBids.textContent = String(counts.discarded);
   refs.homeApprovedBids.textContent = String(counts.approved);
+  refs.homeSupplyingBids.textContent = String(counts.supplying);
   refs.homeBilledBids.textContent = String(counts.billed);
   refs.homeDisqualifiedBids.textContent = String(counts.disqualified);
   refs.homeDisputedBids.textContent = String(counts.disputed);
