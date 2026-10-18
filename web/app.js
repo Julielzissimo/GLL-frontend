@@ -759,6 +759,23 @@ class IndexedDbStore {
     window.localStorage.setItem(key, JSON.stringify(normalizeNotificationDismissalIds(ids)));
   }
 
+  async getDismissedNotificationIds(userId) {
+    const key = notificationDismissalStorageKey(userId);
+    if (!key) return [];
+    try {
+      const saved = JSON.parse(window.localStorage.getItem(key) || "[]");
+      return normalizeNotificationDismissalIds(saved);
+    } catch {
+      return [];
+    }
+  }
+
+  async saveDismissedNotificationIds(ids, userId) {
+    const key = notificationDismissalStorageKey(userId);
+    if (!key) throw new Error("O perfil atual não está disponível.");
+    window.localStorage.setItem(key, JSON.stringify(normalizeNotificationDismissalIds(ids)));
+  }
+
   async authTx(storeName, mode, callback) {
     const db = await this.openAuth();
     return new Promise((resolve, reject) => {
@@ -3732,6 +3749,7 @@ async function clearAllNotifications() {
     appState.dismissedNotificationIds = dismissedIds;
     updateNotificationsIndicator();
     setNotificationsMenuOpen(true);
+    if (liveChannel) void liveChannel.send({ type: "broadcast", event: "data-changed", payload: {} }).catch(() => {});
     showToast("Notificações limpas para este perfil.");
   } catch {
     if (button?.isConnected) button.disabled = false;
@@ -4430,6 +4448,9 @@ async function reloadData({ background = false } = {}) {
   renderQuotations();
   renderSuppliers();
   renderUsers();
+  if (!background && changed && liveChannel) {
+    void liveChannel.send({ type: "broadcast", event: "data-changed", payload: {} }).catch(() => {});
+  }
 }
 
 function readNavigationRoute() {
