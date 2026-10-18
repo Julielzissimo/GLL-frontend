@@ -651,7 +651,7 @@ function showAuthBootstrapError() {
   refs.authBootstrapView.setAttribute("aria-busy", "false");
   refs.authBootstrapMessage.parentElement?.classList.add("hidden");
   refs.authBootstrapSkeleton.classList.add("hidden");
-  refs.authBootstrapError.textContent = "Não foi possível confirmar seu acesso. Verifique a conexão e tente novamente. Os dados do sistema permanecerão protegidos até a confirmação.";
+  refs.authBootstrapError.textContent = "Não foi possível concluir a inicialização segura. Verifique a conexão e tente novamente. Os dados do sistema permanecerão protegidos até a confirmação.";
   refs.authBootstrapError.classList.remove("hidden");
   refs.retryAuthBootstrapButton.classList.remove("hidden");
   refs.loginView.classList.add("hidden");
@@ -2498,7 +2498,7 @@ async function main() {
 
 function initializeAuthStateListener() {
   if (authSubscription || !store.requiresAuthenticationBeforeData) return;
-  const result = store.client.auth.onAuthStateChange((event) => {
+  const result = store.client.auth.onAuthStateChange((event, session) => {
     // Keep this callback synchronous and free of Supabase work. Cleanup can call
     // Realtime and PostgREST APIs, so defer it until Auth releases its lock.
     if (event !== "SIGNED_OUT" && event !== "SIGNED_IN") return;
@@ -2511,15 +2511,30 @@ function initializeAuthStateListener() {
         return;
       }
       if (startedLocally) return;
-      resetAuthenticatedView({ preserveSessionPolicy: true, status: AUTH_STATUS.INITIALIZING });
-      showAuthBootstrap();
+      const sameAuthenticatedUser = () => {
+        const eventUserId = session?.user?.id;
+        const eventEmail = normalizeEmail(session?.user?.email);
+        return authState.accessVerified && (
+          (eventUserId && eventUserId === appState.currentUserAuthId)
+          || (eventEmail && eventEmail === normalizeEmail(appState.currentUserEmail))
+        );
+      };
       const resumeRestore = () => {
-        if (eventSequence !== authEventSequence || authState.accessVerified) return;
+        if (eventSequence !== authEventSequence) return;
+        if (sameAuthenticatedUser()) return;
+        if (authState.accessVerified) {
+          resetAuthenticatedView({ preserveSessionPolicy: true, status: AUTH_STATUS.INITIALIZING });
+        }
         showAuthBootstrap();
         restoreSession().catch(() => showAuthBootstrapError());
       };
-      if (pendingSessionRestore) void pendingSessionRestore.then(resumeRestore, resumeRestore);
-      else resumeRestore();
+      if (pendingSessionRestore) {
+        if (authState.accessVerified && !sameAuthenticatedUser()) {
+          resetAuthenticatedView({ preserveSessionPolicy: true, status: AUTH_STATUS.INITIALIZING });
+          showAuthBootstrap();
+        }
+        void pendingSessionRestore.then(resumeRestore, resumeRestore);
+      } else resumeRestore();
     }, 0);
   });
   authSubscription = result?.data?.subscription || result?.subscription || null;
@@ -3797,59 +3812,76 @@ async function restoreSessionInternal() {
   const restoreStartedAt = authPerformanceNow();
   const epoch = sessionEpoch;
   try {
-    const { data, error } = await runAuthSessionOperation(
-      () => store.client.auth.getSession(),
-      "session-restore",
-    );
-    assertSupabase(error);
-    if (epoch !== sessionEpoch) return;
-    if (!data.session) {
+    const result = await withAuthBootstrapTimeout((async () => {
+      const { data, error } = await runAuthSessionOperation(
+        () => store.client.auth.getSession(),
+        "session-restore",
+      );
+      assertSupabase(error);
+      if (epoch !== sessionEpoch) return { kind: "stale" };
+      if (!data.session) return { kind: "login" };
+
+      const email = data.session.user.email;
+      const authUserCreatedAt = data.session.user.created_at;
+      beginSessionPolicy(email);
+      const expirationMessage = sessionPolicyExpiration();
+      if (expirationMessage) return { kind: "expired", message: expirationMessage };
+
+      if (store instanceof SupabaseStore) {
+        try {
+          const invitationStatus = await store.getFirstAccessStatus();
+          if (epoch !== sessionEpoch) return { kind: "stale" };
+          if (invitationStatus?.firstAccessRequired) return { kind: "first-access", status: invitationStatus };
+        } catch {
+          // Perfis legados continuam usando a recuperação de senha já existente.
+        }
+      }
+      if (epoch !== sessionEpoch) return { kind: "stale" };
+
+      const mustChangePassword = await store.isPasswordResetRequired();
+      if (epoch !== sessionEpoch) return { kind: "stale" };
+      if (mustChangePassword) return { kind: "password-reset", email };
+
+      const profileStartedAt = authPerformanceNow();
+      let user;
+      try {
+        user = await store.getUser(email);
+      } finally {
+        recordAuthPerformance("profile-check", profileStartedAt);
+      }
+      if (epoch !== sessionEpoch) return { kind: "stale" };
+      if (
+        !user
+        || user.access_revoked_at
+        || (user.auth_access_status && user.auth_access_status !== "active")
+      ) return { kind: "revoked" };
+
+      return { kind: "authenticated", user, authUserCreatedAt };
+    })());
+
+    if (epoch !== sessionEpoch || result.kind === "stale") return;
+    if (result.kind === "login") {
       showLoginView();
       return;
     }
-    beginSessionPolicy(data.session.user.email);
-    const expirationMessage = sessionPolicyExpiration();
-    if (expirationMessage) {
-      await expireSession(expirationMessage);
+    if (result.kind === "first-access") {
+      showFirstAccessView(result.status);
       return;
     }
-    if (store instanceof SupabaseStore) {
-      try {
-        const invitationStatus = await store.getFirstAccessStatus();
-        if (epoch !== sessionEpoch) return;
-        if (invitationStatus?.firstAccessRequired) {
-          showFirstAccessView(invitationStatus);
-          return;
-        }
-      } catch {
-        // Perfis legados continuam usando a recuperação de senha já existente.
-      }
-    }
-    if (epoch !== sessionEpoch) return;
-    const mustChangePassword = await store.isPasswordResetRequired();
-    if (epoch !== sessionEpoch) return;
-    if (mustChangePassword) {
-      showPasswordResetView(data.session.user.email);
+    if (result.kind === "password-reset") {
+      showPasswordResetView(result.email);
       return;
     }
-    const profileStartedAt = authPerformanceNow();
-    let user;
-    try {
-      user = await store.getUser(data.session.user.email);
-    } finally {
-      recordAuthPerformance("profile-check", profileStartedAt);
+    if (result.kind === "expired") {
+      await expireSession(result.message);
+      return;
     }
-    if (epoch !== sessionEpoch) return;
-    if (
-      !user
-      || user.access_revoked_at
-      || (user.auth_access_status && user.auth_access_status !== "active")
-    ) {
+    if (result.kind === "revoked") {
       await logout();
       setLoginMessage("Seu acesso não está mais disponível. Entre novamente ou contate o administrador.");
       return;
     }
-    await enterAuthenticatedView(user, data.session.user.created_at);
+    await enterAuthenticatedView(result.user, result.authUserCreatedAt);
   } finally {
     recordAuthPerformance("session-bootstrap", restoreStartedAt);
   }
@@ -3857,8 +3889,7 @@ async function restoreSessionInternal() {
 
 function restoreSession() {
   if (pendingSessionRestore) return pendingSessionRestore;
-  const timedRestore = withAuthBootstrapTimeout(restoreSessionInternal());
-  const pending = timedRestore.finally(() => {
+  const pending = restoreSessionInternal().finally(() => {
     if (pendingSessionRestore === pending) pendingSessionRestore = null;
   });
   pendingSessionRestore = pending;
@@ -3879,7 +3910,12 @@ async function enterAuthenticatedView(user, authUserCreatedAt = user.authUserCre
   appState.currentOrganizationCnpj = user.organization?.cnpj || "";
   try {
     updateAccessInterface();
-    await reloadData();
+    const initialDataStartedAt = authPerformanceNow();
+    try {
+      await reloadData();
+    } finally {
+      recordAuthPerformance("initial-data", initialDataStartedAt);
+    }
     if (epoch !== sessionEpoch) return;
     updateCurrentUserProfile();
     refs.currentUserRole.textContent = appState.currentUserRole;

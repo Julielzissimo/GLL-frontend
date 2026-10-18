@@ -589,6 +589,30 @@ test("nova guia restaura sessão persistida e abre a rota direta sem login trans
   app.stopLiveUpdates();
 });
 
+test("validação da sessão não aplica seu timeout ao carregamento inicial dos dados protegidos", async () => {
+  const app = client();
+  let finishDataLoad;
+  let protectedReads = 0;
+  const protectedData = new Promise((resolve) => { finishDataLoad = resolve; });
+  app.store.getAll = async () => {
+    protectedReads += 1;
+    return protectedData;
+  };
+
+  const startup = app.restoreSession();
+  await new Promise((resolve) => setImmediate(resolve));
+
+  assert.ok(protectedReads > 0);
+  assert.equal(app.authState.status, app.AUTH_STATUS.AUTHENTICATED);
+  assert.equal(app.element("authBootstrapView").classList.contains("hidden"), false);
+  assert.equal(app.timers.size, 0);
+
+  finishDataLoad([]);
+  await startup;
+  assert.equal(app.element("appView").classList.contains("hidden"), false);
+  app.stopLiveUpdates();
+});
+
 test("status de renovação preserva a autorização anterior e volta ao autenticado", async () => {
   const app = client();
   app.appState.authenticated = true;
@@ -624,6 +648,48 @@ test("callback de logout entre guias só limpa o estado depois de sair do callba
   assert.equal(app.appState.authenticated, false);
   assert.equal(app.authState.status, app.AUTH_STATUS.UNAUTHENTICATED);
   assert.equal(sessionReads, 0);
+});
+
+test("SIGNED_IN durante a restauração aguarda a fonte única de sessão sem reiniciar o bootstrap", async () => {
+  const auth = { session: { user: { ...user, id: "auth-user-1" } } };
+  const app = client(backend(), auth);
+  app.appState.authenticated = true;
+  app.appState.currentUserEmail = user.email;
+  app.appState.currentUserAuthId = "auth-user-1";
+
+  let finishSessionRead;
+  let sessionReads = 0;
+  app.store.client.auth.getSession = () => {
+    sessionReads += 1;
+    return new Promise((resolve) => { finishSessionRead = resolve; });
+  };
+  app.initializeAuthStateListener();
+
+  const queuedAuthEvents = [];
+  const originalSetTimeout = app.context.setTimeout;
+  app.context.setTimeout = (callback, delay) => {
+    if (delay === 0) {
+      queuedAuthEvents.push(callback);
+      return 10_000 + queuedAuthEvents.length;
+    }
+    return originalSetTimeout(callback, delay);
+  };
+
+  const startup = app.restoreSession();
+  app.authCallbacks[0]("SIGNED_IN", auth.session);
+  queuedAuthEvents.shift()();
+
+  assert.equal(app.appState.authenticated, true);
+  assert.equal(app.appState.currentUserEmail, user.email);
+  assert.equal(sessionReads, 1);
+
+  finishSessionRead({ data: { session: auth.session }, error: null });
+  await startup;
+  await new Promise((resolve) => setImmediate(resolve));
+
+  assert.equal(sessionReads, 1);
+  assert.equal(app.appState.authenticated, true);
+  app.stopLiveUpdates();
 });
 
 test("build mantém sessão persistida e projetos isolados entre homologação e produção", () => {
