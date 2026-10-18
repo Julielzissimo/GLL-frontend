@@ -569,18 +569,39 @@ test("nova guia restaura sessão persistida e abre a rota direta sem login trans
   const app = client();
   app.location.search = "?page=itens&licitacao=TEST-1&item=3&origem=atalho";
   app.showAuthBootstrap();
+  let finishInitialData;
+  const originalGetAll = app.store.getAll.bind(app.store);
+  const initialData = new Promise((resolve) => { finishInitialData = resolve; });
+  app.store.getAll = (...args) => initialData.then(() => originalGetAll(...args));
   vm.runInContext(`
     loadBid = (bidId) => { appState.currentBidId = bidId; };
     setPage = (page) => { appState.activePage = page; };
   `, app.context);
 
-  await app.restoreSession();
+  const startup = app.restoreSession();
+  await new Promise((resolve) => setImmediate(resolve));
+
+  assert.equal(app.appState.authenticated, true);
+  assert.equal(app.element("authBootstrapView").classList.contains("hidden"), true);
+  assert.equal(app.element("appView").classList.contains("hidden"), false);
+  assert.equal(app.element("appBootstrapPlaceholder").classList.contains("hidden"), false);
+  assert.equal(app.element("appSidebar").inert, true);
+  assert.equal(app.element("appTopbar").inert, true);
+  assert.equal(app.element("loginView").classList.contains("hidden"), true);
+  assert.equal(app.location.pathname, "/homolog/");
+  assert.equal(app.location.search, "?page=itens&licitacao=TEST-1&item=3&origem=atalho");
+
+  finishInitialData();
+  await startup;
 
   assert.equal(app.appState.authenticated, true);
   assert.equal(app.authState.status, app.AUTH_STATUS.AUTHENTICATED);
   assert.equal(app.appState.activePage, "items");
   assert.equal(app.appState.currentBidId, "TEST-1");
   assert.equal(app.element("authBootstrapView").classList.contains("hidden"), true);
+  assert.equal(app.element("appBootstrapPlaceholder").classList.contains("hidden"), true);
+  assert.equal(app.element("appSidebar").inert, false);
+  assert.equal(app.element("appTopbar").inert, false);
   assert.equal(app.element("loginView").classList.contains("hidden"), true);
   assert.equal(app.element("appView").classList.contains("hidden"), false);
   assert.equal(app.location.pathname, "/homolog/");
@@ -604,12 +625,15 @@ test("validação da sessão não aplica seu timeout ao carregamento inicial dos
 
   assert.ok(protectedReads > 0);
   assert.equal(app.authState.status, app.AUTH_STATUS.AUTHENTICATED);
-  assert.equal(app.element("authBootstrapView").classList.contains("hidden"), false);
+  assert.equal(app.element("authBootstrapView").classList.contains("hidden"), true);
+  assert.equal(app.element("appView").classList.contains("hidden"), false);
+  assert.equal(app.element("appBootstrapPlaceholder").classList.contains("hidden"), false);
   assert.equal(app.timers.size, 0);
 
   finishDataLoad([]);
   await startup;
   assert.equal(app.element("appView").classList.contains("hidden"), false);
+  assert.equal(app.element("appBootstrapPlaceholder").classList.contains("hidden"), true);
   app.stopLiveUpdates();
 });
 
@@ -808,6 +832,7 @@ test("perfil revogado não abre a aplicação nem lê dados protegidos", async (
   assert.equal(app.appState.authenticated, false);
   assert.equal(app.auth.session, null);
   assert.equal(app.element("appView").classList.contains("hidden"), true);
+  assert.equal(app.element("appBootstrapPlaceholder").classList.contains("hidden"), true);
   assert.equal(app.element("loginView").classList.contains("hidden"), false);
   assert.equal(protectedReads, 0);
   assert.match(app.element("loginError").textContent, /acesso não está mais disponível/);

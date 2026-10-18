@@ -2270,6 +2270,25 @@ textarea[aria-invalid="true"]:focus {
   display: none !important;
 }
 
+.app-view.is-bootstrapping .app-main > :not(.topbar):not(#appBootstrapPlaceholder) {
+  display: none !important;
+}
+
+.app-bootstrap-placeholder {
+  min-height: calc(100vh - 72px);
+}
+
+.app-bootstrap-placeholder-grid {
+  align-items: start;
+}
+
+.app-bootstrap-skeleton {
+  width: 100%;
+  min-height: 128px;
+  align-content: start;
+  padding: var(--gll-space-4);
+}
+
 .full-action {
   width: 100%;
 }
