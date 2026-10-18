@@ -1278,6 +1278,14 @@
       "migrations": [
         "supabase/migrations/20261018143551_add_em_fornecimento_bid_status.sql"
       ]
+    },
+    {
+      "id": "ISSUE-105",
+      "backend_commits": [
+        "aa92309509c6e5ba71c16710460f0794f3904876"
+      ],
+      "frontend_commits": [],
+      "migrations": []
     }
   ]
 }
