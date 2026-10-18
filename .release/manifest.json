@@ -1292,14 +1292,16 @@
     {
       "id": "FEAT-001",
       "backend_commits": [
-        "c2ff290adb6c924e41484e9d02309b78603ad060"
+        "c2ff290adb6c924e41484e9d02309b78603ad060",
+        "ad49b48a4cd5aca0d01876a60b77d3b11bcbbe74"
       ],
       "frontend_commits": [
         "77c4a6904eac8fde36b4bbd5ea54571034b5dd79",
         "63119bfd6c0d87de0ed51b8cb16d06a7700539a6"
       ],
       "migrations": [
-        "supabase/migrations/20261018163925_add_bid_item_fulfillment_tracking.sql"
+        "supabase/migrations/20261018163925_add_bid_item_fulfillment_tracking.sql",
+        "supabase/migrations/20261018170909_faturamento_fornecedor_texto_livre.sql"
       ]
     },
     {
