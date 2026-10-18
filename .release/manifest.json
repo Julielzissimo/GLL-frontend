@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "release_id": "2026-10-18-promocao-sync-realtime-sem-release",
+  "release_id": "2026-10-18-transicao-dominio",
   "environment": "production",
   "target_branch": "main",
   "items": [
@@ -772,6 +772,14 @@
       "migrations": [
         "supabase/migrations/20261012020000_broadcast_organization_data_changes.sql"
       ]
+    },
+    {
+      "id": "ISSUE-105",
+      "backend_commits": [
+        "8d26a198068c449a86ef4bf6f2d05306f51a0519"
+      ],
+      "frontend_commits": [],
+      "migrations": []
     }
   ]
 }
