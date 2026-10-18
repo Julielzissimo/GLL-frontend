@@ -504,6 +504,7 @@
             <div class="tabs" role="tablist" aria-label="Detalhes do edital">
               <button id="itemsTabButton" class="tab active" type="button">Orçamento</button>
               <button id="documentsTabButton" class="tab" type="button">Documentações</button>
+              <button id="billingTabButton" class="tab hidden" type="button">Faturamento</button>
               <button id="failuresTabButton" class="tab hidden" type="button">Histórico de Falhas</button>
             </div>
 
@@ -703,6 +704,40 @@
                   <tbody id="documentsTableBody"></tbody>
                 </table>
               </div>
+            </div>
+
+            <div id="billingPanel" class="tab-panel hidden" aria-labelledby="billingTabButton">
+              <div id="billingRoot" class="billing-root">
+                <section class="billing-overview-header" aria-labelledby="billingOverviewTitle">
+                  <div><span class="eyebrow">FORNECIMENTO E FATURAMENTO</span><h2 id="billingOverviewTitle">Acompanhamento por item</h2><p id="billingOverviewDescription">Empenhos, entregas e notas fiscais dos itens do orçamento vinculado.</p></div>
+                  <strong class="billing-item-count"><span id="billingItemCount">0</span> itens no orçamento</strong>
+                </section>
+                <section class="billing-summary-grid" aria-label="Resumo do fornecimento e faturamento">
+                  <article class="billing-summary-card billing-summary-pending"><span>Itens pendentes</span><strong id="billingPendingCount">0</strong></article>
+                  <article class="billing-summary-card billing-summary-partial"><span>Parcialmente fornecidos</span><strong id="billingPartialCount">0</strong></article>
+                  <article class="billing-summary-card billing-summary-supplied"><span>Totalmente fornecidos</span><strong id="billingSuppliedCount">0</strong></article>
+                  <article class="billing-summary-card billing-summary-invoiced"><span>Totalmente faturados</span><strong id="billingInvoicedCount">0</strong></article>
+                </section>
+                <section class="billing-workspace" aria-label="Itens para acompanhamento">
+                  <div class="billing-toolbar">
+                    <label class="billing-search-field" for="billingSearch"><span>Pesquisar</span><input id="billingSearch" type="search" placeholder="Item, descrição ou fornecedor" autocomplete="off" /></label>
+                    <label class="billing-filter-field" for="billingSupplyFilter"><span>Fornecimento</span><select id="billingSupplyFilter"><option>Todos</option><option>Pendentes</option><option>Parciais</option><option>Concluídos</option></select></label>
+                    <label class="billing-filter-field" for="billingInvoiceFilter"><span>Faturamento</span><select id="billingInvoiceFilter"><option>Todos</option><option>Não faturado</option><option>Parcialmente faturado</option><option>Totalmente faturado</option></select></label>
+                  </div>
+                  <div class="table-wrap billing-table-wrap">
+                    <table class="billing-table">
+                      <thead><tr><th>Item do orçamento</th><th>Qtd.</th><th>Empenhos</th><th>Fornecedor / compra</th><th>Fornecimento</th><th>Faturamento</th><th>Ações</th></tr></thead>
+                      <tbody id="billingTableBody"><tr><td colspan="7"><div class="empty-state compact-empty">Carregando itens do orçamento…</div></td></tr></tbody>
+                    </table>
+                  </div>
+                </section>
+              </div>
+              <dialog id="billingDrawer" class="billing-drawer" aria-labelledby="billingDrawerTitle" aria-describedby="billingDrawerDescription">
+                <div class="billing-drawer-shell">
+                  <header class="billing-drawer-header"><div><span class="eyebrow">FATURAMENTO</span><h2 id="billingDrawerTitle">Detalhes do item</h2><p id="billingDrawerDescription">Gerencie empenhos, fornecimento, compra e faturamento.</p></div><button class="quiet-action" type="button" data-close-billing-drawer>Fechar</button></header>
+                  <div id="billingDrawerContent" class="billing-drawer-content"></div>
+                </div>
+              </dialog>
             </div>
 
             <div id="failuresPanel" class="tab-panel hidden">
@@ -1774,6 +1809,7 @@
     <script type="module" src="./declarations.js"></script>
     <script type="module" src="./company-data.js"></script>
     <script type="module" src="./commercial-proposals.js"></script>
+    <script type="module" src="./billing.js"></script>
     <script type="module" src="./radar-catalogs.js"></script>
     <script type="module" src="./radar-import.js"></script>
     <script type="module" src="./radar-details.js"></script>
