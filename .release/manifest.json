@@ -1305,8 +1305,8 @@
       "id": "ISSUE-110",
       "backend_commits": [],
       "frontend_commits": [
-        "f84d46733fe11e49a1b4224ce20fc2c244c0783f",
-        "d3bbf495127a1c2fc1ca490b4893a2e095e58994"
+        "d6d0db10b5c2a1cfa6698920aba82b6c6cc15cfa",
+        "86b48ce0a7a442b82cdec55cea4bbedda9753bbd"
       ],
       "migrations": []
     }
