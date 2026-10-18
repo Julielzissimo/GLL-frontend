@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "release_id": "2026-10-18-promocao-seletiva-itens-sem-release",
+  "release_id": "2026-10-18-promocao-sync-realtime-sem-release",
   "environment": "production",
   "target_branch": "main",
   "items": [
@@ -758,6 +758,19 @@
       ],
       "migrations": [
         "supabase/migrations/20261012170244_add_ready_for_dispute_bid_status.sql"
+      ]
+    },
+    {
+      "id": "SYNC-REALTIME-001",
+      "backend_commits": [
+        "6982782ef7ef75073e756f24c74f72142cd89ff6"
+      ],
+      "frontend_commits": [
+        "cdb476e1825038f42654add3225b30f78f63378f",
+        "b7f7aacbe58af2b253e8e5de650b2e967da3976f"
+      ],
+      "migrations": [
+        "supabase/migrations/20261012020000_broadcast_organization_data_changes.sql"
       ]
     }
   ]
