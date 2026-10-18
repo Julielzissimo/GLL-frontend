@@ -91,6 +91,12 @@ const createRadarDetailsFeature = window.GLLRadarDetails?.createRadarDetailsFeat
   isFavorite: () => false,
   reset: () => undefined,
 }));
+const createBillingFeature = window.GLLBilling?.createBillingFeature || (() => ({
+  showPage: async () => undefined,
+  refresh: async () => undefined,
+  hide: () => undefined,
+  reset: () => undefined,
+}));
 
 const PAGE_ROUTE_NAMES = {
   home: "visao-geral",
@@ -99,6 +105,7 @@ const PAGE_ROUTE_NAMES = {
   edit: "nova-licitacao",
   items: "itens",
   documents: "documentos",
+  billing: "faturamento",
   failures: "falhas",
   quotations: "orcamentos",
   commercialProposals: "propostas-comerciais",
@@ -413,6 +420,7 @@ const refs = {
   metricTotalProfitMargin: $("metricTotalProfitMargin"),
   itemsTabButton: $("itemsTabButton"),
   documentsTabButton: $("documentsTabButton"),
+  billingTabButton: $("billingTabButton"),
   failuresTabButton: $("failuresTabButton"),
   itemsPanel: $("itemsPanel"),
   bidQuotationEmptyState: $("bidQuotationEmptyState"),
@@ -424,6 +432,7 @@ const refs = {
   changeBidQuotationButton: $("changeBidQuotationButton"),
   bidQuotationEditorHost: $("bidQuotationEditorHost"),
   documentsPanel: $("documentsPanel"),
+  billingPanel: $("billingPanel"),
   failuresPanel: $("failuresPanel"),
   itemForm: $("itemForm"),
   itemNumber: $("itemNumber"),
@@ -736,7 +745,7 @@ class IndexedDbStore {
     this.requiresAuthenticationBeforeData = false;
     const storageSuffix = sanitizeStorageSuffix(GLL_CONFIG.storageSuffix || GLL_CONFIG.environment);
     this.dbName = `gll-web-data-v4-${storageSuffix}`;
-    this.version = 6;
+    this.version = 7;
     this.authDbName = `gll-web-auth-v2-${storageSuffix}`;
     this.authVersion = 1;
     this.db = null;
@@ -781,6 +790,10 @@ class IndexedDbStore {
         if (!db.objectStoreNames.contains("quotation_items")) {
           const store = db.createObjectStore("quotation_items", { keyPath: "id", autoIncrement: true });
           store.createIndex("quotation_id", "quotation_id", { unique: false });
+        }
+        if (!db.objectStoreNames.contains("bid_item_fulfillments")) db.createObjectStore("bid_item_fulfillments", { keyPath: "id", autoIncrement: true });
+        for (const tableName of ["bid_item_commitments", "bid_item_deliveries", "bid_item_invoices"]) {
+          if (!db.objectStoreNames.contains(tableName)) db.createObjectStore(tableName, { keyPath: "id", autoIncrement: true });
         }
         if (!db.objectStoreNames.contains("meta")) db.createObjectStore("meta", { keyPath: "key" });
       };
@@ -893,9 +906,9 @@ class IndexedDbStore {
 
   async clearAll() {
     await this.tx(
-      ["bids", "items", "documents", "failure_history", "bid_status_history", "quotations", "quotation_items", "suppliers", "supplier_products", "meta"],
+      ["bids", "items", "documents", "failure_history", "bid_status_history", "quotations", "quotation_items", "suppliers", "supplier_products", "bid_item_fulfillments", "bid_item_commitments", "bid_item_deliveries", "bid_item_invoices", "meta"],
       "readwrite",
-      ([bids, items, documents, failures, statusHistory, quotations, quotationItems, suppliers, supplierProducts, meta]) => {
+      ([bids, items, documents, failures, statusHistory, quotations, quotationItems, suppliers, supplierProducts, fulfillments, commitments, deliveries, invoices, meta]) => {
       bids.clear();
       items.clear();
       documents.clear();
@@ -905,6 +918,10 @@ class IndexedDbStore {
       quotationItems.clear();
       suppliers.clear();
       supplierProducts.clear();
+      fulfillments.clear();
+      commitments.clear();
+      deliveries.clear();
+      invoices.clear();
       meta.clear();
     });
   }
@@ -1170,6 +1187,90 @@ class IndexedDbStore {
     await this.tx("items", "readwrite", (items) => items.delete(Number(itemId)));
   }
 
+  async getBillingData(bidId) {
+    const [fulfillment, commitment, delivery, invoice] = await Promise.all([
+      this.getMatching("bid_item_fulfillments", "bid_id", bidId),
+      this.getMatching("bid_item_commitments", "bid_id", bidId),
+      this.getMatching("bid_item_deliveries", "bid_id", bidId),
+      this.getMatching("bid_item_invoices", "bid_id", bidId),
+    ]);
+    return { fulfillment, commitment, delivery, invoice };
+  }
+
+  async saveBillingFulfillment(bidId, quotationItemId, values = {}) {
+    const bid = (await this.getAll("bids")).map(normalizeBidRecord).find((row) => row.id === bidId);
+    const item = (await this.getAll("quotation_items")).map(normalizeQuotationItemRecord).find((row) => Number(row.id) === Number(quotationItemId));
+    if (!bid || !["Em Fornecimento", "Faturado"].includes(bid.status)) throw new Error("A aba Faturamento está disponível somente em licitações Em Fornecimento ou Faturado.");
+    if (!item || Number(item.quotation_id) !== Number(bid.quotation_id)) throw new Error("O item não pertence ao orçamento vinculado a esta licitação.");
+    const existing = (await this.getAll("bid_item_fulfillments")).find((row) => row.bid_id === bidId && Number(row.quotation_item_id) === Number(quotationItemId));
+    const record = {
+      ...existing,
+      ...values,
+      bid_id: bidId,
+      quotation_item_id: Number(quotationItemId),
+      supplier_id: Object.hasOwn(values, "supplier_id") ? values.supplier_id ? Number(values.supplier_id) : null : existing?.supplier_id || null,
+      supplier_name: Object.hasOwn(values, "supplier_name") ? String(values.supplier_name || "").trim() : existing?.supplier_name || "",
+      purchase_link: Object.hasOwn(values, "purchase_link") ? String(values.purchase_link || "").trim() : existing?.purchase_link || "",
+      purchase_order_number: Object.hasOwn(values, "purchase_order_number") ? String(values.purchase_order_number || "").trim() : existing?.purchase_order_number || "",
+      purchase_date: Object.hasOwn(values, "purchase_date") ? values.purchase_date || null : existing?.purchase_date || null,
+      created_at: existing?.created_at || timestampNow(),
+      updated_at: timestampNow(),
+    };
+    let savedId = existing?.id;
+    await this.tx("bid_item_fulfillments", "readwrite", (fulfillments) => {
+      if (savedId) record.id = Number(savedId);
+      else delete record.id;
+      const request = fulfillments.put(record);
+      request.onsuccess = () => { savedId = request.result; };
+    });
+    return Number(savedId);
+  }
+
+  async saveBillingRecord(kind, bidId, quotationItemId, values, entryId = null) {
+    const tables = { commitment: "bid_item_commitments", delivery: "bid_item_deliveries", invoice: "bid_item_invoices" };
+    const tableName = tables[kind];
+    if (!tableName) throw new Error("Tipo de registro de faturamento inválido.");
+    const currentFulfillment = (await this.getAll("bid_item_fulfillments"))
+      .find((row) => row.bid_id === bidId && Number(row.quotation_item_id) === Number(quotationItemId));
+    const item = (await this.getAll("quotation_items")).map(normalizeQuotationItemRecord).find((row) => Number(row.id) === Number(quotationItemId));
+    if (!item) throw new Error("O item não pertence ao orçamento vinculado a esta licitação.");
+    const existingRows = currentFulfillment
+      ? await this.getMatching(tableName, "fulfillment_id", currentFulfillment.id)
+      : [];
+    if (entryId && !existingRows.some((row) => Number(row.id) === Number(entryId))) throw new Error("O registro não pertence ao item selecionado.");
+    const used = existingRows.filter((row) => Number(row.id) !== Number(entryId)).reduce((sum, row) => sum + Number(row.quantity || 0), 0);
+    const quantity = Number(values.quantity || 0);
+    if (!(quantity > 0) || used + quantity > Number(item?.quantity || 0) + 0.000001) throw new Error("A quantidade acumulada não pode ultrapassar a quantidade prevista no orçamento.");
+    const fulfillmentId = await this.saveBillingFulfillment(bidId, quotationItemId);
+    const existing = entryId ? existingRows.find((row) => Number(row.id) === Number(entryId)) : null;
+    const record = { ...existing, ...values, bid_id: bidId, fulfillment_id: fulfillmentId, quantity, updated_at: timestampNow() };
+    if (!record.created_at) record.created_at = timestampNow();
+    let savedId = existing?.id;
+    await this.tx(tableName, "readwrite", (entries) => {
+      if (savedId) record.id = Number(savedId);
+      else delete record.id;
+      const request = entries.put(record);
+      request.onsuccess = () => { savedId = request.result; };
+    });
+    return Number(savedId);
+  }
+
+  async deleteBillingRecord(kind, entryId, bidId, quotationItemId) {
+    const tables = { commitment: "bid_item_commitments", delivery: "bid_item_deliveries", invoice: "bid_item_invoices" };
+    const tableName = tables[kind];
+    if (!tableName) throw new Error("Tipo de registro de faturamento inválido.");
+    const entry = (await this.getAll(tableName)).find((row) => Number(row.id) === Number(entryId));
+    const fulfillment = entry
+      ? (await this.getAll("bid_item_fulfillments")).find((row) => Number(row.id) === Number(entry.fulfillment_id))
+      : null;
+    const bid = (await this.getAll("bids")).map(normalizeBidRecord).find((row) => row.id === bidId);
+    if (!entry || !fulfillment || entry.bid_id !== bidId || Number(fulfillment.quotation_item_id) !== Number(quotationItemId)) {
+      throw new Error("O registro não pertence ao item selecionado.");
+    }
+    if (!bid || !["Em Fornecimento", "Faturado"].includes(bid.status)) throw new Error("A aba Faturamento está disponível somente em licitações Em Fornecimento ou Faturado.");
+    await this.tx(tableName, "readwrite", (entries) => entries.delete(Number(entryId)));
+  }
+
   async saveDocument(bidId, documentData, documentId) {
     const record = normalizeDocumentRecord({ ...documentData, id: documentId || undefined, bid_id: bidId });
     await this.tx("documents", "readwrite", (documents) => {
@@ -1430,6 +1531,73 @@ class SupabaseStore {
       .eq("bid_id", bidId).order("created_at", { ascending: false }).order("id", { ascending: false }).limit(30);
     assertSupabase(error);
     return data || [];
+  }
+
+  async getBillingData(bidId) {
+    const client = await this.open();
+    const tables = ["bid_item_fulfillments", "bid_item_commitments", "bid_item_deliveries", "bid_item_invoices"];
+    const results = await Promise.all(tables.map((tableName) => client.from(tableName).select("*").eq("bid_id", bidId)));
+    results.forEach((result) => assertSupabase(result.error));
+    return {
+      fulfillment: results[0].data || [],
+      commitment: results[1].data || [],
+      delivery: results[2].data || [],
+      invoice: results[3].data || [],
+    };
+  }
+
+  async saveBillingFulfillment(bidId, quotationItemId, values = {}) {
+    const client = await this.open();
+    const { data: existing, error: existingError } = await client.from("bid_item_fulfillments").select("*")
+      .eq("bid_id", bidId).eq("quotation_item_id", Number(quotationItemId)).maybeSingle();
+    assertSupabase(existingError);
+    const record = {
+      ...existing,
+      ...values,
+      bid_id: bidId,
+      quotation_item_id: Number(quotationItemId),
+      supplier_id: Object.hasOwn(values, "supplier_id") ? values.supplier_id ? Number(values.supplier_id) : null : existing?.supplier_id || null,
+      supplier_name: Object.hasOwn(values, "supplier_name") ? String(values.supplier_name || "").trim() : existing?.supplier_name || "",
+      purchase_link: Object.hasOwn(values, "purchase_link") ? String(values.purchase_link || "").trim() : existing?.purchase_link || "",
+      purchase_order_number: Object.hasOwn(values, "purchase_order_number") ? String(values.purchase_order_number || "").trim() : existing?.purchase_order_number || "",
+      purchase_date: Object.hasOwn(values, "purchase_date") ? values.purchase_date || null : existing?.purchase_date || null,
+      updated_at: new Date().toISOString(),
+    };
+    const { data, error } = await client.from("bid_item_fulfillments")
+      .upsert(record, { onConflict: "bid_id,quotation_item_id" }).select("id").single();
+    assertSupabase(error);
+    if (!data?.id) throw new Error("Não foi possível confirmar os dados do item.");
+    return Number(data.id);
+  }
+
+  async saveBillingRecord(kind, bidId, quotationItemId, values, entryId = null) {
+    const tables = { commitment: "bid_item_commitments", delivery: "bid_item_deliveries", invoice: "bid_item_invoices" };
+    const tableName = tables[kind];
+    if (!tableName) throw new Error("Tipo de registro de faturamento inválido.");
+    const fulfillmentId = await this.saveBillingFulfillment(bidId, quotationItemId);
+    const client = await this.open();
+    const record = { ...values, bid_id: bidId, fulfillment_id: fulfillmentId, updated_at: new Date().toISOString() };
+    const result = entryId
+      ? await client.from(tableName).update(record).eq("id", Number(entryId)).eq("bid_id", bidId).eq("fulfillment_id", fulfillmentId).select("id").maybeSingle()
+      : await client.from(tableName).insert(record).select("id").single();
+    assertSupabase(result.error);
+    if (!result.data?.id) throw new Error("O registro não foi salvo. Atualize a tela e tente novamente.");
+    return Number(result.data.id);
+  }
+
+  async deleteBillingRecord(kind, entryId, bidId, quotationItemId) {
+    const tables = { commitment: "bid_item_commitments", delivery: "bid_item_deliveries", invoice: "bid_item_invoices" };
+    const tableName = tables[kind];
+    if (!tableName) throw new Error("Tipo de registro de faturamento inválido.");
+    const client = await this.open();
+    const { data: fulfillment, error: fulfillmentError } = await client.from("bid_item_fulfillments").select("id")
+      .eq("bid_id", bidId).eq("quotation_item_id", Number(quotationItemId)).maybeSingle();
+    assertSupabase(fulfillmentError);
+    if (!fulfillment?.id) throw new Error("O registro não pertence ao item selecionado.");
+    const { data, error } = await client.from(tableName).delete().eq("id", Number(entryId)).eq("bid_id", bidId)
+      .eq("fulfillment_id", Number(fulfillment.id)).select("id");
+    assertSupabase(error);
+    if (!data?.length) throw new Error("O registro não foi encontrado. Atualize a tela e tente novamente.");
   }
 
   async getDismissedNotificationIds(userId) {
@@ -2063,6 +2231,22 @@ class SupabaseStore {
 }
 
 const store = createStore();
+const billingFeature = createBillingFeature({
+  getBid: currentBid,
+  getQuotation: () => appState.quotations.find((row) => Number(row.id) === Number(currentBid()?.quotation_id)) || null,
+  getBudgetItems: () => {
+    const bid = currentBid();
+    if (!bid?.quotation_id) return [];
+    return appState.quotationItems.filter((item) => Number(item.quotation_id) === Number(bid.quotation_id));
+  },
+  getSuppliers: () => appState.suppliers,
+  store,
+  toast: (message, tone) => showToast(message, tone),
+  runBusy: (operation, message) => withBlockingLoading(operation, message)(),
+  onSaved: () => {
+    if (liveChannel) void liveChannel.send({ type: "broadcast", event: "data-changed", payload: {} }).catch(() => {});
+  },
+});
 const organizationChat = (window.GLLOrganizationChat?.createOrganizationChat || (() => ({
   bind() {}, close() {}, handleIncomingMessage() {}, refreshUnreadCount() {}, startUnreadTracking() {}, stopUnreadTracking() {},
 })))({
@@ -2881,6 +3065,7 @@ function bindEvents() {
   refs.userRoleFilter.addEventListener("change", renderUsers);
   refs.itemsTabButton.addEventListener("click", () => setPage("items"));
   refs.documentsTabButton.addEventListener("click", () => setPage("documents"));
+  refs.billingTabButton.addEventListener("click", () => setPage("billing"));
   refs.failuresTabButton.addEventListener("click", () => setPage("failures"));
   for (const input of [refs.estimatedValue, refs.supplierCost, refs.maxValue, refs.minimumBid]) {
     input.addEventListener("blur", () => {
@@ -3763,6 +3948,7 @@ function resetAuthenticatedView({ preserveSessionPolicy = false, status = AUTH_S
   declarationsFeature.reset();
   commercialProposalsFeature.reset();
   companyDataFeature.reset();
+  billingFeature.reset();
   radarSearchFeature.reset();
   refs.appView.classList.remove("mobile-nav-open");
   updateMainNavigationState();
@@ -3987,6 +4173,7 @@ function breadcrumbItems(page) {
   const pageLabels = {
     items: "Itens",
     documents: "Documentos",
+    billing: "Faturamento",
     failures: "Falhas",
     declarationLibrary: "Biblioteca",
     declarationSettings: "Configurações",
@@ -3995,7 +4182,7 @@ function breadcrumbItems(page) {
     designSystem: "Design System",
   };
 
-  if (["items", "documents", "failures"].includes(page)) {
+  if (["items", "documents", "billing", "failures"].includes(page)) {
     if (compact) return [{ label: "Licitações", page: "bids" }, { label: pageLabels[page] }];
     const number = bidDisplayNumber(currentBid());
     return [
@@ -4171,9 +4358,10 @@ const DATA_KEYS = ["bids", "items", "documents", "failureHistory", "statusHistor
 const LIVE_RESOURCE_TABLES = new Set([
   "bids", "items", "documents", "failure_history", "bid_status_history", "bid_activity",
   "quotations", "quotation_items", "app_users", "app_user_invitations", "suppliers",
-  "supplier_products", "user_notification_states",
+  "supplier_products", "user_notification_states", "bid_item_fulfillments", "bid_item_commitments",
+  "bid_item_deliveries", "bid_item_invoices",
 ]);
-const BID_DETAIL_PAGES = new Set(["items", "documents", "failures", "edit"]);
+const BID_DETAIL_PAGES = new Set(["items", "documents", "billing", "failures", "edit"]);
 const BID_LIST_PAGES = new Set(["home", "bids"]);
 let sessionEpoch = 0;
 let dataRequest = 0;
@@ -4222,6 +4410,10 @@ function visibleRealtimeResources() {
   if (BID_DETAIL_PAGES.has(appState.activePage)) {
     ["bids", "items", "documents", "failure_history", "bid_status_history", "bid_activity", "quotations", "quotation_items"]
       .forEach((resource) => resources.add(resource));
+    if (appState.activePage === "billing") {
+      ["bid_item_fulfillments", "bid_item_commitments", "bid_item_deliveries", "bid_item_invoices", "suppliers"]
+        .forEach((resource) => resources.add(resource));
+    }
   } else if (BID_LIST_PAGES.has(appState.activePage)) {
     ["bids", "items", "documents", "quotations", "quotation_items"]
       .forEach((resource) => resources.add(resource));
@@ -4384,13 +4576,18 @@ async function fetchLiveResource(resource) {
       return [result("userInvitations", invitations), result("users", visibleUsers)];
     }
     case "suppliers":
-      if (page === "suppliers") return result("suppliers", normalizeLiveRows(resource, await liveRows("suppliers")));
+      if (page === "suppliers" || page === "billing") return result("suppliers", normalizeLiveRows(resource, await liveRows("suppliers")));
       return null;
     case "supplier_products":
       if (page === "suppliers") return result("supplierProducts", normalizeLiveRows(resource, await liveRows("supplier_products")));
       return null;
     case "user_notification_states":
       return { notificationIds: normalizeNotificationDismissalIds(await store.getDismissedNotificationIds(appState.currentUserAuthId)) };
+    case "bid_item_fulfillments":
+    case "bid_item_commitments":
+    case "bid_item_deliveries":
+    case "bid_item_invoices":
+      return page === "billing" && appState.currentBidId ? { billingRefresh: true } : null;
     default:
       return null;
   }
@@ -4403,7 +4600,10 @@ function renderLiveUpdates(resources) {
     renderDetails();
     renderQuotations();
   }
-  if (keys.has("suppliers") || keys.has("supplierProducts")) renderSuppliers();
+  if ((keys.has("suppliers") || keys.has("supplierProducts")) && appState.activePage === "suppliers") renderSuppliers();
+  if (appState.activePage === "billing" && ["bids", "items", "quotations", "quotationItems", "suppliers"].some((key) => keys.has(key))) {
+    void billingFeature.refresh().catch((error) => showToast(error.message, "error"));
+  }
   if (keys.has("users") || keys.has("userInvitations")) {
     updateCurrentUserProfile();
     if (appState.activePage === "userProfile") updateUserProfileAccessActions();
@@ -4438,6 +4638,7 @@ async function refreshInBackground({ resources = null, reconcile = false } = {})
 
     const previousSelection = selectedDataSignature(appState);
     const changedKeys = new Set();
+    let billingRefreshRequested = false;
     for (const update of updates) {
       if (update.profile) {
         const profile = update.profile;
@@ -4455,6 +4656,8 @@ async function refreshInBackground({ resources = null, reconcile = false } = {})
         if (dataSignature(appState.dismissedNotificationIds.map((id) => ({ id })))
           !== dataSignature(update.notificationIds.map((id) => ({ id })))) changedKeys.add("dismissedNotificationIds");
         appState.dismissedNotificationIds = update.notificationIds;
+      } else if (update.billingRefresh) {
+        billingRefreshRequested = true;
       } else {
         const previousRows = appState[update.key] || [];
         const nextRows = mergeLiveRows(previousRows, update.rows, update.scopeField, update.scopeValue);
@@ -4475,6 +4678,9 @@ async function refreshInBackground({ resources = null, reconcile = false } = {})
         const authorizedPage = resolveAuthorizedPage(appState.activePage);
         if (authorizedPage !== appState.activePage) setPage(authorizedPage, { history: "none" });
       }
+    }
+    if (billingRefreshRequested && epoch === sessionEpoch && appState.authenticated && appState.activePage === "billing") {
+      await billingFeature.refresh();
     }
   } catch (error) {
     // A temporary connectivity failure keeps the current data and form drafts in place.
@@ -4647,6 +4853,9 @@ async function reloadData({ background = false } = {}) {
   renderQuotations();
   renderSuppliers();
   renderUsers();
+  if (appState.activePage === "billing") {
+    void billingFeature.refresh().catch((error) => showToast(error.message, "error"));
+  }
   if (!background && changed && liveChannel) {
     void liveChannel.send({ type: "broadcast", event: "data-changed", payload: {} }).catch(() => {});
   }
@@ -4668,7 +4877,7 @@ function writeNavigationRoute(page, mode = "push") {
   if (mode === "none" || !appState.authenticated) return;
   const params = new URLSearchParams(window.location.search);
   params.set("page", PAGE_ROUTE_NAMES[page] || PAGE_ROUTE_NAMES.home);
-  if (["items", "documents", "failures"].includes(page) && appState.currentBidId) {
+  if (["items", "documents", "billing", "failures"].includes(page) && appState.currentBidId) {
     params.set("licitacao", appState.currentBidId);
   } else {
     params.delete("licitacao");
@@ -4700,11 +4909,15 @@ function writeNavigationRoute(page, mode = "push") {
 
 function applyNavigationRoute(options = {}) {
   const route = readNavigationRoute();
+  let routePage = route.page;
   let routeIsValid = true;
-  if (["items", "documents", "failures"].includes(route.page)) {
+  if (["items", "documents", "billing", "failures"].includes(route.page)) {
     const bid = appState.bids.find((row) => row.id === route.bidId);
-    if (bid) loadBid(bid.id, { history: "none" });
-    else routeIsValid = false;
+    if (!bid) routeIsValid = false;
+    else {
+      loadBid(bid.id, { history: "none" });
+      if (route.page === "billing" && !shouldShowBilling(bid)) routePage = "items";
+    }
   } else if (route.page === "quotations" && route.quotationId) {
     const quotation = appState.quotations.find((row) => Number(row.id) === Number(route.quotationId));
     if (quotation) loadQuotation(quotation.id, { history: "none", scroll: false });
@@ -4721,18 +4934,21 @@ function applyNavigationRoute(options = {}) {
       else routeIsValid = false;
     } else routeIsValid = false;
   }
-  setPage(routeIsValid ? route.page : "home", { history: "none" });
-  if (options.replaceInvalid || !routeIsValid) writeNavigationRoute(appState.activePage, "replace");
+  setPage(routeIsValid ? routePage : "home", { history: "none" });
+  if (options.replaceInvalid || !routeIsValid || routePage !== route.page) writeNavigationRoute(appState.activePage, "replace");
 }
 
 function setPage(page, options = {}) {
-  const detailPages = ["items", "documents", "failures"];
+  const detailPages = ["items", "documents", "billing", "failures"];
   const declarationPages = ["declarations", "declarationLibrary", "declarationSettings", "declarationHistory"];
   page = resolveAuthorizedPage(page);
   if (detailPages.includes(page) && !appState.currentBidId) {
     page = "home";
   }
   if (page === "failures" && !shouldShowFailureHistory()) {
+    page = appState.currentBidId ? "items" : "home";
+  }
+  if (page === "billing" && !shouldShowBilling()) {
     page = appState.currentBidId ? "items" : "home";
   }
   if (appState.activePage === "commercialProposals" && page !== "commercialProposals" && !options.skipCommercialProposalDiscardCheck) {
@@ -4784,10 +5000,13 @@ function setPage(page, options = {}) {
   refs.detailsArea.classList.toggle("hidden", !showDetail);
   refs.itemsPanel.classList.toggle("hidden", page !== "items");
   refs.documentsPanel.classList.toggle("hidden", page !== "documents");
+  refs.billingPanel.classList.toggle("hidden", page !== "billing");
   refs.failuresPanel.classList.toggle("hidden", page !== "failures");
   refs.appView.classList.toggle("users-active", showUsers || showUserProfile || showSettings || showCompanyData || showDesignSystem || showQuotations || showSuppliers || showDeclarations || showCommercialProposals || showRadarSearch);
   refs.itemsTabButton.classList.toggle("active", page === "items");
   refs.documentsTabButton.classList.toggle("active", page === "documents");
+  refs.billingTabButton.classList.toggle("active", page === "billing");
+  refs.billingTabButton.classList.toggle("hidden", !shouldShowBilling());
   refs.failuresTabButton.classList.toggle("active", page === "failures");
   refs.failuresTabButton.classList.toggle("hidden", !shouldShowFailureHistory());
   const primaryPage = showRadarSearch ? "radarSearch" : showCommercialProposals ? "commercialProposals" : showDeclarations ? "declarations" : showSuppliers ? "suppliers" : showUsers || (showUserProfile && isCurrentUserAdmin()) ? "users" : showSettings || showCompanyData || showDesignSystem ? "settings" : showQuotations ? "quotations" : showHome || showUserProfile ? "home" : "bids";
@@ -4804,6 +5023,8 @@ function setPage(page, options = {}) {
   if (showUsers) renderUsers();
   if (showQuotations) renderQuotations();
   if (page === "items") renderBidQuotationWorkspace();
+  if (page !== "billing") billingFeature.hide();
+  if (page === "billing") void billingFeature.showPage().catch((error) => showToast(error.message, "error"));
   if (showSuppliers) renderSuppliers();
   if (showDeclarations) void declarationsFeature.showPage(page).catch((error) => showToast(error.message, "error"));
   if (showCommercialProposals) void commercialProposalsFeature.showPage().catch((error) => showToast(error.message, "error"));
@@ -4855,6 +5076,10 @@ function updateBidStatusControls() {
 
 function shouldShowFailureHistory() {
   return Boolean(appState.currentBidId) && refs.bidStatus.value === "Desclassificado";
+}
+
+function shouldShowBilling(bid = currentBid()) {
+  return Boolean(bid) && ["Em Fornecimento", "Faturado"].includes(bid.status);
 }
 
 function shouldUseWonItems() {
@@ -5574,6 +5799,8 @@ function renderDetails() {
   renderFailures(failures);
   renderBidStatusHistory();
   updateBidStatusControls();
+  refs.billingTabButton.classList.toggle("hidden", !shouldShowBilling());
+  if (appState.activePage === "billing" && !shouldShowBilling()) setPage("items", { history: "replace" });
   const hasBid = Boolean(appState.currentBidId);
   const readOnly = isCurrentBidReadOnly();
   refs.bidForm.querySelectorAll("input, select, textarea, button").forEach((el) => {
