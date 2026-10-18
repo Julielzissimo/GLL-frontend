@@ -3599,7 +3599,7 @@ if (typeof ResizeObserver === "function") {
   workspaceNameResizeObserver.observe(refs.workspaceName);
 }
 
-const DATA_KEYS = ["bids", "items", "documents", "failureHistory", "statusHistory", "bidActivity", "quotations", "quotationItems", "users", "userInvitations", "suppliers", "supplierProducts"];
+const DATA_KEYS = ["bids", "items", "documents", "failureHistory", "statusHistory", "bidActivity", "quotations", "quotationItems", "users", "suppliers", "supplierProducts"];
 const LIVE_RESOURCE_TABLES = new Set([
   "bids", "items", "documents", "failure_history", "bid_status_history", "bid_activity",
   "quotations", "quotation_items", "app_users", "app_user_invitations", "suppliers",
@@ -3807,7 +3807,7 @@ async function fetchLiveResource(resource) {
       return updates;
     }
     case "app_user_invitations": {
-      if (page !== "users" || !isCurrentUserAdmin() || !(store instanceof SupabaseStore)) return null;
+      if (page !== "users" || !isCurrentUserAdmin() || !(store instanceof SupabaseStore) || typeof store.getUserInvitations !== "function") return null;
       const [invitations, users] = await Promise.all([store.getUserInvitations(), store.getUsers()]);
       const unfinishedEmails = new Set(invitations.filter((invitation) => invitation.status !== "completed").map((invitation) => normalizeEmail(invitation.email)));
       const usersWithAvatars = await store.addSignedAvatarUrls(users);
@@ -3894,7 +3894,7 @@ async function refreshInBackground({ resources = null, reconcile = false } = {})
         appState[update.key] = nextRows;
       }
     }
-    const unfinishedInvitationEmails = new Set(appState.userInvitations
+    const unfinishedInvitationEmails = new Set((Array.isArray(appState.userInvitations) ? appState.userInvitations : [])
       .filter((invitation) => invitation.status !== "completed")
       .map((invitation) => normalizeEmail(invitation.email)));
     appState.users = appState.users.filter((user) => !unfinishedInvitationEmails.has(normalizeEmail(user.email)));

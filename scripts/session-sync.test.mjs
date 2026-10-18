@@ -588,21 +588,23 @@ test("technical specifications are normalized and incomplete values are preserve
 });
 
 test("remote edits and deletes preserve drafts and show a persistent warning", async () => {
-  const app = client(); await app.restoreSession();
+  const app = client(); await app.restoreSession(); await app.startLiveUpdates(); await app.flush();
   app.appState.currentBidId = "TEST-1";
   app.appState.currentQuotationId = 1;
   app.element("buyerAgency").value = "Meu rascunho";
   app.element("quotationEdital").value = "Outro rascunho";
   app.db.tables.bids = [];
   app.db.tables.quotations[0].edital = "Remoto";
-  await app.refreshInBackground();
+  app.scheduleLiveRefresh({ resource: "bids" });
+  app.scheduleLiveRefresh({ resource: "quotations" });
+  await app.flush();
   assert.equal(app.element("buyerAgency").value, "Meu rascunho");
   assert.equal(app.element("quotationEdital").value, "Outro rascunho");
   assert.match(app.element("syncNotice").textContent, /alterado ou excluído/);
 });
 
 test("Realtime fetches only the changed edital resource with its bid filter", async () => {
-  const app = client(); await app.restoreSession(); await app.flush();
+  const app = client(); await app.restoreSession(); await app.startLiveUpdates(); await app.flush(); app.stopLiveUpdates();
   app.appState.activePage = "items";
   app.appState.currentBidId = "TEST-1";
   app.db.tables.items.push({ id: 7, bid_id: "TEST-1", item_number: 1, name: "Item novo" });
