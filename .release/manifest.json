@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "release_id": "2026-10-10-promocao-individual-indicadores-licitacao",
+  "release_id": "2026-10-18-promocao-seletiva-itens-sem-release",
   "environment": "production",
   "target_branch": "main",
   "items": [
@@ -725,6 +725,40 @@
         "d0a379e59d11fb5480fb61089a928c4162fea7e8"
       ],
       "migrations": []
+    },
+    {
+      "id": "RAZAO-SOCIAL-NAVBAR-001",
+      "backend_commits": [],
+      "frontend_commits": [
+        "aae9fbcfa0523f9470a6f5d2cfb6a194121850e0",
+        "585a56df005c151db430d14f878f99375b2ddec3",
+        "0d837568df75e58bcc093e8204a8caf8764b1c4c"
+      ],
+      "migrations": []
+    },
+    {
+      "id": "LIMPAR-NOTIFICACOES-POR-PERFIL-001",
+      "backend_commits": [
+        "2584752c0aebe04eb2e5e9bf49a1719a25c6aca7"
+      ],
+      "frontend_commits": [
+        "553c0fd4828084ab37c632f8f5f0cf9dc682bc67"
+      ],
+      "migrations": [
+        "supabase/migrations/20261008121716_user_notification_states.sql"
+      ]
+    },
+    {
+      "id": "STATUS-EDITAL-CADASTRO-DISPUTA-001",
+      "backend_commits": [
+        "cd0ff08c8734bfc9bd53e3ef212fb0d883ce4316"
+      ],
+      "frontend_commits": [
+        "d3f24c0cb964581b17df586b25fe32b670900bb2"
+      ],
+      "migrations": [
+        "supabase/migrations/20261012170244_add_ready_for_dispute_bid_status.sql"
+      ]
     }
   ]
 }

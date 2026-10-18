@@ -48,7 +48,7 @@ Este documento é a referência oficial de UI/UX do frontend GLL. O Design Syste
 
 Os tons auxiliares da navegação (texto `#edf3ea`, texto secundário `#a9c0b2`, divisória branca translúcida) também estão centralizados em `tokens.css`. Cada cor de estado tem uma superfície correspondente. Associe o estado a um rótulo legível.
 
-Status de edital: `--color-status-analysis` (em análise), `--color-status-approved` (aprovada), `--color-status-neutral` (descartada), `--color-complete` (faturado), `--color-status-disputed` (disputada) e `--color-status-rejected` (desclassificado). As variações correspondentes ficam centralizadas em `STATUS_TONES` e `COMPONENTS.statusBadge`.
+Status de edital: `--color-status-analysis` (em cadastro), `--color-status-approved` (aprovada), `--color-status-neutral` (descartada), `--color-complete` (faturado), `--color-status-disputed` (aguardando disputa e disputada) e `--color-status-rejected` (desclassificado). As variações correspondentes ficam centralizadas em `STATUS_TONES` e `COMPONENTS.statusBadge`.
 
 ### Tipografia
 

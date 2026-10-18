@@ -1,11 +1,11 @@
-﻿const STATUS_OPTIONS = ["Em Analise", "Aprovada", "Desclassificado", "Disputada"];
+﻿const STATUS_OPTIONS = ["Em Analise", "Aguard. Disputa", "Descartada", "Aprovada", "Faturado", "Desclassificado", "Disputada"];
 const WON_ITEM_STATUSES = ["Aprovada", "Faturado", "Desclassificado", "Disputada"];
-STATUS_OPTIONS.splice(1, 0, "Descartada");
-STATUS_OPTIONS.splice(3, 0, "Faturado");
 const WON_ITEM_TOTAL_STATUSES = ["Descartada", "Aprovada", "Faturado", "Disputada"];
 const FINAL_BID_STATUS = "Faturado";
+const BID_STATUS_LABELS = Object.freeze({ "Em Analise": "Em Cadastro", "Aguard. Disputa": "Aguard. Disputa" });
 const BID_STATUS_TRANSITIONS = Object.freeze({
-  "Em Analise": ["Descartada", "Aprovada", "Desclassificado", "Disputada"],
+  "Em Analise": ["Aguard. Disputa", "Descartada", "Aprovada", "Desclassificado", "Disputada"],
+  "Aguard. Disputa": ["Em Analise", "Descartada", "Aprovada", "Desclassificado", "Disputada"],
   Descartada: ["Em Analise", "Disputada"],
   Aprovada: ["Em Analise", "Faturado", "Desclassificado", "Disputada"],
   Faturado: ["Aprovada"],
@@ -141,6 +141,7 @@ const appState = {
   users: [],
   suppliers: [],
   supplierProducts: [],
+  dismissedNotificationIds: [],
 };
 
 const $ = (id) => document.getElementById(id);
@@ -165,6 +166,7 @@ const refs = {
   storageStatus: $("storageStatus"),
   appSidebar: $("appSidebar"),
   homeIconButton: $("homeIconButton"),
+  workspaceSummary: $("workspaceSummary"),
   workspaceInitial: $("workspaceInitial"),
   workspaceName: $("workspaceName"),
   navHomeButton: $("navHomeButton"),
@@ -204,7 +206,8 @@ const refs = {
   viewAllBidsButton: $("viewAllBidsButton"),
   viewRecentBidsButton: $("viewRecentBidsButton"),
   homeTotalBids: $("homeTotalBids"),
-  homeAnalysisBids: $("homeAnalysisBids"),
+  homeRegistrationBids: $("homeRegistrationBids"),
+  homeReadyToDisputeBids: $("homeReadyToDisputeBids"),
   homeDiscardedBids: $("homeDiscardedBids"),
   homeApprovedBids: $("homeApprovedBids"),
   homeBilledBids: $("homeBilledBids"),
@@ -576,6 +579,15 @@ function removeEmptyId(record) {
   return nextRecord;
 }
 
+function notificationDismissalStorageKey(userId) {
+  const profileId = String(userId || "").trim();
+  return profileId ? `gll-notification-dismissals:${encodeURIComponent(profileId)}` : null;
+}
+
+function normalizeNotificationDismissalIds(ids) {
+  return [...new Set(Array.isArray(ids) ? ids.filter((id) => typeof id === "string" && id) : [])];
+}
+
 class IndexedDbStore {
   constructor() {
     this.requiresAuthenticationBeforeData = false;
@@ -678,6 +690,23 @@ class IndexedDbStore {
   }
 
   async getBidActivity() { return []; }
+
+  async getDismissedNotificationIds(userId) {
+    const key = notificationDismissalStorageKey(userId);
+    if (!key) return [];
+    try {
+      const saved = JSON.parse(window.localStorage.getItem(key) || "[]");
+      return normalizeNotificationDismissalIds(saved);
+    } catch {
+      return [];
+    }
+  }
+
+  async saveDismissedNotificationIds(ids, userId) {
+    const key = notificationDismissalStorageKey(userId);
+    if (!key) throw new Error("O perfil atual não está disponível.");
+    window.localStorage.setItem(key, JSON.stringify(normalizeNotificationDismissalIds(ids)));
+  }
 
   async authTx(storeName, mode, callback) {
     const db = await this.openAuth();
@@ -1218,6 +1247,28 @@ class SupabaseStore {
       .order("created_at", { ascending: false }).order("id", { ascending: false }).limit(30);
     assertSupabase(error);
     return data || [];
+  }
+
+  async getDismissedNotificationIds(userId) {
+    if (!userId) return [];
+    const client = await this.open();
+    const { data, error } = await client.from("user_notification_states")
+      .select("dismissed_notification_ids")
+      .eq("user_id", userId)
+      .maybeSingle();
+    assertSupabase(error);
+    return normalizeNotificationDismissalIds(data?.dismissed_notification_ids);
+  }
+
+  async saveDismissedNotificationIds(ids, userId) {
+    if (!userId) throw new Error("O perfil atual não está disponível.");
+    const client = await this.open();
+    const { error } = await client.from("user_notification_states").upsert({
+      user_id: userId,
+      dismissed_notification_ids: normalizeNotificationDismissalIds(ids),
+      updated_at: new Date().toISOString(),
+    }, { onConflict: "user_id" });
+    assertSupabase(error);
   }
 
   async getUsers() {
@@ -1832,6 +1883,7 @@ const companyDataFeature = createCompanyDataFeature({
   onOrganizationUpdate: (organization) => {
     appState.currentOrganizationName = organization.name;
     appState.currentOrganizationCnpj = organization.cnpj;
+    updateWorkspaceSummary();
     void declarationsFeature.refresh().catch((error) => showToast(error.message, "error"));
   },
   toast: (message, tone) => showToast(message, tone),
@@ -2000,8 +2052,8 @@ function applyEnvironmentConfig() {
 }
 
 function populateOptions() {
-  refs.filterStatus.innerHTML = optionList(["Todos", ...STATUS_OPTIONS]);
-  refs.bidStatus.innerHTML = optionList(STATUS_OPTIONS);
+  refs.filterStatus.innerHTML = statusOptionList(["Todos", ...STATUS_OPTIONS]);
+  refs.bidStatus.innerHTML = statusOptionList(STATUS_OPTIONS);
   refs.salesUnit.innerHTML = optionList(SALES_UNIT_OPTIONS);
 }
 
@@ -2028,6 +2080,14 @@ function optionList(values) {
   return values.map((value) => `<option value="${escapeHtml(value)}">${escapeHtml(value)}</option>`).join("");
 }
 
+function statusOptionList(values) {
+  return values.map((value) => {
+    const option = document.createElement("option");
+    option.value = value;
+    option.textContent = value === "Todos" ? value : statusLabel(value);
+    return option.outerHTML;
+  }).join("");
+}
 // Wrap complete UI operations, including their data refresh, rather than individual requests.
 let blockingOperationActive = false;
 
@@ -3022,6 +3082,7 @@ async function enterAuthenticatedView(user) {
   appState.authenticated = true;
   appState.currentUserEmail = user.email;
   appState.currentUserAuthId = user.auth_user_id || user.email;
+  appState.dismissedNotificationIds = [];
   appState.currentUserRole = normalizeUserRole(user.role);
   appState.currentUserName = userDisplayName(user);
   appState.currentOrganizationId = user.organization_id || user.organization?.id || null;
@@ -3036,6 +3097,7 @@ async function enterAuthenticatedView(user) {
     refs.loginView.classList.add("hidden");
     refs.passwordResetView.classList.add("hidden");
     refs.appView.classList.remove("hidden");
+    truncateWorkspaceName();
     refs.loginPassword.value = "";
     clearBidForm({ history: "none" });
     clearQuotationForm();
@@ -3069,6 +3131,7 @@ function resetAuthenticatedView() {
   appState.authenticated = false;
   appState.currentUserEmail = null;
   appState.currentUserAuthId = null;
+  appState.dismissedNotificationIds = [];
   appState.currentUserRole = null;
   appState.currentUserName = null;
   appState.currentOrganizationId = null;
@@ -3098,8 +3161,7 @@ function resetAuthenticatedView() {
   refs.currentUserName.textContent = "";
   refs.currentUserRole.textContent = "";
   refs.currentUserAvatar.textContent = "";
-  refs.workspaceName.textContent = "Organização";
-  refs.workspaceInitial.textContent = "G";
+  updateWorkspaceSummary();
   setNotificationsMenuOpen(false);
   updateNotificationsIndicator();
   userProfileReturnPage = "home";
@@ -3191,6 +3253,7 @@ function navigationNotifications() {
 
   return [
     ...pendingDocuments.map(({ document, bid }) => ({
+      id: `document:${document.id}`,
       bidId: bid.id,
       page: "documents",
       icon: "fileText",
@@ -3198,13 +3261,14 @@ function navigationNotifications() {
       description: bidDisplayNumber(bid),
     })),
     ...upcomingBids.map((bid) => ({
+      id: `session:${bid.id}:${bid.session_datetime || ""}`,
       bidId: bid.id,
       page: "items",
       icon: "briefcaseBusiness",
       title: `Sessão prevista · ${bidDisplayNumber(bid)}`,
       description: formatDateTime(bid.session_datetime),
     })),
-  ];
+  ].filter((notification) => !appState.dismissedNotificationIds.includes(notification.id));
 }
 
 function updateNotificationsIndicator() {
@@ -3223,12 +3287,17 @@ function setNotificationsMenuOpen(open) {
             <span><strong>${escapeHtml(notification.title)}</strong><small>${escapeHtml(notification.description)}</small></span>
           </button>`).join("")}`
       : `<div class="notification-menu-heading">Notificações</div><p class="notification-menu-empty" role="status">Nenhuma notificação nova.</p>`;
+    refs.notificationsMenu.insertAdjacentHTML("beforeend", `<div class="notification-menu-footer"><button type="button" data-clear-notifications${notifications.length ? "" : " disabled"}>Limpar notificações</button></div>`);
   }
   refs.notificationsMenu.classList.toggle("hidden", !open);
   refs.notificationsButton.setAttribute("aria-expanded", String(open));
 }
 
 function handleNotificationClick(event) {
+  if (event.target.closest("[data-clear-notifications]")) {
+    void clearAllNotifications();
+    return;
+  }
   const button = event.target.closest("[data-notification-bid]");
   if (!button) return;
   const bidId = button.dataset.notificationBid;
@@ -3236,6 +3305,34 @@ function handleNotificationClick(event) {
   setNotificationsMenuOpen(false);
   loadBid(bidId);
   if (page === "documents") setPage("documents");
+}
+
+async function clearAllNotifications() {
+  const userId = appState.currentUserAuthId;
+  const epoch = sessionEpoch;
+  const notifications = navigationNotifications();
+  if (!userId || !notifications.length) return;
+
+  const button = refs.notificationsMenu.querySelector("[data-clear-notifications]");
+  if (button) button.disabled = true;
+  const dismissedIds = [...new Set([
+    ...appState.dismissedNotificationIds,
+    ...notifications.map((notification) => notification.id),
+  ])];
+
+  try {
+    await store.saveDismissedNotificationIds(dismissedIds, userId);
+    if (epoch !== sessionEpoch || userId !== appState.currentUserAuthId) return;
+    dataRequest += 1;
+    appState.dismissedNotificationIds = dismissedIds;
+    updateNotificationsIndicator();
+    setNotificationsMenuOpen(true);
+    if (liveChannel) void liveChannel.send({ type: "broadcast", event: "data-changed", payload: {} }).catch(() => {});
+    showToast("Notificações limpas para este perfil.");
+  } catch {
+    if (button?.isConnected) button.disabled = false;
+    showToast("Não foi possível limpar as notificações. Tente novamente.");
+  }
 }
 
 function handleNotificationsKeydown(event) {
@@ -3407,8 +3504,40 @@ function updateAccessInterface() {
   refs.navDesignSystemButton.setAttribute("aria-disabled", String(!showDesignSystemAccess));
   refs.designSystemAccessCard.classList.toggle("hidden", !showDesignSystemAccess);
   refs.designSystemAccessCard.setAttribute("aria-hidden", String(!showDesignSystemAccess));
-  refs.workspaceName.textContent = appState.currentOrganizationName || "Organização";
+  updateWorkspaceSummary();
+}
+
+function updateWorkspaceSummary() {
+  const organizationName = appState.currentOrganizationName || "Organização";
+  refs.workspaceName.textContent = organizationName;
+  refs.workspaceSummary.title = organizationName;
+  refs.workspaceSummary.setAttribute("aria-label", `Espaço de trabalho: ${organizationName}`);
   refs.workspaceInitial.textContent = organizationInitials(appState.currentOrganizationName);
+  truncateWorkspaceName();
+}
+
+function truncateWorkspaceName() {
+  const nameElement = refs.workspaceName;
+  const fullName = appState.currentOrganizationName || "Organização";
+  const suffix = "...";
+  nameElement.textContent = fullName;
+  if (!Number.isFinite(nameElement.clientWidth) || nameElement.clientWidth <= 0 || nameElement.scrollWidth <= nameElement.clientWidth) return;
+
+  const characters = Array.from(fullName);
+  let low = 0;
+  let high = characters.length;
+  while (low < high) {
+    const middle = Math.ceil((low + high) / 2);
+    nameElement.textContent = `${characters.slice(0, middle).join("").trimEnd()}${suffix}`;
+    if (nameElement.scrollWidth <= nameElement.clientWidth) low = middle;
+    else high = middle - 1;
+  }
+  nameElement.textContent = `${characters.slice(0, low).join("").trimEnd()}${suffix}`;
+}
+
+if (typeof ResizeObserver === "function") {
+  const workspaceNameResizeObserver = new ResizeObserver(truncateWorkspaceName);
+  workspaceNameResizeObserver.observe(refs.workspaceName);
 }
 
 const DATA_KEYS = ["bids", "items", "documents", "failureHistory", "statusHistory", "bidActivity", "quotations", "quotationItems", "users", "suppliers", "supplierProducts"];
@@ -3552,6 +3681,7 @@ async function reloadData({ background = false } = {}) {
     store.getAll("bids"), store.getAll("items"), store.getAll("documents"),
     store.getAll("failure_history"), store.getAll("quotations"), store.getAll("quotation_items"),
     store.getUsers(), store.getAll("suppliers"), store.getAll("supplier_products"), store.getAll("bid_status_history"), store.getBidActivity(),
+    store.getDismissedNotificationIds(appState.currentUserAuthId),
   ]);
   // Discard stale responses after logout, another login, or a newer refresh.
   if (epoch !== sessionEpoch || request !== dataRequest || !appState.authenticated) return;
@@ -3588,6 +3718,7 @@ async function reloadData({ background = false } = {}) {
   next.suppliers = rows[7].map(normalizeSupplierRecord).sort((a, b) => a.name.localeCompare(b.name, "pt-BR"));
   next.supplierProducts = (rows[8] || []).map(normalizeSupplierProductRecord).sort((a, b) => a.name.localeCompare(b.name, "pt-BR"));
   next.users = rows[6].sort((a, b) => userDisplayName(a).localeCompare(userDisplayName(b), "pt-BR"));
+  next.dismissedNotificationIds = normalizeNotificationDismissalIds(rows[11]);
   if (store.requiresAuthenticationBeforeData && !next.users.some((user) => normalizeEmail(user.email) === normalizeEmail(appState.currentUserEmail))) {
     resetAuthenticatedView();
     setLoginMessage("Seu acesso não está mais disponível. Entre novamente ou contate o administrador.");
@@ -3596,12 +3727,20 @@ async function reloadData({ background = false } = {}) {
   if (store instanceof SupabaseStore) next.users = await store.addSignedAvatarUrls(next.users);
   if (epoch !== sessionEpoch || request !== dataRequest || !appState.authenticated) return;
   const changed = DATA_KEYS.some((key) => dataSignature(appState[key]) !== dataSignature(next[key]));
-  if (background && !changed) return;
+  const notificationStateChanged = dataSignature(appState.dismissedNotificationIds) !== dataSignature(next.dismissedNotificationIds);
+  if (background && !changed) {
+    if (!notificationStateChanged) return;
+    appState.dismissedNotificationIds = next.dismissedNotificationIds;
+    updateNotificationsIndicator();
+    if (!refs.notificationsMenu.classList.contains("hidden")) setNotificationsMenuOpen(true);
+    return;
+  }
   if (background && selectedDataSignature(appState) !== selectedDataSignature(next)) {
     setSyncNotice("O registro aberto foi alterado ou excluído em outra sessão. Seu formulário foi preservado. Reabra o registro pela lista para conferir a versão atual antes de salvar.");
   }
   Object.assign(appState, next);
   updateNotificationsIndicator();
+  if (!refs.notificationsMenu.classList.contains("hidden")) setNotificationsMenuOpen(true);
   updateCurrentUserProfile();
   if (appState.activePage === "userProfile") updateUserProfileAccessActions();
   renderBids();
@@ -4134,7 +4273,7 @@ function bidActivityDescription(entry) {
     bid_deleted: `excluiu o ${edital}`,
     file_added: `adicionou o arquivo “${entry.detail || "sem nome"}” ao ${edital}`,
     file_removed: `excluiu o arquivo “${entry.detail || "sem nome"}” do ${edital}`,
-    status_changed: `alterou o status do ${edital} de ${entry.previous_value || "—"} para ${entry.next_value || "—"}`,
+    status_changed: `alterou o status do ${edital} de ${entry.previous_value ? statusLabel(entry.previous_value) : "—"} para ${entry.next_value ? statusLabel(entry.next_value) : "—"}`,
     quotation_item_added: `adicionou o item ${entry.detail || "—"} ao orçamento do ${edital}`,
     quotation_item_updated: `alterou o item ${entry.detail || "—"} do orçamento do ${edital}`,
     quotation_item_removed: `excluiu o item ${entry.detail || "—"} do orçamento do ${edital}`,
@@ -4147,7 +4286,8 @@ function renderHomeSummary() {
   const counts = appState.bids.reduce(
     (acc, bid) => {
       acc.total += 1;
-      if (bid.status === "Em Analise") acc.analysis += 1;
+      if (bid.status === "Em Analise") acc.registration += 1;
+      if (bid.status === "Aguard. Disputa") acc.readyToDispute += 1;
       if (bid.status === "Descartada") acc.discarded += 1;
       if (bid.status === "Aprovada") acc.approved += 1;
       if (bid.status === "Faturado") acc.billed += 1;
@@ -4155,10 +4295,11 @@ function renderHomeSummary() {
       if (bid.status === "Disputada") acc.disputed += 1;
       return acc;
     },
-    { total: 0, analysis: 0, discarded: 0, approved: 0, billed: 0, disqualified: 0, disputed: 0 }
+    { total: 0, registration: 0, readyToDispute: 0, discarded: 0, approved: 0, billed: 0, disqualified: 0, disputed: 0 }
   );
   refs.homeTotalBids.textContent = String(counts.total);
-  refs.homeAnalysisBids.textContent = String(counts.analysis);
+  refs.homeRegistrationBids.textContent = String(counts.registration);
+  refs.homeReadyToDisputeBids.textContent = String(counts.readyToDispute);
   refs.homeDiscardedBids.textContent = String(counts.discarded);
   refs.homeApprovedBids.textContent = String(counts.approved);
   refs.homeBilledBids.textContent = String(counts.billed);
@@ -6411,16 +6552,12 @@ function zonedDateTimeParts(date) {
 }
 
 function statusDisplay(status) {
+  return statusLabel(status).toUpperCase();
+}
+
+function statusLabel(status) {
   const normalizedStatus = normalizeBidStatus(status);
-  const map = {
-    "Em Analise": "ANÁLISE",
-    Descartada: "DESCARTADA",
-    Aprovada: "APROVADA",
-    Faturado: "FATURADO",
-    Desclassificado: "DESCLASSIFICADO",
-    Disputada: "DISPUTADA",
-  };
-  return map[normalizedStatus] || String(normalizedStatus || "").toUpperCase();
+  return BID_STATUS_LABELS[normalizedStatus] || String(normalizedStatus || "");
 }
 
 function normalizeBidStatus(status) {
