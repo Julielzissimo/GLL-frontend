@@ -228,7 +228,7 @@
       <button id="mobileNavigationScrim" class="mobile-navigation-scrim" type="button" aria-label="Fechar menu" hidden></button>
 
       <div class="app-main">
-        <header class="topbar">
+        <header id="appTopbar" class="topbar">
           <div class="topbar-location">
             <button
               id="menuToggleButton"
@@ -267,6 +267,20 @@
             </div>
           </div>
         </header>
+
+        <section id="appBootstrapPlaceholder" class="content app-bootstrap-placeholder hidden" role="status" aria-live="polite" aria-busy="true">
+          <div class="page-heading">
+            <div>
+              <span class="eyebrow">SEU ESPAÇO DE TRABALHO</span>
+              <h1>Preparando sua área de trabalho</h1>
+              <p>Carregando os dados do seu espaço de trabalho.</p>
+            </div>
+          </div>
+          <div class="dashboard-grid app-bootstrap-placeholder-grid" aria-hidden="true">
+            <section class="section-band"><div class="ds-skeleton app-bootstrap-skeleton"><span></span><span></span><span></span></div></section>
+            <section class="section-band"><div class="ds-skeleton app-bootstrap-skeleton"><span></span><span></span><span></span></div></section>
+          </div>
+        </section>
 
         <section id="bidsPage" class="workspace">
           <div id="sidebarPanel" class="hidden" aria-hidden="true"></div>

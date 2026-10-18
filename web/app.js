@@ -191,6 +191,9 @@ const refs = {
   authBootstrapSkeleton: $("authBootstrapSkeleton"),
   authBootstrapError: $("authBootstrapError"),
   retryAuthBootstrapButton: $("retryAuthBootstrapButton"),
+  appBootstrapPlaceholder: $("appBootstrapPlaceholder"),
+  appSidebar: $("appSidebar"),
+  topbar: $("appTopbar"),
   loginView: $("loginView"),
   invitationAcceptView: $("invitationAcceptView"),
   invitationAcceptError: $("invitationAcceptError"),
@@ -615,6 +618,7 @@ function recordAuthPerformance(name, startedAt) {
 }
 
 function showAuthBootstrap(message = "Restaurando sua sessão…") {
+  hideAppDataBootstrap();
   setAuthStatus(AUTH_STATUS.INITIALIZING);
   refs.authBootstrapView.classList.remove("hidden");
   refs.authBootstrapView.setAttribute("aria-busy", "true");
@@ -636,8 +640,27 @@ function hideAuthBootstrap() {
   refs.authBootstrapView.setAttribute("aria-busy", "false");
 }
 
+function showAppDataBootstrap() {
+  refs.appView.classList.add("is-bootstrapping");
+  refs.appView.setAttribute("aria-busy", "true");
+  refs.appBootstrapPlaceholder.classList.remove("hidden");
+  refs.appBootstrapPlaceholder.setAttribute("aria-busy", "true");
+  refs.appSidebar.inert = true;
+  refs.topbar.inert = true;
+}
+
+function hideAppDataBootstrap() {
+  refs.appView.classList.remove("is-bootstrapping");
+  refs.appView.setAttribute("aria-busy", "false");
+  refs.appBootstrapPlaceholder.classList.add("hidden");
+  refs.appBootstrapPlaceholder.setAttribute("aria-busy", "false");
+  if (refs.appSidebar) refs.appSidebar.inert = false;
+  if (refs.topbar) refs.topbar.inert = false;
+}
+
 function showLoginView() {
   setAuthStatus(AUTH_STATUS.UNAUTHENTICATED);
+  hideAppDataBootstrap();
   hideAuthBootstrap();
   refs.appView.classList.add("hidden");
   refs.loginView.classList.remove("hidden");
@@ -3898,6 +3921,7 @@ function restoreSession() {
 
 async function enterAuthenticatedView(user, authUserCreatedAt = user.authUserCreatedAt) {
   const epoch = ++sessionEpoch;
+  const appShellStartedAt = authPerformanceNow();
   appState.authenticated = true;
   appState.currentUserEmail = user.email;
   appState.currentUserAuthId = user.auth_user_id || user.email;
@@ -3910,6 +3934,20 @@ async function enterAuthenticatedView(user, authUserCreatedAt = user.authUserCre
   appState.currentOrganizationCnpj = user.organization?.cnpj || "";
   try {
     updateAccessInterface();
+    updateCurrentUserProfile();
+    refs.currentUserRole.textContent = appState.currentUserRole;
+    clearBidForm({ history: "none" });
+    clearQuotationForm();
+    showAppDataBootstrap();
+    hideAuthBootstrap();
+    refs.loginView.classList.add("hidden");
+    refs.invitationAcceptView.classList.add("hidden");
+    refs.passwordResetView.classList.add("hidden");
+    refs.firstAccessView.classList.add("hidden");
+    refs.appView.classList.remove("hidden");
+    truncateWorkspaceName();
+    refs.loginPassword.value = "";
+    recordAuthPerformance("app-shell-ready", appShellStartedAt);
     const initialDataStartedAt = authPerformanceNow();
     try {
       await reloadData();
@@ -3919,17 +3957,8 @@ async function enterAuthenticatedView(user, authUserCreatedAt = user.authUserCre
     if (epoch !== sessionEpoch) return;
     updateCurrentUserProfile();
     refs.currentUserRole.textContent = appState.currentUserRole;
-    hideAuthBootstrap();
-    refs.loginView.classList.add("hidden");
-    refs.invitationAcceptView.classList.add("hidden");
-    refs.passwordResetView.classList.add("hidden");
-    refs.firstAccessView.classList.add("hidden");
-    refs.appView.classList.remove("hidden");
-    truncateWorkspaceName();
-    refs.loginPassword.value = "";
-    clearBidForm({ history: "none" });
-    clearQuotationForm();
     applyNavigationRoute({ replaceInvalid: true });
+    hideAppDataBootstrap();
     startLiveUpdates();
     startSessionPolicyMonitoring();
   } catch (error) {
@@ -3951,6 +3980,7 @@ async function logout() {
 }
 
 function resetAuthenticatedView({ preserveSessionPolicy = false, status = AUTH_STATUS.UNAUTHENTICATED } = {}) {
+  hideAppDataBootstrap();
   pendingInvitationAcceptance = null;
   organizationChat.close();
   sessionEpoch += 1;
