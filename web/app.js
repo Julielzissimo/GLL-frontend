@@ -115,8 +115,19 @@ const PAGE_ROUTE_NAMES = {
 };
 const ROUTE_PAGE_NAMES = Object.fromEntries(Object.entries(PAGE_ROUTE_NAMES).map(([page, route]) => [route, page]));
 
+const AUTH_STATUS = Object.freeze({
+  INITIALIZING: "initializing",
+  AUTHENTICATED: "authenticated",
+  UNAUTHENTICATED: "unauthenticated",
+  REFRESHING: "refreshing",
+  ERROR: "error",
+});
+const AUTH_BOOTSTRAP_TIMEOUT_MS = 20_000;
+const authState = { status: AUTH_STATUS.INITIALIZING, accessVerified: false };
+
 const appState = {
-  authenticated: false,
+  get authenticated() { return authState.accessVerified; },
+  set authenticated(value) { setAuthStatus(value ? AUTH_STATUS.AUTHENTICATED : AUTH_STATUS.UNAUTHENTICATED); },
   activePage: "home",
   currentUserEmail: null,
   currentUserAuthId: null,
@@ -168,6 +179,11 @@ const appState = {
 const $ = (id) => document.getElementById(id);
 
 const refs = {
+  authBootstrapView: $("authBootstrapView"),
+  authBootstrapMessage: $("authBootstrapMessage"),
+  authBootstrapSkeleton: $("authBootstrapSkeleton"),
+  authBootstrapError: $("authBootstrapError"),
+  retryAuthBootstrapButton: $("retryAuthBootstrapButton"),
   loginView: $("loginView"),
   invitationAcceptView: $("invitationAcceptView"),
   invitationAcceptError: $("invitationAcceptError"),
@@ -541,6 +557,10 @@ let userProfileReturnPage = "home";
 let userProfileReturnFocusTarget = null;
 let pendingSessionRestore = null;
 let pendingInvitationAcceptance = null;
+let authSubscription = null;
+let authEventSequence = 0;
+let authFlowInProgress = false;
+let authPerformanceMeasurementSequence = 0;
 let profilePhotoState = {
   image: null,
   objectUrl: "",
@@ -553,6 +573,81 @@ let profilePhotoState = {
   zoom: 1,
   drag: null,
 };
+
+function setAuthStatus(status) {
+  authState.status = status;
+  if (status === AUTH_STATUS.AUTHENTICATED) authState.accessVerified = true;
+  else if (status !== AUTH_STATUS.REFRESHING) authState.accessVerified = false;
+  if (refs.authBootstrapView) refs.authBootstrapView.dataset.authStatus = status;
+}
+
+function authPerformanceNow() {
+  return window.performance?.now?.() ?? null;
+}
+
+function withAuthBootstrapTimeout(operation) {
+  let timeoutId;
+  return Promise.race([
+    Promise.resolve(operation),
+    new Promise((_, reject) => {
+      timeoutId = setTimeout(() => reject(new Error("Auth bootstrap timed out")), AUTH_BOOTSTRAP_TIMEOUT_MS);
+    }),
+  ]).finally(() => clearTimeout(timeoutId));
+}
+
+function recordAuthPerformance(name, startedAt) {
+  if (!Number.isFinite(startedAt) || !window.performance?.measure || !window.performance?.now) return;
+  try {
+    const measurement = `gll.auth.${name}.${++authPerformanceMeasurementSequence}`;
+    window.performance.measure(measurement, { start: startedAt, end: window.performance.now() });
+  } catch {
+    // Performance entries are diagnostic only and must not affect authentication.
+  }
+}
+
+function showAuthBootstrap(message = "Restaurando sua sessão…") {
+  setAuthStatus(AUTH_STATUS.INITIALIZING);
+  refs.authBootstrapView.classList.remove("hidden");
+  refs.authBootstrapView.setAttribute("aria-busy", "true");
+  refs.authBootstrapMessage.textContent = message;
+  refs.authBootstrapMessage.parentElement?.classList.remove("hidden");
+  refs.authBootstrapSkeleton.classList.remove("hidden");
+  refs.authBootstrapError.textContent = "";
+  refs.authBootstrapError.classList.add("hidden");
+  refs.retryAuthBootstrapButton.classList.add("hidden");
+  refs.loginView.classList.add("hidden");
+  refs.appView.classList.add("hidden");
+  refs.invitationAcceptView.classList.add("hidden");
+  refs.passwordResetView.classList.add("hidden");
+  refs.firstAccessView.classList.add("hidden");
+}
+
+function hideAuthBootstrap() {
+  refs.authBootstrapView.classList.add("hidden");
+  refs.authBootstrapView.setAttribute("aria-busy", "false");
+}
+
+function showLoginView() {
+  setAuthStatus(AUTH_STATUS.UNAUTHENTICATED);
+  hideAuthBootstrap();
+  refs.appView.classList.add("hidden");
+  refs.loginView.classList.remove("hidden");
+}
+
+function showAuthBootstrapError() {
+  if (!authState.accessVerified) sessionEpoch += 1;
+  else resetAuthenticatedView({ preserveSessionPolicy: true, status: AUTH_STATUS.ERROR });
+  setAuthStatus(AUTH_STATUS.ERROR);
+  refs.authBootstrapView.classList.remove("hidden");
+  refs.authBootstrapView.setAttribute("aria-busy", "false");
+  refs.authBootstrapMessage.parentElement?.classList.add("hidden");
+  refs.authBootstrapSkeleton.classList.add("hidden");
+  refs.authBootstrapError.textContent = "Não foi possível confirmar seu acesso. Verifique a conexão e tente novamente. Os dados do sistema permanecerão protegidos até a confirmação.";
+  refs.authBootstrapError.classList.remove("hidden");
+  refs.retryAuthBootstrapButton.classList.remove("hidden");
+  refs.loginView.classList.add("hidden");
+  refs.appView.classList.add("hidden");
+}
 
 function createStore() {
   if (hasSupabaseConfig()) return new SupabaseStore();
@@ -2184,33 +2279,77 @@ function setLoginMessage(message, tone = "error") {
 }
 
 async function main() {
+  const bootstrapStartedAt = authPerformanceNow();
   applyEnvironmentConfig();
   populateOptions();
   bindEvents();
   if (!hasSupabaseConfig()) refs.loginEmail.value = DEFAULT_ADMIN.email;
-  await store.initialize();
-  if (store.requiresAuthenticationBeforeData) {
-    store.client.auth.onAuthStateChange((event) => {
-      // Auth callbacks run under the client's lock; do not query Supabase here.
-      if (event === "SIGNED_OUT") resetAuthenticatedView();
-      if (event === "SIGNED_IN") {
-        setTimeout(() => {
-          if (!appState.authenticated && !blockingOperationActive) {
-            restoreSession().catch((error) => { setLoginMessage(error.message); });
-          }
-        }, 0);
-      }
-    });
+  try {
+    const clientInitializationStartedAt = authPerformanceNow();
     try {
+      await withAuthBootstrapTimeout(store.initialize());
+    } finally {
+      recordAuthPerformance("client-init", clientInitializationStartedAt);
+    }
+    if (store.requiresAuthenticationBeforeData) {
+      showAuthBootstrap();
+      initializeAuthStateListener();
       const hasPendingInvitation = await consumeInvitationCallback();
       if (!hasPendingInvitation) await restoreSession();
-    } catch (error) {
-      setLoginMessage("Não foi possível recuperar sua sessão. Verifique a conexão e tente novamente.");
+    } else {
+      const seedData = await loadSeedData();
+      await store.seedIfEmpty(seedData);
+      showLoginView();
     }
+  } catch {
+    if (store.requiresAuthenticationBeforeData) showAuthBootstrapError();
+    else {
+      showLoginView();
+      setLoginMessage("Não foi possível iniciar o sistema. Tente novamente.");
+    }
+  } finally {
+    recordAuthPerformance("bootstrap", bootstrapStartedAt);
   }
-  if (!store.requiresAuthenticationBeforeData) {
-    const seedData = await loadSeedData();
-    await store.seedIfEmpty(seedData);
+}
+
+function initializeAuthStateListener() {
+  if (authSubscription || !store.requiresAuthenticationBeforeData) return;
+  const result = store.client.auth.onAuthStateChange((event) => {
+    // Keep this callback synchronous and free of Supabase work. Cleanup can call
+    // Realtime and PostgREST APIs, so defer it until Auth releases its lock.
+    if (event !== "SIGNED_OUT" && event !== "SIGNED_IN") return;
+    const eventSequence = ++authEventSequence;
+    const startedLocally = authFlowInProgress;
+    setTimeout(() => {
+      if (eventSequence !== authEventSequence) return;
+      if (event === "SIGNED_OUT") {
+        resetAuthenticatedView();
+        return;
+      }
+      if (startedLocally) return;
+      resetAuthenticatedView({ preserveSessionPolicy: true, status: AUTH_STATUS.INITIALIZING });
+      showAuthBootstrap();
+      const resumeRestore = () => {
+        if (eventSequence !== authEventSequence || authState.accessVerified) return;
+        showAuthBootstrap();
+        restoreSession().catch(() => showAuthBootstrapError());
+      };
+      if (pendingSessionRestore) void pendingSessionRestore.then(resumeRestore, resumeRestore);
+      else resumeRestore();
+    }, 0);
+  });
+  authSubscription = result?.data?.subscription || result?.subscription || null;
+}
+
+async function retryAuthBootstrap() {
+  showAuthBootstrap();
+  try {
+    await withAuthBootstrapTimeout(store.initialize());
+    initializeAuthStateListener();
+    const hasPendingInvitation = await consumeInvitationCallback();
+    if (!hasPendingInvitation) await restoreSession();
+  } catch {
+    showAuthBootstrapError();
   }
 }
 
@@ -2236,6 +2375,8 @@ async function consumeInvitationCallback() {
 }
 
 function showInvitationAcceptView(message = "") {
+  setAuthStatus(AUTH_STATUS.UNAUTHENTICATED);
+  hideAuthBootstrap();
   refs.loginView.classList.add("hidden");
   refs.passwordResetView.classList.add("hidden");
   refs.firstAccessView.classList.add("hidden");
@@ -2258,29 +2399,35 @@ async function handleInvitationAcceptance(event) {
     return;
   }
 
-  let error = null;
-  if (pendingInvitationAcceptance.kind === "token_hash") {
-    ({ error } = await store.client.auth.verifyOtp({
-      token_hash: pendingInvitationAcceptance.tokenHash,
-      type: "invite",
-    }));
-  } else {
-    ({ error } = await store.client.auth.setSession({
-      access_token: pendingInvitationAcceptance.accessToken,
-      refresh_token: pendingInvitationAcceptance.refreshToken,
-    }));
-  }
-  if (error) {
-    refs.invitationAcceptError.textContent = "Este convite expirou ou já foi usado. Solicite um novo convite ao administrador.";
-    return;
-  }
+  const previousAuthFlow = authFlowInProgress;
+  authFlowInProgress = true;
+  try {
+    let error = null;
+    if (pendingInvitationAcceptance.kind === "token_hash") {
+      ({ error } = await store.client.auth.verifyOtp({
+        token_hash: pendingInvitationAcceptance.tokenHash,
+        type: "invite",
+      }));
+    } else {
+      ({ error } = await store.client.auth.setSession({
+        access_token: pendingInvitationAcceptance.accessToken,
+        refresh_token: pendingInvitationAcceptance.refreshToken,
+      }));
+    }
+    if (error) {
+      refs.invitationAcceptError.textContent = "Este convite expirou ou já foi usado. Solicite um novo convite ao administrador.";
+      return;
+    }
 
-  pendingInvitationAcceptance = null;
-  refs.invitationAcceptView.classList.add("hidden");
-  await restoreSession();
-  if (refs.firstAccessView.classList.contains("hidden") && !appState.authenticated) {
-    refs.invitationAcceptError.textContent = "Não foi possível confirmar os dados deste convite. Contate o administrador.";
-    refs.invitationAcceptView.classList.remove("hidden");
+    pendingInvitationAcceptance = null;
+    refs.invitationAcceptView.classList.add("hidden");
+    await restoreSession();
+    if (refs.firstAccessView.classList.contains("hidden") && !appState.authenticated) {
+      refs.invitationAcceptError.textContent = "Não foi possível confirmar os dados deste convite. Contate o administrador.";
+      refs.invitationAcceptView.classList.remove("hidden");
+    }
+  } finally {
+    authFlowInProgress = previousAuthFlow;
   }
 }
 
@@ -2415,6 +2562,7 @@ function withBlockingLoading(operation, message) {
 function bindEvents() {
   organizationChat.bind();
   bindPasswordVisibility();
+  refs.retryAuthBootstrapButton.addEventListener("click", () => { void retryAuthBootstrap(); });
   refs.toastDismissButton.innerHTML = GLLDesignSystem.ICONS.close;
   refs.toastDismissButton.addEventListener("click", () => {
     clearTimeout(toastTimer);
@@ -2779,6 +2927,8 @@ async function handleLogin(event) {
   setLoginMessage("");
   const email = refs.loginEmail.value.trim();
   const password = refs.loginPassword.value;
+  const previousAuthFlow = authFlowInProgress;
+  authFlowInProgress = true;
   try {
     const user = await store.authenticate(email, password);
     if (!user) {
@@ -2794,6 +2944,8 @@ async function handleLogin(event) {
     showToast("Login realizado.");
   } catch (error) {
     setLoginMessage(error.message);
+  } finally {
+    authFlowInProgress = previousAuthFlow;
   }
 }
 
@@ -2807,7 +2959,10 @@ async function handlePasswordReset(event) {
   }
   try {
     await store.changePassword(newPassword);
-    const { data, error } = await store.client.auth.refreshSession();
+    const { data, error } = await runAuthSessionOperation(
+      () => store.client.auth.refreshSession(),
+      "token-refresh",
+    );
     if (error || !data.session) {
       await returnToLoginAfterPasswordReset();
       return;
@@ -3356,6 +3511,8 @@ function moveProfilePhotoEditor(target) {
 }
 
 function showFirstAccessView(status) {
+  setAuthStatus(AUTH_STATUS.UNAUTHENTICATED);
+  hideAuthBootstrap();
   refs.loginView.classList.add("hidden");
   refs.invitationAcceptView.classList.add("hidden");
   refs.passwordResetView.classList.add("hidden");
@@ -3439,49 +3596,87 @@ async function handleFirstAccessCompletion(event) {
   }
 }
 
+async function runAuthSessionOperation(operation, performanceName) {
+  const previousStatus = authState.status;
+  const startedAt = authPerformanceNow();
+  setAuthStatus(AUTH_STATUS.REFRESHING);
+  try {
+    return await operation();
+  } finally {
+    if (authState.status === AUTH_STATUS.REFRESHING) setAuthStatus(previousStatus);
+    recordAuthPerformance(performanceName, startedAt);
+  }
+}
+
 async function restoreSessionInternal() {
+  const restoreStartedAt = authPerformanceNow();
   const epoch = sessionEpoch;
-  const { data, error } = await store.client.auth.getSession();
-  assertSupabase(error);
-  if (!data.session) return;
-  if (store instanceof SupabaseStore) {
-    try {
-      const invitationStatus = await store.getFirstAccessStatus();
-      if (epoch !== sessionEpoch) return;
-      if (invitationStatus?.firstAccessRequired) {
-        showFirstAccessView(invitationStatus);
-        return;
-      }
-    } catch {
-      // Perfis legados continuam usando a recuperação de senha já existente.
+  try {
+    const { data, error } = await runAuthSessionOperation(
+      () => store.client.auth.getSession(),
+      "session-restore",
+    );
+    assertSupabase(error);
+    if (epoch !== sessionEpoch) return;
+    if (!data.session) {
+      showLoginView();
+      return;
     }
+    beginSessionPolicy(data.session.user.email);
+    const expirationMessage = sessionPolicyExpiration();
+    if (expirationMessage) {
+      await expireSession(expirationMessage);
+      return;
+    }
+    if (store instanceof SupabaseStore) {
+      try {
+        const invitationStatus = await store.getFirstAccessStatus();
+        if (epoch !== sessionEpoch) return;
+        if (invitationStatus?.firstAccessRequired) {
+          showFirstAccessView(invitationStatus);
+          return;
+        }
+      } catch {
+        // Perfis legados continuam usando a recuperação de senha já existente.
+      }
+    }
+    if (epoch !== sessionEpoch) return;
+    const mustChangePassword = await store.isPasswordResetRequired();
+    if (epoch !== sessionEpoch) return;
+    if (mustChangePassword) {
+      showPasswordResetView(data.session.user.email);
+      return;
+    }
+    const profileStartedAt = authPerformanceNow();
+    let user;
+    try {
+      user = await store.getUser(data.session.user.email);
+    } finally {
+      recordAuthPerformance("profile-check", profileStartedAt);
+    }
+    if (epoch !== sessionEpoch) return;
+    if (
+      !user
+      || user.access_revoked_at
+      || (user.auth_access_status && user.auth_access_status !== "active")
+    ) {
+      await logout();
+      setLoginMessage("Seu acesso não está mais disponível. Entre novamente ou contate o administrador.");
+      return;
+    }
+    await enterAuthenticatedView(user, data.session.user.created_at);
+  } finally {
+    recordAuthPerformance("session-bootstrap", restoreStartedAt);
   }
-  const mustChangePassword = await store.isPasswordResetRequired();
-  if (epoch !== sessionEpoch) return;
-  if (mustChangePassword) {
-    showPasswordResetView(data.session.user.email);
-    return;
-  }
-  beginSessionPolicy(data.session.user.email);
-  const expirationMessage = sessionPolicyExpiration();
-  if (expirationMessage) {
-    await expireSession(expirationMessage);
-    return;
-  }
-  const user = await store.getUser(data.session.user.email);
-  if (epoch !== sessionEpoch) return;
-  if (!user) {
-    await logout();
-    return;
-  }
-  await enterAuthenticatedView(user, data.session.user.created_at);
 }
 
 function restoreSession() {
   if (pendingSessionRestore) return pendingSessionRestore;
-  pendingSessionRestore = restoreSessionInternal().finally(() => {
-    pendingSessionRestore = null;
+  const timedRestore = withAuthBootstrapTimeout(restoreSessionInternal());
+  const pending = timedRestore.finally(() => {
+    if (pendingSessionRestore === pending) pendingSessionRestore = null;
   });
+  pendingSessionRestore = pending;
   return pendingSessionRestore;
 }
 
@@ -3503,6 +3698,7 @@ async function enterAuthenticatedView(user, authUserCreatedAt = user.authUserCre
     if (epoch !== sessionEpoch) return;
     updateCurrentUserProfile();
     refs.currentUserRole.textContent = appState.currentUserRole;
+    hideAuthBootstrap();
     refs.loginView.classList.add("hidden");
     refs.invitationAcceptView.classList.add("hidden");
     refs.passwordResetView.classList.add("hidden");
@@ -3533,14 +3729,14 @@ async function logout() {
   }
 }
 
-function resetAuthenticatedView() {
+function resetAuthenticatedView({ preserveSessionPolicy = false, status = AUTH_STATUS.UNAUTHENTICATED } = {}) {
   pendingInvitationAcceptance = null;
   organizationChat.close();
   sessionEpoch += 1;
   stopSessionPolicyMonitoring();
-  window.localStorage.removeItem(sessionPolicyStorageKey);
+  if (!preserveSessionPolicy) window.localStorage.removeItem(sessionPolicyStorageKey);
   stopLiveUpdates();
-  appState.authenticated = false;
+  setAuthStatus(status);
   appState.currentUserEmail = null;
   appState.currentUserAuthId = null;
   appState.currentUserCreatedAt = null;
@@ -3551,6 +3747,7 @@ function resetAuthenticatedView() {
   appState.currentOrganizationName = null;
   appState.currentOrganizationCnpj = null;
   refs.appView.classList.add("hidden");
+  hideAuthBootstrap();
   refs.invitationAcceptView.classList.add("hidden");
   refs.passwordResetView.classList.add("hidden");
   refs.firstAccessView.classList.add("hidden");
@@ -8073,7 +8270,10 @@ function showToast(message, tone = inferredToastTone(message)) {
   toastTimer = setTimeout(() => refs.toast.classList.remove("show"), 3600);
 }
 
-withBlockingLoading(main, "Verificando sessão…")().catch((error) => {
-  console.error(error);
-  alert(error.message);
+void main().catch(() => {
+  if (store.requiresAuthenticationBeforeData) showAuthBootstrapError();
+  else {
+    showLoginView();
+    setLoginMessage("Não foi possível iniciar o sistema. Tente novamente.");
+  }
 });

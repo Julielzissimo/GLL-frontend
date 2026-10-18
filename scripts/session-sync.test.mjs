@@ -5,7 +5,8 @@ import test from "node:test";
 
 const source = await readFile(new URL("../web/app.js", import.meta.url), "utf8");
 const html = await readFile(new URL("../web/index.html", import.meta.url), "utf8");
-const application = source.slice(0, source.lastIndexOf('withBlockingLoading(main, "Verificando sessão…")'));
+const buildConfig = await readFile(new URL("../scripts/build-web.mjs", import.meta.url), "utf8");
+const application = source.slice(0, source.lastIndexOf("void main().catch(() => {"));
 const user = { email: "test@example.test", name: "Teste" };
 
 test("feed descreve alterações específicas do edital e do orçamento", () => {
@@ -237,6 +238,7 @@ function client(db = backend(), auth = { session: { user } }, config = {}) {
     addEventListener: (name, fn) => listeners.set(name, fn),
     removeEventListener: (name) => listeners.delete(name),
   };
+  const authCallbacks = [];
   const context = vm.createContext({
     console, URL, URLSearchParams, Intl, Date,
     window: { GLL_CONFIG: { supabaseUrl: "https://test.invalid", supabaseAnonKey: "test", sessionIdleTimeoutMinutes: 30, sessionMaxLifetimeHours: 8, ...config }, location, history, localStorage, ...events },
@@ -248,7 +250,7 @@ function client(db = backend(), auth = { session: { user } }, config = {}) {
   });
   vm.runInContext(application, context);
   element("notificationsMenu").classList.add("hidden");
-  const api = vm.runInContext(`({ store, appState, restoreSession, logout, reloadData, refreshInBackground, startLiveUpdates, stopLiveUpdates, resetAuthenticatedView, scheduleLiveRefresh, verifyCurrentUserAccess, calculateBidSummary, calculateLineTotal, calculateItemProfit, calculateProfitMargin, calculateValueWithMargin, parseDecimal, parseProfitMargin, money, formatDateTime, toDateTimeInputValue, fromDateTimeInputValue, readNavigationRoute, writeNavigationRoute, resolveAuthorizedPage, normalizeBidRecord, normalizeBidAttachments, validateEditalFiles, bidDisplayNumber, bidMatchesSearch, bidActivityDescription, creatorName, creatorInitials, creatorTagMarkup, normalizeQuotationRecord, normalizeQuotationItemRecord, quotationItemToBidItem, bidItemToQuotationItem, normalizeTechnicalSpecifications, quotationSaveError, sessionPolicyStorageKey, enforceSessionPolicy, availableBidQuotations, navigationNotifications, clearAllNotifications, updateCurrentUserProfile })`, context);
+  const api = vm.runInContext(`({ store, appState, authState, AUTH_STATUS, main, initializeAuthStateListener, showAuthBootstrap, showAuthBootstrapError, showLoginView, runAuthSessionOperation, restoreSession, logout, reloadData, refreshInBackground, startLiveUpdates, stopLiveUpdates, resetAuthenticatedView, scheduleLiveRefresh, verifyCurrentUserAccess, calculateBidSummary, calculateLineTotal, calculateItemProfit, calculateProfitMargin, calculateValueWithMargin, parseDecimal, parseProfitMargin, money, formatDateTime, toDateTimeInputValue, fromDateTimeInputValue, readNavigationRoute, applyNavigationRoute, writeNavigationRoute, resolveAuthorizedPage, normalizeBidRecord, normalizeBidAttachments, validateEditalFiles, bidDisplayNumber, bidMatchesSearch, bidActivityDescription, creatorName, creatorInitials, creatorTagMarkup, normalizeQuotationRecord, normalizeQuotationItemRecord, quotationItemToBidItem, bidItemToQuotationItem, normalizeTechnicalSpecifications, quotationSaveError, sessionPolicyStorageKey, enforceSessionPolicy, availableBidQuotations, navigationNotifications, clearAllNotifications, updateCurrentUserProfile })`, context);
   vm.runInContext(`
     renderSuppliers = renderBids = renderDetails = renderQuotations = renderUsers = () => {};
     clearBidForm = clearQuotationForm = setPage = updateMainNavigationState = () => {};
@@ -269,6 +271,10 @@ function client(db = backend(), auth = { session: { user } }, config = {}) {
       }),
     },
     auth: {
+      onAuthStateChange: (callback) => {
+        authCallbacks.push(callback);
+        return { data: { subscription: { unsubscribe() {} } } };
+      },
       getSession: async () => ({ data: { session: auth.session }, error: null }),
       signOut: async ({ scope }) => { assert.equal(scope, "local"); auth.session = null; return { error: null }; },
     },
@@ -299,7 +305,7 @@ function client(db = backend(), auth = { session: { user } }, config = {}) {
     },
     removeChannel: async (channel) => db.channels.delete(channel),
   };
-  return { ...api, db, auth, context, elements, element, timers, listeners, location, history,
+  return { ...api, db, auth, authCallbacks, context, elements, element, timers, listeners, location, history,
     intervalDelays,
     flush: async () => {
       const pending = [...timers.values()]; timers.clear();
@@ -508,6 +514,129 @@ test("navigation replaces the current URL when requested", () => {
   assert.equal(app.location.search, "?page=orcamentos");
 });
 
+test("rota direta em /homolog/ mantém a licitação e os parâmetros auxiliares", () => {
+  const app = client();
+  app.location.pathname = "/homolog/";
+  app.location.search = "?page=itens&licitacao=bid-detail-7&item=4&origem=atalho";
+  app.appState.authenticated = true;
+  app.appState.bids = [{ id: "bid-detail-7" }];
+  vm.runInContext(`
+    loadBid = (bidId) => { appState.currentBidId = bidId; };
+    setPage = (page) => { appState.activePage = page; };
+  `, app.context);
+
+  app.applyNavigationRoute({ replaceInvalid: true });
+
+  assert.equal(app.location.pathname, "/homolog/");
+  assert.equal(app.appState.activePage, "items");
+  assert.equal(app.appState.currentBidId, "bid-detail-7");
+  assert.deepEqual(
+    { page: app.readNavigationRoute().page, bidId: app.readNavigationRoute().bidId },
+    { page: "items", bidId: "bid-detail-7" },
+  );
+  assert.equal(new URLSearchParams(app.location.search).get("item"), "4");
+  assert.equal(new URLSearchParams(app.location.search).get("origem"), "atalho");
+});
+
+test("bootstrap usa shell não bloqueante e não mostra login antes da autorização", async () => {
+  const app = client();
+  app.element("loginView").classList.add("hidden");
+  app.element("appView").classList.add("hidden");
+  vm.runInContext(`
+    applyEnvironmentConfig = populateOptions = bindEvents = () => {};
+    store.initialize = async () => {};
+    restoreSession = () => new Promise((resolve) => { globalThis.finishSessionRestore = resolve; });
+  `, app.context);
+
+  const startup = app.main();
+  await new Promise((resolve) => setImmediate(resolve));
+
+  assert.equal(app.element("authBootstrapView").classList.contains("hidden"), false);
+  assert.equal(app.element("loginView").classList.contains("hidden"), true);
+  assert.equal(app.element("appView").classList.contains("hidden"), true);
+  assert.match(html, /id="authBootstrapView"[^>]*aria-busy="true"/);
+  assert.match(html, /id="loginView" class="login-view hidden"/);
+  assert.doesNotMatch(source, /withBlockingLoading\(main/);
+
+  app.showLoginView();
+  vm.runInContext("globalThis.finishSessionRestore()", app.context);
+  await startup;
+  assert.equal(app.element("authBootstrapView").classList.contains("hidden"), true);
+  assert.equal(app.element("loginView").classList.contains("hidden"), false);
+});
+
+test("nova guia restaura sessão persistida e abre a rota direta sem login transitório", async () => {
+  const app = client();
+  app.location.search = "?page=itens&licitacao=TEST-1&item=3&origem=atalho";
+  app.showAuthBootstrap();
+  vm.runInContext(`
+    loadBid = (bidId) => { appState.currentBidId = bidId; };
+    setPage = (page) => { appState.activePage = page; };
+  `, app.context);
+
+  await app.restoreSession();
+
+  assert.equal(app.appState.authenticated, true);
+  assert.equal(app.authState.status, app.AUTH_STATUS.AUTHENTICATED);
+  assert.equal(app.appState.activePage, "items");
+  assert.equal(app.appState.currentBidId, "TEST-1");
+  assert.equal(app.element("authBootstrapView").classList.contains("hidden"), true);
+  assert.equal(app.element("loginView").classList.contains("hidden"), true);
+  assert.equal(app.element("appView").classList.contains("hidden"), false);
+  assert.equal(app.location.pathname, "/homolog/");
+  assert.equal(new URLSearchParams(app.location.search).get("item"), "3");
+  assert.equal(new URLSearchParams(app.location.search).get("origem"), "atalho");
+  app.stopLiveUpdates();
+});
+
+test("status de renovação preserva a autorização anterior e volta ao autenticado", async () => {
+  const app = client();
+  app.appState.authenticated = true;
+  let finishRefresh;
+  const refresh = app.runAuthSessionOperation(
+    () => new Promise((resolve) => { finishRefresh = resolve; }),
+    "test-refresh",
+  );
+
+  assert.equal(app.authState.status, app.AUTH_STATUS.REFRESHING);
+  assert.equal(app.appState.authenticated, true);
+  finishRefresh({ data: { session: app.auth.session }, error: null });
+  await refresh;
+  assert.equal(app.authState.status, app.AUTH_STATUS.AUTHENTICATED);
+  assert.equal(app.appState.authenticated, true);
+});
+
+test("callback de logout entre guias só limpa o estado depois de sair do callback Auth", async () => {
+  const app = client();
+  let sessionReads = 0;
+  app.store.client.auth.getSession = async () => {
+    sessionReads += 1;
+    return { data: { session: app.auth.session }, error: null };
+  };
+  app.appState.authenticated = true;
+  app.initializeAuthStateListener();
+
+  app.authCallbacks[0]("SIGNED_OUT", null);
+  assert.equal(app.appState.authenticated, true);
+  assert.equal(sessionReads, 0);
+
+  await app.flush();
+  assert.equal(app.appState.authenticated, false);
+  assert.equal(app.authState.status, app.AUTH_STATUS.UNAUTHENTICATED);
+  assert.equal(sessionReads, 0);
+});
+
+test("build mantém sessão persistida e projetos isolados entre homologação e produção", () => {
+  const homologUrl = buildConfig.match(/storageSuffix:\s*"homolog",\s*supabaseUrl:\s*"([^"]+)"/)?.[1];
+  const productionUrl = buildConfig.match(/storageSuffix:\s*"production",\s*supabaseUrl:\s*"([^"]+)"/)?.[1];
+
+  assert.ok(homologUrl);
+  assert.ok(productionUrl);
+  assert.notEqual(homologUrl, productionUrl);
+  assert.match(source, /autoRefreshToken:\s*true[\s\S]*?persistSession:\s*true/);
+  assert.doesNotMatch(source, /storageKey\s*:/);
+});
+
 test("reload restores a persisted session without entering a password", async () => {
   const auth = { session: { user } };
   const first = client(backend(), auth);
@@ -538,6 +667,84 @@ test("missing session stays at login without reading protected tables", async ()
   app.store.getAll = () => { throw new Error("must not read"); };
   await app.restoreSession();
   assert.equal(app.appState.authenticated, false);
+  assert.equal(app.authState.status, app.AUTH_STATUS.UNAUTHENTICATED);
+  assert.equal(app.element("authBootstrapView").classList.contains("hidden"), true);
+});
+
+test("falha de rede no bootstrap mostra erro recuperável sem liberar o conteúdo", async () => {
+  const app = client();
+  app.store.client.auth.getSession = async () => ({ data: { session: null }, error: new Error("offline") });
+  app.showAuthBootstrap();
+
+  await assert.rejects(app.restoreSession(), /offline/);
+  app.showAuthBootstrapError();
+
+  assert.equal(app.authState.status, app.AUTH_STATUS.ERROR);
+  assert.equal(app.appState.authenticated, false);
+  assert.equal(app.element("appView").classList.contains("hidden"), true);
+  assert.equal(app.element("loginView").classList.contains("hidden"), true);
+  assert.equal(app.element("retryAuthBootstrapButton").classList.contains("hidden"), false);
+  assert.match(app.element("authBootstrapError").textContent, /Verifique a conexão/);
+});
+
+test("timeout encerra o estado de espera e uma resposta tardia não libera a aplicação", async () => {
+  const app = client();
+  let resolveSession;
+  app.store.client.auth.getSession = () => new Promise((resolve) => { resolveSession = resolve; });
+  app.showAuthBootstrap();
+
+  const restore = app.restoreSession().catch((error) => error);
+  await app.flush();
+  const error = await restore;
+  assert.match(error.message, /timed out/);
+  app.showAuthBootstrapError();
+  resolveSession({ data: { session: app.auth.session }, error: null });
+  await new Promise((resolve) => setImmediate(resolve));
+
+  assert.equal(app.authState.status, app.AUTH_STATUS.ERROR);
+  assert.equal(app.appState.authenticated, false);
+  assert.equal(app.element("appView").classList.contains("hidden"), true);
+  assert.equal(app.element("authBootstrapError").classList.contains("hidden"), false);
+});
+
+test("timeout do cliente Supabase também encerra o bootstrap com ação de recuperação", async () => {
+  const app = client();
+  app.showAuthBootstrap();
+  vm.runInContext(`
+    applyEnvironmentConfig = populateOptions = bindEvents = () => {};
+    store.initialize = () => new Promise(() => {});
+  `, app.context);
+
+  const startup = app.main();
+  await app.flush();
+  await startup;
+
+  assert.equal(app.authState.status, app.AUTH_STATUS.ERROR);
+  assert.equal(app.element("authBootstrapView").classList.contains("hidden"), false);
+  assert.equal(app.element("authBootstrapError").classList.contains("hidden"), false);
+  assert.equal(app.element("retryAuthBootstrapButton").classList.contains("hidden"), false);
+  assert.equal(app.element("loginView").classList.contains("hidden"), true);
+  assert.equal(app.element("appView").classList.contains("hidden"), true);
+});
+
+test("perfil revogado não abre a aplicação nem lê dados protegidos", async () => {
+  const db = backend();
+  db.users[0].access_revoked_at = "2026-10-18T12:00:00.000Z";
+  const app = client(db);
+  let protectedReads = 0;
+  app.store.getAll = () => {
+    protectedReads += 1;
+    throw new Error("must not read");
+  };
+
+  await app.restoreSession();
+
+  assert.equal(app.appState.authenticated, false);
+  assert.equal(app.auth.session, null);
+  assert.equal(app.element("appView").classList.contains("hidden"), true);
+  assert.equal(app.element("loginView").classList.contains("hidden"), false);
+  assert.equal(protectedReads, 0);
+  assert.match(app.element("loginError").textContent, /acesso não está mais disponível/);
 });
 
 test("persisted session expires after the inactivity limit before protected data is read", async () => {

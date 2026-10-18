@@ -14,7 +14,28 @@
     <link rel="stylesheet" href="./design-system/prototype-theme.css" />
   </head>
   <body>
-    <main id="loginView" class="login-view">
+    <main id="authBootstrapView" class="login-view auth-bootstrap-view" aria-labelledby="authBootstrapTitle" aria-busy="true">
+      <section class="login-brand" aria-label="Inicialização segura do GLL">
+        <span class="brand-mark">GLL</span>
+        <h1>Gerenciador de Licitações Locais</h1>
+        <p>Sua área de trabalho será exibida após a confirmação do acesso.</p>
+      </section>
+      <section class="login-panel login-form auth-bootstrap-panel">
+        <span class="eyebrow">ACESSO AO SISTEMA</span>
+        <h2 id="authBootstrapTitle">Preparando seu acesso</h2>
+        <div class="ds-loading" role="status" aria-live="polite">
+          <span class="ds-spinner" aria-hidden="true"></span>
+          <span id="authBootstrapMessage">Restaurando sua sessão…</span>
+        </div>
+        <div id="authBootstrapSkeleton" class="ds-skeleton auth-bootstrap-skeleton" aria-hidden="true">
+          <span></span><span></span><span></span>
+        </div>
+        <p id="authBootstrapError" class="form-error hidden" role="alert"></p>
+        <button id="retryAuthBootstrapButton" class="primary-action full-action hidden" type="button">Tentar novamente</button>
+      </section>
+    </main>
+
+    <main id="loginView" class="login-view hidden">
       <section class="login-brand" aria-label="Apresentação do sistema">
         <span class="brand-mark">GLL</span>
         <h1 id="loginTitle">Gerenciador de Licitações Locais</h1>
