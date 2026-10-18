@@ -418,13 +418,14 @@ textarea[aria-invalid="true"]:focus {
 
 .status-pill.discarded,
 .ds-badge,
-.status-pill:not(.analysis):not(.approved):not(.billed):not(.disputed):not(.rejected) {
+.status-pill:not(.analysis):not(.approved):not(.supply):not(.billed):not(.disputed):not(.rejected) {
   border-color: var(--gll-line);
   background: var(--gll-paper-muted);
   color: var(--gll-ink-soft);
 }
 
 .status-pill.disputed,
+.status-pill.supply,
 .ds-badge-info {
   border-color: color-mix(in srgb, var(--gll-info) 22%, var(--gll-info-bg));
   background: var(--gll-info-bg);

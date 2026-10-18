@@ -1266,6 +1266,18 @@
         "supabase/migrations/20261012161530_radar_engine_ingest_receiver.sql",
         "supabase/migrations/20261012161930_radar_engine_identity_hydration_fix.sql"
       ]
+    },
+    {
+      "id": "ISSUE-102",
+      "backend_commits": [
+        "04dbbe4e274216a3a1584240145bed0d903ba399"
+      ],
+      "frontend_commits": [
+        "c563b63938b8f8f79b5efaa4e7b7c3b3875d8777"
+      ],
+      "migrations": [
+        "supabase/migrations/20261018143551_add_em_fornecimento_bid_status.sql"
+      ]
     }
   ]
 }
