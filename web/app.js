@@ -689,7 +689,12 @@ class IndexedDbStore {
     return this.request(db.transaction(storeName).objectStore(storeName).getAll());
   }
 
+  async getMatching(storeName, columnName, value) {
+    return (await this.getAll(storeName)).filter((row) => String(row?.[columnName]) === String(value));
+  }
+
   async getBidActivity() { return []; }
+  async getBidActivityForBid() { return []; }
 
   async getDismissedNotificationIds(userId) {
     const key = notificationDismissalStorageKey(userId);
@@ -1241,10 +1246,28 @@ class SupabaseStore {
     return data || [];
   }
 
+  async getMatching(tableName, columnName, value) {
+    const client = await this.open();
+    let query = client.from(tableName).select("*").eq(columnName, value);
+    if (["bids", "quotations"].includes(tableName)) query = query.is("deleted_at", null);
+    const { data, error } = await query;
+    if (tableName === "failure_history" && isMissingFailureHistoryTableError(error)) return [];
+    assertSupabase(error);
+    return data || [];
+  }
+
   async getBidActivity() {
     const client = await this.open();
     const { data, error } = await client.from("bid_activity").select("*")
       .order("created_at", { ascending: false }).order("id", { ascending: false }).limit(30);
+    assertSupabase(error);
+    return data || [];
+  }
+
+  async getBidActivityForBid(bidId) {
+    const client = await this.open();
+    const { data, error } = await client.from("bid_activity").select("*")
+      .eq("bid_id", bidId).order("created_at", { ascending: false }).order("id", { ascending: false }).limit(30);
     assertSupabase(error);
     return data || [];
   }
@@ -1968,15 +1991,51 @@ async function enforceSessionPolicy() {
   return false;
 }
 
+async function verifyCurrentUserAccess() {
+  if (!appState.authenticated || !store.requiresAuthenticationBeforeData) return true;
+  const profile = await store.getUser(appState.currentUserEmail);
+  if (
+    !profile
+    || profile.access_revoked_at
+    || (profile.auth_access_status && profile.auth_access_status !== "active")
+  ) {
+    resetAuthenticatedView();
+    setLoginMessage("Seu acesso não está mais disponível. Entre novamente ou contate o administrador.");
+    return false;
+  }
+  if (appState.currentOrganizationId && profile.organization_id !== appState.currentOrganizationId) {
+    resetAuthenticatedView();
+    setLoginMessage("A organização vinculada à sua conta foi alterada. Entre novamente para continuar.");
+    return false;
+  }
+  return true;
+}
+
+async function verifyVisibleSession() {
+  if (!await enforceSessionPolicy()) return false;
+  try {
+    return await verifyCurrentUserAccess();
+  } catch (error) {
+    // A temporary network failure should not discard the active session.
+    console.warn("Não foi possível confirmar o acesso à conta. A sessão será mantida enquanto a conexão se recupera.");
+    return true;
+  }
+}
+
 function handleSessionVisibility() {
-  if (!document.hidden) enforceSessionPolicy().catch(() => resetAuthenticatedView());
+  if (!document.hidden) void verifyVisibleSession();
+}
+
+function handleLiveFocus() {
+  void verifyVisibleSession();
+  scheduleLiveRefresh();
 }
 
 function startSessionPolicyMonitoring() {
   stopSessionPolicyMonitoring();
   for (const eventName of SESSION_ACTIVITY_EVENTS) window.addEventListener(eventName, recordSessionActivity);
   document.addEventListener("visibilitychange", handleSessionVisibility);
-  sessionPolicyTimer = setInterval(() => enforceSessionPolicy().catch(() => resetAuthenticatedView()), SESSION_POLICY_CHECK_INTERVAL_MS);
+  sessionPolicyTimer = setInterval(() => verifyVisibleSession(), SESSION_POLICY_CHECK_INTERVAL_MS);
 }
 
 function stopSessionPolicyMonitoring() {
@@ -2109,6 +2168,7 @@ function withBlockingLoading(operation, message) {
       modal.close();
       document.documentElement.classList.remove("is-loading");
       blockingOperationActive = false;
+      if (pendingLiveResources.size || liveReconciliationPending) queueLiveRefresh();
       if (previousFocus?.isConnected && !previousFocus.disabled && previousFocus.getClientRects().length) {
         previousFocus.focus({ preventScroll: true });
       }
@@ -3327,7 +3387,6 @@ async function clearAllNotifications() {
     appState.dismissedNotificationIds = dismissedIds;
     updateNotificationsIndicator();
     setNotificationsMenuOpen(true);
-    if (liveChannel) void liveChannel.send({ type: "broadcast", event: "data-changed", payload: {} }).catch(() => {});
     showToast("Notificações limpas para este perfil.");
   } catch {
     if (button?.isConnected) button.disabled = false;
@@ -3541,13 +3600,22 @@ if (typeof ResizeObserver === "function") {
 }
 
 const DATA_KEYS = ["bids", "items", "documents", "failureHistory", "statusHistory", "bidActivity", "quotations", "quotationItems", "users", "suppliers", "supplierProducts"];
+const LIVE_RESOURCE_TABLES = new Set([
+  "bids", "items", "documents", "failure_history", "bid_status_history", "bid_activity",
+  "quotations", "quotation_items", "app_users", "app_user_invitations", "suppliers",
+  "supplier_products", "user_notification_states",
+]);
+const BID_DETAIL_PAGES = new Set(["items", "documents", "failures", "edit"]);
+const BID_LIST_PAGES = new Set(["home", "bids"]);
 let sessionEpoch = 0;
 let dataRequest = 0;
 let liveSubscriptionRequest = 0;
 let liveChannel = null;
 let chatBroadcastChannel = null;
-let liveTimer = null;
 let liveDebounce = null;
+let liveRetryTimer = null;
+const pendingLiveResources = new Set();
+let liveReconciliationPending = false;
 let backgroundRefreshActive = false;
 
 function setSyncNotice(message) {
@@ -3581,26 +3649,278 @@ function selectedDataSignature(data) {
   ]);
 }
 
-function scheduleLiveRefresh() {
-  if (!appState.authenticated || liveDebounce) return;
-  if (!document.hidden) void organizationChat.refreshUnreadCount();
-  liveDebounce = setTimeout(() => {
-    liveDebounce = null;
-    void refreshInBackground();
-  }, 500);
+function visibleRealtimeResources() {
+  const resources = new Set(["user_notification_states"]);
+  if (BID_DETAIL_PAGES.has(appState.activePage)) {
+    ["bids", "items", "documents", "failure_history", "bid_status_history", "bid_activity", "quotations", "quotation_items"]
+      .forEach((resource) => resources.add(resource));
+  } else if (BID_LIST_PAGES.has(appState.activePage)) {
+    ["bids", "items", "documents", "quotations", "quotation_items"]
+      .forEach((resource) => resources.add(resource));
+  } else if (appState.activePage === "quotations") {
+    ["quotations", "quotation_items"].forEach((resource) => resources.add(resource));
+  } else if (appState.activePage === "suppliers") {
+    ["suppliers", "supplier_products"].forEach((resource) => resources.add(resource));
+  } else if (appState.activePage === "users") {
+    ["app_users", "app_user_invitations"].forEach((resource) => resources.add(resource));
+  }
+  return resources;
 }
 
-async function refreshInBackground() {
+function queueLiveRefresh() {
+  if (!appState.authenticated || document.hidden || liveDebounce) return;
+  liveDebounce = setTimeout(() => {
+    liveDebounce = null;
+    if (backgroundRefreshActive || blockingOperationActive) return;
+    const resources = [...pendingLiveResources];
+    const reconcile = liveReconciliationPending;
+    pendingLiveResources.clear();
+    liveReconciliationPending = false;
+    void refreshInBackground({ resources, reconcile });
+  }, 300);
+}
+
+function scheduleLiveRefresh(event = null) {
+  if (!appState.authenticated) return;
+  const resource = event?.payload?.resource || event?.resource;
+  if (liveRetryTimer) {
+    clearTimeout(liveRetryTimer);
+    liveRetryTimer = null;
+  }
+  if (LIVE_RESOURCE_TABLES.has(resource)) pendingLiveResources.add(resource);
+  else liveReconciliationPending = true;
+  queueLiveRefresh();
+}
+
+function mergeLiveRows(existing, incoming, scopeField = null, scopeValue = null) {
+  if (!scopeField) return incoming;
+  const retained = existing.filter((row) => String(row?.[scopeField]) !== String(scopeValue));
+  return [...retained, ...incoming];
+}
+
+async function liveRows(table, scopeField = null, scopeValue = null) {
+  if (scopeField && (scopeValue === null || scopeValue === undefined)) return [];
+  const rows = scopeField
+    ? await store.getMatching(table, scopeField, scopeValue)
+    : await store.getAll(table);
+  return rows || [];
+}
+
+function normalizeLiveRows(resource, rows) {
+  switch (resource) {
+    case "bids":
+      return rows.map(normalizeBidRecord).filter((bid) => !bid.deleted_at)
+        .sort((a, b) => parseStoredDateTime(a.session_datetime) - parseStoredDateTime(b.session_datetime));
+    case "items":
+      return rows.map(normalizeItemRecord).sort((a, b) => Number(a.item_number) - Number(b.item_number));
+    case "documents":
+      return rows.sort((a, b) => String(a.document_type).localeCompare(String(b.document_type)));
+    case "failure_history":
+      return rows.map(normalizeFailureRecord).sort((a, b) => Number(a.id || 0) - Number(b.id || 0));
+    case "bid_status_history":
+      return rows.map(normalizeStatusHistoryRecord).sort((a, b) => String(b.changed_at).localeCompare(String(a.changed_at)));
+    case "quotations":
+      return rows.map(normalizeQuotationRecord).filter((quotation) => !quotation.deleted_at)
+        .sort((a, b) => Number(b.id || 0) - Number(a.id || 0));
+    case "quotation_items":
+      return rows.map(normalizeQuotationItemRecord).sort((a, b) => Number(a.item_number || 0) - Number(b.item_number || 0));
+    case "suppliers":
+      return rows.map(normalizeSupplierRecord).sort((a, b) => a.name.localeCompare(b.name, "pt-BR"));
+    case "supplier_products":
+      return rows.map(normalizeSupplierProductRecord).sort((a, b) => a.name.localeCompare(b.name, "pt-BR"));
+    default:
+      return rows;
+  }
+}
+
+async function fetchLiveResource(resource) {
+  const page = appState.activePage;
+  const bidContext = BID_DETAIL_PAGES.has(page) && appState.currentBidId;
+  const quotationId = appState.currentQuotationId || currentBid()?.quotation_id || null;
+  const result = (key, rows, scopeField = null, scopeValue = null) => ({ key, rows, scopeField, scopeValue });
+
+  switch (resource) {
+    case "bids": {
+      if (BID_LIST_PAGES.has(page)) return result("bids", normalizeLiveRows(resource, await liveRows("bids")));
+      if (bidContext) return result("bids", normalizeLiveRows(resource, await liveRows("bids", "id", appState.currentBidId)), "id", appState.currentBidId);
+      return null;
+    }
+    case "items": {
+      if (bidContext) return result("items", normalizeLiveRows(resource, await liveRows("items", "bid_id", appState.currentBidId)), "bid_id", appState.currentBidId);
+      if (BID_LIST_PAGES.has(page)) return result("items", normalizeLiveRows(resource, await liveRows("items")));
+      return null;
+    }
+    case "documents": {
+      if (bidContext) return result("documents", normalizeLiveRows(resource, await liveRows("documents", "bid_id", appState.currentBidId)), "bid_id", appState.currentBidId);
+      if (BID_LIST_PAGES.has(page)) return result("documents", normalizeLiveRows(resource, await liveRows("documents")));
+      return null;
+    }
+    case "failure_history": {
+      if (bidContext) return result("failureHistory", normalizeLiveRows(resource, await liveRows("failure_history", "bid_id", appState.currentBidId)), "bid_id", appState.currentBidId);
+      return null;
+    }
+    case "bid_status_history": {
+      if (bidContext) return result("statusHistory", normalizeLiveRows(resource, await liveRows("bid_status_history", "bid_id", appState.currentBidId)), "bid_id", appState.currentBidId);
+      return null;
+    }
+    case "bid_activity": {
+      if (bidContext) {
+        const rows = await store.getBidActivityForBid(appState.currentBidId);
+        return result("bidActivity", rows, "bid_id", appState.currentBidId);
+      }
+      return null;
+    }
+    case "quotations": {
+      if (page === "quotations") return result("quotations", normalizeLiveRows(resource, await liveRows("quotations")));
+      if (BID_LIST_PAGES.has(page)) return result("quotations", normalizeLiveRows(resource, await liveRows("quotations")));
+      if (quotationId) return result("quotations", normalizeLiveRows(resource, await liveRows("quotations", "id", quotationId)), "id", quotationId);
+      return null;
+    }
+    case "quotation_items": {
+      if (page === "quotations" || BID_LIST_PAGES.has(page)) {
+        return result("quotationItems", normalizeLiveRows(resource, await liveRows("quotation_items")));
+      }
+      if (quotationId) {
+        return result("quotationItems", normalizeLiveRows(resource, await liveRows("quotation_items", "quotation_id", quotationId)), "quotation_id", quotationId);
+      }
+      return null;
+    }
+    case "app_users": {
+      const profile = await store.getUser(appState.currentUserEmail);
+      if (!profile || profile.access_revoked_at || (profile.auth_access_status && profile.auth_access_status !== "active")) {
+        resetAuthenticatedView();
+        setLoginMessage("Seu acesso não está mais disponível. Entre novamente ou contate o administrador.");
+        return { accessRevoked: true };
+      }
+      if (appState.currentOrganizationId && profile.organization_id !== appState.currentOrganizationId) {
+        resetAuthenticatedView();
+        setLoginMessage("A organização vinculada à sua conta foi alterada. Entre novamente para continuar.");
+        return { accessRevoked: true };
+      }
+      const signedProfile = store instanceof SupabaseStore ? (await store.addSignedAvatarUrls([profile]))[0] : profile;
+      const updates = [{ profile: signedProfile }];
+      if (page === "users") {
+        const users = await store.getUsers();
+        const signedUsers = store instanceof SupabaseStore ? await store.addSignedAvatarUrls(users) : users;
+        updates.push(result("users", signedUsers));
+      }
+      return updates;
+    }
+    case "app_user_invitations": {
+      if (page !== "users" || !isCurrentUserAdmin() || !(store instanceof SupabaseStore) || typeof store.getUserInvitations !== "function") return null;
+      const [invitations, users] = await Promise.all([store.getUserInvitations(), store.getUsers()]);
+      const unfinishedEmails = new Set(invitations.filter((invitation) => invitation.status !== "completed").map((invitation) => normalizeEmail(invitation.email)));
+      const usersWithAvatars = await store.addSignedAvatarUrls(users);
+      const visibleUsers = usersWithAvatars.filter((user) => !unfinishedEmails.has(normalizeEmail(user.email)))
+        .sort((a, b) => userDisplayName(a).localeCompare(userDisplayName(b), "pt-BR"));
+      return [result("userInvitations", invitations), result("users", visibleUsers)];
+    }
+    case "suppliers":
+      if (page === "suppliers") return result("suppliers", normalizeLiveRows(resource, await liveRows("suppliers")));
+      return null;
+    case "supplier_products":
+      if (page === "suppliers") return result("supplierProducts", normalizeLiveRows(resource, await liveRows("supplier_products")));
+      return null;
+    case "user_notification_states":
+      return { notificationIds: normalizeNotificationDismissalIds(await store.getDismissedNotificationIds(appState.currentUserAuthId)) };
+    default:
+      return null;
+  }
+}
+
+function renderLiveUpdates(resources) {
+  const keys = new Set(resources);
+  if (["bids", "items", "documents", "failureHistory", "statusHistory", "bidActivity", "quotations", "quotationItems"].some((key) => keys.has(key))) {
+    renderBids();
+    renderDetails();
+    renderQuotations();
+  }
+  if (keys.has("suppliers") || keys.has("supplierProducts")) renderSuppliers();
+  if (keys.has("users") || keys.has("userInvitations")) {
+    updateCurrentUserProfile();
+    if (appState.activePage === "userProfile") updateUserProfileAccessActions();
+    renderUsers();
+  }
+  updateNotificationsIndicator();
+  if (!refs.notificationsMenu.classList.contains("hidden")) setNotificationsMenuOpen(true);
+}
+
+async function refreshInBackground({ resources = null, reconcile = false } = {}) {
   if (!appState.authenticated || document.hidden || blockingOperationActive || backgroundRefreshActive) return;
   const epoch = sessionEpoch;
+  const currentDataRequest = dataRequest;
+  const requested = new Set(resources || []);
+  if (reconcile || resources === null) visibleRealtimeResources().forEach((resource) => requested.add(resource));
+  for (const resource of requested) {
+    if (!LIVE_RESOURCE_TABLES.has(resource)) requested.delete(resource);
+  }
+  if (!requested.size) return;
   backgroundRefreshActive = true;
   try {
-    await reloadData({ background: true });
+    const updates = [];
+    if (requested.has("bids")) {
+      const bidUpdate = await fetchLiveResource("bids");
+      if (bidUpdate?.accessRevoked) return;
+      if (bidUpdate) updates.push(...(Array.isArray(bidUpdate) ? bidUpdate : [bidUpdate]));
+    }
+    const remaining = [...requested].filter((resource) => resource !== "bids");
+    const fetched = await Promise.all(remaining.map((resource) => fetchLiveResource(resource)));
+    for (const update of fetched.flatMap((entry) => entry ? (Array.isArray(entry) ? entry : [entry]) : [])) updates.push(update);
+    if (epoch !== sessionEpoch || currentDataRequest !== dataRequest || !appState.authenticated) return;
+
+    const previousSelection = selectedDataSignature(appState);
+    const changedKeys = new Set();
+    for (const update of updates) {
+      if (update.profile) {
+        const profile = update.profile;
+        const profileIndex = appState.users.findIndex((user) => normalizeEmail(user.email) === normalizeEmail(profile.email));
+        const previousProfile = profileIndex >= 0 ? JSON.stringify(appState.users[profileIndex]) : null;
+        if (profileIndex >= 0) appState.users[profileIndex] = { ...appState.users[profileIndex], ...profile };
+        else appState.users.push(profile);
+        if (previousProfile !== JSON.stringify(profile)) changedKeys.add("users");
+        appState.currentUserRole = normalizeUserRole(profile.role);
+        appState.currentOrganizationId = profile.organization_id || appState.currentOrganizationId;
+        appState.currentOrganizationName = profile.organization?.name || appState.currentOrganizationName;
+        appState.currentOrganizationCnpj = profile.organization?.cnpj || appState.currentOrganizationCnpj;
+        updateCurrentUserProfile();
+      } else if (update.notificationIds) {
+        if (dataSignature(appState.dismissedNotificationIds.map((id) => ({ id })))
+          !== dataSignature(update.notificationIds.map((id) => ({ id })))) changedKeys.add("dismissedNotificationIds");
+        appState.dismissedNotificationIds = update.notificationIds;
+      } else {
+        const previousRows = appState[update.key] || [];
+        const nextRows = mergeLiveRows(previousRows, update.rows, update.scopeField, update.scopeValue);
+        if (dataSignature(previousRows) !== dataSignature(nextRows)) changedKeys.add(update.key);
+        appState[update.key] = nextRows;
+      }
+    }
+    const unfinishedInvitationEmails = new Set((Array.isArray(appState.userInvitations) ? appState.userInvitations : [])
+      .filter((invitation) => invitation.status !== "completed")
+      .map((invitation) => normalizeEmail(invitation.email)));
+    appState.users = appState.users.filter((user) => !unfinishedInvitationEmails.has(normalizeEmail(user.email)));
+    if (previousSelection !== selectedDataSignature(appState)) {
+      setSyncNotice("O registro aberto foi alterado ou excluído em outra sessão. Seu formulário foi preservado. Reabra o registro pela lista para conferir a versão atual antes de salvar.");
+    }
+    if (epoch === sessionEpoch && appState.authenticated && changedKeys.size) {
+      renderLiveUpdates([...changedKeys].filter((key) => key !== "dismissedNotificationIds"));
+      if (changedKeys.has("users")) {
+        const authorizedPage = resolveAuthorizedPage(appState.activePage);
+        if (authorizedPage !== appState.activePage) setPage(authorizedPage, { history: "none" });
+      }
+    }
   } catch (error) {
-    // Temporary connectivity failures must not discard the current session or drafts.
-    console.warn("Não foi possível atualizar os dados. Uma nova tentativa será feita automaticamente.");
+    // A temporary connectivity failure keeps the current data and form drafts in place.
+    console.warn("Não foi possível atualizar os dados em tempo real. A conexão tentará novamente.");
+    requested.forEach((resource) => pendingLiveResources.add(resource));
+    if (!liveRetryTimer) {
+      liveRetryTimer = setTimeout(() => {
+        liveRetryTimer = null;
+        queueLiveRefresh();
+      }, 10_000);
+    }
   } finally {
     if (epoch === sessionEpoch) backgroundRefreshActive = false;
+    if ((pendingLiveResources.size || liveReconciliationPending) && !liveRetryTimer) queueLiveRefresh();
   }
 }
 
@@ -3624,9 +3944,8 @@ async function startLiveUpdates() {
     || !appState.authenticated
     || organizationId !== appState.currentOrganizationId
   ) return;
-  // Data changes and org-scoped chat events use this authenticated channel; records remain protected by RLS.
+  // Postgres Changes remains dedicated to chat; application data uses the private org Broadcast below.
   liveChannel = client.channel("gll-data-updates", { config: { broadcast: { self: false } } })
-    .on("broadcast", { event: "data-changed" }, scheduleLiveRefresh)
     .on("postgres_changes", {
       event: "INSERT",
       schema: "public",
@@ -3644,25 +3963,30 @@ async function startLiveUpdates() {
     chatBroadcastChannel = client.channel(`organization:${organizationId}`, {
       config: { private: true, broadcast: { self: false } },
     })
+      .on("broadcast", { event: "organization-data-changed" }, scheduleLiveRefresh)
       .on("broadcast", { event: "organization-message-inserted" }, organizationChat.handleIncomingMessage)
       .subscribe((status, error) => {
-        if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
+        if (status === "SUBSCRIBED") {
+          void verifyCurrentUserAccess().catch(() => {});
+          scheduleLiveRefresh();
+        } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
           console.warn("A conexão Realtime das mensagens da organização falhou.", status, error);
         }
       });
   }
-  liveTimer = setInterval(scheduleLiveRefresh, 15000);
   window.addEventListener("online", scheduleLiveRefresh);
-  window.addEventListener("focus", scheduleLiveRefresh);
+  window.addEventListener("focus", handleLiveFocus);
   document.addEventListener("visibilitychange", scheduleLiveRefresh);
 }
 
 function stopLiveUpdates() {
   liveSubscriptionRequest += 1;
-  clearInterval(liveTimer);
   clearTimeout(liveDebounce);
-  liveTimer = null;
+  clearTimeout(liveRetryTimer);
   liveDebounce = null;
+  liveRetryTimer = null;
+  pendingLiveResources.clear();
+  liveReconciliationPending = false;
   backgroundRefreshActive = false;
   if (liveChannel) void store.client.removeChannel(liveChannel);
   liveChannel = null;
@@ -3670,7 +3994,7 @@ function stopLiveUpdates() {
   chatBroadcastChannel = null;
   organizationChat.stopUnreadTracking();
   window.removeEventListener("online", scheduleLiveRefresh);
-  window.removeEventListener("focus", scheduleLiveRefresh);
+  window.removeEventListener("focus", handleLiveFocus);
   document.removeEventListener("visibilitychange", scheduleLiveRefresh);
 }
 
@@ -3748,9 +4072,6 @@ async function reloadData({ background = false } = {}) {
   renderQuotations();
   renderSuppliers();
   renderUsers();
-  if (!background && changed && liveChannel) {
-    void liveChannel.send({ type: "broadcast", event: "data-changed", payload: {} }).catch(() => {});
-  }
 }
 
 function readNavigationRoute() {
@@ -3909,6 +4230,7 @@ function setPage(page, options = {}) {
   if (showCompanyData) void companyDataFeature.showPage().catch((error) => showToast(error.message, "error"));
   if (showDesignSystem) window.GLLDesignSystem?.mountCatalog(refs.designSystemCatalog);
   writeNavigationRoute(page, options.history || "push");
+  if (liveChannel || chatBroadcastChannel) scheduleLiveRefresh();
 }
 
 function updateBidWorkspaceHeader() {
