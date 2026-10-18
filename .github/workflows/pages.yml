@@ -283,7 +283,7 @@ jobs:
       - name: Entrar no ambiente publicado e validar isolamento
         id: login_test
         env:
-          GLL_E2E_BASE_URL: ${{ needs.deploy.outputs.target_url }}
+          GLL_E2E_BASE_URL: ${{ github.ref_name == 'homolog' && 'https://www.xn--licigesto-s2a.com.br/homolog/' || needs.deploy.outputs.target_url }}
           GLL_E2E_EMAIL: ${{ secrets.GLL_E2E_EMAIL }}
           GLL_E2E_PASSWORD: ${{ secrets.GLL_E2E_PASSWORD }}
           GLL_E2E_EXPECTED_ENVIRONMENT: ${{ github.ref_name == 'main' && 'production' || 'homolog' }}
@@ -293,7 +293,7 @@ jobs:
         id: r2_test
         if: always() && github.ref_name == 'homolog' && vars.GLL_STORAGE_PROVIDER_HOMOLOG == 'r2'
         env:
-          GLL_E2E_BASE_URL: ${{ needs.deploy.outputs.target_url }}
+          GLL_E2E_BASE_URL: ${{ github.ref_name == 'homolog' && 'https://www.xn--licigesto-s2a.com.br/homolog/' || needs.deploy.outputs.target_url }}
           GLL_E2E_EMAIL: ${{ secrets.GLL_E2E_EMAIL }}
           GLL_E2E_PASSWORD: ${{ secrets.GLL_E2E_PASSWORD }}
           GLL_E2E_EXPECTED_ENVIRONMENT: homolog

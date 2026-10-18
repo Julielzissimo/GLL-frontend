@@ -1284,7 +1284,9 @@
       "backend_commits": [
         "aa92309509c6e5ba71c16710460f0794f3904876"
       ],
-      "frontend_commits": [],
+      "frontend_commits": [
+        "694ee58208bc6ffbb843551e2af1775dc92c5c55"
+      ],
       "migrations": []
     }
   ]
