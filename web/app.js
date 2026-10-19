@@ -5215,7 +5215,11 @@ function shouldShowBilling(bid = currentBid()) {
 }
 
 function shouldUseWonItems() {
-  return Boolean(appState.currentBidId) && WON_ITEM_STATUSES.includes(refs.bidStatus.value);
+  return Boolean(appState.currentBidId) && canMarkWonItems(refs.bidStatus.value);
+}
+
+function canMarkWonItems(status) {
+  return WON_ITEM_STATUSES.includes(status);
 }
 
 function isCurrentBidReadOnly() {
@@ -7769,12 +7773,13 @@ function calculateBidSummary(bidId) {
 
 function calculateLinkedQuotationProfit(bid) {
   if (!bid?.quotation_id) return null;
+  const onlyWonItems = canMarkWonItems(bid.status);
   return appState.quotationItems
     .filter((item) => Number(item.quotation_id) === Number(bid.quotation_id))
-    .reduce(
-      (total, item) => roundMoney(total + calculateItemProfit(item.final_bid, item.supplier_cost, item.quantity)),
-      0
-    );
+    .reduce((total, item) => {
+      if (onlyWonItems && !Boolean(Number(bidItemForQuotationItem(item, bid.id)?.is_won))) return total;
+      return roundMoney(total + calculateItemProfit(item.final_bid, item.supplier_cost, item.quantity));
+    }, 0);
 }
 
 function roundDecimal(value, fractionDigits) {

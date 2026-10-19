@@ -25,5 +25,13 @@ test("won-item checkbox maps the quotation item back to its bid item", () => {
 test("Em Fornecimento mantém disponível a marcação de item vencido", () => {
   assert.match(source, /const WON_ITEM_STATUSES = \[[^\]]*"Em Fornecimento"/);
   assert.match(source, /const WON_ITEM_TOTAL_STATUSES = \[[^\]]*"Em Fornecimento"/);
-  assert.match(source, /function shouldUseWonItems\(\)[\s\S]*?WON_ITEM_STATUSES\.includes\(refs\.bidStatus\.value\)/);
+  assert.match(source, /function shouldUseWonItems\(\)[\s\S]*?canMarkWonItems\(refs\.bidStatus\.value\)/);
+});
+
+test("lucro total considera só itens vencidos nas etapas que exibem a marcação", () => {
+  assert.match(source, /function canMarkWonItems\(status\)\s*\{\s*return WON_ITEM_STATUSES\.includes\(status\);/);
+  assert.match(
+    source,
+    /function calculateLinkedQuotationProfit\(bid\)[\s\S]*?const onlyWonItems = canMarkWonItems\(bid\.status\);[\s\S]*?if \(onlyWonItems && !Boolean\(Number\(bidItemForQuotationItem\(item, bid\.id\)\?\.is_won\)\)\) return total;[\s\S]*?return roundMoney\(total \+ calculateItemProfit\(item\.final_bid, item\.supplier_cost, item\.quantity\)\);/
+  );
 });
