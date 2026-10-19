@@ -498,6 +498,7 @@ const refs = {
 };
 
 const userAvatarUrlCache = new Map();
+const currentUserAvatarRefreshAttempts = new Set();
 let userProfileReturnPage = "home";
 let userProfileReturnFocusTarget = null;
 let profilePhotoState = {
@@ -1315,27 +1316,40 @@ class SupabaseStore {
     return data;
   }
 
-  async addSignedAvatarUrls(users) {
+  async addSignedAvatarUrls(users, { refreshPaths = [] } = {}) {
     const now = Date.now();
     const paths = [...new Set(users.map((user) => user.avatar_path).filter(Boolean))];
+    const pathsToRefresh = new Set(refreshPaths);
+    pathsToRefresh.forEach((path) => userAvatarUrlCache.delete(path));
     const pathsToSign = paths.filter((path) => {
       const cached = userAvatarUrlCache.get(path);
-      return !cached || cached.expiresAt <= now + 60_000;
+      return pathsToRefresh.has(path) || !cached || cached.expiresAt <= now + 60_000;
     });
 
     if (pathsToSign.length) {
       const client = await this.open();
       const r2Enabled = window.GLL_CONFIG?.storageProvider === "r2";
-      const { data, error } = await storageBucket(client, "profile-avatars").createSignedUrls(pathsToSign, r2Enabled ? 120 : 3600);
-      if (error) {
-        console.warn("Não foi possível carregar algumas fotos de perfil.");
-      } else {
-        (data || []).forEach((entry, index) => {
-          if (!entry.signedUrl || entry.error) return;
-          const path = entry.path || pathsToSign[index];
-          userAvatarUrlCache.set(path, { url: entry.signedUrl, expiresAt: now + (r2Enabled ? 90_000 : 3_000_000) });
-        });
+      const signPaths = async (pendingPaths) => {
+        const failedPaths = new Set(pendingPaths);
+        try {
+          const { data } = await storageBucket(client, "profile-avatars").createSignedUrls(pendingPaths, r2Enabled ? 120 : 3600);
+          (data || []).forEach((entry, index) => {
+            if (!entry.signedUrl || entry.error) return;
+            const path = entry.path || pendingPaths[index];
+            userAvatarUrlCache.set(path, { url: entry.signedUrl, expiresAt: Date.now() + (r2Enabled ? 90_000 : 3_000_000) });
+            failedPaths.delete(path);
+          });
+        } catch {
+          // Keep the app usable when Storage is temporarily unavailable; retry below.
+        }
+        return [...failedPaths];
+      };
+      let failedPaths = await signPaths(pathsToSign);
+      if (failedPaths.length) {
+        await new Promise((resolve) => setTimeout(resolve, 300));
+        failedPaths = await signPaths(failedPaths);
       }
+      if (failedPaths.length) console.warn("Não foi possível carregar algumas fotos de perfil.");
     }
 
     return users.map((user) => {
@@ -3270,6 +3284,11 @@ function resetAuthenticatedView() {
   refs.currentUserName.textContent = "";
   refs.currentUserRole.textContent = "";
   refs.currentUserAvatar.textContent = "";
+  delete refs.currentUserAvatar.dataset.avatarPath;
+  delete refs.currentUserAvatar.dataset.avatarUrl;
+  delete refs.currentUserAvatar.dataset.avatarHasImage;
+  delete refs.currentUserAvatar.dataset.fallbackInitials;
+  currentUserAvatarRefreshAttempts.clear();
   updateWorkspaceSummary();
   setNotificationsMenuOpen(false);
   updateNotificationsIndicator();
@@ -6594,7 +6613,7 @@ function renderUsers() {
         : user.access_revoked_at ? "revoked" : "active";
       return `
         <tr>
-          <td><div class="user-identity"><span class="user-avatar" aria-hidden="true">${user.avatar_signed_url ? `<img src="${escapeHtml(user.avatar_signed_url)}" alt="" width="48" height="48" loading="lazy" decoding="async" />` : escapeHtml(initials)}</span><span><strong>${escapeHtml(displayName)}</strong><small>${escapeHtml(role === USER_ROLES.ADMIN ? "Conta principal" : role)}</small></span></div></td>
+          <td><div class="user-identity"><span class="user-avatar" aria-hidden="true" data-fallback-initials="${escapeHtml(initials)}">${user.avatar_signed_url ? `<img src="${escapeHtml(user.avatar_signed_url)}" alt="" width="48" height="48" loading="lazy" decoding="async" />` : escapeHtml(initials)}</span><span><strong>${escapeHtml(displayName)}</strong><small>${escapeHtml(role === USER_ROLES.ADMIN ? "Conta principal" : role)}</small></span></div></td>
           <td>${escapeHtml(user.email || "")}</td>
           <td><span class="user-role-pill ${role === USER_ROLES.ADMIN ? "admin" : "analyst"}"><span aria-hidden="true">${role === USER_ROLES.ADMIN ? "♢" : "♙"}</span> ${escapeHtml(role)}</span><small class="user-access-status ${accessStatusClass}" title="${escapeHtml(accessDetails)}">${escapeHtml(accessStatus)}</small></td>
           <td>${assignedBids}</td>
@@ -6603,6 +6622,13 @@ function renderUsers() {
       `;
     })
     .join("");
+  refs.usersTableBody.querySelectorAll(".user-avatar img").forEach((image) => {
+    image.addEventListener("error", () => {
+      const avatar = image.closest(".user-avatar");
+      if (!avatar || !image.isConnected) return;
+      avatar.textContent = avatar.dataset.fallbackInitials || "";
+    });
+  });
 }
 
 function normalizeSearchText(value) {
@@ -6622,10 +6648,65 @@ function updateCurrentUserProfile() {
   const name = user ? userDisplayName(user) : appState.currentUserName || appState.currentUserEmail || "Usuário";
   appState.currentUserName = name;
   refs.currentUserName.textContent = name;
-  refs.currentUserAvatar.innerHTML = user?.avatar_signed_url
-    ? `<img src="${escapeHtml(user.avatar_signed_url)}" alt="" width="38" height="38" decoding="async" />`
-    : escapeHtml(userInitials(name));
+  const avatar = refs.currentUserAvatar;
+  const avatarPath = user?.avatar_path || "";
+  const avatarPathChanged = avatar.dataset.avatarPath !== avatarPath;
+  const signedAvatarAvailable = Boolean(avatarPath && user?.avatar_signed_url);
+  const initials = userInitials(name);
+
+  if (avatarPathChanged || (signedAvatarAvailable && avatar.dataset.avatarHasImage !== "true" && avatar.dataset.avatarUrl !== user.avatar_signed_url)) {
+    avatar.dataset.avatarPath = avatarPath;
+    avatar.dataset.avatarHasImage = String(signedAvatarAvailable);
+    if (signedAvatarAvailable) {
+      const signedAvatarUrl = user.avatar_signed_url;
+      avatar.dataset.avatarUrl = signedAvatarUrl;
+      avatar.innerHTML = `<img src="${escapeHtml(signedAvatarUrl)}" alt="" width="38" height="38" decoding="async" />`;
+      delete avatar.dataset.fallbackInitials;
+      const image = avatar.querySelector("img");
+      if (image) {
+        image.addEventListener("load", () => {
+          if (avatar.dataset.avatarPath !== avatarPath || avatar.dataset.avatarUrl !== signedAvatarUrl) return;
+          currentUserAvatarRefreshAttempts.delete(`${user.auth_user_id}:${avatarPath}`);
+        }, { once: true });
+        image.addEventListener("error", () => {
+          if (avatar.dataset.avatarPath !== avatarPath || avatar.dataset.avatarUrl !== signedAvatarUrl) return;
+          avatar.dataset.avatarHasImage = "false";
+          avatar.textContent = initials;
+          avatar.dataset.fallbackInitials = initials;
+          void refreshCurrentUserAvatarUrl(user, avatarPath, signedAvatarUrl);
+        }, { once: true });
+      }
+    } else {
+      avatar.dataset.avatarUrl = "";
+      avatar.textContent = initials;
+      avatar.dataset.fallbackInitials = initials;
+    }
+  } else if (!avatarPath && avatar.dataset.fallbackInitials !== initials) {
+    avatar.textContent = initials;
+    avatar.dataset.fallbackInitials = initials;
+  }
   setProfileMenuOpen(!refs.profileDropdown.classList.contains("hidden"));
+}
+
+async function refreshCurrentUserAvatarUrl(user, avatarPath, failedUrl) {
+  if (!(store instanceof SupabaseStore) || !avatarPath) return;
+  const userId = user?.auth_user_id || "";
+  const attemptKey = `${userId}:${avatarPath}`;
+  if (currentUserAvatarRefreshAttempts.has(attemptKey)) return;
+  currentUserAvatarRefreshAttempts.add(attemptKey);
+
+  try {
+    const [refreshedUser] = await store.addSignedAvatarUrls([user], { refreshPaths: [avatarPath] });
+    const refreshedUrl = refreshedUser?.avatar_signed_url;
+    if (!refreshedUrl || refreshedUrl === failedUrl) return;
+    const userIndex = appState.users.findIndex((profile) => profile.auth_user_id === userId);
+    if (userIndex < 0 || appState.users[userIndex].avatar_path !== avatarPath) return;
+    appState.users[userIndex] = { ...appState.users[userIndex], avatar_signed_url: refreshedUrl };
+    updateCurrentUserProfile();
+    if (appState.activePage === "users") renderUsers();
+  } catch {
+    console.warn("Não foi possível renovar a foto de perfil.");
+  }
 }
 
 function userInitials(value) {
