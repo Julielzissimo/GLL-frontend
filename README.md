@@ -6,8 +6,8 @@ Os dados, a autenticação e as políticas de acesso permanecem no Supabase. Est
 
 ## Ambientes
 
-- Produção (`main`): `https://julielzissimo.github.io/GLL-frontend/`
-- Homologação (`homolog`): `https://julielzissimo.github.io/GLL-frontend/homolog/`
+- Produção (`main`): `https://www.xn--licigesto-s2a.com.br/`
+- Homologação (`homolog`): `https://www.xn--licigesto-s2a.com.br/homolog/`
 
 O workflow recompõe os dois ambientes em cada publicação para que mudanças de `homolog` não sejam promovidas acidentalmente para a raiz de produção.
 
