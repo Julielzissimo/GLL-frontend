@@ -616,7 +616,10 @@
       "frontend_commits": [
         "c89173a4ea609bc3b955ae5fd3b89e769c3f7bc7",
         "cc9de98ab57ad0c2074073ed848b4a8cfc1a510e",
-        "5d6658bcffe2679ce8329e8414653d3bdfee8175"
+        "5d6658bcffe2679ce8329e8414653d3bdfee8175",
+        "aae9fbcfa0523f9470a6f5d2cfb6a194121850e0",
+        "585a56df005c151db430d14f878f99375b2ddec3",
+        "0d837568df75e58bcc093e8204a8caf8764b1c4c"
       ],
       "migrations": []
     },
@@ -705,10 +708,12 @@
     {
       "id": "LIMPAR-NOTIFICACOES-POR-PERFIL-001",
       "backend_commits": [
-        "7e062a11a1b512654fb567637a61742da635cd41"
+        "7e062a11a1b512654fb567637a61742da635cd41",
+        "2584752c0aebe04eb2e5e9bf49a1719a25c6aca7"
       ],
       "frontend_commits": [
-        "9c56937acf27758f677ea08f92a033b831bfe2be"
+        "9c56937acf27758f677ea08f92a033b831bfe2be",
+        "553c0fd4828084ab37c632f8f5f0cf9dc682bc67"
       ],
       "migrations": [
         "supabase/migrations/20261008121716_user_notification_states.sql"
@@ -747,17 +752,21 @@
     {
       "id": "R2-ENV-ISOLATION-001",
       "backend_commits": [
-        "78906403095eab948bfa9dd1f25b7135841512e6"
+        "78906403095eab948bfa9dd1f25b7135841512e6",
+        "3727675896096ce79317ecefb74d84b6e13e8ae9"
       ],
       "frontend_commits": [
-        "a81c9e62a9735e750df2b5e8c60e17908ebd9218"
+        "a81c9e62a9735e750df2b5e8c60e17908ebd9218",
+        "d1d2bdf95426af038e2353ca33d9ded10ff7f702"
       ],
       "migrations": []
     },
     {
       "id": "R2-STORAGE-INTEGRATION-001",
       "backend_commits": [
-        "deeea94f3c853ac00ecfcd18f0cb58e9dcd9a27c"
+        "deeea94f3c853ac00ecfcd18f0cb58e9dcd9a27c",
+        "7ec66396b56291e669ab3bb8ddc750b9e537a04b",
+        "8f988059277549326816781a9b54bb4308691e91"
       ],
       "frontend_commits": [
         "f9af99892b0da7124bd87486fce1324adbbf6bf6",
@@ -771,7 +780,20 @@
         "d67fb1a381aac00a56b1a6a06ff49578b5a5d11e",
         "c7a249c6c421c8632c5d4be58c7815cbe1c88a9e",
         "dea3cd08a39edf393d60520670da785c2f400346",
-        "89aa4b5b4085da4a68290d68e2afd24b85ca17ee"
+        "89aa4b5b4085da4a68290d68e2afd24b85ca17ee",
+        "07463228a5a27d20fe98ab2d518f16bf1129c139",
+        "ab2d1ec432826b098b1d6ef57aadc7152a375668",
+        "9d2b60f5b2e5280a0bd214bb5c3ab9165541ddc9",
+        "2f8d75bd70343f1b34a8db0ae3a7322ef799baf4",
+        "31d6cb785cef1195d8284084121218f46b4e62fa",
+        "1d743c123c2aff1523c9832b650c7af455921e8a",
+        "cd62243b095e4e36c9b3c26ee79a561e05bbdef9",
+        "1362a9aedc88d4928ab88f2444681a0b49a5843f",
+        "43bb26e6703f2f1c7b7cee2338af9331c0c1b9f2",
+        "97a1eabc457d3d06a48be432a28d49a6b8b69297",
+        "155421144a52b86cae96e3c57704975f1a82ea48",
+        "cbc87afe12f71a8d71ec4aff6a22684467ea998f",
+        "c85891352cd7f7dd1d298b45d94fe5d72c82cd50"
       ],
       "migrations": [
         "supabase/migrations/20261009223408_r2_file_objects_and_quota.sql"
@@ -1185,10 +1207,13 @@
     {
       "id": "SYNC-REALTIME-001",
       "backend_commits": [
-        "a252d37b8b2c7927da184509be76c0ac63406ff8"
+        "a252d37b8b2c7927da184509be76c0ac63406ff8",
+        "6982782ef7ef75073e756f24c74f72142cd89ff6"
       ],
       "frontend_commits": [
-        "b6e471b19edd52d63f9e6e5729ca6ba5255f0756"
+        "b6e471b19edd52d63f9e6e5729ca6ba5255f0756",
+        "cdb476e1825038f42654add3225b30f78f63378f",
+        "b7f7aacbe58af2b253e8e5de650b2e967da3976f"
       ],
       "migrations": [
         "supabase/migrations/20261012020000_broadcast_organization_data_changes.sql"
@@ -1247,10 +1272,12 @@
     {
       "id": "STATUS-EDITAL-CADASTRO-DISPUTA-001",
       "backend_commits": [
-        "5a469d9e610e4ca23b125c5c5a3677bf70ccb6b3"
+        "5a469d9e610e4ca23b125c5c5a3677bf70ccb6b3",
+        "cd0ff08c8734bfc9bd53e3ef212fb0d883ce4316"
       ],
       "frontend_commits": [
-        "a98c69d758df009780ca1c9df25d8ee286d6caeb"
+        "a98c69d758df009780ca1c9df25d8ee286d6caeb",
+        "d3f24c0cb964581b17df586b25fe32b670900bb2"
       ],
       "migrations": [
         "supabase/migrations/20261012170244_add_ready_for_dispute_bid_status.sql"

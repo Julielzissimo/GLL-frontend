@@ -1677,14 +1677,15 @@ class SupabaseStore {
 
     if (pathsToSign.length) {
       const client = await this.open();
-      const { data, error } = await storageBucket(client, "profile-avatars").createSignedUrls(pathsToSign, 120);
+      const r2Enabled = window.GLL_CONFIG?.storageProvider === "r2";
+      const { data, error } = await storageBucket(client, "profile-avatars").createSignedUrls(pathsToSign, r2Enabled ? 120 : 3600);
       if (error) {
         console.warn("Não foi possível carregar algumas fotos de perfil.");
       } else {
         (data || []).forEach((entry, index) => {
           if (!entry.signedUrl || entry.error) return;
           const path = entry.path || pathsToSign[index];
-          userAvatarUrlCache.set(path, { url: entry.signedUrl, expiresAt: now + 90_000 });
+          userAvatarUrlCache.set(path, { url: entry.signedUrl, expiresAt: now + (r2Enabled ? 90_000 : 3_000_000) });
         });
       }
     }
