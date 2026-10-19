@@ -5,7 +5,14 @@ import test from "node:test";
 
 const source = await readFile(new URL("../web/app.js", import.meta.url), "utf8");
 const html = await readFile(new URL("../web/index.html", import.meta.url), "utf8");
-const application = source.slice(0, source.lastIndexOf('withBlockingLoading(main, "Verificando sessão…")'));
+const classicSource = source.replace(
+  /^import \{ createRadarEngineAdminFeature \} from "\.\/radar-engine-admin\.js";\r?\n/m,
+  "",
+);
+const application = classicSource.slice(
+  0,
+  classicSource.lastIndexOf('withBlockingLoading(main, "Verificando sessão…")'),
+);
 const user = { email: "test@example.test", name: "Teste" };
 
 test("feed descreve alterações específicas do edital e do orçamento", () => {
@@ -239,6 +246,7 @@ function client(db = backend(), auth = { session: { user } }, config = {}) {
   };
   const context = vm.createContext({
     console, URL, URLSearchParams, Intl, Date,
+    createRadarEngineAdminFeature: () => ({ showPage() {}, hide() {}, reset() {} }),
     window: { GLL_CONFIG: { supabaseUrl: "https://test.invalid", supabaseAnonKey: "test", sessionIdleTimeoutMinutes: 30, sessionMaxLifetimeHours: 8, ...config }, location, history, localStorage, ...events },
     document: { hidden: false, getElementById: element, querySelectorAll: () => [], createElement: () => element("syncNotice"), ...events },
     setTimeout: (fn) => { timers.set(++nextTimer, fn); return nextTimer; },
