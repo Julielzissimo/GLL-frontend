@@ -933,6 +933,18 @@
       "migrations": [
         "supabase/migrations/20261011164028_email_invitation_access.sql"
       ]
+    },
+    {
+      "id": "ISSUE-93",
+      "backend_commits": [
+        "1d2cfd61f652f8303ed440727656e21eac9cd6ed"
+      ],
+      "frontend_commits": [
+        "a25b5a870d7995fc0db41bf7a19bc6d25db2a417"
+      ],
+      "migrations": [
+        "supabase/migrations/20261019195431_email_chat_history_rls_privacy.sql"
+      ]
     }
   ]
 }
