@@ -1252,11 +1252,15 @@
     },
     {
       "id": "ISSUE-93",
-      "backend_commits": [],
+      "backend_commits": [
+        "d57236e038b494f8846b85e47770539dd33396e4"
+      ],
       "frontend_commits": [
         "63e85ab7bf09ec1ad369b62dee42a4d6e7603b7c"
       ],
-      "migrations": []
+      "migrations": [
+        "supabase/migrations/20261019195431_email_chat_history_rls_privacy.sql"
+      ]
     },
     {
       "id": "RADAR-20-ABRIR-ITENS-NOVA-GUIA-001",
