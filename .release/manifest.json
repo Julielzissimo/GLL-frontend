@@ -1155,12 +1155,31 @@
         "c6ee81bb9795db8ec943c400690f342c13e109bd",
         "adcdfcb01456683fc01e780753326c34e293cae3",
         "5c25f433e4ea999686b3c67b474dfadf6f4b6eee",
-        "425ce3176ec97bc6b5d37c246f0659c241605590"
+        "425ce3176ec97bc6b5d37c246f0659c241605590",
+        "84e93440e67b4eab56fa07799a6f0be8e400713c",
+        "36c816c8a24813ac8940ed61d37d448f1cb07b19"
       ],
       "frontend_commits": [],
       "migrations": [
-        "supabase/migrations/20261011201757_record_user_invitation_acceptance.sql"
+        "supabase/migrations/20261011201757_record_user_invitation_acceptance.sql",
+        "supabase/migrations/20261011235419_prepare_app_user_invitation_security_definer.sql"
       ]
+    },
+    {
+      "id": "EMAIL-08",
+      "backend_commits": [
+        "4ea176ee4ad1b3ed8695b9449b571fab804cf510"
+      ],
+      "frontend_commits": [],
+      "migrations": []
+    },
+    {
+      "id": "EMAIL-09",
+      "backend_commits": [
+        "bad728f1b5483013b0b5a10de8aededff5569fd2"
+      ],
+      "frontend_commits": [],
+      "migrations": []
     },
     {
       "id": "RADAR-19-FASE-3-DETALHES-CACHE-ITENS-001",
@@ -1400,6 +1419,16 @@
         "969eac16cb00ad65388b37f10f86980ce9063234"
       ],
       "migrations": []
+    },
+    {
+      "id": "EMAIL-01",
+      "backend_commits": [
+        "e4ec0dcd7e7c676eec529a3255c59c0a3ca7dab5"
+      ],
+      "frontend_commits": [],
+      "migrations": [
+        "supabase/migrations/20261011164028_email_invitation_access.sql"
+      ]
     }
   ]
 }
