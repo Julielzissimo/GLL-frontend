@@ -1380,7 +1380,8 @@
       "id": "ISSUE-124",
       "backend_commits": [],
       "frontend_commits": [
-        "e1e0c51ee86d46054a45be4725abb9a73b924aff"
+        "e1e0c51ee86d46054a45be4725abb9a73b924aff",
+        "1596ae9ad9f884d1790e10b8bbb2e4d69f43657c"
       ],
       "migrations": []
     }
