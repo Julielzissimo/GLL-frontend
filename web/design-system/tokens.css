@@ -1,81 +1,186 @@
-:root {
-  /* Colors: canonical GLL 2.0 palette */
-  --color-primary: #2458d3;
-  --color-primary-hover: #1846b5;
-  --color-secondary: #111b32;
-  --color-background: #f4f6f9;
-  --color-surface: #ffffff;
-  --color-surface-subtle: #f7f8fa;
-  --color-border: #e5e7eb;
-  --color-border-strong: #d6dbe5;
-  --color-text-primary: #172033;
-  --color-text-secondary: #6b7280;
-  --color-muted: #8794aa;
-  --color-success: #1b8f5a;
-  --color-success-surface: #e5f6ee;
-  --color-warning: #bd7700;
-  --color-warning-surface: #fff2d8;
-  --color-danger: #c53d3d;
-  --color-danger-surface: #fff0f0;
-  --color-info: #3875d7;
-  --color-info-surface: #e6efff;
-  --color-complete: #5b2ca0;
-  --color-complete-surface: #f0e9ff;
-  --color-status-neutral: #4f5d70;
-  --color-status-neutral-surface: #eef1f5;
-  --color-status-approved: #147447;
-  --color-status-analysis: #996000;
-  --color-status-disputed: #245caf;
-  --color-status-rejected: #aa3030;
-  --color-status-rejected-surface: #feeaea;
-  --color-focus-ring: rgba(36, 88, 211, 0.26);
-  --color-overlay: rgba(16, 24, 40, 0.52);
+@font-face {
+  font-family: "IBM Plex Sans";
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+  src: url("../assets/fonts/ibm-plex-sans-latin.woff2") format("woff2");
+}
 
-  /* Typography */
-  --font-family-sans: Inter, "Segoe UI", Arial, sans-serif;
-  --font-size-xs: 0.75rem;
-  --font-size-sm: 0.8125rem;
-  --font-size-md: 0.875rem;
-  --font-size-lg: 1rem;
-  --font-size-xl: 1.25rem;
-  --font-size-2xl: 1.5rem;
-  --font-size-3xl: 2rem;
+@font-face {
+  font-family: "IBM Plex Mono";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("../assets/fonts/ibm-plex-mono-regular-latin.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "IBM Plex Mono";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("../assets/fonts/ibm-plex-mono-medium-latin.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "IBM Plex Serif";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("../assets/fonts/ibm-plex-serif-regular-latin.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "IBM Plex Serif";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("../assets/fonts/ibm-plex-serif-medium-latin.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "IBM Plex Serif";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("../assets/fonts/ibm-plex-serif-semibold-latin.woff2") format("woff2");
+}
+
+:root {
+  /* Identidade visual GLL, alinhada aos tokens do protótipo validado. */
+  --gll-ink: #182923;
+  --gll-ink-soft: #4c5d55;
+  --gll-forest: #183d35;
+  --gll-forest-hover: #28564a;
+  --gll-accent: #b57b43;
+  --gll-canvas: #f5f3ed;
+  --gll-paper: #fffefa;
+  --gll-paper-muted: #efeee7;
+  --gll-line: #d9dcd2;
+  --gll-line-strong: #b8c2b5;
+  --gll-success: #256a4f;
+  --gll-success-bg: #e4f1e8;
+  --gll-warning: #895a1a;
+  --gll-warning-bg: #f6ebd5;
+  --gll-danger: #9c4c42;
+  --gll-danger-bg: #f7e9e5;
+  --gll-info: #35647c;
+  --gll-info-bg: #e6eef1;
+  --gll-selection-bg: #e8eee4;
+  --gll-selection-control: var(--gll-forest);
+  --gll-selection-ink: var(--gll-forest);
+  --gll-focus: #ad7237;
+  --gll-on-forest: #edf3ea;
+  --gll-forest-muted: #a9c0b2;
+  --gll-forest-hover-surface: rgb(255 255 255 / 8%);
+  --gll-forest-divider: rgb(255 255 255 / 16%);
+  --gll-brand-mark: #f0e7d6;
+
+  /* Typography: body, headings and numerical values use the prototype fonts. */
+  --gll-font-body: "IBM Plex Sans", "Segoe UI", Arial, sans-serif;
+  --gll-font-display: "IBM Plex Serif", Georgia, serif;
+  --gll-font-mono: "IBM Plex Mono", Consolas, monospace;
+  --gll-text-xs: 0.75rem;
+  --gll-text-sm: 0.875rem;
+  --gll-text-md: 1rem;
+  --gll-text-lg: 1.2rem;
+  --gll-text-xl: 1.7rem;
+  --gll-text-display: clamp(2rem, 2.7vw, 2.8rem);
+
+  /* Spacing: four-pixel base scale used by the prototype. */
+  --gll-space-1: 0.25rem;
+  --gll-space-2: 0.5rem;
+  --gll-space-3: 0.75rem;
+  --gll-space-4: 1rem;
+  --gll-space-6: 1.5rem;
+  --gll-space-8: 2rem;
+  --gll-space-12: 3rem;
+
+  /* Shapes, elevation and dimensions from the prototype. */
+  --gll-radius-sm: 4px;
+  --gll-radius-md: 8px;
+  --gll-radius-lg: 12px;
+  --gll-shadow-sm: 0 2px 8px rgb(24 41 35 / 5%);
+  --gll-shadow-md: 0 14px 34px rgb(24 41 35 / 12%);
+  --gll-shadow-overlay: 0 30px 70px rgb(10 30 24 / 22%);
+  --gll-sidebar-width: 258px;
+  --gll-control-height: 44px;
+
+  /* Compatibility names keep the existing HTML and components working. */
+  --color-primary: var(--gll-forest);
+  --color-primary-hover: var(--gll-forest-hover);
+  --color-secondary: var(--gll-forest);
+  --color-background: var(--gll-canvas);
+  --color-surface: var(--gll-paper);
+  --color-surface-subtle: var(--gll-paper-muted);
+  --color-border: var(--gll-line);
+  --color-border-strong: var(--gll-line-strong);
+  --color-text-primary: var(--gll-ink);
+  --color-text-secondary: var(--gll-ink-soft);
+  --color-muted: var(--gll-ink-soft);
+  --color-success: var(--gll-success);
+  --color-success-surface: var(--gll-success-bg);
+  --color-warning: var(--gll-warning);
+  --color-warning-surface: var(--gll-warning-bg);
+  --color-danger: var(--gll-danger);
+  --color-danger-surface: var(--gll-danger-bg);
+  --color-info: var(--gll-info);
+  --color-info-surface: var(--gll-info-bg);
+  --color-complete: var(--gll-success);
+  --color-complete-surface: var(--gll-success-bg);
+  --color-status-neutral: var(--gll-ink-soft);
+  --color-status-neutral-surface: var(--gll-paper-muted);
+  --color-status-approved: var(--gll-success);
+  --color-status-analysis: var(--gll-warning);
+  --color-status-disputed: var(--gll-info);
+  --color-status-rejected: var(--gll-danger);
+  --color-status-rejected-surface: var(--gll-danger-bg);
+  --color-focus-ring: rgb(173 114 55 / 28%);
+  --color-overlay: rgb(10 30 24 / 62%);
+
+  --font-family-sans: var(--gll-font-body);
+  --font-family-display: var(--gll-font-display);
+  --font-family-mono: var(--gll-font-mono);
+  --font-size-xs: var(--gll-text-xs);
+  --font-size-sm: var(--gll-text-sm);
+  --font-size-md: var(--gll-text-md);
+  --font-size-lg: var(--gll-text-lg);
+  --font-size-xl: var(--gll-text-xl);
+  --font-size-2xl: var(--gll-text-xl);
+  --font-size-3xl: var(--gll-text-display);
   --font-weight-regular: 400;
-  --font-weight-medium: 600;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
   --font-weight-bold: 700;
-  --font-weight-extrabold: 800;
+  --font-weight-extrabold: 700;
   --line-height-tight: 1.2;
   --line-height-normal: 1.5;
   --line-height-relaxed: 1.65;
 
-  /* Spacing */
   --space-0: 0;
-  --space-xs: 0.25rem;
-  --space-sm: 0.5rem;
-  --space-md: 0.75rem;
-  --space-lg: 1rem;
-  --space-xl: 1.5rem;
-  --space-2xl: 2rem;
-  --space-3xl: 3rem;
+  --space-xs: var(--gll-space-1);
+  --space-sm: var(--gll-space-2);
+  --space-md: var(--gll-space-3);
+  --space-lg: var(--gll-space-4);
+  --space-xl: var(--gll-space-6);
+  --space-2xl: var(--gll-space-8);
+  --space-3xl: var(--gll-space-12);
 
-  /* Shape and borders */
-  --radius-xs: 0.375rem;
-  --radius-sm: 0.5rem;
-  --radius-md: 0.625rem;
-  --radius-lg: 0.875rem;
-  --radius-xl: 1.25rem;
+  --radius-xs: var(--gll-radius-sm);
+  --radius-sm: var(--gll-radius-md);
+  --radius-md: var(--gll-radius-md);
+  --radius-lg: var(--gll-radius-lg);
+  --radius-xl: var(--gll-radius-lg);
   --radius-pill: 999px;
   --border-width: 1px;
-  --border-default: var(--border-width) solid var(--color-border);
-  --border-strong: var(--border-width) solid var(--color-border-strong);
+  --border-default: var(--border-width) solid var(--gll-line);
+  --border-strong: var(--border-width) solid var(--gll-line-strong);
 
-  /* Elevation */
-  --shadow-sm: 0 2px 8px rgba(16, 24, 40, 0.06);
-  --shadow-md: 0 8px 24px rgba(16, 24, 40, 0.08);
-  --shadow-lg: 0 12px 34px rgba(16, 24, 40, 0.12);
+  --shadow-sm: var(--gll-shadow-sm);
+  --shadow-md: var(--gll-shadow-md);
+  --shadow-lg: var(--gll-shadow-overlay);
   --shadow-focus: 0 0 0 3px var(--color-focus-ring);
 
-  /* Layering */
   --z-base: 0;
   --z-sticky: 10;
   --z-menu: 100;
@@ -85,42 +190,39 @@
   --z-toast: 1000;
   --z-tooltip: 1100;
 
-  /* Component dimensions */
-  --control-height-sm: 2rem;
-  --control-height-md: 2.5rem;
+  --control-height-sm: 2.375rem;
+  --control-height-md: var(--gll-control-height);
   --control-height-lg: 3rem;
   --dialog-width-sm: 30rem;
   --dialog-width-md: 48rem;
   --dialog-width-lg: 65rem;
   --dialog-width-xl: 68.75rem;
-  --dialog-shadow: 0 24px 64px rgba(15, 23, 42, 0.3);
-  --sidebar-width: 300px;
+  --dialog-shadow: var(--gll-shadow-overlay);
+  --sidebar-width: var(--gll-sidebar-width);
 
-  /* Scrollbars */
-  --scrollbar-track: #e9edf3;
-  --scrollbar-thumb: var(--color-muted);
-  --scrollbar-thumb-hover: var(--color-primary);
-  --scrollbar-thumb-active: var(--color-primary-hover);
+  --scrollbar-track: var(--gll-paper-muted);
+  --scrollbar-thumb: var(--gll-line-strong);
+  --scrollbar-thumb-hover: var(--gll-forest);
+  --scrollbar-thumb-active: var(--gll-forest-hover);
 
-  /* Compatibility aliases used by the existing interface. */
-  --bg: var(--color-background);
-  --panel: var(--color-surface);
-  --panel-alt: var(--color-surface-subtle);
-  --border: var(--color-border);
-  --border-strong: var(--color-border-strong);
-  --text: var(--color-text-primary);
-  --muted: var(--color-text-secondary);
-  --primary: var(--color-primary);
-  --primary-dark: var(--color-primary-hover);
-  --sidebar: var(--color-secondary);
-  --danger: var(--color-danger);
-  --danger-bg: var(--color-danger-surface);
-  --success: var(--color-success);
-  --success-bg: var(--color-success-surface);
-  --warning: var(--color-warning);
-  --warning-bg: var(--color-warning-surface);
-  --info: var(--color-info);
-  --info-bg: var(--color-info-surface);
-  --shadow: var(--shadow-lg);
-  --radius: var(--radius-lg);
+  --bg: var(--gll-canvas);
+  --panel: var(--gll-paper);
+  --panel-alt: var(--gll-paper-muted);
+  --border: var(--gll-line);
+  --border-strong: var(--gll-line-strong);
+  --text: var(--gll-ink);
+  --muted: var(--gll-ink-soft);
+  --primary: var(--gll-forest);
+  --primary-dark: var(--gll-forest-hover);
+  --sidebar: var(--gll-forest);
+  --danger: var(--gll-danger);
+  --danger-bg: var(--gll-danger-bg);
+  --success: var(--gll-success);
+  --success-bg: var(--gll-success-bg);
+  --warning: var(--gll-warning);
+  --warning-bg: var(--gll-warning-bg);
+  --info: var(--gll-info);
+  --info-bg: var(--gll-info-bg);
+  --shadow: var(--gll-shadow-overlay);
+  --radius: var(--gll-radius-md);
 }

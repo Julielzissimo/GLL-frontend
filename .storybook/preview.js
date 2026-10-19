@@ -1,6 +1,7 @@
 import "../web/design-system/tokens.css";
 import "../web/styles.css";
 import "../web/design-system/design-system.css";
+import "../web/design-system/prototype-theme.css";
 import "../web/design-system/components.js";
 
 /** @type { import('@storybook/html-vite').Preview } */
@@ -10,11 +11,11 @@ const preview = {
       test: "todo",
     },
     backgrounds: {
-      default: "GLL Background",
+      default: "GLL Canvas",
       values: [
-        { name: "GLL Background", value: "#f4f6f9" },
-        { name: "Surface", value: "#ffffff" },
-        { name: "Sidebar", value: "#111b32" },
+        { name: "GLL Canvas", value: "#f5f3ed" },
+        { name: "Paper", value: "#fffefa" },
+        { name: "Forest", value: "#183d35" },
       ],
     },
     controls: {

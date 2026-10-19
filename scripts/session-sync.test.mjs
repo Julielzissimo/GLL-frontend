@@ -8,6 +8,17 @@ const html = await readFile(new URL("../web/index.html", import.meta.url), "utf8
 const application = source.slice(0, source.lastIndexOf('withBlockingLoading(main, "Verificando sessão…")'));
 const user = { email: "test@example.test", name: "Teste" };
 
+test("feed descreve alterações específicas do edital e do orçamento", () => {
+  const { bidActivityDescription } = client();
+  const event = { bid_id: "bid-1", edital_number: "10/2026", buyer_agency: "Prefeitura", detail: "3", previous_value: "Em Analise", next_value: "Aprovada" };
+  assert.equal(bidActivityDescription({ ...event, event_type: "bid_updated" }), "atualizou o edital 10/2026 de Prefeitura");
+  assert.equal(bidActivityDescription({ ...event, event_type: "quotation_item_updated" }), "alterou o item 3 do orçamento do edital 10/2026 de Prefeitura");
+  assert.equal(bidActivityDescription({ ...event, event_type: "file_added" }), "adicionou o arquivo “3” ao edital 10/2026 de Prefeitura");
+  assert.equal(bidActivityDescription({ ...event, event_type: "file_removed" }), "excluiu o arquivo “3” do edital 10/2026 de Prefeitura");
+  assert.equal(bidActivityDescription({ ...event, event_type: "status_changed" }), "alterou o status do edital 10/2026 de Prefeitura de Em Cadastro para Aprovada");
+  assert.equal(bidActivityDescription({ ...event, event_type: "item_won" }), "marcou o item 3 como vencido no edital 10/2026 de Prefeitura");
+});
+
 test("número do edital é separado do identificador interno e aceita repetição", () => {
   const app = client();
   const first = app.normalizeBidRecord({ id: "internal-1", edital_number: "10/2026" });
@@ -146,14 +157,16 @@ test("itens não carregam nem enviam os campos antigos de frete", () => {
 function backend() {
   return {
     tables: { bids: [{ id: "TEST-1", buyer_agency: "Original" }], items: [], documents: [], failure_history: [], quotations: [{ id: 1, edital: "Original" }], quotation_items: [], suppliers: [] },
-    users: [user], channels: new Set(),
+    users: [{ ...user, auth_user_id: "profile-1", organization_id: "org-1", role: "Administrador", organization: { name: "Teste" } }],
+    channels: new Set(), notificationStates: new Map(),
   };
 }
 
-function client(db = backend(), auth = { session: { user } }) {
+function client(db = backend(), auth = { session: { user } }, config = {}) {
   const elements = new Map();
   const listeners = new Map();
   const timers = new Map();
+  const intervalDelays = [];
   let nextTimer = 0;
   const location = { pathname: "/homolog/", search: "", hash: "" };
   const updateLocation = (url) => {
@@ -183,7 +196,7 @@ function client(db = backend(), auth = { session: { user } }) {
           contains: (v) => classes.has(v),
           toggle: (v, on = !classes.has(v)) => on ? classes.add(v) : classes.delete(v),
         },
-        querySelectorAll: () => [], setAttribute() {}, prepend() {}, reset() {}, close() {},
+        querySelector: () => null, querySelectorAll: () => [], setAttribute() {}, insertAdjacentHTML() {}, prepend() {}, reset() {}, close() {},
       });
     }
     return elements.get(id);
@@ -194,23 +207,29 @@ function client(db = backend(), auth = { session: { user } }) {
   };
   const context = vm.createContext({
     console, URL, URLSearchParams, Intl, Date,
-    window: { GLL_CONFIG: { supabaseUrl: "https://test.invalid", supabaseAnonKey: "test", sessionIdleTimeoutMinutes: 30, sessionMaxLifetimeHours: 8 }, location, history, localStorage, ...events },
+    window: { GLL_CONFIG: { supabaseUrl: "https://test.invalid", supabaseAnonKey: "test", sessionIdleTimeoutMinutes: 30, sessionMaxLifetimeHours: 8, ...config }, location, history, localStorage, ...events },
     document: { hidden: false, getElementById: element, querySelectorAll: () => [], createElement: () => element("syncNotice"), ...events },
     setTimeout: (fn) => { timers.set(++nextTimer, fn); return nextTimer; },
     clearTimeout: (id) => timers.delete(id),
-    setInterval: (fn) => { timers.set(++nextTimer, fn); return nextTimer; },
+    setInterval: (fn, delay) => { intervalDelays.push(delay); timers.set(++nextTimer, fn); return nextTimer; },
     clearInterval: (id) => timers.delete(id),
   });
   vm.runInContext(application, context);
-  const api = vm.runInContext(`({ store, appState, restoreSession, logout, reloadData, refreshInBackground, startLiveUpdates, stopLiveUpdates, resetAuthenticatedView, scheduleLiveRefresh, calculateBidSummary, calculateLineTotal, calculateItemProfit, calculateProfitMargin, calculateValueWithMargin, parseDecimal, parseProfitMargin, money, formatDateTime, toDateTimeInputValue, fromDateTimeInputValue, readNavigationRoute, writeNavigationRoute, resolveAuthorizedPage, normalizeBidRecord, normalizeBidAttachments, validateEditalFiles, bidDisplayNumber, bidMatchesSearch, creatorName, creatorInitials, creatorTagMarkup, normalizeQuotationRecord, normalizeQuotationItemRecord, quotationItemToBidItem, bidItemToQuotationItem, normalizeTechnicalSpecifications, quotationSaveError, sessionPolicyStorageKey, enforceSessionPolicy, availableBidQuotations })`, context);
+  element("notificationsMenu").classList.add("hidden");
+  const api = vm.runInContext(`({ store, appState, restoreSession, logout, reloadData, refreshInBackground, startLiveUpdates, stopLiveUpdates, resetAuthenticatedView, scheduleLiveRefresh, verifyCurrentUserAccess, calculateBidSummary, calculateLineTotal, calculateItemProfit, calculateProfitMargin, calculateValueWithMargin, parseDecimal, parseProfitMargin, money, formatDateTime, toDateTimeInputValue, fromDateTimeInputValue, readNavigationRoute, writeNavigationRoute, resolveAuthorizedPage, normalizeBidRecord, normalizeBidAttachments, validateEditalFiles, bidDisplayNumber, bidMatchesSearch, bidActivityDescription, creatorName, creatorInitials, creatorTagMarkup, normalizeQuotationRecord, normalizeQuotationItemRecord, quotationItemToBidItem, bidItemToQuotationItem, normalizeTechnicalSpecifications, quotationSaveError, sessionPolicyStorageKey, enforceSessionPolicy, availableBidQuotations, navigationNotifications, clearAllNotifications, updateCurrentUserProfile })`, context);
   vm.runInContext(`
     renderSuppliers = renderBids = renderDetails = renderQuotations = renderUsers = () => {};
     clearBidForm = clearQuotationForm = setPage = updateMainNavigationState = () => {};
+    showToast = () => {};
   `, context);
   api.store.getAll = async (table) => structuredClone(db.tables[table]);
+  api.store.getBidActivity = async () => structuredClone(db.tables.bid_activity || []);
   api.store.getUsers = async () => structuredClone(db.users);
   api.store.getUser = async () => db.users[0] || null;
+  api.store.getDismissedNotificationIds = async (userId) => structuredClone(db.notificationStates.get(userId) || []);
+  api.store.saveDismissedNotificationIds = async (ids, userId) => db.notificationStates.set(userId, structuredClone(ids));
   api.store.client = {
+    realtime: { setAuth: async () => {} },
     functions: {
       invoke: async (name) => ({
         data: name === "password-reset-status" ? { mustChangePassword: auth.mustChangePassword === true } : { ok: true },
@@ -221,20 +240,35 @@ function client(db = backend(), auth = { session: { user } }) {
       getSession: async () => ({ data: { session: auth.session }, error: null }),
       signOut: async ({ scope }) => { assert.equal(scope, "local"); auth.session = null; return { error: null }; },
     },
-    channel: () => {
+    channel: (topic, options) => {
+      const handlers = new Map();
       const channel = {
-        on: (_type, _filter, handler) => { channel.receive = handler; return channel; },
-        subscribe: (callback) => { db.channels.add(channel); callback("SUBSCRIBED"); return channel; },
-        send: async (message) => {
-          assert.deepEqual(Object.keys(message.payload), []);
-          for (const other of db.channels) if (other !== channel) other.receive();
+        topic,
+        options,
+        on: (type, filter, handler) => {
+          if (type === "broadcast") handlers.set(filter.event, handler);
+          else if (type === "postgres_changes") channel.receivePostgresChange = handler;
+          return channel;
         },
+        subscribe: (callback) => { db.channels.add(channel); callback("SUBSCRIBED"); return channel; },
+        broadcast: (event, payload) => handlers.get(event)?.({ event, payload }),
+        send: async (message) => {
+          for (const other of db.channels) {
+            if (other !== channel && other.topic === topic) other.broadcast(message.event, message.payload);
+          }
+        },
+      };
+      db.broadcast ||= (targetTopic, event, payload) => {
+        for (const subscriber of db.channels) {
+          if (subscriber.topic === targetTopic) subscriber.broadcast(event, payload);
+        }
       };
       return channel;
     },
     removeChannel: async (channel) => db.channels.delete(channel),
   };
   return { ...api, db, auth, context, elements, element, timers, listeners, location, history,
+    intervalDelays,
     flush: async () => {
       const pending = [...timers.values()]; timers.clear();
       for (const fn of pending) await fn();
@@ -243,6 +277,49 @@ function client(db = backend(), auth = { session: { user } }) {
   };
 }
 
+test("sets the Realtime JWT before subscribing to the private organization channel", async () => {
+  const app = client();
+  app.appState.authenticated = true;
+  app.appState.currentOrganizationId = "org-1";
+  const calls = [];
+  app.store.client.realtime = { setAuth: async () => { calls.push("set-auth"); } };
+  const channel = app.store.client.channel.bind(app.store.client);
+  app.store.client.channel = (topic, options) => {
+    calls.push({ topic, options });
+    return channel(topic, options);
+  };
+
+  await app.startLiveUpdates();
+
+  assert.equal(calls[0], "set-auth");
+  const privateChannel = calls.find((call) => typeof call === "object" && call.topic === "organization:org-1");
+  assert.deepEqual(JSON.parse(JSON.stringify(privateChannel.options)), { config: { private: true, broadcast: { self: false } } });
+  assert.deepEqual(app.intervalDelays, []);
+  app.stopLiveUpdates();
+});
+
+test("removes the 15-second full-data polling interval", async () => {
+  const app = client();
+  await app.restoreSession();
+  assert.deepEqual(app.intervalDelays, [60_000]);
+  await app.logout();
+});
+
+test("limpar notificações persiste os avisos dispensados somente para o perfil atual", async () => {
+  const app = client();
+  app.appState.currentUserAuthId = "profile-1";
+  app.appState.bids = [{ id: "bid-1", edital_number: "8/2026" }];
+  app.appState.documents = [{ id: 11, bid_id: "bid-1", document_type: "Certidão", has_document: false }];
+
+  assert.equal(app.navigationNotifications().length, 1);
+  await app.clearAllNotifications();
+
+  assert.equal(app.navigationNotifications().length, 0);
+  assert.deepEqual(await app.store.getDismissedNotificationIds("profile-1"), ["document:11"]);
+  app.appState.dismissedNotificationIds = await app.store.getDismissedNotificationIds("profile-2");
+  assert.equal(app.navigationNotifications().length, 1);
+  assert.match(source, /data-clear-notifications[\s\S]*Limpar notificações/);
+});
 test("navigation writes readable URLs without discarding unrelated parameters", () => {
   const app = client();
   app.appState.authenticated = true;
@@ -262,6 +339,14 @@ test("design system route is available to administrators and blocked for analyst
   assert.equal(app.resolveAuthorizedPage("designSystem"), "designSystem");
   app.appState.currentUserRole = "Analista";
   assert.equal(app.resolveAuthorizedPage("designSystem"), "settings");
+});
+
+test("production blocks the Design System route for every profile", () => {
+  const app = client(backend(), { session: { user } }, { designSystemEnabled: false });
+  for (const role of ["Administrador", "Analista"]) {
+    app.appState.currentUserRole = role;
+    assert.equal(app.resolveAuthorizedPage("designSystem"), "home");
+  }
 });
 
 test("quotation normalization preserves the delivery deadline", () => {
@@ -465,7 +550,7 @@ test("logout ends session, clears cached data/listeners and prevents restoration
   assert.equal(app.appState.authenticated, false);
 });
 
-test("two independent sessions receive bid, quotation, item and deletion changes", async () => {
+test("two independent sessions apply only resources announced by the organization channel", async () => {
   const db = backend();
   const a = client(db), b = client(db);
   await a.restoreSession(); await b.restoreSession();
@@ -473,12 +558,16 @@ test("two independent sessions receive bid, quotation, item and deletion changes
   db.tables.bids[0].buyer_agency = "Atualizado";
   db.tables.quotations[0].edital = "Atualizado";
   db.tables.quotation_items.push({ id: 1, quotation_id: 1, item_number: 1, quantity: 2, final_bid: 15 });
-  await a.reloadData(); await b.flush();
+  db.broadcast("organization:org-1", "organization-data-changed", { resource: "bids" });
+  db.broadcast("organization:org-1", "organization-data-changed", { resource: "quotations" });
+  db.broadcast("organization:org-1", "organization-data-changed", { resource: "quotation_items" });
+  await b.flush();
   assert.equal(b.appState.bids[0].buyer_agency, "Atualizado");
   assert.equal(b.appState.quotations[0].edital, "Atualizado");
   assert.equal(b.appState.quotationItems.length, 1);
   db.tables.bids = [];
-  await a.reloadData(); await b.flush();
+  db.broadcast("organization:org-1", "organization-data-changed", { resource: "bids" });
+  await b.flush();
   assert.equal(b.appState.bids.length, 0);
 });
 
@@ -499,27 +588,53 @@ test("technical specifications are normalized and incomplete values are preserve
 });
 
 test("remote edits and deletes preserve drafts and show a persistent warning", async () => {
-  const app = client(); await app.restoreSession();
+  const app = client(); await app.restoreSession(); await app.startLiveUpdates(); await app.flush();
   app.appState.currentBidId = "TEST-1";
   app.appState.currentQuotationId = 1;
   app.element("buyerAgency").value = "Meu rascunho";
   app.element("quotationEdital").value = "Outro rascunho";
   app.db.tables.bids = [];
   app.db.tables.quotations[0].edital = "Remoto";
-  await app.refreshInBackground();
+  app.scheduleLiveRefresh({ resource: "bids" });
+  app.scheduleLiveRefresh({ resource: "quotations" });
+  await app.flush();
   assert.equal(app.element("buyerAgency").value, "Meu rascunho");
   assert.equal(app.element("quotationEdital").value, "Outro rascunho");
   assert.match(app.element("syncNotice").textContent, /alterado ou excluído/);
 });
 
-test("polling recovers changes when no realtime notification arrives", async () => {
-  const app = client(); await app.restoreSession(); await app.flush();
-  app.db.tables.bids[0].buyer_agency = "Sem aviso";
-  app.scheduleLiveRefresh(); await app.flush();
-  assert.equal(app.appState.bids[0].buyer_agency, "Sem aviso");
+test("Realtime fetches only the changed edital resource with its bid filter", async () => {
+  const app = client(); await app.restoreSession(); await app.startLiveUpdates(); await app.flush(); app.stopLiveUpdates();
+  app.appState.activePage = "items";
+  app.appState.currentBidId = "TEST-1";
+  app.db.tables.items.push({ id: 7, bid_id: "TEST-1", item_number: 1, name: "Item novo" });
+  const calls = [];
+  app.store.getAll = async (table) => { calls.push(["all", table]); return structuredClone(app.db.tables[table] || []); };
+  app.store.getMatching = async (table, field, value) => {
+    calls.push(["matching", table, field, value]);
+    return structuredClone((app.db.tables[table] || []).filter((row) => String(row[field]) === String(value)));
+  };
+
+  app.scheduleLiveRefresh({ resource: "items" });
+  await app.flush();
+
+  assert.deepEqual(calls, [["matching", "items", "bid_id", "TEST-1"]]);
+  assert.equal(app.appState.items[0].name, "Item novo");
 });
 
-test("network failure keeps session and data; retry applies a complete snapshot", async () => {
+test("a revoked user is signed out after the organization access event", async () => {
+  const app = client(); await app.restoreSession(); await app.flush();
+  app.db.users[0].access_revoked_at = new Date().toISOString();
+  app.db.users[0].auth_access_status = "revoked";
+
+  app.scheduleLiveRefresh({ resource: "app_users" });
+  await app.flush();
+
+  assert.equal(app.appState.authenticated, false);
+  assert.match(app.element("loginError").textContent, /acesso não está mais disponível/);
+});
+
+test("network failure keeps session and data; retry applies the current view", async () => {
   const app = client(); await app.restoreSession();
   const getAll = app.store.getAll;
   app.db.tables.bids[0].buyer_agency = "Novo";
@@ -572,7 +687,8 @@ test("background refresh pauses in hidden tabs and during a save", async () => {
 test("access removal closes the authenticated view", async () => {
   const app = client(); await app.restoreSession();
   app.db.users = [];
-  await app.refreshInBackground();
+  app.scheduleLiveRefresh({ resource: "app_users" });
+  await app.flush();
   assert.equal(app.appState.authenticated, false);
   assert.equal(app.appState.bids.length, 0);
 });
@@ -591,7 +707,8 @@ test("supplier updates synchronize between sessions and clear on logout", async 
   await a.restoreSession();
   await b.restoreSession();
   db.tables.suppliers.push({ id: 1, name: "Loja de teste", website: "", contact: "", tags: ["papelaria"] });
-  await a.reloadData();
+  b.appState.activePage = "suppliers";
+  db.broadcast("organization:org-1", "organization-data-changed", { resource: "suppliers" });
   await b.flush();
   assert.equal(b.appState.suppliers[0].name, "Loja de teste");
   await b.logout();

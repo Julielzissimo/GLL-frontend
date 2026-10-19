@@ -1,12 +1,12 @@
-﻿const STATUS_OPTIONS = ["Em Analise", "Aprovada", "Desclassificado", "Disputada"];
+﻿const STATUS_OPTIONS = ["Em Analise", "Aguard. Disputa", "Descartada", "Aprovada", "Faturado", "Desclassificado", "Disputada"];
 const storageBucket = globalThis.window?.GLLFileStorage?.storageBucket || ((client, bucket) => client.storage.from(bucket));
 const WON_ITEM_STATUSES = ["Aprovada", "Faturado", "Desclassificado", "Disputada"];
-STATUS_OPTIONS.splice(1, 0, "Descartada");
-STATUS_OPTIONS.splice(3, 0, "Faturado");
 const WON_ITEM_TOTAL_STATUSES = ["Descartada", "Aprovada", "Faturado", "Disputada"];
 const FINAL_BID_STATUS = "Faturado";
+const BID_STATUS_LABELS = Object.freeze({ "Em Analise": "Em Cadastro", "Aguard. Disputa": "Aguard. Disputa" });
 const BID_STATUS_TRANSITIONS = Object.freeze({
-  "Em Analise": ["Descartada", "Aprovada", "Desclassificado", "Disputada"],
+  "Em Analise": ["Aguard. Disputa", "Descartada", "Aprovada", "Desclassificado", "Disputada"],
+  "Aguard. Disputa": ["Em Analise", "Descartada", "Aprovada", "Desclassificado", "Disputada"],
   Descartada: ["Em Analise", "Disputada"],
   Aprovada: ["Em Analise", "Faturado", "Desclassificado", "Disputada"],
   Faturado: ["Aprovada"],
@@ -46,7 +46,6 @@ const DEFAULT_GLL_CONFIG = {
   description: "Ambiente web de validação local",
   storageLabel: "IndexedDB local",
   storageSuffix: "local",
-  storageProvider: "supabase",
   appName: "GLL Web",
   supabaseUrl: "",
   supabaseAnonKey: "",
@@ -54,6 +53,7 @@ const DEFAULT_GLL_CONFIG = {
   sessionMaxLifetimeHours: 8,
   suppliersEnabled: true,
   commercialProposalsEnabled: true,
+  designSystemEnabled: true,
 };
 const GLL_CONFIG = {
   ...DEFAULT_GLL_CONFIG,
@@ -130,18 +130,19 @@ const appState = {
   currentSupplierProductId: null,
   sidebarCollapsed: false,
   appNavigationCollapsed: false,
-  documentsNavigationExpanded: false,
   settingsNavigationExpanded: false,
   bids: [],
   items: [],
   documents: [],
   failureHistory: [],
   statusHistory: [],
+  bidActivity: [],
   quotations: [],
   quotationItems: [],
   users: [],
   suppliers: [],
   supplierProducts: [],
+  dismissedNotificationIds: [],
 };
 
 const $ = (id) => document.getElementById(id);
@@ -166,11 +167,12 @@ const refs = {
   storageStatus: $("storageStatus"),
   appSidebar: $("appSidebar"),
   homeIconButton: $("homeIconButton"),
+  workspaceSummary: $("workspaceSummary"),
+  workspaceInitial: $("workspaceInitial"),
+  workspaceName: $("workspaceName"),
   navHomeButton: $("navHomeButton"),
   navBidsButton: $("navBidsButton"),
   navQuotationsButton: $("navQuotationsButton"),
-  navDocumentsButton: $("navDocumentsButton"),
-  documentsNavigationItems: $("documentsNavigationItems"),
   navCommercialProposalsButton: $("navCommercialProposalsButton"),
   navSuppliersButton: $("navSuppliersButton"),
   navDeclarationsButton: $("navDeclarationsButton"),
@@ -179,6 +181,13 @@ const refs = {
   settingsNavigationItems: $("settingsNavigationItems"),
   navDesignSystemButton: $("navDesignSystemButton"),
   menuToggleButton: $("menuToggleButton"),
+  closeMobileSidebarButton: $("closeMobileSidebarButton"),
+  mobileNavigationScrim: $("mobileNavigationScrim"),
+  searchNavigationButton: $("searchNavigationButton"),
+  notificationsContainer: $("notificationsContainer"),
+  notificationsButton: $("notificationsButton"),
+  notificationsMenu: $("notificationsMenu"),
+  notificationIndicator: $("notificationIndicator"),
   breadcrumbList: $("breadcrumbList"),
   profileMenuContainer: $("profileMenuContainer"),
   profileMenuButton: $("profileMenuButton"),
@@ -194,9 +203,12 @@ const refs = {
   bidCatalogPage: $("bidCatalogPage"),
   upcomingBidsList: $("upcomingBidsList"),
   pendingDocumentsList: $("pendingDocumentsList"),
+  homeRecentActivitiesList: $("homeRecentActivitiesList"),
   viewAllBidsButton: $("viewAllBidsButton"),
+  viewRecentBidsButton: $("viewRecentBidsButton"),
   homeTotalBids: $("homeTotalBids"),
-  homeAnalysisBids: $("homeAnalysisBids"),
+  homeRegistrationBids: $("homeRegistrationBids"),
+  homeReadyToDisputeBids: $("homeReadyToDisputeBids"),
   homeDiscardedBids: $("homeDiscardedBids"),
   homeApprovedBids: $("homeApprovedBids"),
   homeBilledBids: $("homeBilledBids"),
@@ -462,11 +474,9 @@ const refs = {
   quotationItemsTableBody: $("quotationItemsTableBody"),
   quotationItemWonHeader: $("quotationItemWonHeader"),
   userCountLabel: $("userCountLabel"),
-  usersTotalLabel: $("usersTotalLabel"),
   userSearchInput: $("userSearchInput"),
   userRoleFilter: $("userRoleFilter"),
   usersTableBody: $("usersTableBody"),
-  usersOrganizationLabel: $("usersOrganizationLabel"),
   userAssignmentsModal: $("userAssignmentsModal"),
   userAssignmentsForm: $("userAssignmentsForm"),
   userAssignmentsTitle: $("userAssignmentsTitle"),
@@ -570,6 +580,15 @@ function removeEmptyId(record) {
   return nextRecord;
 }
 
+function notificationDismissalStorageKey(userId) {
+  const profileId = String(userId || "").trim();
+  return profileId ? `gll-notification-dismissals:${encodeURIComponent(profileId)}` : null;
+}
+
+function normalizeNotificationDismissalIds(ids) {
+  return [...new Set(Array.isArray(ids) ? ids.filter((id) => typeof id === "string" && id) : [])];
+}
+
 class IndexedDbStore {
   constructor() {
     this.requiresAuthenticationBeforeData = false;
@@ -669,6 +688,30 @@ class IndexedDbStore {
   async getAll(storeName) {
     const db = await this.open();
     return this.request(db.transaction(storeName).objectStore(storeName).getAll());
+  }
+
+  async getMatching(storeName, columnName, value) {
+    return (await this.getAll(storeName)).filter((row) => String(row?.[columnName]) === String(value));
+  }
+
+  async getBidActivity() { return []; }
+  async getBidActivityForBid() { return []; }
+
+  async getDismissedNotificationIds(userId) {
+    const key = notificationDismissalStorageKey(userId);
+    if (!key) return [];
+    try {
+      const saved = JSON.parse(window.localStorage.getItem(key) || "[]");
+      return normalizeNotificationDismissalIds(saved);
+    } catch {
+      return [];
+    }
+  }
+
+  async saveDismissedNotificationIds(ids, userId) {
+    const key = notificationDismissalStorageKey(userId);
+    if (!key) throw new Error("O perfil atual não está disponível.");
+    window.localStorage.setItem(key, JSON.stringify(normalizeNotificationDismissalIds(ids)));
   }
 
   async authTx(storeName, mode, callback) {
@@ -1204,6 +1247,54 @@ class SupabaseStore {
     return data || [];
   }
 
+  async getMatching(tableName, columnName, value) {
+    const client = await this.open();
+    let query = client.from(tableName).select("*").eq(columnName, value);
+    if (["bids", "quotations"].includes(tableName)) query = query.is("deleted_at", null);
+    const { data, error } = await query;
+    if (tableName === "failure_history" && isMissingFailureHistoryTableError(error)) return [];
+    assertSupabase(error);
+    return data || [];
+  }
+
+  async getBidActivity() {
+    const client = await this.open();
+    const { data, error } = await client.from("bid_activity").select("*")
+      .order("created_at", { ascending: false }).order("id", { ascending: false }).limit(30);
+    assertSupabase(error);
+    return data || [];
+  }
+
+  async getBidActivityForBid(bidId) {
+    const client = await this.open();
+    const { data, error } = await client.from("bid_activity").select("*")
+      .eq("bid_id", bidId).order("created_at", { ascending: false }).order("id", { ascending: false }).limit(30);
+    assertSupabase(error);
+    return data || [];
+  }
+
+  async getDismissedNotificationIds(userId) {
+    if (!userId) return [];
+    const client = await this.open();
+    const { data, error } = await client.from("user_notification_states")
+      .select("dismissed_notification_ids")
+      .eq("user_id", userId)
+      .maybeSingle();
+    assertSupabase(error);
+    return normalizeNotificationDismissalIds(data?.dismissed_notification_ids);
+  }
+
+  async saveDismissedNotificationIds(ids, userId) {
+    if (!userId) throw new Error("O perfil atual não está disponível.");
+    const client = await this.open();
+    const { error } = await client.from("user_notification_states").upsert({
+      user_id: userId,
+      dismissed_notification_ids: normalizeNotificationDismissalIds(ids),
+      updated_at: new Date().toISOString(),
+    }, { onConflict: "user_id" });
+    assertSupabase(error);
+  }
+
   async getUsers() {
     const client = await this.open();
     const { data, error } = await client.from("app_users").select("*, organization:organizations(name, cnpj)");
@@ -1228,14 +1319,14 @@ class SupabaseStore {
 
     if (pathsToSign.length) {
       const client = await this.open();
-      const { data, error } = await storageBucket(client, "profile-avatars").createSignedUrls(pathsToSign, 120);
+      const { data, error } = await client.storage.from("profile-avatars").createSignedUrls(pathsToSign, 3600);
       if (error) {
         console.warn("Não foi possível carregar algumas fotos de perfil.");
       } else {
         (data || []).forEach((entry, index) => {
           if (!entry.signedUrl || entry.error) return;
           const path = entry.path || pathsToSign[index];
-          userAvatarUrlCache.set(path, { url: entry.signedUrl, expiresAt: now + 90_000 });
+          userAvatarUrlCache.set(path, { url: entry.signedUrl, expiresAt: now + 3_000_000 });
         });
       }
     }
@@ -1259,7 +1350,7 @@ class SupabaseStore {
     assertSupabase(currentError);
     if (!currentProfile) throw new Error("Perfil não encontrado nesta organização.");
 
-    const bucket = storageBucket(client, "profile-avatars");
+    const bucket = client.storage.from("profile-avatars");
     let newAvatarPath = "";
     const update = {
       name: displayName.trim(),
@@ -1269,13 +1360,12 @@ class SupabaseStore {
 
     if (avatarBlob) {
       newAvatarPath = `${targetAuthUserId}/${crypto.randomUUID()}.webp`;
-      const { data: uploadResult, error: uploadError } = await bucket.upload(newAvatarPath, avatarBlob, {
+      const { error: uploadError } = await bucket.upload(newAvatarPath, avatarBlob, {
         cacheControl: "3600",
         contentType: "image/webp",
         upsert: false,
       });
       assertSupabase(uploadError);
-      newAvatarPath = uploadResult?.path || newAvatarPath;
       update.avatar_path = newAvatarPath;
     } else if (removeAvatar) {
       update.avatar_path = null;
@@ -1514,13 +1604,13 @@ class SupabaseStore {
         const fileName = sanitizeStorageFileName(file.name);
         if (!appState.currentOrganizationId) throw new Error("Não foi possível identificar a organização do usuário.");
         const filePath = `${appState.currentOrganizationId}/${bidId}/${crypto.randomUUID()}/${fileName}`;
-        const { data: uploadResult, error: uploadError } = await storageBucket(client, BID_EDITAL_BUCKET).upload(filePath, file, {
+        const { error: uploadError } = await client.storage.from(BID_EDITAL_BUCKET).upload(filePath, file, {
           contentType: file.type || "application/octet-stream",
           upsert: false,
         });
         assertSupabase(uploadError);
         uploadedAttachments.push({
-          path: uploadResult?.path || filePath,
+          path: filePath,
           name: file.name,
           type: file.type || "application/octet-stream",
           size: file.size,
@@ -1528,7 +1618,7 @@ class SupabaseStore {
       }
     } catch (error) {
       if (uploadedAttachments.length) {
-        await storageBucket(client, BID_EDITAL_BUCKET).remove(uploadedAttachments.map((attachment) => attachment.path));
+        await client.storage.from(BID_EDITAL_BUCKET).remove(uploadedAttachments.map((attachment) => attachment.path));
       }
       throw error;
     }
@@ -1536,7 +1626,7 @@ class SupabaseStore {
     const editalFiles = [...currentAttachments, ...uploadedAttachments].map(attachmentMetadata);
     const { error: updateError } = await client.from("bids").update({ edital_files: editalFiles }).eq("id", bidId);
     if (updateError) {
-      await storageBucket(client, BID_EDITAL_BUCKET).remove(uploadedAttachments.map((attachment) => attachment.path));
+      await client.storage.from(BID_EDITAL_BUCKET).remove(uploadedAttachments.map((attachment) => attachment.path));
       assertSupabase(updateError);
     }
     return editalFiles;
@@ -1545,7 +1635,7 @@ class SupabaseStore {
   async downloadBidAttachment(attachment) {
     if (!attachment?.path) throw new Error("Este arquivo não está disponível.");
     const client = await this.open();
-    const { data, error } = await storageBucket(client, BID_EDITAL_BUCKET).download(attachment.path);
+    const { data, error } = await client.storage.from(BID_EDITAL_BUCKET).download(attachment.path);
     assertSupabase(error);
     return data;
   }
@@ -1568,7 +1658,7 @@ class SupabaseStore {
       .map(attachmentMetadata);
     const { error: updateError } = await client.from("bids").update({ edital_files: editalFiles }).eq("id", bidId);
     assertSupabase(updateError);
-    const { error: removeError } = await storageBucket(client, BID_EDITAL_BUCKET).remove([attachmentPath]);
+    const { error: removeError } = await client.storage.from(BID_EDITAL_BUCKET).remove([attachmentPath]);
     if (removeError) console.warn("Não foi possível remover o arquivo do armazenamento.", removeError);
   }
 
@@ -1783,6 +1873,14 @@ class SupabaseStore {
 }
 
 const store = createStore();
+const organizationChat = (window.GLLOrganizationChat?.createOrganizationChat || (() => ({
+  bind() {}, close() {}, handleIncomingMessage() {}, refreshUnreadCount() {}, startUnreadTracking() {}, stopUnreadTracking() {},
+})))({
+  getClient: () => (store.requiresAuthenticationBeforeData ? store.client : null),
+  getOrganizationId: () => appState.currentOrganizationId,
+  getOrganizationName: () => appState.currentOrganizationName,
+  getUserId: () => appState.currentUserAuthId,
+});
 const declarationsFeature = createDeclarationsFeature({
   getClient: () => (store.requiresAuthenticationBeforeData ? store.client : null),
   getContext: () => ({
@@ -1809,7 +1907,7 @@ const companyDataFeature = createCompanyDataFeature({
   onOrganizationUpdate: (organization) => {
     appState.currentOrganizationName = organization.name;
     appState.currentOrganizationCnpj = organization.cnpj;
-    refs.usersOrganizationLabel.textContent = organization.name;
+    updateWorkspaceSummary();
     void declarationsFeature.refresh().catch((error) => showToast(error.message, "error"));
   },
   toast: (message, tone) => showToast(message, tone),
@@ -1894,15 +1992,51 @@ async function enforceSessionPolicy() {
   return false;
 }
 
+async function verifyCurrentUserAccess() {
+  if (!appState.authenticated || !store.requiresAuthenticationBeforeData) return true;
+  const profile = await store.getUser(appState.currentUserEmail);
+  if (
+    !profile
+    || profile.access_revoked_at
+    || (profile.auth_access_status && profile.auth_access_status !== "active")
+  ) {
+    resetAuthenticatedView();
+    setLoginMessage("Seu acesso não está mais disponível. Entre novamente ou contate o administrador.");
+    return false;
+  }
+  if (appState.currentOrganizationId && profile.organization_id !== appState.currentOrganizationId) {
+    resetAuthenticatedView();
+    setLoginMessage("A organização vinculada à sua conta foi alterada. Entre novamente para continuar.");
+    return false;
+  }
+  return true;
+}
+
+async function verifyVisibleSession() {
+  if (!await enforceSessionPolicy()) return false;
+  try {
+    return await verifyCurrentUserAccess();
+  } catch (error) {
+    // A temporary network failure should not discard the active session.
+    console.warn("Não foi possível confirmar o acesso à conta. A sessão será mantida enquanto a conexão se recupera.");
+    return true;
+  }
+}
+
 function handleSessionVisibility() {
-  if (!document.hidden) enforceSessionPolicy().catch(() => resetAuthenticatedView());
+  if (!document.hidden) void verifyVisibleSession();
+}
+
+function handleLiveFocus() {
+  void verifyVisibleSession();
+  scheduleLiveRefresh();
 }
 
 function startSessionPolicyMonitoring() {
   stopSessionPolicyMonitoring();
   for (const eventName of SESSION_ACTIVITY_EVENTS) window.addEventListener(eventName, recordSessionActivity);
   document.addEventListener("visibilitychange", handleSessionVisibility);
-  sessionPolicyTimer = setInterval(() => enforceSessionPolicy().catch(() => resetAuthenticatedView()), SESSION_POLICY_CHECK_INTERVAL_MS);
+  sessionPolicyTimer = setInterval(() => verifyVisibleSession(), SESSION_POLICY_CHECK_INTERVAL_MS);
 }
 
 function stopSessionPolicyMonitoring() {
@@ -1978,8 +2112,8 @@ function applyEnvironmentConfig() {
 }
 
 function populateOptions() {
-  refs.filterStatus.innerHTML = optionList(["Todos", ...STATUS_OPTIONS]);
-  refs.bidStatus.innerHTML = optionList(STATUS_OPTIONS);
+  refs.filterStatus.innerHTML = statusOptionList(["Todos", ...STATUS_OPTIONS]);
+  refs.bidStatus.innerHTML = statusOptionList(STATUS_OPTIONS);
   refs.salesUnit.innerHTML = optionList(SALES_UNIT_OPTIONS);
 }
 
@@ -2006,6 +2140,14 @@ function optionList(values) {
   return values.map((value) => `<option value="${escapeHtml(value)}">${escapeHtml(value)}</option>`).join("");
 }
 
+function statusOptionList(values) {
+  return values.map((value) => {
+    const option = document.createElement("option");
+    option.value = value;
+    option.textContent = value === "Todos" ? value : statusLabel(value);
+    return option.outerHTML;
+  }).join("");
+}
 // Wrap complete UI operations, including their data refresh, rather than individual requests.
 let blockingOperationActive = false;
 
@@ -2027,6 +2169,7 @@ function withBlockingLoading(operation, message) {
       modal.close();
       document.documentElement.classList.remove("is-loading");
       blockingOperationActive = false;
+      if (pendingLiveResources.size || liveReconciliationPending) queueLiveRefresh();
       if (previousFocus?.isConnected && !previousFocus.disabled && previousFocus.getClientRects().length) {
         previousFocus.focus({ preventScroll: true });
       }
@@ -2035,6 +2178,7 @@ function withBlockingLoading(operation, message) {
 }
 
 function bindEvents() {
+  organizationChat.bind();
   bindPasswordVisibility();
   refs.toastDismissButton.innerHTML = GLLDesignSystem.ICONS.close;
   refs.toastDismissButton.addEventListener("click", () => {
@@ -2141,7 +2285,6 @@ function bindEvents() {
   document.querySelectorAll("[data-navigation-page]").forEach((button) => {
     button.addEventListener("click", () => setPage(button.dataset.navigationPage));
   });
-  refs.navDocumentsButton.addEventListener("click", toggleDocumentsNavigation);
   refs.navSettingsButton.addEventListener("click", toggleSettingsNavigation);
   $("openDesignSystemButton").addEventListener("click", () => setPage("designSystem"));
   $("openCompanyDataButton").addEventListener("click", () => setPage("companyData"));
@@ -2151,7 +2294,25 @@ function bindEvents() {
     button.addEventListener("click", () => clearBidForm({ openEditor: true }));
   });
   refs.viewAllBidsButton.addEventListener("click", () => setPage("bids"));
+  refs.viewRecentBidsButton.addEventListener("click", () => setPage("bids"));
   refs.menuToggleButton.addEventListener("click", toggleMainNavigation);
+  refs.closeMobileSidebarButton.addEventListener("click", closeMobileNavigation);
+  refs.mobileNavigationScrim.addEventListener("click", closeMobileNavigation);
+  refs.searchNavigationButton.addEventListener("click", () => {
+    setPage("bids");
+    requestAnimationFrame(() => refs.filterSearch.focus());
+  });
+  refs.notificationsButton.addEventListener("click", () => {
+    setNotificationsMenuOpen(refs.notificationsMenu.classList.contains("hidden"));
+  });
+  refs.notificationsContainer.addEventListener("keydown", handleNotificationsKeydown);
+  refs.notificationsMenu.addEventListener("click", handleNotificationClick);
+  document.addEventListener("pointerdown", (event) => {
+    if (!refs.notificationsContainer.contains(event.target)) setNotificationsMenuOpen(false);
+  });
+  document.addEventListener("focusin", (event) => {
+    if (!refs.notificationsContainer.contains(event.target)) setNotificationsMenuOpen(false);
+  });
   window.addEventListener("resize", updateMainNavigationState);
   window.addEventListener("resize", () => renderBreadcrumb(appState.activePage));
   refs.toggleSidebarButton.addEventListener("click", toggleSidebar);
@@ -2982,6 +3143,7 @@ async function enterAuthenticatedView(user) {
   appState.authenticated = true;
   appState.currentUserEmail = user.email;
   appState.currentUserAuthId = user.auth_user_id || user.email;
+  appState.dismissedNotificationIds = [];
   appState.currentUserRole = normalizeUserRole(user.role);
   appState.currentUserName = userDisplayName(user);
   appState.currentOrganizationId = user.organization_id || user.organization?.id || null;
@@ -2996,6 +3158,7 @@ async function enterAuthenticatedView(user) {
     refs.loginView.classList.add("hidden");
     refs.passwordResetView.classList.add("hidden");
     refs.appView.classList.remove("hidden");
+    truncateWorkspaceName();
     refs.loginPassword.value = "";
     clearBidForm({ history: "none" });
     clearQuotationForm();
@@ -3021,6 +3184,7 @@ async function logout() {
 }
 
 function resetAuthenticatedView() {
+  organizationChat.close();
   sessionEpoch += 1;
   stopSessionPolicyMonitoring();
   window.localStorage.removeItem(sessionPolicyStorageKey);
@@ -3028,6 +3192,7 @@ function resetAuthenticatedView() {
   appState.authenticated = false;
   appState.currentUserEmail = null;
   appState.currentUserAuthId = null;
+  appState.dismissedNotificationIds = [];
   appState.currentUserRole = null;
   appState.currentUserName = null;
   appState.currentOrganizationId = null;
@@ -3057,6 +3222,9 @@ function resetAuthenticatedView() {
   refs.currentUserName.textContent = "";
   refs.currentUserRole.textContent = "";
   refs.currentUserAvatar.textContent = "";
+  updateWorkspaceSummary();
+  setNotificationsMenuOpen(false);
+  updateNotificationsIndicator();
   userProfileReturnPage = "home";
   userProfileReturnFocusTarget = null;
   setSyncNotice("");
@@ -3083,29 +3251,29 @@ function updateMainNavigationState() {
   const isExpanded = isMobile
     ? refs.appView.classList.contains("mobile-nav-open")
     : !appState.appNavigationCollapsed;
-  const actionLabel = isExpanded ? "Recolher menu" : "Expandir menu";
+  const actionLabel = isMobile
+    ? isExpanded ? "Fechar menu" : "Abrir menu"
+    : isExpanded ? "Recolher menu" : "Expandir menu";
   refs.menuToggleButton.setAttribute("aria-expanded", String(isExpanded));
   refs.menuToggleButton.setAttribute("aria-label", actionLabel);
   refs.menuToggleButton.title = actionLabel;
   refs.appSidebar.setAttribute("aria-hidden", String(!isExpanded));
   refs.appSidebar.inert = !isExpanded;
+  refs.mobileNavigationScrim.hidden = !isMobile || !isExpanded;
 }
 
-function toggleDocumentsNavigation() {
-  appState.documentsNavigationExpanded = !appState.documentsNavigationExpanded;
-  updateDocumentsNavigation();
-}
-
-function updateDocumentsNavigation() {
-  const isExpanded = appState.documentsNavigationExpanded;
-  refs.navDocumentsButton.setAttribute("aria-expanded", String(isExpanded));
-  refs.navDocumentsButton.classList.remove("active");
-  refs.documentsNavigationItems.classList.toggle("is-expanded", isExpanded);
-  refs.documentsNavigationItems.setAttribute("aria-hidden", String(!isExpanded));
-  refs.documentsNavigationItems.inert = !isExpanded;
+function closeMobileNavigation() {
+  if (!isMobileNavigation()) return;
+  refs.appView.classList.remove("mobile-nav-open");
+  updateMainNavigationState();
+  refs.menuToggleButton.focus({ preventScroll: true });
 }
 
 function toggleSettingsNavigation() {
+  if (window.matchMedia("(min-width: 621px) and (max-width: 820px)").matches) {
+    setPage("settings");
+    return;
+  }
   appState.settingsNavigationExpanded = !appState.settingsNavigationExpanded;
   updateSettingsNavigation();
 }
@@ -3119,6 +3287,121 @@ function updateSettingsNavigation() {
   refs.settingsNavigationItems.inert = !isExpanded;
 }
 
+function organizationInitials(name) {
+  const parts = String(name || "").trim().split(/\s+/).filter(Boolean);
+  if (!parts.length) return "G";
+  return (parts.length === 1 ? parts[0][0] : `${parts[0][0]}${parts.at(-1)[0]}`).toLocaleUpperCase("pt-BR");
+}
+
+function navigationNotifications() {
+  const now = Date.now();
+  const endOfWeek = new Date();
+  endOfWeek.setDate(endOfWeek.getDate() + ((7 - endOfWeek.getDay()) % 7));
+  endOfWeek.setHours(23, 59, 59, 999);
+
+  const pendingDocuments = appState.documents
+    .filter((document) => !document.has_document)
+    .map((document) => ({ document, bid: appState.bids.find((row) => row.id === document.bid_id) }))
+    .filter(({ bid }) => bid)
+    .slice(0, 3);
+  const upcomingBids = appState.bids
+    .filter((bid) => {
+      const sessionTime = parseStoredDateTime(bid.session_datetime).getTime();
+      return sessionTime >= now && sessionTime <= endOfWeek.getTime();
+    })
+    .sort((a, b) => parseStoredDateTime(a.session_datetime) - parseStoredDateTime(b.session_datetime))
+    .slice(0, 3);
+
+  return [
+    ...pendingDocuments.map(({ document, bid }) => ({
+      id: `document:${document.id}`,
+      bidId: bid.id,
+      page: "documents",
+      icon: "fileText",
+      title: `Documento pendente · ${document.document_type || "Documento"}`,
+      description: bidDisplayNumber(bid),
+    })),
+    ...upcomingBids.map((bid) => ({
+      id: `session:${bid.id}:${bid.session_datetime || ""}`,
+      bidId: bid.id,
+      page: "items",
+      icon: "briefcaseBusiness",
+      title: `Sessão prevista · ${bidDisplayNumber(bid)}`,
+      description: formatDateTime(bid.session_datetime),
+    })),
+  ].filter((notification) => !appState.dismissedNotificationIds.includes(notification.id));
+}
+
+function updateNotificationsIndicator() {
+  const count = navigationNotifications().length;
+  refs.notificationIndicator.hidden = count === 0;
+  refs.notificationsButton.setAttribute("aria-label", count ? `Notificações, ${count} itens pendentes` : "Notificações");
+}
+
+function setNotificationsMenuOpen(open) {
+  if (open) {
+    const notifications = navigationNotifications();
+    refs.notificationsMenu.innerHTML = notifications.length
+      ? `<div class="notification-menu-heading">Notificações</div>${notifications.map((notification) => `
+          <button class="notification-menu-item" type="button" data-notification-bid="${escapeHtml(notification.bidId)}" data-notification-page="${escapeHtml(notification.page)}">
+            <span class="notification-menu-icon" aria-hidden="true">${GLLDesignSystem.iconMarkup(notification.icon)}</span>
+            <span><strong>${escapeHtml(notification.title)}</strong><small>${escapeHtml(notification.description)}</small></span>
+          </button>`).join("")}`
+      : `<div class="notification-menu-heading">Notificações</div><p class="notification-menu-empty" role="status">Nenhuma notificação nova.</p>`;
+    refs.notificationsMenu.insertAdjacentHTML("beforeend", `<div class="notification-menu-footer"><button type="button" data-clear-notifications${notifications.length ? "" : " disabled"}>Limpar notificações</button></div>`);
+  }
+  refs.notificationsMenu.classList.toggle("hidden", !open);
+  refs.notificationsButton.setAttribute("aria-expanded", String(open));
+}
+
+function handleNotificationClick(event) {
+  if (event.target.closest("[data-clear-notifications]")) {
+    void clearAllNotifications();
+    return;
+  }
+  const button = event.target.closest("[data-notification-bid]");
+  if (!button) return;
+  const bidId = button.dataset.notificationBid;
+  const page = button.dataset.notificationPage;
+  setNotificationsMenuOpen(false);
+  loadBid(bidId);
+  if (page === "documents") setPage("documents");
+}
+
+async function clearAllNotifications() {
+  const userId = appState.currentUserAuthId;
+  const epoch = sessionEpoch;
+  const notifications = navigationNotifications();
+  if (!userId || !notifications.length) return;
+
+  const button = refs.notificationsMenu.querySelector("[data-clear-notifications]");
+  if (button) button.disabled = true;
+  const dismissedIds = [...new Set([
+    ...appState.dismissedNotificationIds,
+    ...notifications.map((notification) => notification.id),
+  ])];
+
+  try {
+    await store.saveDismissedNotificationIds(dismissedIds, userId);
+    if (epoch !== sessionEpoch || userId !== appState.currentUserAuthId) return;
+    dataRequest += 1;
+    appState.dismissedNotificationIds = dismissedIds;
+    updateNotificationsIndicator();
+    setNotificationsMenuOpen(true);
+    showToast("Notificações limpas para este perfil.");
+  } catch {
+    if (button?.isConnected) button.disabled = false;
+    showToast("Não foi possível limpar as notificações. Tente novamente.");
+  }
+}
+
+function handleNotificationsKeydown(event) {
+  if (event.key !== "Escape" || refs.notificationsMenu.classList.contains("hidden")) return;
+  event.preventDefault();
+  setNotificationsMenuOpen(false);
+  refs.notificationsButton.focus();
+}
+
 function normalizeUserRole(role) {
   return role === USER_ROLES.ANALYST ? USER_ROLES.ANALYST : USER_ROLES.ADMIN;
 }
@@ -3130,6 +3413,7 @@ function isCurrentUserAdmin() {
 function resolveAuthorizedPage(page) {
   if (page === "suppliers" && GLL_CONFIG.suppliersEnabled === false) return "home";
   if (page === "commercialProposals" && GLL_CONFIG.commercialProposalsEnabled === false) return "home";
+  if (page === "designSystem" && GLL_CONFIG.designSystemEnabled === false) return "home";
   if (page === "users" && !isCurrentUserAdmin()) return "home";
   if (page === "userProfile" && refs.userCreateForm.dataset.mode === "create" && !isCurrentUserAdmin()) return "home";
   if (page === "designSystem" && !isCurrentUserAdmin()) return "settings";
@@ -3172,35 +3456,35 @@ function breadcrumbItems(page) {
   }
   if (page === "commercialProposals") {
     return compact
-      ? [{ label: "Documentos" }, { label: "Proposta Comercial" }]
-      : [home, { label: "Gerar Documentos" }, { label: "Proposta Comercial" }];
+      ? [{ label: "Propostas comerciais" }]
+      : [home, { label: "Propostas comerciais" }];
   }
   if (page === "declarations") {
     return compact
       ? [{ label: "Declarações" }]
-      : [home, { label: "Gerar Documentos" }, { label: "Declarações" }];
+      : [home, { label: "Declarações" }];
   }
   if (["declarationLibrary", "declarationSettings", "declarationHistory"].includes(page)) {
     if (compact) return [{ label: "Declarações", page: "declarations" }, { label: pageLabels[page] }];
     return [
       home,
-      { label: "Gerar Documentos" },
       { label: "Declarações", page: "declarations" },
       { label: pageLabels[page] },
     ];
   }
-  if (["companyData", "designSystem"].includes(page)) {
+  if (page === "companyData") {
     if (compact) return [{ label: "Configurações", page: "settings" }, { label: pageLabels[page] }];
     return [home, { label: "Configurações", page: "settings" }, { label: pageLabels[page] }];
   }
   const topLevelLabels = {
     home: "Visão geral",
     bids: "Licitações",
-    quotations: "Orçamento",
-    commercialProposals: "Proposta Comercial",
+    quotations: "Orçamentos",
+    commercialProposals: "Propostas comerciais",
     suppliers: "Fornecedores",
     users: "Usuários",
     settings: "Configurações",
+    designSystem: "Design System",
   };
   if (compact || page === "home") return [{ label: topLevelLabels[page] || topLevelLabels.home }];
   return [home, { label: topLevelLabels[page] || topLevelLabels.home }];
@@ -3210,6 +3494,13 @@ function renderBreadcrumb(page) {
   const items = breadcrumbItems(page);
   const nodes = items.map((item, index) => {
     const listItem = document.createElement("li");
+    if (index > 0) {
+      const separator = document.createElement("span");
+      separator.className = "breadcrumb-separator";
+      separator.setAttribute("aria-hidden", "true");
+      separator.innerHTML = GLLDesignSystem.iconMarkup("chevronRight");
+      listItem.append(separator);
+    }
     if (index === items.length - 1) {
       listItem.setAttribute("aria-current", "page");
       const current = document.createElement("span");
@@ -3263,22 +3554,69 @@ function creatorTagMarkup(record) {
 
 function updateAccessInterface() {
   const showUserManagement = isCurrentUserAdmin();
+  const showDesignSystemAccess = showUserManagement && GLL_CONFIG.designSystemEnabled !== false;
   refs.navUsersButton.classList.toggle("hidden", !showUserManagement);
   refs.navUsersButton.disabled = !showUserManagement;
   refs.navUsersButton.setAttribute("aria-hidden", String(!showUserManagement));
-  refs.navDesignSystemButton.classList.toggle("hidden", !showUserManagement);
-  refs.navDesignSystemButton.setAttribute("aria-hidden", String(!showUserManagement));
-  refs.designSystemAccessCard.classList.toggle("hidden", !showUserManagement);
-  refs.designSystemAccessCard.setAttribute("aria-hidden", String(!showUserManagement));
-  refs.usersOrganizationLabel.textContent = appState.currentOrganizationName || "Organização";
+  refs.navDesignSystemButton.classList.toggle("hidden", !showDesignSystemAccess);
+  refs.navDesignSystemButton.disabled = !showDesignSystemAccess;
+  refs.navDesignSystemButton.setAttribute("aria-hidden", String(!showDesignSystemAccess));
+  refs.navDesignSystemButton.setAttribute("aria-disabled", String(!showDesignSystemAccess));
+  refs.designSystemAccessCard.classList.toggle("hidden", !showDesignSystemAccess);
+  refs.designSystemAccessCard.setAttribute("aria-hidden", String(!showDesignSystemAccess));
+  updateWorkspaceSummary();
 }
 
-const DATA_KEYS = ["bids", "items", "documents", "failureHistory", "statusHistory", "quotations", "quotationItems", "users", "suppliers", "supplierProducts"];
+function updateWorkspaceSummary() {
+  const organizationName = appState.currentOrganizationName || "Organização";
+  refs.workspaceName.textContent = organizationName;
+  refs.workspaceSummary.title = organizationName;
+  refs.workspaceSummary.setAttribute("aria-label", `Espaço de trabalho: ${organizationName}`);
+  refs.workspaceInitial.textContent = organizationInitials(appState.currentOrganizationName);
+  truncateWorkspaceName();
+}
+
+function truncateWorkspaceName() {
+  const nameElement = refs.workspaceName;
+  const fullName = appState.currentOrganizationName || "Organização";
+  const suffix = "...";
+  nameElement.textContent = fullName;
+  if (!Number.isFinite(nameElement.clientWidth) || nameElement.clientWidth <= 0 || nameElement.scrollWidth <= nameElement.clientWidth) return;
+
+  const characters = Array.from(fullName);
+  let low = 0;
+  let high = characters.length;
+  while (low < high) {
+    const middle = Math.ceil((low + high) / 2);
+    nameElement.textContent = `${characters.slice(0, middle).join("").trimEnd()}${suffix}`;
+    if (nameElement.scrollWidth <= nameElement.clientWidth) low = middle;
+    else high = middle - 1;
+  }
+  nameElement.textContent = `${characters.slice(0, low).join("").trimEnd()}${suffix}`;
+}
+
+if (typeof ResizeObserver === "function") {
+  const workspaceNameResizeObserver = new ResizeObserver(truncateWorkspaceName);
+  workspaceNameResizeObserver.observe(refs.workspaceName);
+}
+
+const DATA_KEYS = ["bids", "items", "documents", "failureHistory", "statusHistory", "bidActivity", "quotations", "quotationItems", "users", "suppliers", "supplierProducts"];
+const LIVE_RESOURCE_TABLES = new Set([
+  "bids", "items", "documents", "failure_history", "bid_status_history", "bid_activity",
+  "quotations", "quotation_items", "app_users", "app_user_invitations", "suppliers",
+  "supplier_products", "user_notification_states",
+]);
+const BID_DETAIL_PAGES = new Set(["items", "documents", "failures", "edit"]);
+const BID_LIST_PAGES = new Set(["home", "bids"]);
 let sessionEpoch = 0;
 let dataRequest = 0;
+let liveSubscriptionRequest = 0;
 let liveChannel = null;
-let liveTimer = null;
+let chatBroadcastChannel = null;
 let liveDebounce = null;
+let liveRetryTimer = null;
+const pendingLiveResources = new Set();
+let liveReconciliationPending = false;
 let backgroundRefreshActive = false;
 
 function setSyncNotice(message) {
@@ -3312,51 +3650,352 @@ function selectedDataSignature(data) {
   ]);
 }
 
-function scheduleLiveRefresh() {
-  if (!appState.authenticated || liveDebounce) return;
-  liveDebounce = setTimeout(() => {
-    liveDebounce = null;
-    void refreshInBackground();
-  }, 500);
+function visibleRealtimeResources() {
+  const resources = new Set(["user_notification_states"]);
+  if (BID_DETAIL_PAGES.has(appState.activePage)) {
+    ["bids", "items", "documents", "failure_history", "bid_status_history", "bid_activity", "quotations", "quotation_items"]
+      .forEach((resource) => resources.add(resource));
+  } else if (BID_LIST_PAGES.has(appState.activePage)) {
+    ["bids", "items", "documents", "quotations", "quotation_items"]
+      .forEach((resource) => resources.add(resource));
+  } else if (appState.activePage === "quotations") {
+    ["quotations", "quotation_items"].forEach((resource) => resources.add(resource));
+  } else if (appState.activePage === "suppliers") {
+    ["suppliers", "supplier_products"].forEach((resource) => resources.add(resource));
+  } else if (appState.activePage === "users") {
+    ["app_users", "app_user_invitations"].forEach((resource) => resources.add(resource));
+  }
+  return resources;
 }
 
-async function refreshInBackground() {
-  if (!appState.authenticated || document.hidden || blockingOperationActive || backgroundRefreshActive) return;
-  const epoch = sessionEpoch;
-  backgroundRefreshActive = true;
-  try {
-    await reloadData({ background: true });
-  } catch (error) {
-    // Temporary connectivity failures must not discard the current session or drafts.
-    console.warn("Não foi possível atualizar os dados. Uma nova tentativa será feita automaticamente.");
-  } finally {
-    if (epoch === sessionEpoch) backgroundRefreshActive = false;
+function queueLiveRefresh() {
+  if (!appState.authenticated || document.hidden || liveDebounce) return;
+  liveDebounce = setTimeout(() => {
+    liveDebounce = null;
+    if (backgroundRefreshActive || blockingOperationActive) return;
+    const resources = [...pendingLiveResources];
+    const reconcile = liveReconciliationPending;
+    pendingLiveResources.clear();
+    liveReconciliationPending = false;
+    void refreshInBackground({ resources, reconcile });
+  }, 300);
+}
+
+function scheduleLiveRefresh(event = null) {
+  if (!appState.authenticated) return;
+  const resource = event?.payload?.resource || event?.resource;
+  if (liveRetryTimer) {
+    clearTimeout(liveRetryTimer);
+    liveRetryTimer = null;
+  }
+  if (LIVE_RESOURCE_TABLES.has(resource)) pendingLiveResources.add(resource);
+  else liveReconciliationPending = true;
+  queueLiveRefresh();
+}
+
+function mergeLiveRows(existing, incoming, scopeField = null, scopeValue = null) {
+  if (!scopeField) return incoming;
+  const retained = existing.filter((row) => String(row?.[scopeField]) !== String(scopeValue));
+  return [...retained, ...incoming];
+}
+
+async function liveRows(table, scopeField = null, scopeValue = null) {
+  if (scopeField && (scopeValue === null || scopeValue === undefined)) return [];
+  const rows = scopeField
+    ? await store.getMatching(table, scopeField, scopeValue)
+    : await store.getAll(table);
+  return rows || [];
+}
+
+function normalizeLiveRows(resource, rows) {
+  switch (resource) {
+    case "bids":
+      return rows.map(normalizeBidRecord).filter((bid) => !bid.deleted_at)
+        .sort((a, b) => parseStoredDateTime(a.session_datetime) - parseStoredDateTime(b.session_datetime));
+    case "items":
+      return rows.map(normalizeItemRecord).sort((a, b) => Number(a.item_number) - Number(b.item_number));
+    case "documents":
+      return rows.sort((a, b) => String(a.document_type).localeCompare(String(b.document_type)));
+    case "failure_history":
+      return rows.map(normalizeFailureRecord).sort((a, b) => Number(a.id || 0) - Number(b.id || 0));
+    case "bid_status_history":
+      return rows.map(normalizeStatusHistoryRecord).sort((a, b) => String(b.changed_at).localeCompare(String(a.changed_at)));
+    case "quotations":
+      return rows.map(normalizeQuotationRecord).filter((quotation) => !quotation.deleted_at)
+        .sort((a, b) => Number(b.id || 0) - Number(a.id || 0));
+    case "quotation_items":
+      return rows.map(normalizeQuotationItemRecord).sort((a, b) => Number(a.item_number || 0) - Number(b.item_number || 0));
+    case "suppliers":
+      return rows.map(normalizeSupplierRecord).sort((a, b) => a.name.localeCompare(b.name, "pt-BR"));
+    case "supplier_products":
+      return rows.map(normalizeSupplierProductRecord).sort((a, b) => a.name.localeCompare(b.name, "pt-BR"));
+    default:
+      return rows;
   }
 }
 
-function startLiveUpdates() {
+async function fetchLiveResource(resource) {
+  const page = appState.activePage;
+  const bidContext = BID_DETAIL_PAGES.has(page) && appState.currentBidId;
+  const quotationId = appState.currentQuotationId || currentBid()?.quotation_id || null;
+  const result = (key, rows, scopeField = null, scopeValue = null) => ({ key, rows, scopeField, scopeValue });
+
+  switch (resource) {
+    case "bids": {
+      if (BID_LIST_PAGES.has(page)) return result("bids", normalizeLiveRows(resource, await liveRows("bids")));
+      if (bidContext) return result("bids", normalizeLiveRows(resource, await liveRows("bids", "id", appState.currentBidId)), "id", appState.currentBidId);
+      return null;
+    }
+    case "items": {
+      if (bidContext) return result("items", normalizeLiveRows(resource, await liveRows("items", "bid_id", appState.currentBidId)), "bid_id", appState.currentBidId);
+      if (BID_LIST_PAGES.has(page)) return result("items", normalizeLiveRows(resource, await liveRows("items")));
+      return null;
+    }
+    case "documents": {
+      if (bidContext) return result("documents", normalizeLiveRows(resource, await liveRows("documents", "bid_id", appState.currentBidId)), "bid_id", appState.currentBidId);
+      if (BID_LIST_PAGES.has(page)) return result("documents", normalizeLiveRows(resource, await liveRows("documents")));
+      return null;
+    }
+    case "failure_history": {
+      if (bidContext) return result("failureHistory", normalizeLiveRows(resource, await liveRows("failure_history", "bid_id", appState.currentBidId)), "bid_id", appState.currentBidId);
+      return null;
+    }
+    case "bid_status_history": {
+      if (bidContext) return result("statusHistory", normalizeLiveRows(resource, await liveRows("bid_status_history", "bid_id", appState.currentBidId)), "bid_id", appState.currentBidId);
+      return null;
+    }
+    case "bid_activity": {
+      if (bidContext) {
+        const rows = await store.getBidActivityForBid(appState.currentBidId);
+        return result("bidActivity", rows, "bid_id", appState.currentBidId);
+      }
+      return null;
+    }
+    case "quotations": {
+      if (page === "quotations") return result("quotations", normalizeLiveRows(resource, await liveRows("quotations")));
+      if (BID_LIST_PAGES.has(page)) return result("quotations", normalizeLiveRows(resource, await liveRows("quotations")));
+      if (quotationId) return result("quotations", normalizeLiveRows(resource, await liveRows("quotations", "id", quotationId)), "id", quotationId);
+      return null;
+    }
+    case "quotation_items": {
+      if (page === "quotations" || BID_LIST_PAGES.has(page)) {
+        return result("quotationItems", normalizeLiveRows(resource, await liveRows("quotation_items")));
+      }
+      if (quotationId) {
+        return result("quotationItems", normalizeLiveRows(resource, await liveRows("quotation_items", "quotation_id", quotationId)), "quotation_id", quotationId);
+      }
+      return null;
+    }
+    case "app_users": {
+      const profile = await store.getUser(appState.currentUserEmail);
+      if (!profile || profile.access_revoked_at || (profile.auth_access_status && profile.auth_access_status !== "active")) {
+        resetAuthenticatedView();
+        setLoginMessage("Seu acesso não está mais disponível. Entre novamente ou contate o administrador.");
+        return { accessRevoked: true };
+      }
+      if (appState.currentOrganizationId && profile.organization_id !== appState.currentOrganizationId) {
+        resetAuthenticatedView();
+        setLoginMessage("A organização vinculada à sua conta foi alterada. Entre novamente para continuar.");
+        return { accessRevoked: true };
+      }
+      const signedProfile = store instanceof SupabaseStore ? (await store.addSignedAvatarUrls([profile]))[0] : profile;
+      const updates = [{ profile: signedProfile }];
+      if (page === "users") {
+        const users = await store.getUsers();
+        const signedUsers = store instanceof SupabaseStore ? await store.addSignedAvatarUrls(users) : users;
+        updates.push(result("users", signedUsers));
+      }
+      return updates;
+    }
+    case "app_user_invitations": {
+      if (page !== "users" || !isCurrentUserAdmin() || !(store instanceof SupabaseStore) || typeof store.getUserInvitations !== "function") return null;
+      const [invitations, users] = await Promise.all([store.getUserInvitations(), store.getUsers()]);
+      const unfinishedEmails = new Set(invitations.filter((invitation) => invitation.status !== "completed").map((invitation) => normalizeEmail(invitation.email)));
+      const usersWithAvatars = await store.addSignedAvatarUrls(users);
+      const visibleUsers = usersWithAvatars.filter((user) => !unfinishedEmails.has(normalizeEmail(user.email)))
+        .sort((a, b) => userDisplayName(a).localeCompare(userDisplayName(b), "pt-BR"));
+      return [result("userInvitations", invitations), result("users", visibleUsers)];
+    }
+    case "suppliers":
+      if (page === "suppliers") return result("suppliers", normalizeLiveRows(resource, await liveRows("suppliers")));
+      return null;
+    case "supplier_products":
+      if (page === "suppliers") return result("supplierProducts", normalizeLiveRows(resource, await liveRows("supplier_products")));
+      return null;
+    case "user_notification_states":
+      return { notificationIds: normalizeNotificationDismissalIds(await store.getDismissedNotificationIds(appState.currentUserAuthId)) };
+    default:
+      return null;
+  }
+}
+
+function renderLiveUpdates(resources) {
+  const keys = new Set(resources);
+  if (["bids", "items", "documents", "failureHistory", "statusHistory", "bidActivity", "quotations", "quotationItems"].some((key) => keys.has(key))) {
+    renderBids();
+    renderDetails();
+    renderQuotations();
+  }
+  if (keys.has("suppliers") || keys.has("supplierProducts")) renderSuppliers();
+  if (keys.has("users") || keys.has("userInvitations")) {
+    updateCurrentUserProfile();
+    if (appState.activePage === "userProfile") updateUserProfileAccessActions();
+    renderUsers();
+  }
+  updateNotificationsIndicator();
+  if (!refs.notificationsMenu.classList.contains("hidden")) setNotificationsMenuOpen(true);
+}
+
+async function refreshInBackground({ resources = null, reconcile = false } = {}) {
+  if (!appState.authenticated || document.hidden || blockingOperationActive || backgroundRefreshActive) return;
+  const epoch = sessionEpoch;
+  const currentDataRequest = dataRequest;
+  const requested = new Set(resources || []);
+  if (reconcile || resources === null) visibleRealtimeResources().forEach((resource) => requested.add(resource));
+  for (const resource of requested) {
+    if (!LIVE_RESOURCE_TABLES.has(resource)) requested.delete(resource);
+  }
+  if (!requested.size) return;
+  backgroundRefreshActive = true;
+  try {
+    const updates = [];
+    if (requested.has("bids")) {
+      const bidUpdate = await fetchLiveResource("bids");
+      if (bidUpdate?.accessRevoked) return;
+      if (bidUpdate) updates.push(...(Array.isArray(bidUpdate) ? bidUpdate : [bidUpdate]));
+    }
+    const remaining = [...requested].filter((resource) => resource !== "bids");
+    const fetched = await Promise.all(remaining.map((resource) => fetchLiveResource(resource)));
+    for (const update of fetched.flatMap((entry) => entry ? (Array.isArray(entry) ? entry : [entry]) : [])) updates.push(update);
+    if (epoch !== sessionEpoch || currentDataRequest !== dataRequest || !appState.authenticated) return;
+
+    const previousSelection = selectedDataSignature(appState);
+    const changedKeys = new Set();
+    for (const update of updates) {
+      if (update.profile) {
+        const profile = update.profile;
+        const profileIndex = appState.users.findIndex((user) => normalizeEmail(user.email) === normalizeEmail(profile.email));
+        const previousProfile = profileIndex >= 0 ? JSON.stringify(appState.users[profileIndex]) : null;
+        if (profileIndex >= 0) appState.users[profileIndex] = { ...appState.users[profileIndex], ...profile };
+        else appState.users.push(profile);
+        if (previousProfile !== JSON.stringify(profile)) changedKeys.add("users");
+        appState.currentUserRole = normalizeUserRole(profile.role);
+        appState.currentOrganizationId = profile.organization_id || appState.currentOrganizationId;
+        appState.currentOrganizationName = profile.organization?.name || appState.currentOrganizationName;
+        appState.currentOrganizationCnpj = profile.organization?.cnpj || appState.currentOrganizationCnpj;
+        updateCurrentUserProfile();
+      } else if (update.notificationIds) {
+        if (dataSignature(appState.dismissedNotificationIds.map((id) => ({ id })))
+          !== dataSignature(update.notificationIds.map((id) => ({ id })))) changedKeys.add("dismissedNotificationIds");
+        appState.dismissedNotificationIds = update.notificationIds;
+      } else {
+        const previousRows = appState[update.key] || [];
+        const nextRows = mergeLiveRows(previousRows, update.rows, update.scopeField, update.scopeValue);
+        if (dataSignature(previousRows) !== dataSignature(nextRows)) changedKeys.add(update.key);
+        appState[update.key] = nextRows;
+      }
+    }
+    const unfinishedInvitationEmails = new Set((Array.isArray(appState.userInvitations) ? appState.userInvitations : [])
+      .filter((invitation) => invitation.status !== "completed")
+      .map((invitation) => normalizeEmail(invitation.email)));
+    appState.users = appState.users.filter((user) => !unfinishedInvitationEmails.has(normalizeEmail(user.email)));
+    if (previousSelection !== selectedDataSignature(appState)) {
+      setSyncNotice("O registro aberto foi alterado ou excluído em outra sessão. Seu formulário foi preservado. Reabra o registro pela lista para conferir a versão atual antes de salvar.");
+    }
+    if (epoch === sessionEpoch && appState.authenticated && changedKeys.size) {
+      renderLiveUpdates([...changedKeys].filter((key) => key !== "dismissedNotificationIds"));
+      if (changedKeys.has("users")) {
+        const authorizedPage = resolveAuthorizedPage(appState.activePage);
+        if (authorizedPage !== appState.activePage) setPage(authorizedPage, { history: "none" });
+      }
+    }
+  } catch (error) {
+    // A temporary connectivity failure keeps the current data and form drafts in place.
+    console.warn("Não foi possível atualizar os dados em tempo real. A conexão tentará novamente.");
+    requested.forEach((resource) => pendingLiveResources.add(resource));
+    if (!liveRetryTimer) {
+      liveRetryTimer = setTimeout(() => {
+        liveRetryTimer = null;
+        queueLiveRefresh();
+      }, 10_000);
+    }
+  } finally {
+    if (epoch === sessionEpoch) backgroundRefreshActive = false;
+    if ((pendingLiveResources.size || liveReconciliationPending) && !liveRetryTimer) queueLiveRefresh();
+  }
+}
+
+async function startLiveUpdates() {
   stopLiveUpdates();
   if (!store.requiresAuthenticationBeforeData) return;
-  // Only invalidations travel over this channel. Actual records remain protected by RLS.
-  liveChannel = store.client.channel("gll-data-updates", { config: { broadcast: { self: false } } })
-    .on("broadcast", { event: "data-changed" }, scheduleLiveRefresh)
-    .subscribe((status) => { if (status === "SUBSCRIBED") scheduleLiveRefresh(); });
-  liveTimer = setInterval(scheduleLiveRefresh, 15000);
+  const request = ++liveSubscriptionRequest;
+  const client = store.client;
+  const organizationId = appState.currentOrganizationId;
+  const epoch = sessionEpoch;
+  void organizationChat.startUnreadTracking();
+  try {
+    await client.realtime.setAuth();
+  } catch (error) {
+    console.warn("Não foi possível atualizar a autorização dos canais Realtime.", error);
+  }
+  if (
+    request !== liveSubscriptionRequest
+    || client !== store.client
+    || epoch !== sessionEpoch
+    || !appState.authenticated
+    || organizationId !== appState.currentOrganizationId
+  ) return;
+  // Postgres Changes remains dedicated to chat; application data uses the private org Broadcast below.
+  liveChannel = client.channel("gll-data-updates", { config: { broadcast: { self: false } } })
+    .on("postgres_changes", {
+      event: "INSERT",
+      schema: "public",
+      table: "organization_messages",
+      filter: `organization_id=eq.${appState.currentOrganizationId}`,
+    }, organizationChat.handleIncomingMessage)
+    .subscribe((status, error) => {
+      if (status === "SUBSCRIBED") {
+        scheduleLiveRefresh();
+      } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
+        console.warn("A conexão Realtime do GLL falhou.", status, error);
+      }
+    });
+  if (organizationId) {
+    chatBroadcastChannel = client.channel(`organization:${organizationId}`, {
+      config: { private: true, broadcast: { self: false } },
+    })
+      .on("broadcast", { event: "organization-data-changed" }, scheduleLiveRefresh)
+      .on("broadcast", { event: "organization-message-inserted" }, organizationChat.handleIncomingMessage)
+      .subscribe((status, error) => {
+        if (status === "SUBSCRIBED") {
+          void verifyCurrentUserAccess().catch(() => {});
+          scheduleLiveRefresh();
+        } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
+          console.warn("A conexão Realtime das mensagens da organização falhou.", status, error);
+        }
+      });
+  }
   window.addEventListener("online", scheduleLiveRefresh);
-  window.addEventListener("focus", scheduleLiveRefresh);
+  window.addEventListener("focus", handleLiveFocus);
   document.addEventListener("visibilitychange", scheduleLiveRefresh);
 }
 
 function stopLiveUpdates() {
-  clearInterval(liveTimer);
+  liveSubscriptionRequest += 1;
   clearTimeout(liveDebounce);
-  liveTimer = null;
+  clearTimeout(liveRetryTimer);
   liveDebounce = null;
+  liveRetryTimer = null;
+  pendingLiveResources.clear();
+  liveReconciliationPending = false;
   backgroundRefreshActive = false;
   if (liveChannel) void store.client.removeChannel(liveChannel);
   liveChannel = null;
+  if (chatBroadcastChannel) void store.client.removeChannel(chatBroadcastChannel);
+  chatBroadcastChannel = null;
+  organizationChat.stopUnreadTracking();
   window.removeEventListener("online", scheduleLiveRefresh);
-  window.removeEventListener("focus", scheduleLiveRefresh);
+  window.removeEventListener("focus", handleLiveFocus);
   document.removeEventListener("visibilitychange", scheduleLiveRefresh);
 }
 
@@ -3366,7 +4005,8 @@ async function reloadData({ background = false } = {}) {
   const rows = await Promise.all([
     store.getAll("bids"), store.getAll("items"), store.getAll("documents"),
     store.getAll("failure_history"), store.getAll("quotations"), store.getAll("quotation_items"),
-    store.getUsers(), store.getAll("suppliers"), store.getAll("supplier_products"), store.getAll("bid_status_history"),
+    store.getUsers(), store.getAll("suppliers"), store.getAll("supplier_products"), store.getAll("bid_status_history"), store.getBidActivity(),
+    store.getDismissedNotificationIds(appState.currentUserAuthId),
   ]);
   // Discard stale responses after logout, another login, or a newer refresh.
   if (epoch !== sessionEpoch || request !== dataRequest || !appState.authenticated) return;
@@ -3392,6 +4032,7 @@ async function reloadData({ background = false } = {}) {
     .map(normalizeStatusHistoryRecord)
     .filter((entry) => visibleBidIds.has(entry.bid_id))
     .sort((a, b) => String(b.changed_at).localeCompare(String(a.changed_at)));
+  next.bidActivity = (rows[10] || []).filter((entry) => visibleBidIds.has(entry.bid_id));
   next.quotations = rows[4]
     .map(normalizeQuotationRecord)
     .filter((quotation) => !quotation.deleted_at)
@@ -3402,6 +4043,7 @@ async function reloadData({ background = false } = {}) {
   next.suppliers = rows[7].map(normalizeSupplierRecord).sort((a, b) => a.name.localeCompare(b.name, "pt-BR"));
   next.supplierProducts = (rows[8] || []).map(normalizeSupplierProductRecord).sort((a, b) => a.name.localeCompare(b.name, "pt-BR"));
   next.users = rows[6].sort((a, b) => userDisplayName(a).localeCompare(userDisplayName(b), "pt-BR"));
+  next.dismissedNotificationIds = normalizeNotificationDismissalIds(rows[11]);
   if (store.requiresAuthenticationBeforeData && !next.users.some((user) => normalizeEmail(user.email) === normalizeEmail(appState.currentUserEmail))) {
     resetAuthenticatedView();
     setLoginMessage("Seu acesso não está mais disponível. Entre novamente ou contate o administrador.");
@@ -3410,11 +4052,20 @@ async function reloadData({ background = false } = {}) {
   if (store instanceof SupabaseStore) next.users = await store.addSignedAvatarUrls(next.users);
   if (epoch !== sessionEpoch || request !== dataRequest || !appState.authenticated) return;
   const changed = DATA_KEYS.some((key) => dataSignature(appState[key]) !== dataSignature(next[key]));
-  if (background && !changed) return;
+  const notificationStateChanged = dataSignature(appState.dismissedNotificationIds) !== dataSignature(next.dismissedNotificationIds);
+  if (background && !changed) {
+    if (!notificationStateChanged) return;
+    appState.dismissedNotificationIds = next.dismissedNotificationIds;
+    updateNotificationsIndicator();
+    if (!refs.notificationsMenu.classList.contains("hidden")) setNotificationsMenuOpen(true);
+    return;
+  }
   if (background && selectedDataSignature(appState) !== selectedDataSignature(next)) {
     setSyncNotice("O registro aberto foi alterado ou excluído em outra sessão. Seu formulário foi preservado. Reabra o registro pela lista para conferir a versão atual antes de salvar.");
   }
   Object.assign(appState, next);
+  updateNotificationsIndicator();
+  if (!refs.notificationsMenu.classList.contains("hidden")) setNotificationsMenuOpen(true);
   updateCurrentUserProfile();
   if (appState.activePage === "userProfile") updateUserProfileAccessActions();
   renderBids();
@@ -3422,9 +4073,6 @@ async function reloadData({ background = false } = {}) {
   renderQuotations();
   renderSuppliers();
   renderUsers();
-  if (!background && changed && liveChannel) {
-    void liveChannel.send({ type: "broadcast", event: "data-changed", payload: {} }).catch(() => {});
-  }
 }
 
 function readNavigationRoute() {
@@ -3522,9 +4170,6 @@ function setPage(page, options = {}) {
     return;
   }
   appState.activePage = page;
-  if (["commercialProposals", ...declarationPages].includes(page)) {
-    appState.documentsNavigationExpanded = true;
-  }
   if (["settings", "companyData", "designSystem"].includes(page)) {
     appState.settingsNavigationExpanded = true;
   }
@@ -3572,7 +4217,6 @@ function setPage(page, options = {}) {
   document.querySelectorAll("[data-navigation-page]").forEach((button) => {
     button.classList.toggle("active", button.dataset.navigationPage === activeNavigationPage);
   });
-  updateDocumentsNavigation();
   updateSettingsNavigation();
   refs.appView.classList.remove("mobile-nav-open");
   updateMainNavigationState();
@@ -3587,6 +4231,7 @@ function setPage(page, options = {}) {
   if (showCompanyData) void companyDataFeature.showPage().catch((error) => showToast(error.message, "error"));
   if (showDesignSystem) window.GLLDesignSystem?.mountCatalog(refs.designSystemCatalog);
   writeNavigationRoute(page, options.history || "push");
+  if (liveChannel || chatBroadcastChannel) scheduleLiveRefresh();
 }
 
 function updateBidWorkspaceHeader() {
@@ -3943,11 +4588,29 @@ function loadBid(bidId, options = {}) {
   if (["home", "bids", "edit"].includes(appState.activePage)) setPage("items", { history: options.history });
 }
 
+function bidActivityDescription(entry) {
+  const edital = `edital ${entry.edital_number || entry.bid_id} de ${entry.buyer_agency || "órgão comprador não informado"}`;
+  return {
+    bid_created: `cadastrou o ${edital}`,
+    bid_updated: `atualizou o ${edital}`,
+    bid_deleted: `excluiu o ${edital}`,
+    file_added: `adicionou o arquivo “${entry.detail || "sem nome"}” ao ${edital}`,
+    file_removed: `excluiu o arquivo “${entry.detail || "sem nome"}” do ${edital}`,
+    status_changed: `alterou o status do ${edital} de ${entry.previous_value ? statusLabel(entry.previous_value) : "—"} para ${entry.next_value ? statusLabel(entry.next_value) : "—"}`,
+    quotation_item_added: `adicionou o item ${entry.detail || "—"} ao orçamento do ${edital}`,
+    quotation_item_updated: `alterou o item ${entry.detail || "—"} do orçamento do ${edital}`,
+    quotation_item_removed: `excluiu o item ${entry.detail || "—"} do orçamento do ${edital}`,
+    item_won: `marcou o item ${entry.detail || "—"} como vencido no ${edital}`,
+    item_unwon: `removeu a marcação de vencido do item ${entry.detail || "—"} no ${edital}`,
+  }[entry.event_type] || `atualizou o ${edital}`;
+}
+
 function renderHomeSummary() {
   const counts = appState.bids.reduce(
     (acc, bid) => {
       acc.total += 1;
-      if (bid.status === "Em Analise") acc.analysis += 1;
+      if (bid.status === "Em Analise") acc.registration += 1;
+      if (bid.status === "Aguard. Disputa") acc.readyToDispute += 1;
       if (bid.status === "Descartada") acc.discarded += 1;
       if (bid.status === "Aprovada") acc.approved += 1;
       if (bid.status === "Faturado") acc.billed += 1;
@@ -3955,19 +4618,16 @@ function renderHomeSummary() {
       if (bid.status === "Disputada") acc.disputed += 1;
       return acc;
     },
-    { total: 0, analysis: 0, discarded: 0, approved: 0, billed: 0, disqualified: 0, disputed: 0 }
+    { total: 0, registration: 0, readyToDispute: 0, discarded: 0, approved: 0, billed: 0, disqualified: 0, disputed: 0 }
   );
   refs.homeTotalBids.textContent = String(counts.total);
-  refs.homeAnalysisBids.textContent = String(counts.analysis);
+  refs.homeRegistrationBids.textContent = String(counts.registration);
+  refs.homeReadyToDisputeBids.textContent = String(counts.readyToDispute);
   refs.homeDiscardedBids.textContent = String(counts.discarded);
   refs.homeApprovedBids.textContent = String(counts.approved);
   refs.homeBilledBids.textContent = String(counts.billed);
   refs.homeDisqualifiedBids.textContent = String(counts.disqualified);
   refs.homeDisputedBids.textContent = String(counts.disputed);
-  document.querySelectorAll("[data-home-status]").forEach((button) => {
-    button.classList.toggle("active", refs.filterStatus.value === button.dataset.homeStatus);
-  });
-
   const upcoming = appState.bids
     .filter((bid) => parseStoredDateTime(bid.session_datetime).getTime() >= Date.now() - 86400000)
     .sort((a, b) => parseStoredDateTime(a.session_datetime) - parseStoredDateTime(b.session_datetime))
@@ -4001,6 +4661,25 @@ function renderHomeSummary() {
       loadBid(button.dataset.pendingBid);
       setPage("documents");
     });
+  });
+
+  refs.homeRecentActivitiesList.innerHTML = appState.bidActivity.length
+    ? appState.bidActivity.map((entry) => {
+        const actor = entry.actor_name || "Usuário";
+        const initials = actor.trim().split(/\s+/).filter(Boolean).map((part) => part[0]).filter(Boolean);
+        const user = appState.users.find((profile) => profile.auth_user_id === entry.actor_id);
+        const avatar = user?.avatar_signed_url
+          ? `<img src="${escapeHtml(user.avatar_signed_url)}" alt="" loading="lazy" decoding="async" />`
+          : escapeHtml((initials.length > 1 ? `${initials[0]}${initials.at(-1)}` : initials[0] || "?").toLocaleUpperCase("pt-BR"));
+        const action = bidActivityDescription(entry);
+        return `<button class="home-activity-entry" type="button" data-recent-activity-bid="${escapeHtml(entry.bid_id)}">
+          <span class="home-activity-avatar" aria-hidden="true">${avatar}</span>
+          <span class="home-activity-copy"><span><strong>${escapeHtml(actor)}</strong> ${escapeHtml(action)}</span><time datetime="${escapeHtml(entry.created_at)}">${escapeHtml(formatDateTime(entry.created_at))}</time></span>
+        </button>`;
+      }).join("")
+    : `<div class="empty-state compact-empty">Ainda não há atualizações de editais disponíveis.</div>`;
+  refs.homeRecentActivitiesList.querySelectorAll("[data-recent-activity-bid]").forEach((button) => {
+    button.addEventListener("click", () => loadBid(button.dataset.recentActivityBid));
   });
 }
 
@@ -5807,7 +6486,6 @@ function renderUsers() {
     const searchableText = normalizeSearchText(`${displayName} ${user.full_name || ""} ${user.email || ""}`);
     return matchesRole && (!query || searchableText.includes(query));
   });
-  refs.usersTotalLabel.textContent = totalLabel;
   refs.userCountLabel.textContent = query || roleFilter !== "all"
     ? `${visibleUsers.length} de ${totalLabel}`
     : totalLabel;
@@ -6197,16 +6875,12 @@ function zonedDateTimeParts(date) {
 }
 
 function statusDisplay(status) {
+  return statusLabel(status).toUpperCase();
+}
+
+function statusLabel(status) {
   const normalizedStatus = normalizeBidStatus(status);
-  const map = {
-    "Em Analise": "ANÁLISE",
-    Descartada: "DESCARTADA",
-    Aprovada: "APROVADA",
-    Faturado: "FATURADO",
-    Desclassificado: "DESCLASSIFICADO",
-    Disputada: "DISPUTADA",
-  };
-  return map[normalizedStatus] || String(normalizedStatus || "").toUpperCase();
+  return BID_STATUS_LABELS[normalizedStatus] || String(normalizedStatus || "");
 }
 
 function normalizeBidStatus(status) {
@@ -6291,6 +6965,10 @@ function attachmentMetadata(attachment) {
 
 function bidDisplayNumber(bid) {
   return String(bid?.edital_number || bid?.id || "").trim();
+}
+
+function bidActivityTimestamp(bid) {
+  return Date.parse(bid?.updated_at || bid?.created_at || "") || 0;
 }
 
 function normalizeItemRecord(record) {

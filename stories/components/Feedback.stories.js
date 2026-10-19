@@ -7,7 +7,7 @@ export default {
 };
 
 export const Badges = { render: () => row(`${c().badge({ label: "Neutro" })}${c().badge({ label: "Sucesso", tone: "success" })}${c().badge({ label: "Atenção", tone: "warning" })}${c().badge({ label: "Erro", tone: "danger" })}${c().badge({ label: "Informação", tone: "info" })}`) };
-export const BidStatuses = { render: () => row(["Em Analise", "Aprovada", "Descartada", "Faturado", "Disputada", "Desclassificado"].map((status) => c().statusBadge({ status, label: status === "Em Analise" ? "Em análise" : status })).join("")) };
+export const BidStatuses = { render: () => row(["Em Analise", "Aguard. Disputa", "Aprovada", "Descartada", "Faturado", "Disputada", "Desclassificado"].map((status) => c().statusBadge({ status, label: ({ "Em Analise": "Em Cadastro", "Aguard. Disputa": "Aguard. Disputa" }[status] || status) })).join("")) };
 export const Tag = { render: () => row(`${c().tag({ label: "papelaria" })}${c().tag({ label: "informática", removable: true })}`) };
 export const Alerts = { render: () => `<div class="ds-stack">${c().alert({ title: "Informação", message: "Dados atualizados.", tone: "info" })}${c().alert({ title: "Atenção", message: "Revise os campos pendentes.", tone: "warning" })}${c().alert({ title: "Erro", message: "Não foi possível salvar.", tone: "danger" })}</div>` };
 export const Toasts = { render: () => `<div class="ds-toast-stack">${c().toast({ message: "Edital salvo.", tone: "success" })}${c().toast({ message: "Revise os campos pendentes.", tone: "warning" })}${c().toast({ message: "Não foi possível concluir a operação.", tone: "danger" })}${c().toast({ message: "Dados atualizados.", tone: "info" })}</div>` };

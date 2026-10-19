@@ -14,11 +14,11 @@ export const Colors = {
 };
 
 export const Typography = {
-  render: () => frame('<div class="ds-section-heading"><h1>Tipografia</h1><p>Inter, Segoe UI e Arial.</p></div><div class="ds-type-stack"><h1>Heading 1 · 32 px</h1><h2>Heading 2 · 24 px</h2><h3>Heading 3 · 20 px</h3><p>Body · 14 px / line-height 1.5</p><label>Label · 13 px / semibold</label><small>Caption · 12 px</small></div>'),
+  render: () => frame('<div class="ds-section-heading"><h1>Tipografia</h1><p>IBM Plex Sans, IBM Plex Serif e IBM Plex Mono.</p></div><div class="ds-type-stack"><h1>Heading 1 · IBM Plex Serif</h1><h2>Heading 2 · IBM Plex Serif</h2><h3>Heading 3 · IBM Plex Serif</h3><p>Body · 16 px / line-height 1.5</p><label>Label · 13 px / semibold</label><small>Caption · 12 px</small><code>Monospace · IBM Plex Mono</code></div>'),
 };
 
 export const Spacing = {
-  render: () => frame(`<div class="ds-section-heading"><h1>Espaçamento</h1><p>Escala base de 4 px.</p></div><div class="ds-scale-list">${catalog().TOKENS.spacing.map((name) => `<div class="ds-scale-row"><code>--space-${name}</code><span data-space="${name}" aria-hidden="true"></span><small>${getComputedStyle(document.documentElement).getPropertyValue(`--space-${name}`).trim()}</small></div>`).join("")}</div>`),
+  render: () => frame(`<div class="ds-section-heading"><h1>Espaçamento</h1><p>Escala base de 4 px.</p></div><div class="ds-scale-list">${catalog().TOKENS.spacing.map((name) => `<div class="ds-scale-row"><code>--gll-space-${name}</code><span data-space="${name}" aria-hidden="true"></span><small>${getComputedStyle(document.documentElement).getPropertyValue(`--gll-space-${name}`).trim()}</small></div>`).join("")}</div>`),
 };
 
 export const Radius = {
