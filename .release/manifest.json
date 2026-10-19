@@ -1361,7 +1361,7 @@
       "migrations": []
     },
     {
-      "id": "CORRECAO-LUCRO-VENCIDOS-001",
+      "id": "ISSUE-123",
       "backend_commits": [],
       "frontend_commits": [
         "6479da767136c1e60a2f0e1b367be1dedc281cb0"
