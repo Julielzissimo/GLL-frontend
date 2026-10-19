@@ -6,7 +6,11 @@ import test from "node:test";
 const source = await readFile(new URL("../web/app.js", import.meta.url), "utf8");
 const html = await readFile(new URL("../web/index.html", import.meta.url), "utf8");
 const buildConfig = await readFile(new URL("../scripts/build-web.mjs", import.meta.url), "utf8");
-const application = source.slice(0, source.lastIndexOf("void main().catch(() => {"));
+const sourceWithoutRadarAdminImport = source.replace('import { createRadarEngineAdminFeature } from "./radar-engine-admin.js";', "");
+const application = sourceWithoutRadarAdminImport.slice(
+  0,
+  sourceWithoutRadarAdminImport.lastIndexOf("void main().catch(() => {"),
+);
 const user = { email: "test@example.test", name: "Teste" };
 
 test("feed descreve alterações específicas do edital e do orçamento", () => {
@@ -241,6 +245,7 @@ function client(db = backend(), auth = { session: { user } }, config = {}) {
   const authCallbacks = [];
   const context = vm.createContext({
     console, URL, URLSearchParams, Intl, Date,
+    createRadarEngineAdminFeature: () => ({ showPage: async () => undefined }),
     window: { GLL_CONFIG: { supabaseUrl: "https://test.invalid", supabaseAnonKey: "test", sessionIdleTimeoutMinutes: 30, sessionMaxLifetimeHours: 8, ...config }, location, history, localStorage, ...events },
     document: { hidden: false, getElementById: element, querySelectorAll: () => [], createElement: () => element("syncNotice"), ...events },
     setTimeout: (fn) => { timers.set(++nextTimer, fn); return nextTimer; },
@@ -250,7 +255,7 @@ function client(db = backend(), auth = { session: { user } }, config = {}) {
   });
   vm.runInContext(application, context);
   element("notificationsMenu").classList.add("hidden");
-  const api = vm.runInContext(`({ store, appState, authState, AUTH_STATUS, main, initializeAuthStateListener, showAuthBootstrap, showAuthBootstrapError, showLoginView, runAuthSessionOperation, restoreSession, logout, reloadData, refreshInBackground, startLiveUpdates, stopLiveUpdates, resetAuthenticatedView, scheduleLiveRefresh, verifyCurrentUserAccess, calculateBidSummary, calculateLineTotal, calculateItemProfit, calculateProfitMargin, calculateValueWithMargin, parseDecimal, parseProfitMargin, money, formatDateTime, toDateTimeInputValue, fromDateTimeInputValue, readNavigationRoute, applyNavigationRoute, writeNavigationRoute, resolveAuthorizedPage, normalizeBidRecord, normalizeBidAttachments, validateEditalFiles, bidDisplayNumber, bidMatchesSearch, bidActivityDescription, creatorName, creatorInitials, creatorTagMarkup, normalizeQuotationRecord, normalizeQuotationItemRecord, quotationItemToBidItem, bidItemToQuotationItem, normalizeTechnicalSpecifications, quotationSaveError, sessionPolicyStorageKey, enforceSessionPolicy, availableBidQuotations, navigationNotifications, clearAllNotifications, updateCurrentUserProfile })`, context);
+  const api = vm.runInContext(`({ store, appState, authState, AUTH_STATUS, main, initializeAuthStateListener, showAuthBootstrap, showAuthBootstrapError, showLoginView, runAuthSessionOperation, restoreSession, logout, reloadData, refreshInBackground, startLiveUpdates, stopLiveUpdates, resetAuthenticatedView, scheduleLiveRefresh, verifyCurrentUserAccess, calculateBidSummary, calculateLineTotal, calculateItemProfit, calculateProfitMargin, calculateValueWithMargin, parseDecimal, parseProfitMargin, money, formatDateTime, toDateTimeInputValue, fromDateTimeInputValue, readNavigationRoute, applyNavigationRoute, writeNavigationRoute, resolveAuthorizedPage, normalizeUserRole, normalizeBidRecord, normalizeBidAttachments, validateEditalFiles, bidDisplayNumber, bidMatchesSearch, bidActivityDescription, creatorName, creatorInitials, creatorTagMarkup, normalizeQuotationRecord, normalizeQuotationItemRecord, quotationItemToBidItem, bidItemToQuotationItem, normalizeTechnicalSpecifications, quotationSaveError, sessionPolicyStorageKey, enforceSessionPolicy, availableBidQuotations, navigationNotifications, clearAllNotifications, updateCurrentUserProfile })`, context);
   vm.runInContext(`
     renderSuppliers = renderBids = renderDetails = renderQuotations = renderUsers = () => {};
     clearBidForm = clearQuotationForm = setPage = updateMainNavigationState = () => {};
@@ -378,6 +383,20 @@ test("design system route is available to administrators and blocked for analyst
   assert.equal(app.resolveAuthorizedPage("designSystem"), "designSystem");
   app.appState.currentUserRole = "Analista";
   assert.equal(app.resolveAuthorizedPage("designSystem"), "settings");
+});
+
+test("Radar Engine administration is fail-closed for non-admin roles and disabled builds", () => {
+  const app = client(backend(), { session: { user } }, { radarEngineAdminEnabled: true });
+  assert.equal(app.normalizeUserRole("Administrador"), "Administrador");
+  assert.equal(app.normalizeUserRole("Analista"), "Analista");
+  assert.equal(app.normalizeUserRole("unexpected"), "Analista");
+  app.appState.currentUserRole = "Administrador";
+  assert.equal(app.resolveAuthorizedPage("radarEngineAdmin"), "radarEngineAdmin");
+  app.appState.currentUserRole = "Analista";
+  assert.equal(app.resolveAuthorizedPage("radarEngineAdmin"), "home");
+  const production = client(backend(), { session: { user } }, { radarEngineAdminEnabled: false });
+  production.appState.currentUserRole = "Administrador";
+  assert.equal(production.resolveAuthorizedPage("radarEngineAdmin"), "home");
 });
 
 test("production blocks the Design System route for every profile", () => {

@@ -8743,3 +8743,283 @@ button.history-row:hover {
   .billing-field-wide { grid-column: auto; }
   .billing-history-entry { align-items: flex-start; flex-direction: column; }
 }
+/* Radar Engine administrative dashboard */
+.radar-engine-admin-page {
+  gap: var(--gll-space-6);
+}
+.radar-engine-page-heading {
+  align-items: center;
+  margin-bottom: 0;
+}
+.radar-engine-page-heading h1 {
+  margin-bottom: var(--gll-space-2);
+}
+.radar-engine-page-heading p {
+  max-width: 58rem;
+  line-height: var(--line-height-relaxed);
+}
+.radar-engine-page-heading .quiet-action {
+  flex: 0 0 auto;
+}
+.radar-engine-notice,
+.radar-engine-limitation {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--gll-space-3);
+  padding: var(--gll-space-4);
+  border: 1px solid var(--gll-line);
+  border-radius: var(--gll-radius-md);
+  line-height: var(--line-height-normal);
+}
+.radar-engine-notice {
+  display: block;
+  background: var(--gll-info-bg);
+  color: var(--gll-info);
+}
+.radar-engine-notice.tone-warning {
+  background: var(--gll-warning-bg);
+  color: var(--gll-warning);
+}
+.radar-engine-notice.tone-danger {
+  background: var(--gll-danger-bg);
+  color: var(--gll-danger);
+}
+.radar-engine-notice p {
+  margin: var(--gll-space-2) 0 0;
+}
+.radar-engine-notice strong,
+.radar-engine-limitation strong {
+  display: block;
+  margin-bottom: var(--gll-space-1);
+}
+.radar-engine-tabs {
+  display: flex;
+  gap: var(--gll-space-2);
+  overflow-x: auto;
+  border-bottom: 1px solid var(--gll-line);
+}
+.radar-engine-tab {
+  min-height: 44px;
+  padding: var(--gll-space-3) var(--gll-space-4);
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: var(--gll-ink-soft);
+  font: inherit;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.radar-engine-tab:hover,
+.radar-engine-tab.active {
+  color: var(--gll-forest);
+}
+.radar-engine-tab.active {
+  border-bottom-color: var(--gll-forest);
+}
+.radar-engine-tab:focus-visible,
+.radar-engine-admin-page button:focus-visible,
+.radar-engine-admin-page select:focus-visible,
+.radar-engine-admin-page input:focus-visible {
+  outline: 2px solid var(--gll-focus);
+  outline-offset: 2px;
+}
+.radar-engine-tab-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gll-space-4);
+}
+.radar-engine-section-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--gll-space-4);
+}
+.radar-engine-section-heading h2,
+.radar-engine-section-heading h3,
+.radar-engine-control-card h3,
+.radar-engine-service-card h3 {
+  margin: 0;
+  color: var(--gll-ink);
+}
+.radar-engine-section-heading p,
+.radar-engine-control-card p,
+.radar-engine-service-card p {
+  margin: var(--gll-space-1) 0 0;
+  color: var(--gll-ink-soft);
+  line-height: var(--line-height-normal);
+}
+.radar-engine-service-grid,
+.radar-engine-metric-grid,
+.radar-engine-queue-cards,
+.radar-engine-controls-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--gll-space-4);
+}
+.radar-engine-service-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--gll-space-3);
+}
+.radar-engine-state {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: var(--gll-space-1) var(--gll-space-2);
+  border-radius: var(--gll-radius-sm);
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.radar-engine-state.is-success {
+  background: var(--gll-success-bg);
+  color: var(--gll-success);
+}
+.radar-engine-state.is-danger {
+  background: var(--gll-danger-bg);
+  color: var(--gll-danger);
+}
+.radar-engine-state.is-unavailable {
+  background: var(--gll-paper-muted);
+  color: var(--gll-ink-soft);
+}
+.radar-engine-metric-card {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: var(--gll-space-2);
+}
+.radar-engine-metric-card > span {
+  color: var(--gll-ink-soft);
+  font-size: 13px;
+  font-weight: 600;
+}
+.radar-engine-metric-card > strong {
+  color: var(--gll-ink);
+  font-family: var(--font-family-mono);
+  font-size: 24px;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+.radar-engine-metric-card > small {
+  color: var(--gll-ink-soft);
+  line-height: var(--line-height-normal);
+}
+.radar-engine-limitation {
+  display: block;
+  background: var(--gll-paper-muted);
+  color: var(--gll-ink-soft);
+}
+.radar-engine-filter-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 2fr);
+  align-items: end;
+  gap: var(--gll-space-4);
+}
+.radar-engine-filter-row label,
+.radar-engine-control-card label {
+  display: grid;
+  gap: var(--gll-space-2);
+  color: var(--gll-ink);
+  font-size: 13px;
+  font-weight: 600;
+}
+.radar-engine-filter-row select,
+.radar-engine-control-card input {
+  min-height: 44px;
+  width: 100%;
+  border: 1px solid var(--gll-line-strong);
+  border-radius: var(--gll-radius-md);
+  padding: var(--gll-space-2) var(--gll-space-3);
+  background: var(--gll-paper);
+  color: var(--gll-ink);
+  font: inherit;
+}
+.radar-engine-filter-row select:disabled,
+.radar-engine-control-card input:disabled {
+  background: var(--gll-paper-muted);
+  color: var(--gll-ink-soft);
+  cursor: not-allowed;
+}
+.radar-engine-help {
+  margin: 0;
+  color: var(--gll-ink-soft);
+  font-size: 12px;
+  line-height: var(--line-height-normal);
+}
+.radar-engine-table-panel {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: var(--gll-space-4);
+}
+.radar-engine-table-panel .table-wrap {
+  max-width: 100%;
+}
+.radar-engine-table-panel td .empty-state {
+  display: grid;
+  gap: var(--gll-space-2);
+  text-align: center;
+}
+.radar-engine-table-panel td .empty-state span {
+  color: var(--gll-ink-soft);
+}
+.radar-engine-control-card {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--gll-space-3);
+}
+.radar-engine-control-card button {
+  margin-top: auto;
+}
+.radar-engine-control-card button:disabled {
+  cursor: not-allowed;
+}
+.radar-engine-date-fields {
+  display: grid;
+  width: 100%;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--gll-space-3);
+}
+@media (max-width: 900px) {
+  .radar-engine-service-grid,
+  .radar-engine-metric-grid,
+  .radar-engine-queue-cards,
+  .radar-engine-controls-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .radar-engine-filter-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .radar-engine-filter-row .radar-engine-help {
+    grid-column: 1 / -1;
+  }
+}
+@media (max-width: 620px) {
+  .radar-engine-page-heading {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .radar-engine-page-heading .quiet-action {
+    width: 100%;
+  }
+  .radar-engine-service-grid,
+  .radar-engine-metric-grid,
+  .radar-engine-queue-cards,
+  .radar-engine-controls-grid,
+  .radar-engine-filter-row,
+  .radar-engine-date-fields {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .radar-engine-filter-row .radar-engine-help {
+    grid-column: auto;
+  }
+  .radar-engine-service-card {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
