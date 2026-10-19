@@ -1429,6 +1429,14 @@
       "migrations": [
         "supabase/migrations/20261011164028_email_invitation_access.sql"
       ]
+    },
+    {
+      "id": "ISSUE-130",
+      "backend_commits": [],
+      "frontend_commits": [
+        "db9936a07b2e310b1c2c650595c4166504e091bf"
+      ],
+      "migrations": []
     }
   ]
 }
