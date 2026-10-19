@@ -47,7 +47,7 @@ test("salvamento central usa função transacional e sincroniza a organização"
   assert.match(feature, /onOrganizationUpdate\?\.\(organization\)/);
   assert.match(feature, /Somente administradores podem alterar os dados da empresa/);
   assert.match(feature, /select\("id,name,cnpj,logo_path,watermark_path"\)/);
-  assert.match(feature, /from\(COMPANY_ASSET_BUCKET\)\.upload/);
+  assert.match(feature, /storageBucket\(getClient\(\), COMPANY_ASSET_BUCKET\)\.upload/);
   assert.match(feature, /\.update\(branding\)/);
 });
 

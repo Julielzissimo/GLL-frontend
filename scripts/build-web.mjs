@@ -47,6 +47,21 @@ if (!target) {
   process.exit(1);
 }
 
+const configuredUrl = process.env.GLL_SUPABASE_URL?.trim();
+if (configuredUrl && configuredUrl !== target.supabaseUrl) {
+  throw new Error(`GLL_SUPABASE_URL não corresponde ao projeto Supabase de ${target.environment}.`);
+}
+const configuredKey = (process.env.GLL_SUPABASE_ANON_KEY || process.env.GLL_SUPABASE_PUBLISHABLE_KEY || "").trim();
+if (configuredKey && !configuredKey.startsWith("sb_publishable_")) {
+  throw new Error("O frontend aceita somente uma chave pública sb_publishable_ do Supabase.");
+}
+const otherTarget = target.environment === "homolog" ? TARGETS.production : TARGETS.homolog;
+if (configuredKey && configuredKey === otherTarget.supabaseAnonKey) {
+  throw new Error(`A chave pública Supabase de ${otherTarget.environment} não pode ser usada em ${target.environment}.`);
+}
+const storageProvider = process.env[`GLL_STORAGE_PROVIDER_${target.environment === "homolog" ? "HOMOLOG" : "PRODUCTION"}`] || "supabase";
+if (!["supabase", "r2"].includes(storageProvider)) throw new Error("Provedor de armazenamento inválido.");
+
 const scriptDir = dirname(fileURLToPath(import.meta.url));
 const rootDir = resolve(scriptDir, "..");
 const sourceDir = resolve(rootDir, "web");
@@ -60,11 +75,12 @@ const runtimeConfig = {
   environment: target.environment,
   label: target.label,
   description: target.description,
-  storageLabel: target.storageLabel,
+  storageLabel: storageProvider === "r2" ? `Cloudflare R2 ${target.label.toLowerCase()}` : target.storageLabel,
   storageSuffix: target.storageSuffix,
+  storageProvider,
   appName: "GLL Web",
-  supabaseUrl: process.env.GLL_SUPABASE_URL || target.supabaseUrl || "",
-  supabaseAnonKey: process.env.GLL_SUPABASE_ANON_KEY || process.env.GLL_SUPABASE_PUBLISHABLE_KEY || target.supabaseAnonKey || "",
+  supabaseUrl: target.supabaseUrl,
+  supabaseAnonKey: configuredKey || target.supabaseAnonKey,
   sessionIdleTimeoutMinutes: Number(process.env.GLL_SESSION_IDLE_TIMEOUT_MINUTES || target.sessionIdleTimeoutMinutes),
   sessionMaxLifetimeHours: Number(process.env.GLL_SESSION_MAX_LIFETIME_HOURS || target.sessionMaxLifetimeHours),
   suppliersEnabled: target.suppliersEnabled,
@@ -80,6 +96,7 @@ await writeFile(
 
 const assetVersion = createHash("sha256")
   .update(await readFile(resolve(sourceDir, "app.js")))
+  .update(await readFile(resolve(sourceDir, "file-storage.js")))
   .update(await readFile(resolve(sourceDir, "organization-chat.js")))
   .update(await readFile(resolve(sourceDir, "declarations.js")))
   .update(await readFile(resolve(sourceDir, "company-data.js")))
@@ -103,7 +120,8 @@ await writeFile(
     .replace('./company-data.js', `./company-data.js?v=${assetVersion}`)
     .replace('./commercial-proposals.js', `./commercial-proposals.js?v=${assetVersion}`)
     .replace('./organization-chat.js', `./organization-chat.js?v=${assetVersion}`)
-    .replace('./app.js', `./app.js?v=${assetVersion}`),
+    .replace('./app.js', `./app.js?v=${assetVersion}`)
+    .replace('./file-storage.js', `./file-storage.js?v=${assetVersion}`),
   "utf8",
 );
 
