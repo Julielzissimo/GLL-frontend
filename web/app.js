@@ -3340,10 +3340,11 @@ function editedUserProfile() {
 
 function updateUserProfileAccessActions() {
   const user = editedUserProfile();
-  const canConfigure = isCurrentUserAdmin() && normalizeUserRole(user?.role) === USER_ROLES.ANALYST;
-  const canManageAccess = isCurrentUserAdmin() && store instanceof SupabaseStore && Boolean(user?.auth_user_id)
+  const isOtherUser = Boolean(user?.auth_user_id)
     && user.auth_user_id !== appState.currentUserAuthId
     && normalizeEmail(user.email) !== normalizeEmail(appState.currentUserEmail);
+  const canConfigure = isCurrentUserAdmin() && isOtherUser && normalizeUserRole(user?.role) === USER_ROLES.ANALYST;
+  const canManageAccess = isCurrentUserAdmin() && isOtherUser && store instanceof SupabaseStore;
   refs.userProfileAccessActions.classList.toggle("hidden", !canConfigure && !canManageAccess);
   refs.configureUserAccessButton.classList.toggle("hidden", !canConfigure);
   refs.changeUserAccessButton.classList.toggle("hidden", !canManageAccess);
