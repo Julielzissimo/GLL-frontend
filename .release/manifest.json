@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "release_id": "2026-10-18-transicao-dominio",
+  "release_id": "2026-10-19-migracao-storage-cloudflare-r2",
   "environment": "production",
   "target_branch": "main",
   "items": [
@@ -780,6 +780,41 @@
       ],
       "frontend_commits": [],
       "migrations": []
+    },
+    {
+      "id": "R2-ENV-ISOLATION-001",
+      "backend_commits": [
+        "3727675896096ce79317ecefb74d84b6e13e8ae9"
+      ],
+      "frontend_commits": [
+        "d1d2bdf95426af038e2353ca33d9ded10ff7f702"
+      ],
+      "migrations": []
+    },
+    {
+      "id": "R2-STORAGE-INTEGRATION-001",
+      "backend_commits": [
+        "7ec66396b56291e669ab3bb8ddc750b9e537a04b",
+        "8f988059277549326816781a9b54bb4308691e91"
+      ],
+      "frontend_commits": [
+        "07463228a5a27d20fe98ab2d518f16bf1129c139",
+        "ab2d1ec432826b098b1d6ef57aadc7152a375668",
+        "9d2b60f5b2e5280a0bd214bb5c3ab9165541ddc9",
+        "2f8d75bd70343f1b34a8db0ae3a7322ef799baf4",
+        "31d6cb785cef1195d8284084121218f46b4e62fa",
+        "1d743c123c2aff1523c9832b650c7af455921e8a",
+        "cd62243b095e4e36c9b3c26ee79a561e05bbdef9",
+        "1362a9aedc88d4928ab88f2444681a0b49a5843f",
+        "43bb26e6703f2f1c7b7cee2338af9331c0c1b9f2",
+        "97a1eabc457d3d06a48be432a28d49a6b8b69297",
+        "155421144a52b86cae96e3c57704975f1a82ea48",
+        "cbc87afe12f71a8d71ec4aff6a22684467ea998f",
+        "c85891352cd7f7dd1d298b45d94fe5d72c82cd50"
+      ],
+      "migrations": [
+        "supabase/migrations/20261009223408_r2_file_objects_and_quota.sql"
+      ]
     }
   ]
 }
