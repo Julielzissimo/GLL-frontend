@@ -1166,6 +1166,22 @@
       ]
     },
     {
+      "id": "EMAIL-08",
+      "backend_commits": [
+        "4ea176ee4ad1b3ed8695b9449b571fab804cf510"
+      ],
+      "frontend_commits": [],
+      "migrations": []
+    },
+    {
+      "id": "EMAIL-09",
+      "backend_commits": [
+        "bad728f1b5483013b0b5a10de8aededff5569fd2"
+      ],
+      "frontend_commits": [],
+      "migrations": []
+    },
+    {
       "id": "RADAR-19-FASE-3-DETALHES-CACHE-ITENS-001",
       "backend_commits": [
         "a6bf76a4cb94f6e34dc5a6543d762466610f6f08"
