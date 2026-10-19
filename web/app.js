@@ -1,4 +1,6 @@
-﻿const STATUS_OPTIONS = ["Em Analise", "Aguard. Disputa", "Descartada", "Aprovada", "Em Fornecimento", "Faturado", "Desclassificado", "Disputada"];
+import { createRadarEngineAdminFeature } from "./radar-engine-admin.js";
+
+const STATUS_OPTIONS = ["Em Analise", "Aguard. Disputa", "Descartada", "Aprovada", "Em Fornecimento", "Faturado", "Desclassificado", "Disputada"];
 const storageBucket = globalThis.window?.GLLFileStorage?.storageBucket || ((client, bucket) => client.storage.from(bucket));
 const WON_ITEM_STATUSES = ["Aprovada", "Em Fornecimento", "Faturado", "Desclassificado", "Disputada"];
 const WON_ITEM_TOTAL_STATUSES = ["Descartada", "Aprovada", "Em Fornecimento", "Faturado", "Disputada"];
@@ -58,6 +60,7 @@ const DEFAULT_GLL_CONFIG = {
   suppliersEnabled: true,
   commercialProposalsEnabled: true,
   designSystemEnabled: true,
+  radarEngineAdminEnabled: false,
   radarDetailsFallbackEnabled: false,
 };
 const GLL_CONFIG = {
@@ -119,6 +122,7 @@ const PAGE_ROUTE_NAMES = {
   settings: "configuracoes",
   companyData: "configuracoes/dados-da-empresa",
   designSystem: "configuracoes/design-system",
+  radarEngineAdmin: "administracao/radar-engine",
 };
 const ROUTE_PAGE_NAMES = Object.fromEntries(Object.entries(PAGE_ROUTE_NAMES).map(([page, route]) => [route, page]));
 
@@ -241,6 +245,7 @@ const refs = {
   navSuppliersButton: $("navSuppliersButton"),
   navDeclarationsButton: $("navDeclarationsButton"),
   navUsersButton: $("navUsersButton"),
+  navRadarEngineAdminButton: $("navRadarEngineAdminButton"),
   navSettingsButton: $("navSettingsButton"),
   settingsNavigationItems: $("settingsNavigationItems"),
   navDesignSystemButton: $("navDesignSystemButton"),
@@ -336,6 +341,7 @@ const refs = {
   settingsPage: $("settingsPage"),
   companyDataPage: $("companyDataPage"),
   designSystemPage: $("designSystemPage"),
+  radarEngineAdminPage: $("radarEngineAdminPage"),
   designSystemAccessCard: $("designSystemAccessCard"),
   designSystemCatalog: $("designSystemCatalog"),
   suppliersPage: $("suppliersPage"),
@@ -563,6 +569,8 @@ const refs = {
   toastMessage: $("toastMessage"),
   toastDismissButton: $("toastDismissButton"),
 };
+
+const radarEngineAdminFeature = createRadarEngineAdminFeature({ container: refs.radarEngineAdminPage });
 
 const userAvatarUrlCache = new Map();
 let userProfileReturnPage = "home";
@@ -4216,7 +4224,7 @@ function handleNotificationsKeydown(event) {
 }
 
 function normalizeUserRole(role) {
-  return role === USER_ROLES.ANALYST ? USER_ROLES.ANALYST : USER_ROLES.ADMIN;
+  return role === USER_ROLES.ADMIN ? USER_ROLES.ADMIN : USER_ROLES.ANALYST;
 }
 
 function isCurrentUserAdmin() {
@@ -4227,6 +4235,8 @@ function resolveAuthorizedPage(page) {
   if (page === "suppliers" && GLL_CONFIG.suppliersEnabled === false) return "home";
   if (page === "commercialProposals" && GLL_CONFIG.commercialProposalsEnabled === false) return "home";
   if (page === "designSystem" && GLL_CONFIG.designSystemEnabled === false) return "home";
+  if (page === "radarEngineAdmin" && GLL_CONFIG.radarEngineAdminEnabled !== true) return "home";
+  if (page === "radarEngineAdmin" && !isCurrentUserAdmin()) return "home";
   if (page === "users" && !isCurrentUserAdmin()) return "home";
   if (page === "userProfile" && refs.userCreateForm.dataset.mode === "create" && !isCurrentUserAdmin()) return "home";
   if (page === "designSystem" && !isCurrentUserAdmin()) return "settings";
@@ -4246,6 +4256,7 @@ function breadcrumbItems(page) {
     declarationHistory: "Histórico",
     companyData: "Dados da Empresa",
     designSystem: "Design System",
+    radarEngineAdmin: "Processamento do Radar",
   };
 
   if (["items", "documents", "billing", "failures"].includes(page)) {
@@ -4305,6 +4316,7 @@ function breadcrumbItems(page) {
     users: "Usuários",
     settings: "Configurações",
     designSystem: "Design System",
+    radarEngineAdmin: "Processamento do Radar",
   };
   if (compact || page === "home") return [{ label: topLevelLabels[page] || topLevelLabels.home }];
   return [home, { label: topLevelLabels[page] || topLevelLabels.home }];
@@ -4375,6 +4387,7 @@ function creatorTagMarkup(record) {
 function updateAccessInterface() {
   const showUserManagement = isCurrentUserAdmin();
   const showDesignSystemAccess = showUserManagement && GLL_CONFIG.designSystemEnabled !== false;
+  const showRadarEngineAdmin = showUserManagement && GLL_CONFIG.radarEngineAdminEnabled === true;
   refs.navUsersButton.classList.toggle("hidden", !showUserManagement);
   refs.navUsersButton.disabled = !showUserManagement;
   refs.navUsersButton.setAttribute("aria-hidden", String(!showUserManagement));
@@ -4382,6 +4395,10 @@ function updateAccessInterface() {
   refs.navDesignSystemButton.disabled = !showDesignSystemAccess;
   refs.navDesignSystemButton.setAttribute("aria-hidden", String(!showDesignSystemAccess));
   refs.navDesignSystemButton.setAttribute("aria-disabled", String(!showDesignSystemAccess));
+  refs.navRadarEngineAdminButton.classList.toggle("hidden", !showRadarEngineAdmin);
+  refs.navRadarEngineAdminButton.disabled = !showRadarEngineAdmin;
+  refs.navRadarEngineAdminButton.setAttribute("aria-hidden", String(!showRadarEngineAdmin));
+  refs.navRadarEngineAdminButton.setAttribute("aria-disabled", String(!showRadarEngineAdmin));
   refs.designSystemAccessCard.classList.toggle("hidden", !showDesignSystemAccess);
   refs.designSystemAccessCard.setAttribute("aria-hidden", String(!showDesignSystemAccess));
   updateWorkspaceSummary();
@@ -5038,6 +5055,7 @@ function setPage(page, options = {}) {
   const showSettings = page === "settings";
   const showCompanyData = page === "companyData";
   const showDesignSystem = page === "designSystem";
+  const showRadarEngineAdmin = page === "radarEngineAdmin";
   const showSuppliers = page === "suppliers";
   const showDeclarations = declarationPages.includes(page);
   const showCommercialProposals = page === "commercialProposals";
@@ -5050,13 +5068,14 @@ function setPage(page, options = {}) {
   const showCatalog = page === "bids";
   const showEditor = page === "edit";
   const showDetail = detailPages.includes(page);
-  refs.bidsPage.classList.toggle("hidden", showUsers || showUserProfile || showSettings || showCompanyData || showDesignSystem || showQuotations || showSuppliers || showDeclarations || showCommercialProposals || showRadarSearch);
+  refs.bidsPage.classList.toggle("hidden", showUsers || showUserProfile || showSettings || showCompanyData || showDesignSystem || showRadarEngineAdmin || showQuotations || showSuppliers || showDeclarations || showCommercialProposals || showRadarSearch);
   refs.radarSearchPage.classList.toggle("hidden", !showRadarSearch);
   refs.usersPage.classList.toggle("hidden", !showUsers);
   refs.userProfilePage.classList.toggle("hidden", !showUserProfile);
   refs.settingsPage.classList.toggle("hidden", !showSettings);
   refs.companyDataPage.classList.toggle("hidden", !showCompanyData);
   refs.designSystemPage.classList.toggle("hidden", !showDesignSystem);
+  refs.radarEngineAdminPage.classList.toggle("hidden", !showRadarEngineAdmin);
   refs.quotationsPage.classList.toggle("hidden", !showQuotations);
   refs.homePage.classList.toggle("hidden", !showHome);
   refs.bidCatalogPage.classList.toggle("hidden", !showCatalog);
@@ -5068,15 +5087,15 @@ function setPage(page, options = {}) {
   refs.documentsPanel.classList.toggle("hidden", page !== "documents");
   refs.billingPanel.classList.toggle("hidden", page !== "billing");
   refs.failuresPanel.classList.toggle("hidden", page !== "failures");
-  refs.appView.classList.toggle("users-active", showUsers || showUserProfile || showSettings || showCompanyData || showDesignSystem || showQuotations || showSuppliers || showDeclarations || showCommercialProposals || showRadarSearch);
+  refs.appView.classList.toggle("users-active", showUsers || showUserProfile || showSettings || showCompanyData || showDesignSystem || showRadarEngineAdmin || showQuotations || showSuppliers || showDeclarations || showCommercialProposals || showRadarSearch);
   refs.itemsTabButton.classList.toggle("active", page === "items");
   refs.documentsTabButton.classList.toggle("active", page === "documents");
   refs.billingTabButton.classList.toggle("active", page === "billing");
   refs.billingTabButton.classList.toggle("hidden", !shouldShowBilling());
   refs.failuresTabButton.classList.toggle("active", page === "failures");
   refs.failuresTabButton.classList.toggle("hidden", !shouldShowFailureHistory());
-  const primaryPage = showRadarSearch ? "radarSearch" : showCommercialProposals ? "commercialProposals" : showDeclarations ? "declarations" : showSuppliers ? "suppliers" : showUsers || (showUserProfile && isCurrentUserAdmin()) ? "users" : showSettings || showCompanyData || showDesignSystem ? "settings" : showQuotations ? "quotations" : showHome || showUserProfile ? "home" : "bids";
-  const activeNavigationPage = ["settings", "companyData", "designSystem"].includes(page) ? page : primaryPage;
+  const primaryPage = showRadarEngineAdmin ? "radarEngineAdmin" : showRadarSearch ? "radarSearch" : showCommercialProposals ? "commercialProposals" : showDeclarations ? "declarations" : showSuppliers ? "suppliers" : showUsers || (showUserProfile && isCurrentUserAdmin()) ? "users" : showSettings || showCompanyData || showDesignSystem ? "settings" : showQuotations ? "quotations" : showHome || showUserProfile ? "home" : "bids";
+  const activeNavigationPage = ["settings", "companyData", "designSystem", "radarEngineAdmin"].includes(page) ? page : primaryPage;
   renderBreadcrumb(page);
   document.querySelectorAll("[data-navigation-page]").forEach((button) => {
     button.classList.toggle("active", button.dataset.navigationPage === activeNavigationPage);
@@ -5097,6 +5116,7 @@ function setPage(page, options = {}) {
   if (showCompanyData) void companyDataFeature.showPage().catch((error) => showToast(error.message, "error"));
   if (showRadarSearch) void radarSearchFeature.showPage().catch((error) => showToast(error.message, "error"));
   if (showDesignSystem) window.GLLDesignSystem?.mountCatalog(refs.designSystemCatalog);
+  if (showRadarEngineAdmin) void radarEngineAdminFeature.showPage();
   writeNavigationRoute(page, options.history || "push");
   if (liveChannel || chatBroadcastChannel) scheduleLiveRefresh();
 }
