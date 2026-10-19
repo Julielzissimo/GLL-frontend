@@ -4845,19 +4845,6 @@ tr.item-won td {
   align-items: start;
 }
 
-.quotation-grand-total {
-  display: inline-flex;
-  align-items: center;
-  min-height: 34px;
-  padding: 7px 12px;
-  border-radius: 999px;
-  background: var(--success-bg);
-  color: var(--success) !important;
-  font-size: 14px !important;
-  font-weight: 800;
-  white-space: nowrap;
-}
-
 .quotation-items-toolbar,
 .quotation-items-summary {
   display: flex;
