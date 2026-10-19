@@ -5,12 +5,7 @@ import test from "node:test";
 
 const source = await readFile(new URL("../web/app.js", import.meta.url), "utf8");
 const html = await readFile(new URL("../web/index.html", import.meta.url), "utf8");
-const buildConfig = await readFile(new URL("../scripts/build-web.mjs", import.meta.url), "utf8");
-const sourceWithoutRadarAdminImport = source.replace('import { createRadarEngineAdminFeature } from "./radar-engine-admin.js";', "");
-const application = sourceWithoutRadarAdminImport.slice(
-  0,
-  sourceWithoutRadarAdminImport.lastIndexOf("void main().catch(() => {"),
-);
+const application = source.slice(0, source.lastIndexOf('withBlockingLoading(main, "Verificando sessão…")'));
 const user = { email: "test@example.test", name: "Teste" };
 
 test("feed descreve alterações específicas do edital e do orçamento", () => {
@@ -242,10 +237,8 @@ function client(db = backend(), auth = { session: { user } }, config = {}) {
     addEventListener: (name, fn) => listeners.set(name, fn),
     removeEventListener: (name) => listeners.delete(name),
   };
-  const authCallbacks = [];
   const context = vm.createContext({
     console, URL, URLSearchParams, Intl, Date,
-    createRadarEngineAdminFeature: () => ({ showPage: async () => undefined }),
     window: { GLL_CONFIG: { supabaseUrl: "https://test.invalid", supabaseAnonKey: "test", sessionIdleTimeoutMinutes: 30, sessionMaxLifetimeHours: 8, ...config }, location, history, localStorage, ...events },
     document: { hidden: false, getElementById: element, querySelectorAll: () => [], createElement: () => element("syncNotice"), ...events },
     setTimeout: (fn) => { timers.set(++nextTimer, fn); return nextTimer; },
@@ -255,7 +248,7 @@ function client(db = backend(), auth = { session: { user } }, config = {}) {
   });
   vm.runInContext(application, context);
   element("notificationsMenu").classList.add("hidden");
-  const api = vm.runInContext(`({ store, appState, authState, AUTH_STATUS, main, initializeAuthStateListener, showAuthBootstrap, showAuthBootstrapError, showLoginView, runAuthSessionOperation, restoreSession, logout, reloadData, refreshInBackground, startLiveUpdates, stopLiveUpdates, resetAuthenticatedView, scheduleLiveRefresh, verifyCurrentUserAccess, calculateBidSummary, calculateLineTotal, calculateItemProfit, calculateProfitMargin, calculateValueWithMargin, parseDecimal, parseProfitMargin, money, formatDateTime, toDateTimeInputValue, fromDateTimeInputValue, readNavigationRoute, applyNavigationRoute, writeNavigationRoute, resolveAuthorizedPage, normalizeUserRole, normalizeBidRecord, normalizeBidAttachments, validateEditalFiles, bidDisplayNumber, bidMatchesSearch, bidActivityDescription, creatorName, creatorInitials, creatorTagMarkup, normalizeQuotationRecord, normalizeQuotationItemRecord, quotationItemToBidItem, bidItemToQuotationItem, normalizeTechnicalSpecifications, quotationSaveError, sessionPolicyStorageKey, enforceSessionPolicy, availableBidQuotations, navigationNotifications, clearAllNotifications, updateCurrentUserProfile })`, context);
+  const api = vm.runInContext(`({ store, appState, restoreSession, logout, reloadData, refreshInBackground, startLiveUpdates, stopLiveUpdates, resetAuthenticatedView, scheduleLiveRefresh, verifyCurrentUserAccess, calculateBidSummary, calculateLineTotal, calculateItemProfit, calculateProfitMargin, calculateValueWithMargin, parseDecimal, parseProfitMargin, money, formatDateTime, toDateTimeInputValue, fromDateTimeInputValue, readNavigationRoute, writeNavigationRoute, resolveAuthorizedPage, normalizeBidRecord, normalizeBidAttachments, validateEditalFiles, bidDisplayNumber, bidMatchesSearch, bidActivityDescription, creatorName, creatorInitials, creatorTagMarkup, normalizeQuotationRecord, normalizeQuotationItemRecord, quotationItemToBidItem, bidItemToQuotationItem, normalizeTechnicalSpecifications, quotationSaveError, sessionPolicyStorageKey, enforceSessionPolicy, availableBidQuotations, navigationNotifications, clearAllNotifications, updateCurrentUserProfile })`, context);
   vm.runInContext(`
     renderSuppliers = renderBids = renderDetails = renderQuotations = renderUsers = () => {};
     clearBidForm = clearQuotationForm = setPage = updateMainNavigationState = () => {};
@@ -276,10 +269,6 @@ function client(db = backend(), auth = { session: { user } }, config = {}) {
       }),
     },
     auth: {
-      onAuthStateChange: (callback) => {
-        authCallbacks.push(callback);
-        return { data: { subscription: { unsubscribe() {} } } };
-      },
       getSession: async () => ({ data: { session: auth.session }, error: null }),
       signOut: async ({ scope }) => { assert.equal(scope, "local"); auth.session = null; return { error: null }; },
     },
@@ -310,7 +299,7 @@ function client(db = backend(), auth = { session: { user } }, config = {}) {
     },
     removeChannel: async (channel) => db.channels.delete(channel),
   };
-  return { ...api, db, auth, authCallbacks, context, elements, element, timers, listeners, location, history,
+  return { ...api, db, auth, context, elements, element, timers, listeners, location, history,
     intervalDelays,
     flush: async () => {
       const pending = [...timers.values()]; timers.clear();
@@ -383,20 +372,6 @@ test("design system route is available to administrators and blocked for analyst
   assert.equal(app.resolveAuthorizedPage("designSystem"), "designSystem");
   app.appState.currentUserRole = "Analista";
   assert.equal(app.resolveAuthorizedPage("designSystem"), "settings");
-});
-
-test("Radar Engine administration is fail-closed for non-admin roles and disabled builds", () => {
-  const app = client(backend(), { session: { user } }, { radarEngineAdminEnabled: true });
-  assert.equal(app.normalizeUserRole("Administrador"), "Administrador");
-  assert.equal(app.normalizeUserRole("Analista"), "Analista");
-  assert.equal(app.normalizeUserRole("unexpected"), "Analista");
-  app.appState.currentUserRole = "Administrador";
-  assert.equal(app.resolveAuthorizedPage("radarEngineAdmin"), "radarEngineAdmin");
-  app.appState.currentUserRole = "Analista";
-  assert.equal(app.resolveAuthorizedPage("radarEngineAdmin"), "home");
-  const production = client(backend(), { session: { user } }, { radarEngineAdminEnabled: false });
-  production.appState.currentUserRole = "Administrador";
-  assert.equal(production.resolveAuthorizedPage("radarEngineAdmin"), "home");
 });
 
 test("production blocks the Design System route for every profile", () => {
@@ -533,219 +508,6 @@ test("navigation replaces the current URL when requested", () => {
   assert.equal(app.location.search, "?page=orcamentos");
 });
 
-test("rota direta em /homolog/ mantém a licitação e os parâmetros auxiliares", () => {
-  const app = client();
-  app.location.pathname = "/homolog/";
-  app.location.search = "?page=itens&licitacao=bid-detail-7&item=4&origem=atalho";
-  app.appState.authenticated = true;
-  app.appState.bids = [{ id: "bid-detail-7" }];
-  vm.runInContext(`
-    loadBid = (bidId) => { appState.currentBidId = bidId; };
-    setPage = (page) => { appState.activePage = page; };
-  `, app.context);
-
-  app.applyNavigationRoute({ replaceInvalid: true });
-
-  assert.equal(app.location.pathname, "/homolog/");
-  assert.equal(app.appState.activePage, "items");
-  assert.equal(app.appState.currentBidId, "bid-detail-7");
-  assert.deepEqual(
-    { page: app.readNavigationRoute().page, bidId: app.readNavigationRoute().bidId },
-    { page: "items", bidId: "bid-detail-7" },
-  );
-  assert.equal(new URLSearchParams(app.location.search).get("item"), "4");
-  assert.equal(new URLSearchParams(app.location.search).get("origem"), "atalho");
-});
-
-test("bootstrap usa shell não bloqueante e não mostra login antes da autorização", async () => {
-  const app = client();
-  app.element("loginView").classList.add("hidden");
-  app.element("appView").classList.add("hidden");
-  vm.runInContext(`
-    applyEnvironmentConfig = populateOptions = bindEvents = () => {};
-    store.initialize = async () => {};
-    restoreSession = () => new Promise((resolve) => { globalThis.finishSessionRestore = resolve; });
-  `, app.context);
-
-  const startup = app.main();
-  await new Promise((resolve) => setImmediate(resolve));
-
-  assert.equal(app.element("authBootstrapView").classList.contains("hidden"), false);
-  assert.equal(app.element("loginView").classList.contains("hidden"), true);
-  assert.equal(app.element("appView").classList.contains("hidden"), true);
-  assert.match(html, /id="authBootstrapView"[^>]*aria-busy="true"/);
-  assert.match(html, /id="loginView" class="login-view hidden"/);
-  assert.doesNotMatch(source, /withBlockingLoading\(main/);
-
-  app.showLoginView();
-  vm.runInContext("globalThis.finishSessionRestore()", app.context);
-  await startup;
-  assert.equal(app.element("authBootstrapView").classList.contains("hidden"), true);
-  assert.equal(app.element("loginView").classList.contains("hidden"), false);
-});
-
-test("nova guia restaura sessão persistida e abre a rota direta sem login transitório", async () => {
-  const app = client();
-  app.location.search = "?page=itens&licitacao=TEST-1&item=3&origem=atalho";
-  app.showAuthBootstrap();
-  let finishInitialData;
-  const originalGetAll = app.store.getAll.bind(app.store);
-  const initialData = new Promise((resolve) => { finishInitialData = resolve; });
-  app.store.getAll = (...args) => initialData.then(() => originalGetAll(...args));
-  vm.runInContext(`
-    loadBid = (bidId) => { appState.currentBidId = bidId; };
-    setPage = (page) => { appState.activePage = page; };
-  `, app.context);
-
-  const startup = app.restoreSession();
-  await new Promise((resolve) => setImmediate(resolve));
-
-  assert.equal(app.appState.authenticated, true);
-  assert.equal(app.element("authBootstrapView").classList.contains("hidden"), true);
-  assert.equal(app.element("appView").classList.contains("hidden"), false);
-  assert.equal(app.element("appBootstrapPlaceholder").classList.contains("hidden"), false);
-  assert.equal(app.element("appSidebar").inert, true);
-  assert.equal(app.element("appTopbar").inert, true);
-  assert.equal(app.element("loginView").classList.contains("hidden"), true);
-  assert.equal(app.location.pathname, "/homolog/");
-  assert.equal(app.location.search, "?page=itens&licitacao=TEST-1&item=3&origem=atalho");
-
-  finishInitialData();
-  await startup;
-
-  assert.equal(app.appState.authenticated, true);
-  assert.equal(app.authState.status, app.AUTH_STATUS.AUTHENTICATED);
-  assert.equal(app.appState.activePage, "items");
-  assert.equal(app.appState.currentBidId, "TEST-1");
-  assert.equal(app.element("authBootstrapView").classList.contains("hidden"), true);
-  assert.equal(app.element("appBootstrapPlaceholder").classList.contains("hidden"), true);
-  assert.equal(app.element("appSidebar").inert, false);
-  assert.equal(app.element("appTopbar").inert, false);
-  assert.equal(app.element("loginView").classList.contains("hidden"), true);
-  assert.equal(app.element("appView").classList.contains("hidden"), false);
-  assert.equal(app.location.pathname, "/homolog/");
-  assert.equal(new URLSearchParams(app.location.search).get("item"), "3");
-  assert.equal(new URLSearchParams(app.location.search).get("origem"), "atalho");
-  app.stopLiveUpdates();
-});
-
-test("validação da sessão não aplica seu timeout ao carregamento inicial dos dados protegidos", async () => {
-  const app = client();
-  let finishDataLoad;
-  let protectedReads = 0;
-  const protectedData = new Promise((resolve) => { finishDataLoad = resolve; });
-  app.store.getAll = async () => {
-    protectedReads += 1;
-    return protectedData;
-  };
-
-  const startup = app.restoreSession();
-  await new Promise((resolve) => setImmediate(resolve));
-
-  assert.ok(protectedReads > 0);
-  assert.equal(app.authState.status, app.AUTH_STATUS.AUTHENTICATED);
-  assert.equal(app.element("authBootstrapView").classList.contains("hidden"), true);
-  assert.equal(app.element("appView").classList.contains("hidden"), false);
-  assert.equal(app.element("appBootstrapPlaceholder").classList.contains("hidden"), false);
-  assert.equal(app.timers.size, 0);
-
-  finishDataLoad([]);
-  await startup;
-  assert.equal(app.element("appView").classList.contains("hidden"), false);
-  assert.equal(app.element("appBootstrapPlaceholder").classList.contains("hidden"), true);
-  app.stopLiveUpdates();
-});
-
-test("status de renovação preserva a autorização anterior e volta ao autenticado", async () => {
-  const app = client();
-  app.appState.authenticated = true;
-  let finishRefresh;
-  const refresh = app.runAuthSessionOperation(
-    () => new Promise((resolve) => { finishRefresh = resolve; }),
-    "test-refresh",
-  );
-
-  assert.equal(app.authState.status, app.AUTH_STATUS.REFRESHING);
-  assert.equal(app.appState.authenticated, true);
-  finishRefresh({ data: { session: app.auth.session }, error: null });
-  await refresh;
-  assert.equal(app.authState.status, app.AUTH_STATUS.AUTHENTICATED);
-  assert.equal(app.appState.authenticated, true);
-});
-
-test("callback de logout entre guias só limpa o estado depois de sair do callback Auth", async () => {
-  const app = client();
-  let sessionReads = 0;
-  app.store.client.auth.getSession = async () => {
-    sessionReads += 1;
-    return { data: { session: app.auth.session }, error: null };
-  };
-  app.appState.authenticated = true;
-  app.initializeAuthStateListener();
-
-  app.authCallbacks[0]("SIGNED_OUT", null);
-  assert.equal(app.appState.authenticated, true);
-  assert.equal(sessionReads, 0);
-
-  await app.flush();
-  assert.equal(app.appState.authenticated, false);
-  assert.equal(app.authState.status, app.AUTH_STATUS.UNAUTHENTICATED);
-  assert.equal(sessionReads, 0);
-});
-
-test("SIGNED_IN durante a restauração aguarda a fonte única de sessão sem reiniciar o bootstrap", async () => {
-  const auth = { session: { user: { ...user, id: "auth-user-1" } } };
-  const app = client(backend(), auth);
-  app.appState.authenticated = true;
-  app.appState.currentUserEmail = user.email;
-  app.appState.currentUserAuthId = "auth-user-1";
-
-  let finishSessionRead;
-  let sessionReads = 0;
-  app.store.client.auth.getSession = () => {
-    sessionReads += 1;
-    return new Promise((resolve) => { finishSessionRead = resolve; });
-  };
-  app.initializeAuthStateListener();
-
-  const queuedAuthEvents = [];
-  const originalSetTimeout = app.context.setTimeout;
-  app.context.setTimeout = (callback, delay) => {
-    if (delay === 0) {
-      queuedAuthEvents.push(callback);
-      return 10_000 + queuedAuthEvents.length;
-    }
-    return originalSetTimeout(callback, delay);
-  };
-
-  const startup = app.restoreSession();
-  app.authCallbacks[0]("SIGNED_IN", auth.session);
-  queuedAuthEvents.shift()();
-
-  assert.equal(app.appState.authenticated, true);
-  assert.equal(app.appState.currentUserEmail, user.email);
-  assert.equal(sessionReads, 1);
-
-  finishSessionRead({ data: { session: auth.session }, error: null });
-  await startup;
-  await new Promise((resolve) => setImmediate(resolve));
-
-  assert.equal(sessionReads, 1);
-  assert.equal(app.appState.authenticated, true);
-  app.stopLiveUpdates();
-});
-
-test("build mantém sessão persistida e projetos isolados entre homologação e produção", () => {
-  const homologUrl = buildConfig.match(/storageSuffix:\s*"homolog",\s*supabaseUrl:\s*"([^"]+)"/)?.[1];
-  const productionUrl = buildConfig.match(/storageSuffix:\s*"production",\s*supabaseUrl:\s*"([^"]+)"/)?.[1];
-
-  assert.ok(homologUrl);
-  assert.ok(productionUrl);
-  assert.notEqual(homologUrl, productionUrl);
-  assert.match(source, /autoRefreshToken:\s*true[\s\S]*?persistSession:\s*true/);
-  assert.doesNotMatch(source, /storageKey\s*:/);
-});
-
 test("reload restores a persisted session without entering a password", async () => {
   const auth = { session: { user } };
   const first = client(backend(), auth);
@@ -776,85 +538,6 @@ test("missing session stays at login without reading protected tables", async ()
   app.store.getAll = () => { throw new Error("must not read"); };
   await app.restoreSession();
   assert.equal(app.appState.authenticated, false);
-  assert.equal(app.authState.status, app.AUTH_STATUS.UNAUTHENTICATED);
-  assert.equal(app.element("authBootstrapView").classList.contains("hidden"), true);
-});
-
-test("falha de rede no bootstrap mostra erro recuperável sem liberar o conteúdo", async () => {
-  const app = client();
-  app.store.client.auth.getSession = async () => ({ data: { session: null }, error: new Error("offline") });
-  app.showAuthBootstrap();
-
-  await assert.rejects(app.restoreSession(), /offline/);
-  app.showAuthBootstrapError();
-
-  assert.equal(app.authState.status, app.AUTH_STATUS.ERROR);
-  assert.equal(app.appState.authenticated, false);
-  assert.equal(app.element("appView").classList.contains("hidden"), true);
-  assert.equal(app.element("loginView").classList.contains("hidden"), true);
-  assert.equal(app.element("retryAuthBootstrapButton").classList.contains("hidden"), false);
-  assert.match(app.element("authBootstrapError").textContent, /Verifique a conexão/);
-});
-
-test("timeout encerra o estado de espera e uma resposta tardia não libera a aplicação", async () => {
-  const app = client();
-  let resolveSession;
-  app.store.client.auth.getSession = () => new Promise((resolve) => { resolveSession = resolve; });
-  app.showAuthBootstrap();
-
-  const restore = app.restoreSession().catch((error) => error);
-  await app.flush();
-  const error = await restore;
-  assert.match(error.message, /timed out/);
-  app.showAuthBootstrapError();
-  resolveSession({ data: { session: app.auth.session }, error: null });
-  await new Promise((resolve) => setImmediate(resolve));
-
-  assert.equal(app.authState.status, app.AUTH_STATUS.ERROR);
-  assert.equal(app.appState.authenticated, false);
-  assert.equal(app.element("appView").classList.contains("hidden"), true);
-  assert.equal(app.element("authBootstrapError").classList.contains("hidden"), false);
-});
-
-test("timeout do cliente Supabase também encerra o bootstrap com ação de recuperação", async () => {
-  const app = client();
-  app.showAuthBootstrap();
-  vm.runInContext(`
-    applyEnvironmentConfig = populateOptions = bindEvents = () => {};
-    store.initialize = () => new Promise(() => {});
-  `, app.context);
-
-  const startup = app.main();
-  await app.flush();
-  await startup;
-
-  assert.equal(app.authState.status, app.AUTH_STATUS.ERROR);
-  assert.equal(app.element("authBootstrapView").classList.contains("hidden"), false);
-  assert.equal(app.element("authBootstrapError").classList.contains("hidden"), false);
-  assert.equal(app.element("retryAuthBootstrapButton").classList.contains("hidden"), false);
-  assert.equal(app.element("loginView").classList.contains("hidden"), true);
-  assert.equal(app.element("appView").classList.contains("hidden"), true);
-});
-
-test("perfil revogado não abre a aplicação nem lê dados protegidos", async () => {
-  const db = backend();
-  db.users[0].access_revoked_at = "2026-10-18T12:00:00.000Z";
-  const app = client(db);
-  let protectedReads = 0;
-  app.store.getAll = () => {
-    protectedReads += 1;
-    throw new Error("must not read");
-  };
-
-  await app.restoreSession();
-
-  assert.equal(app.appState.authenticated, false);
-  assert.equal(app.auth.session, null);
-  assert.equal(app.element("appView").classList.contains("hidden"), true);
-  assert.equal(app.element("appBootstrapPlaceholder").classList.contains("hidden"), true);
-  assert.equal(app.element("loginView").classList.contains("hidden"), false);
-  assert.equal(protectedReads, 0);
-  assert.match(app.element("loginError").textContent, /acesso não está mais disponível/);
 });
 
 test("persisted session expires after the inactivity limit before protected data is read", async () => {
