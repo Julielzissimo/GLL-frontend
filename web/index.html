@@ -14,7 +14,16 @@
     <link rel="stylesheet" href="./design-system/prototype-theme.css" />
   </head>
   <body>
-    <main id="loginView" class="login-view">
+    <main id="authBootstrapView" class="auth-bootstrap-view" data-auth-status="initializing" aria-busy="true">
+      <section class="auth-bootstrap-card" aria-label="Carregando o GLL">
+        <img class="auth-bootstrap-mark" src="./assets/gll-mark.svg" alt="" aria-hidden="true" />
+        <div class="ds-skeleton auth-bootstrap-skeleton" aria-hidden="true"><span></span><span></span><span></span></div>
+        <p id="authBootstrapError" class="form-error hidden" role="alert"></p>
+        <button id="retryAuthBootstrapButton" class="primary-action full-action hidden" type="button">Tentar novamente</button>
+      </section>
+    </main>
+
+    <main id="loginView" class="login-view hidden">
       <section class="login-brand" aria-label="Apresentação do sistema">
         <span class="brand-mark">GLL</span>
         <h1 id="loginTitle">Gerenciador de Licitações Locais</h1>
@@ -148,7 +157,7 @@
       </form>
     </main>
 
-    <main id="appView" class="app-view hidden">
+    <main id="appView" class="app-view hidden" aria-busy="false">
       <aside id="appSidebar" class="app-sidebar" aria-label="Navegação principal">
         <div class="app-brand-row">
           <button id="homeIconButton" class="app-logo" type="button" aria-label="Ir para a visão geral">
@@ -208,7 +217,7 @@
       <button id="mobileNavigationScrim" class="mobile-navigation-scrim" type="button" aria-label="Fechar menu" hidden></button>
 
       <div class="app-main">
-        <header class="topbar">
+        <header id="appTopbar" class="topbar">
           <div class="topbar-location">
             <button
               id="menuToggleButton"
@@ -247,6 +256,24 @@
             </div>
           </div>
         </header>
+
+        <section id="appBootstrapPlaceholder" class="content app-bootstrap-placeholder hidden" role="status" aria-live="polite" aria-busy="true">
+          <div id="appBootstrapSkeleton">
+            <div class="page-heading">
+              <div>
+                <span class="eyebrow">ESPAÇO DE TRABALHO</span>
+                <h1>Carregando seus dados</h1>
+                <p>A página solicitada aparecerá assim que os dados estiverem prontos.</p>
+              </div>
+            </div>
+            <div class="dashboard-grid app-bootstrap-placeholder-grid" aria-hidden="true">
+              <section class="section-band"><div class="ds-skeleton app-bootstrap-skeleton"><span></span><span></span><span></span></div></section>
+              <section class="section-band"><div class="ds-skeleton app-bootstrap-skeleton"><span></span><span></span><span></span></div></section>
+            </div>
+          </div>
+          <p id="appBootstrapError" class="form-error hidden" role="alert">Não foi possível carregar os dados do espaço de trabalho. Verifique a conexão e tente novamente.</p>
+          <button id="retryAppBootstrapButton" class="primary-action full-action hidden" type="button">Tentar novamente</button>
+        </section>
 
         <section id="bidsPage" class="workspace">
           <div id="sidebarPanel" class="hidden" aria-hidden="true"></div>

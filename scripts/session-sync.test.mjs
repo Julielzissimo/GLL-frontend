@@ -11,9 +11,9 @@ const classicSource = source.replace(
 );
 const application = classicSource.slice(
   0,
-  classicSource.lastIndexOf('withBlockingLoading(main, "Verificando sessão…")'),
+  classicSource.lastIndexOf("void main().catch(() => {"),
 );
-const user = { email: "test@example.test", name: "Teste" };
+const user = { id: "profile-1", email: "test@example.test", name: "Teste" };
 
 test("feed descreve alterações específicas do edital e do orçamento", () => {
   const { bidActivityDescription } = client();
@@ -201,6 +201,7 @@ function client(db = backend(), auth = { session: { user } }, config = {}) {
   const elements = new Map();
   const listeners = new Map();
   const timers = new Map();
+  const authCallbacks = [];
   const intervalDelays = [];
   let nextTimer = 0;
   const location = { pathname: "/homolog/", search: "", hash: "" };
@@ -225,13 +226,13 @@ function client(db = backend(), auth = { session: { user } }, config = {}) {
     if (!elements.has(id)) {
       const classes = new Set();
       elements.set(id, {
-        id, value: "", textContent: "", dataset: {}, _innerHTML: "", innerHTMLWrites: 0, classList: {
+        id, value: "", textContent: "", dataset: {}, attributes: {}, _innerHTML: "", innerHTMLWrites: 0, classList: {
           add: (...values) => values.forEach((v) => classes.add(v)),
           remove: (...values) => values.forEach((v) => classes.delete(v)),
           contains: (v) => classes.has(v),
           toggle: (v, on = !classes.has(v)) => on ? classes.add(v) : classes.delete(v),
         },
-        querySelector: () => null, querySelectorAll: () => [], setAttribute() {}, insertAdjacentHTML() {}, prepend() {}, reset() {}, close() {},
+        querySelector: () => null, querySelectorAll: () => [], setAttribute(name, value) { this.attributes[name] = String(value); }, addEventListener() {}, removeEventListener() {}, insertAdjacentHTML() {}, prepend() {}, reset() {}, close() {},
       });
       Object.defineProperty(elements.get(id), "innerHTML", {
         get() { return this._innerHTML; },
@@ -256,7 +257,7 @@ function client(db = backend(), auth = { session: { user } }, config = {}) {
   });
   vm.runInContext(application, context);
   element("notificationsMenu").classList.add("hidden");
-  const api = vm.runInContext(`({ store, appState, restoreSession, logout, reloadData, refreshInBackground, startLiveUpdates, stopLiveUpdates, resetAuthenticatedView, scheduleLiveRefresh, verifyCurrentUserAccess, calculateBidSummary, calculateLineTotal, calculateItemProfit, calculateProfitMargin, calculateValueWithMargin, parseDecimal, parseProfitMargin, money, formatDateTime, toDateTimeInputValue, fromDateTimeInputValue, readNavigationRoute, writeNavigationRoute, resolveAuthorizedPage, normalizeBidRecord, normalizeBidAttachments, validateEditalFiles, bidDisplayNumber, bidMatchesSearch, bidActivityDescription, creatorName, creatorInitials, creatorTagMarkup, normalizeQuotationRecord, normalizeQuotationItemRecord, quotationItemToBidItem, bidItemToQuotationItem, normalizeTechnicalSpecifications, quotationSaveError, sessionPolicyStorageKey, enforceSessionPolicy, availableBidQuotations, navigationNotifications, clearAllNotifications, updateCurrentUserProfile })`, context);
+  const api = vm.runInContext(`({ store, appState, authState, AUTH_STATUS, main, initializeAuthStateListener, showAuthBootstrap, showAuthBootstrapError, showLoginView, showAppDataBootstrap, showAppDataBootstrapError, retryAppDataBootstrap, restoreSession, logout, reloadData, refreshInBackground, startLiveUpdates, stopLiveUpdates, resetAuthenticatedView, scheduleLiveRefresh, verifyCurrentUserAccess, calculateBidSummary, calculateLineTotal, calculateItemProfit, calculateProfitMargin, calculateValueWithMargin, parseDecimal, parseProfitMargin, money, formatDateTime, toDateTimeInputValue, fromDateTimeInputValue, readNavigationRoute, writeNavigationRoute, resolveAuthorizedPage, normalizeBidRecord, normalizeBidAttachments, validateEditalFiles, bidDisplayNumber, bidMatchesSearch, bidActivityDescription, creatorName, creatorInitials, creatorTagMarkup, normalizeQuotationRecord, normalizeQuotationItemRecord, quotationItemToBidItem, bidItemToQuotationItem, normalizeTechnicalSpecifications, quotationSaveError, sessionPolicyStorageKey, enforceSessionPolicy, availableBidQuotations, navigationNotifications, clearAllNotifications, updateCurrentUserProfile, waitForAppData: () => pendingAppDataBootstrap, waitForSessionRestore: () => pendingSessionRestore?.promise || Promise.resolve() })`, context);
   vm.runInContext(`
     renderSuppliers = renderBids = renderDetails = renderQuotations = renderUsers = () => {};
     clearBidForm = clearQuotationForm = setPage = updateMainNavigationState = () => {};
@@ -277,6 +278,10 @@ function client(db = backend(), auth = { session: { user } }, config = {}) {
       }),
     },
     auth: {
+      onAuthStateChange: (callback) => {
+        authCallbacks.push(callback);
+        return { data: { subscription: { unsubscribe() {} } } };
+      },
       getSession: async () => ({ data: { session: auth.session }, error: null }),
       signOut: async ({ scope }) => { assert.equal(scope, "local"); auth.session = null; return { error: null }; },
     },
@@ -307,7 +312,12 @@ function client(db = backend(), auth = { session: { user } }, config = {}) {
     },
     removeChannel: async (channel) => db.channels.delete(channel),
   };
-  return { ...api, db, auth, context, elements, element, timers, listeners, location, history,
+  api.rawRestoreSession = api.restoreSession;
+  api.restoreSession = async (...args) => {
+    await api.rawRestoreSession(...args);
+    await api.waitForAppData();
+  };
+  return { ...api, db, auth, authCallbacks, context, elements, element, timers, listeners, location, history,
     intervalDelays,
     flush: async () => {
       const pending = [...timers.values()]; timers.clear();
@@ -486,13 +496,16 @@ test("creator tag uses the current profile name before the stored creator snapsh
 
 test("creator cards show the edited display name after profile data reloads", async () => {
   const db = backend();
-  db.users = [{ ...user, auth_user_id: "creator-id", name: "Nome antigo", display_name: "Nome antigo", role: "Administrador", organization_id: "org-1" }];
+  db.users = [
+    { ...user, auth_user_id: "profile-1", organization_id: "org-1", role: "Administrador", organization: { name: "Teste" } },
+    { auth_user_id: "creator-id", name: "Nome antigo", display_name: "Nome antigo", role: "Analista", organization_id: "org-1" },
+  ];
   db.tables.bids[0].created_by = "creator-id";
   db.tables.bids[0].created_by_name = "Nome antigo";
   const app = client(db);
   await app.restoreSession();
 
-  db.users[0].display_name = "Nome atualizado";
+  db.users[1].display_name = "Nome atualizado";
   await app.reloadData();
 
   assert.match(app.creatorTagMarkup(app.appState.bids[0]), /Criado por.*Nome atualizado/s);
@@ -546,6 +559,193 @@ test("missing session stays at login without reading protected tables", async ()
   app.store.getAll = () => { throw new Error("must not read"); };
   await app.restoreSession();
   assert.equal(app.appState.authenticated, false);
+  assert.equal(app.element("authBootstrapView").classList.contains("hidden"), true);
+  assert.equal(app.element("loginView").classList.contains("hidden"), false);
+});
+
+test("startup shows login promptly when no persisted session exists and has no global loading modal", async () => {
+  const app = client(backend(), { session: null });
+  app.store.initialize = async () => {};
+  app.store.getAll = () => { throw new Error("must not read protected data"); };
+  vm.runInContext("applyEnvironmentConfig = populateOptions = bindEvents = () => {}", app.context);
+
+  await app.main();
+
+  assert.equal(app.element("authBootstrapView").classList.contains("hidden"), true);
+  assert.equal(app.element("loginView").classList.contains("hidden"), false);
+  assert.equal(app.element("appView").classList.contains("hidden"), true);
+  assert.match(html, /id="authBootstrapView"[^>]*aria-busy="true"/);
+  assert.match(html, /id="loginView" class="login-view hidden"/);
+  assert.doesNotMatch(source, /withBlockingLoading\(main/);
+});
+
+test("session and profile validate before protected data; the authorized shell appears before hydration", async () => {
+  const app = client();
+  app.showAuthBootstrap();
+  const calls = [];
+  let resolveInvitation;
+  let resolvePassword;
+  let resolveProfile;
+  let releaseData;
+  const invitation = new Promise((resolve) => { resolveInvitation = resolve; });
+  const password = new Promise((resolve) => { resolvePassword = resolve; });
+  const profile = new Promise((resolve) => { resolveProfile = resolve; });
+  const dataGate = new Promise((resolve) => { releaseData = resolve; });
+  const getUser = app.store.getUser;
+  const getAll = app.store.getAll;
+  app.store.getFirstAccessStatus = () => { calls.push("invitation"); return invitation; };
+  app.store.isPasswordResetRequired = () => { calls.push("password"); return password; };
+  app.store.getUser = () => { calls.push("profile"); return profile; };
+  app.store.getAll = async (table) => { await dataGate; return getAll(table); };
+
+  const restoring = app.rawRestoreSession();
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.deepEqual(calls.sort(), ["invitation", "password", "profile"]);
+  assert.equal(app.appState.authenticated, false);
+  assert.equal(app.element("appView").classList.contains("hidden"), true);
+  assert.equal(app.element("loginView").classList.contains("hidden"), true);
+
+  resolveInvitation({ firstAccessRequired: false });
+  resolvePassword(false);
+  resolveProfile(await getUser(user.email));
+  await restoring;
+
+  assert.equal(app.appState.authenticated, true);
+  assert.equal(app.authState.accessVerified, true);
+  assert.equal(app.element("appView").classList.contains("hidden"), false);
+  assert.equal(app.element("appBootstrapPlaceholder").classList.contains("hidden"), false);
+  assert.equal(app.element("appSidebar").inert, true);
+  assert.equal(app.element("appTopbar").inert, true);
+  assert.deepEqual(structuredClone(app.appState.bids), []);
+
+  releaseData();
+  await app.waitForAppData();
+  assert.equal(app.element("appBootstrapPlaceholder").classList.contains("hidden"), true);
+  assert.equal(app.element("appSidebar").inert, false);
+  assert.equal(app.appState.bids.length, 1);
+});
+
+test("timeout leaves protected views closed and late session responses cannot authenticate", async () => {
+  const app = client();
+  app.showAuthBootstrap();
+  let resolveSession;
+  let protectedReads = 0;
+  app.store.client.auth.getSession = () => new Promise((resolve) => { resolveSession = resolve; });
+  app.store.getAll = () => { protectedReads += 1; throw new Error("must not read protected data"); };
+
+  const restoring = app.rawRestoreSession().catch((error) => error);
+  await app.flush();
+  const error = await restoring;
+  assert.match(error.message, /tempo esperado/);
+  assert.equal(app.authState.status, app.AUTH_STATUS.ERROR);
+  assert.equal(app.appState.authenticated, false);
+  assert.equal(app.element("authBootstrapView").classList.contains("hidden"), false);
+  assert.equal(app.element("authBootstrapError").classList.contains("hidden"), false);
+  assert.equal(app.element("retryAuthBootstrapButton").classList.contains("hidden"), false);
+
+  resolveSession({ data: { session: app.auth.session }, error: null });
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(app.appState.authenticated, false);
+  assert.equal(protectedReads, 0);
+  assert.equal(app.element("appView").classList.contains("hidden"), true);
+});
+
+test("data hydration timeout keeps the verified shell recoverable and a retry loads data", async () => {
+  const app = client();
+  const getAll = app.store.getAll;
+  let blockData = true;
+  app.store.getAll = (table) => blockData ? new Promise(() => {}) : getAll(table);
+
+  await app.rawRestoreSession();
+  assert.equal(app.appState.authenticated, true);
+  assert.equal(app.element("appView").classList.contains("hidden"), false);
+  assert.equal(app.element("appBootstrapSkeleton").classList.contains("hidden"), false);
+
+  await app.flush();
+  assert.equal(app.appState.authenticated, true);
+  assert.equal(app.element("appBootstrapError").classList.contains("hidden"), false);
+  assert.equal(app.element("retryAppBootstrapButton").classList.contains("hidden"), false);
+  assert.equal(app.element("appSidebar").inert, true);
+
+  blockData = false;
+  app.retryAppDataBootstrap();
+  await app.waitForAppData();
+  assert.equal(app.element("appBootstrapPlaceholder").classList.contains("hidden"), true);
+  assert.equal(app.element("appSidebar").inert, false);
+  assert.equal(app.appState.bids.length, 1);
+});
+
+test("profile ID must match the Supabase session before protected data loads", async () => {
+  const app = client(backend(), { session: { user: { ...user, id: "different-auth-user" } } });
+  let protectedReads = 0;
+  app.store.getAll = () => { protectedReads += 1; throw new Error("must not read protected data"); };
+
+  await app.restoreSession();
+
+  assert.equal(app.appState.authenticated, false);
+  assert.equal(app.auth.session, null);
+  assert.equal(protectedReads, 0);
+  assert.match(app.element("loginError").textContent, /acesso não está mais disponível/);
+});
+
+test("cross-tab logout defers Supabase-independent cleanup and clears cached user data", async () => {
+  const app = client();
+  app.store.initialize = async () => {};
+  vm.runInContext("applyEnvironmentConfig = populateOptions = bindEvents = () => {}", app.context);
+  await app.main();
+  await app.waitForAppData();
+  let sessionReads = 0;
+  app.store.client.auth.getSession = async () => {
+    sessionReads += 1;
+    return { data: { session: app.auth.session }, error: null };
+  };
+  const authCallback = app.authCallbacks[0];
+  authCallback("SIGNED_OUT", null);
+  assert.equal(app.appState.authenticated, true);
+  assert.equal(sessionReads, 0);
+  await app.flush();
+
+  assert.equal(app.appState.authenticated, false);
+  assert.equal(app.appState.bids.length, 0);
+  assert.equal(app.element("appView").classList.contains("hidden"), true);
+  assert.equal(app.element("loginView").classList.contains("hidden"), false);
+  assert.equal(sessionReads, 0);
+});
+
+test("cross-tab identity changes clear the previous user's data before the new profile loads", async () => {
+  const db = backend();
+  const nextUser = { id: "profile-2", email: "other@example.test", name: "Outra pessoa" };
+  db.users.push({ ...nextUser, auth_user_id: nextUser.id, role: "Analista", organization_id: "org-1" });
+  const app = client(db);
+  app.store.initialize = async () => {};
+  vm.runInContext("applyEnvironmentConfig = populateOptions = bindEvents = () => {}", app.context);
+  await app.main();
+  await app.waitForAppData();
+  const getUser = app.store.getUser;
+  app.store.getUser = async (email) => email === nextUser.email
+    ? db.users.find((profileRow) => profileRow.email === nextUser.email)
+    : getUser(email);
+  let releaseData;
+  const dataGate = new Promise((resolve) => { releaseData = resolve; });
+  const getAll = app.store.getAll;
+  app.store.getAll = async (table) => { await dataGate; return getAll(table); };
+  const nextSession = { user: { ...nextUser } };
+  app.auth.session = nextSession;
+
+  app.authCallbacks[0]("SIGNED_IN", nextSession);
+  await app.flush();
+  await app.waitForSessionRestore();
+
+  assert.equal(app.appState.currentUserEmail, nextUser.email);
+  assert.equal(app.appState.currentUserAuthId, nextUser.id);
+  assert.equal(app.appState.authenticated, true);
+  assert.deepEqual(structuredClone(app.appState.bids), []);
+  assert.equal(app.element("appBootstrapPlaceholder").classList.contains("hidden"), false);
+
+  releaseData();
+  await app.waitForAppData();
+  assert.equal(app.element("appBootstrapPlaceholder").classList.contains("hidden"), true);
+  assert.equal(app.appState.bids.length, 1);
 });
 
 test("persisted session expires after the inactivity limit before protected data is read", async () => {

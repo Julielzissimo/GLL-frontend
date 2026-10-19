@@ -497,6 +497,61 @@ th.numeric {
   display: none !important;
 }
 
+.auth-bootstrap-view {
+  display: grid;
+  min-height: 100vh;
+  place-items: center;
+  padding: var(--gll-space-8);
+  background: var(--gll-canvas);
+}
+
+.auth-bootstrap-card {
+  display: grid;
+  width: min(100%, 26rem);
+  gap: var(--gll-space-6);
+  padding: var(--gll-space-8);
+  border: var(--border-default);
+  border-radius: var(--gll-radius-lg);
+  background: var(--gll-paper);
+  box-shadow: var(--gll-shadow-sm);
+}
+
+.auth-bootstrap-mark {
+  width: 48px;
+  height: 48px;
+  justify-self: center;
+}
+
+.auth-bootstrap-skeleton {
+  display: grid;
+  gap: var(--gll-space-4);
+}
+
+.auth-bootstrap-card > .form-error {
+  margin: 0;
+}
+
+.app-view.is-bootstrapping .app-main > :not(#appTopbar):not(#appBootstrapPlaceholder) {
+  display: none !important;
+}
+
+.app-bootstrap-placeholder {
+  max-width: 100%;
+  padding: var(--gll-space-8);
+}
+
+.app-bootstrap-placeholder .page-heading {
+  margin-bottom: var(--gll-space-8);
+}
+
+.app-bootstrap-placeholder-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.app-bootstrap-skeleton {
+  min-height: 140px;
+}
+
 .login-view {
   min-height: 100vh;
   display: grid;
