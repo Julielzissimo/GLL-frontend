@@ -182,7 +182,8 @@ function createOrganizationChat({ getClient, getOrganizationId, getOrganizationN
     const paths = [...new Set(rows.map((member) => member.avatar_path).filter(Boolean))]
       .filter((path) => !avatarCache.get(path) || avatarCache.get(path).expiresAt < now + 60_000);
     if (!paths.length) return;
-    const { data, error } = await getClient().storage.from("profile-avatars").createSignedUrls(paths, 3600);
+    const r2Enabled = window.GLL_CONFIG?.storageProvider === "r2";
+    const { data, error } = await storageBucket(getClient(), "profile-avatars").createSignedUrls(paths, r2Enabled ? 120 : 3600);
     if (error) return;
     (data || []).forEach((entry, index) => {
       if (entry.signedUrl && !entry.error) {

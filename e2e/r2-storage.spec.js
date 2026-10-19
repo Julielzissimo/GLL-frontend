@@ -6,26 +6,28 @@ function required(name) {
   return value;
 }
 
-test("homologação envia, lê e exclui somente um arquivo sintético no R2", async ({ page }) => {
+test("ambiente ativado envia, lê e exclui somente um arquivo sintético no R2", async ({ page }) => {
   const baseUrl = required("GLL_E2E_BASE_URL");
   const email = required("GLL_E2E_EMAIL");
   const password = required("GLL_E2E_PASSWORD");
-  if (required("GLL_E2E_EXPECTED_ENVIRONMENT") !== "homolog") {
-    throw new Error("O teste R2 só pode executar em homologação.");
-  }
+  const expectedEnvironment = required("GLL_E2E_EXPECTED_ENVIRONMENT");
+  const expectedProjectRef = expectedEnvironment === "production"
+    ? "siqsjxohpcrujobkbshn"
+    : "dwotbzrjcetizyygzoty";
+  if (!["homolog", "production"].includes(expectedEnvironment)) throw new Error("Ambiente R2 esperado inválido.");
   test.setTimeout(120_000);
   await page.goto(baseUrl, { waitUntil: "domcontentloaded" });
   const config = await page.evaluate(() => window.GLL_CONFIG);
-  if (config?.environment !== "homolog" || config.storageProvider !== "r2" ||
-    new URL(config.supabaseUrl).hostname !== "dwotbzrjcetizyygzoty.supabase.co") {
-    throw new Error("O teste R2 não está no ambiente de homologação ativado.");
+  if (config?.environment !== expectedEnvironment || config.storageProvider !== "r2" ||
+    new URL(config.supabaseUrl).hostname !== `${expectedProjectRef}.supabase.co`) {
+    throw new Error(`O teste R2 não está no ambiente ${expectedEnvironment} ativado.`);
   }
-  await page.waitForFunction(() => {
+  await page.waitForFunction((environment) => {
     const badge = document.querySelector("#environmentBadge");
     const loadingModal = document.querySelector("#blockingLoadingModal");
-    return badge?.dataset.environment === "homolog" && !loadingModal?.open &&
+    return badge?.dataset.environment === environment && !loadingModal?.open &&
       Boolean(document.querySelector("#loginForm button[type='submit']"));
-  }, null, { timeout: 30_000 });
+  }, expectedEnvironment, { timeout: 30_000 });
 
   await page.locator("#loginEmail").fill(email);
   await page.locator("#loginPassword").fill(password);
@@ -164,7 +166,7 @@ test("homologação envia, lê e exclui somente um arquivo sintético no R2", as
       throw error;
     }
     if (!result.uploaded || !result.downloaded || !result.deleted) throw new Error("Fluxo R2 incompleto.");
-    console.log("R2 homologação: upload, download, exclusão e leitura após exclusão validados com PNG sintético.");
+    console.log(`R2 ${expectedEnvironment}: upload, download, exclusão e leitura após exclusão validados com PNG sintético.`);
   } finally {
     await page.evaluate(async ({ supabaseUrl, anonKey, accessToken }) => {
       const upload = window.__gllR2SmokeUpload;

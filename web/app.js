@@ -1319,14 +1319,15 @@ class SupabaseStore {
 
     if (pathsToSign.length) {
       const client = await this.open();
-      const { data, error } = await client.storage.from("profile-avatars").createSignedUrls(pathsToSign, 3600);
+      const r2Enabled = window.GLL_CONFIG?.storageProvider === "r2";
+      const { data, error } = await storageBucket(client, "profile-avatars").createSignedUrls(pathsToSign, r2Enabled ? 120 : 3600);
       if (error) {
         console.warn("Não foi possível carregar algumas fotos de perfil.");
       } else {
         (data || []).forEach((entry, index) => {
           if (!entry.signedUrl || entry.error) return;
           const path = entry.path || pathsToSign[index];
-          userAvatarUrlCache.set(path, { url: entry.signedUrl, expiresAt: now + 3_000_000 });
+          userAvatarUrlCache.set(path, { url: entry.signedUrl, expiresAt: now + (r2Enabled ? 90_000 : 3_000_000) });
         });
       }
     }
@@ -1350,7 +1351,7 @@ class SupabaseStore {
     assertSupabase(currentError);
     if (!currentProfile) throw new Error("Perfil não encontrado nesta organização.");
 
-    const bucket = client.storage.from("profile-avatars");
+    const bucket = storageBucket(client, "profile-avatars");
     let newAvatarPath = "";
     const update = {
       name: displayName.trim(),
@@ -1360,12 +1361,13 @@ class SupabaseStore {
 
     if (avatarBlob) {
       newAvatarPath = `${targetAuthUserId}/${crypto.randomUUID()}.webp`;
-      const { error: uploadError } = await bucket.upload(newAvatarPath, avatarBlob, {
+      const { data: uploadResult, error: uploadError } = await bucket.upload(newAvatarPath, avatarBlob, {
         cacheControl: "3600",
         contentType: "image/webp",
         upsert: false,
       });
       assertSupabase(uploadError);
+      newAvatarPath = uploadResult?.path || newAvatarPath;
       update.avatar_path = newAvatarPath;
     } else if (removeAvatar) {
       update.avatar_path = null;
@@ -1604,13 +1606,13 @@ class SupabaseStore {
         const fileName = sanitizeStorageFileName(file.name);
         if (!appState.currentOrganizationId) throw new Error("Não foi possível identificar a organização do usuário.");
         const filePath = `${appState.currentOrganizationId}/${bidId}/${crypto.randomUUID()}/${fileName}`;
-        const { error: uploadError } = await client.storage.from(BID_EDITAL_BUCKET).upload(filePath, file, {
+        const { data: uploadResult, error: uploadError } = await storageBucket(client, BID_EDITAL_BUCKET).upload(filePath, file, {
           contentType: file.type || "application/octet-stream",
           upsert: false,
         });
         assertSupabase(uploadError);
         uploadedAttachments.push({
-          path: filePath,
+          path: uploadResult?.path || filePath,
           name: file.name,
           type: file.type || "application/octet-stream",
           size: file.size,
@@ -1618,7 +1620,7 @@ class SupabaseStore {
       }
     } catch (error) {
       if (uploadedAttachments.length) {
-        await client.storage.from(BID_EDITAL_BUCKET).remove(uploadedAttachments.map((attachment) => attachment.path));
+        await storageBucket(client, BID_EDITAL_BUCKET).remove(uploadedAttachments.map((attachment) => attachment.path));
       }
       throw error;
     }
@@ -1626,7 +1628,7 @@ class SupabaseStore {
     const editalFiles = [...currentAttachments, ...uploadedAttachments].map(attachmentMetadata);
     const { error: updateError } = await client.from("bids").update({ edital_files: editalFiles }).eq("id", bidId);
     if (updateError) {
-      await client.storage.from(BID_EDITAL_BUCKET).remove(uploadedAttachments.map((attachment) => attachment.path));
+      await storageBucket(client, BID_EDITAL_BUCKET).remove(uploadedAttachments.map((attachment) => attachment.path));
       assertSupabase(updateError);
     }
     return editalFiles;
@@ -1635,7 +1637,7 @@ class SupabaseStore {
   async downloadBidAttachment(attachment) {
     if (!attachment?.path) throw new Error("Este arquivo não está disponível.");
     const client = await this.open();
-    const { data, error } = await client.storage.from(BID_EDITAL_BUCKET).download(attachment.path);
+    const { data, error } = await storageBucket(client, BID_EDITAL_BUCKET).download(attachment.path);
     assertSupabase(error);
     return data;
   }
@@ -1658,7 +1660,7 @@ class SupabaseStore {
       .map(attachmentMetadata);
     const { error: updateError } = await client.from("bids").update({ edital_files: editalFiles }).eq("id", bidId);
     assertSupabase(updateError);
-    const { error: removeError } = await client.storage.from(BID_EDITAL_BUCKET).remove([attachmentPath]);
+    const { error: removeError } = await storageBucket(client, BID_EDITAL_BUCKET).remove([attachmentPath]);
     if (removeError) console.warn("Não foi possível remover o arquivo do armazenamento.", removeError);
   }
 

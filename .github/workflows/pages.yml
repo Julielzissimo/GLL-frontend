@@ -289,14 +289,14 @@ jobs:
           GLL_E2E_EXPECTED_ENVIRONMENT: ${{ github.ref_name == 'main' && 'production' || 'homolog' }}
         run: npm run test:e2e:login
 
-      - name: Testar arquivo sintético no R2 de homologação
+      - name: Validar armazenamento R2 com arquivo sintético
         id: r2_test
-        if: github.ref_name == 'homolog' && vars.GLL_STORAGE_PROVIDER_HOMOLOG == 'r2'
+        if: (github.ref_name == 'homolog' && vars.GLL_STORAGE_PROVIDER_HOMOLOG == 'r2') || (github.ref_name == 'main' && vars.GLL_STORAGE_PROVIDER_PRODUCTION == 'r2')
         env:
           GLL_E2E_BASE_URL: ${{ needs.deploy.outputs.target_url }}
           GLL_E2E_EMAIL: ${{ secrets.GLL_E2E_EMAIL }}
           GLL_E2E_PASSWORD: ${{ secrets.GLL_E2E_PASSWORD }}
-          GLL_E2E_EXPECTED_ENVIRONMENT: homolog
+          GLL_E2E_EXPECTED_ENVIRONMENT: ${{ github.ref_name == 'main' && 'production' || 'homolog' }}
         run: npm run test:e2e:r2
 
       - name: Registrar evidência da validação de login
