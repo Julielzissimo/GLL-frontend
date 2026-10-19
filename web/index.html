@@ -338,7 +338,23 @@
               <form id="filterForm" class="section-band filter-form">
                 <label>Pesquisa dinâmica<input id="filterSearch" type="search" placeholder="Órgão, modalidade, edital ou prazo de entrega..." /></label>
                 <label>Data da sessão<input id="filterDate" type="date" /></label>
-                <label>Status<select id="filterStatus"></select></label>
+                <div class="filter-status-picker">
+                  <span class="filter-status-field-label" id="filterStatusLabel">Status</span>
+                  <details id="filterStatus" class="filter-status-dropdown">
+                    <summary id="filterStatusSummary" aria-labelledby="filterStatusLabel filterStatusSummaryValue" aria-controls="filterStatusMenu">
+                      <span id="filterStatusSummaryValue" aria-live="polite" aria-atomic="true">Todos</span>
+                    </summary>
+                    <div id="filterStatusMenu" class="filter-status-menu">
+                      <div class="filter-status-actions">
+                        <button id="selectAllFilterStatusesButton" type="button">Marcar todos</button>
+                        <button id="clearFilterStatusesButton" type="button">Desmarcar todos</button>
+                      </div>
+                      <fieldset id="filterStatusOptions" class="filter-status-options">
+                        <legend class="sr-only">Filtrar por status</legend>
+                      </fieldset>
+                    </div>
+                  </details>
+                </div>
                 <label class="checkbox-field filter-checkbox-field">
                   <input id="filterGuaranteeDeposit" type="checkbox" />
                   <span>Possui depósito de garantia?<small>Mostrar somente licitações confirmadas.</small></span>
