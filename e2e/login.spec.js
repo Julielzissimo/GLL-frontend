@@ -307,12 +307,9 @@ test("o login de teste acessa somente a organização de teste", async ({ page }
     await page.waitForFunction(
       () => {
         const appView = document.querySelector("#appView");
-        const appBootstrapPlaceholder = document.querySelector("#appBootstrapPlaceholder");
         const passwordResetView = document.querySelector("#passwordResetView");
         const loginError = document.querySelector("#loginError")?.textContent?.trim();
-        const appReady = appView && !appView.classList.contains("hidden")
-          && (!appBootstrapPlaceholder || appBootstrapPlaceholder.classList.contains("hidden"));
-        return appReady
+        return (appView && !appView.classList.contains("hidden"))
           || (passwordResetView && !passwordResetView.classList.contains("hidden"))
           || Boolean(loginError);
       },
@@ -323,10 +320,8 @@ test("o login de teste acessa somente a organização de teste", async ({ page }
       const loginError = document.querySelector("#loginError")?.textContent?.trim() || "";
       return {
         appVisible: !document.querySelector("#appView")?.classList.contains("hidden"),
-        appReady: document.querySelector("#appBootstrapPlaceholder")?.classList.contains("hidden") ?? true,
         passwordResetRequired: !document.querySelector("#passwordResetView")?.classList.contains("hidden"),
         stillProcessing: Boolean(document.querySelector("#blockingLoadingModal")?.open),
-        initialDataPending: !document.querySelector("#appBootstrapPlaceholder")?.classList.contains("hidden"),
         hasLoginError: Boolean(loginError),
         loginErrorCategory: /sess[aã]o sem identificador/i.test(loginError)
           ? "session_id_missing"
@@ -345,9 +340,9 @@ test("o login de teste acessa somente a organização de teste", async ({ page }
                       : "none",
       };
     });
-    if (!postAuthState.appVisible || !postAuthState.appReady) {
+    if (!postAuthState.appVisible) {
       if (postAuthState.passwordResetRequired) throw new Error("A conta exige redefinição de senha antes do acesso.");
-      if (postAuthState.stillProcessing || postAuthState.initialDataPending) throw new Error("O GLL não concluiu o acesso e a carga inicial após 35 segundos.");
+      if (postAuthState.stillProcessing) throw new Error("O GLL não concluiu o acesso após 35 segundos.");
       throw new Error(`O Supabase autenticou, mas o GLL não concluiu o acesso (${postAuthState.loginErrorCategory}).`);
     }
     const runtime = await page.evaluate(() => ({
@@ -364,30 +359,6 @@ test("o login de teste acessa somente a organização de teste", async ({ page }
     if (runtime.role !== "Administrador") throw new Error("A conta não recebeu o perfil Administrador esperado.");
     if (!runtime.supabaseUrl || !runtime.supabaseAnonKey) {
       throw new Error("A configuração pública do Supabase não foi carregada.");
-    }
-
-    const newTab = await page.context().newPage();
-    try {
-      await newTab.route("**/rest/v1/bids**", async (route) => {
-        await new Promise((resolve) => setTimeout(resolve, 4000));
-        await route.continue();
-      });
-      const newTabTarget = new URL(baseUrl);
-      newTabTarget.searchParams.set("page", "visao-geral");
-      newTabTarget.searchParams.set("origem", "teste-nova-guia");
-      await newTab.goto(newTabTarget.href, { waitUntil: "domcontentloaded" });
-      await expect(newTab.locator("#appBootstrapPlaceholder")).toBeVisible();
-      await expect(newTab.locator("#authBootstrapView")).toBeHidden();
-      await expect(newTab.locator("#loginView")).toBeHidden();
-      await expect(newTab.locator("#appSidebar")).toHaveAttribute("inert", "");
-      await expect(newTab).toHaveURL(/origem=teste-nova-guia/);
-      await expect(newTab.locator("#appBootstrapPlaceholder")).toBeHidden({ timeout: 35_000 });
-      await expect(newTab.locator("#homePage")).toBeVisible();
-      await expect(newTab.locator("#appSidebar")).not.toHaveAttribute("inert");
-      await expect(newTab).toHaveURL(/page=visao-geral/);
-      await expect(newTab).toHaveURL(/origem=teste-nova-guia/);
-    } finally {
-      await newTab.close();
     }
 
     await page.locator("#navUsersButton").click();
