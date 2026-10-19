@@ -4605,6 +4605,12 @@ tr.item-won td {
   color: var(--gll-ink);
 }
 
+.user-invitation-admin-email {
+  display: block;
+  margin-top: var(--gll-space-1);
+  color: var(--gll-ink-soft);
+}
+
 .user-identity {
   display: flex;
   align-items: center;
