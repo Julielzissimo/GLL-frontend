@@ -7287,7 +7287,9 @@ function renderUserInvitations() {
       <td>${escapeHtml(invitation.role || "")}</td>
       <td><span class="user-access-status ${invitation.status === "completed" ? "active" : ["expired", "failed", "revoked"].includes(invitation.status) ? "revoked" : "pending"}" title="${escapeHtml(statusDetail)}">${escapeHtml(statusLabel)}</span></td>
       <td>${escapeHtml(invitation.createdAt ? formatDateTime(invitation.createdAt) : "—")}</td>
-      <td>${escapeHtml(adminName)}${adminEmail && adminEmail !== adminName ? `<small>${escapeHtml(adminEmail)}</small>` : ""}</td>
+      <td class="user-invitation-admin">
+        <span class="user-invitation-admin-name">${escapeHtml(adminName)}</span>${adminEmail && adminEmail !== adminName ? `<small class="user-invitation-admin-email">${escapeHtml(adminEmail)}</small>` : ""}
+      </td>
       <td><div class="user-management-actions">${actionButtons || '<span class="muted-text">—</span>'}</div></td>
     </tr>`;
   }).join("");
