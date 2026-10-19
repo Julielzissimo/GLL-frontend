@@ -519,7 +519,6 @@ const refs = {
   clearQuotationButton: $("clearQuotationButton"),
   quotationItemsSection: $("quotationItemsSection"),
   quotationItemsStatus: $("quotationItemsStatus"),
-  quotationGrandTotal: $("quotationGrandTotal"),
   downloadQuotationItemsButton: $("downloadQuotationItemsButton"),
   openQuotationItemModalButton: $("openQuotationItemModalButton"),
   quotationItemModal: $("quotationItemModal"),
@@ -7188,13 +7187,10 @@ function renderQuotationItems() {
   refs.downloadQuotationItemsButton.disabled = !quotation;
   if (!quotation) {
     refs.quotationItemsTableBody.innerHTML = "";
-    refs.quotationGrandTotal.textContent = `Total: ${money(0)}`;
     return;
   }
   const items = currentQuotationItems();
-  const grandTotal = items.reduce((sum, item) => roundMoney(sum + Number(item.total || 0)), 0);
   refs.quotationItemsStatus.textContent = `${items.length} ${items.length === 1 ? "item cadastrado" : "itens cadastrados"}`;
-  refs.quotationGrandTotal.textContent = `Total: ${money(grandTotal)}`;
   if (!items.length) {
     refs.quotationItemsTableBody.innerHTML = `<tr><td colspan="${showWonItems ? 11 : 10}"><div class="empty-state compact-empty">Nenhum item cadastrado neste orçamento.</div></td></tr>`;
     return;
