@@ -383,6 +383,10 @@ const refs = {
   filterSearch: $("filterSearch"),
   filterDate: $("filterDate"),
   filterStatus: $("filterStatus"),
+  filterStatusSummaryValue: $("filterStatusSummaryValue"),
+  filterStatusOptions: $("filterStatusOptions"),
+  selectAllFilterStatusesButton: $("selectAllFilterStatusesButton"),
+  clearFilterStatusesButton: $("clearFilterStatusesButton"),
   filterGuaranteeDeposit: $("filterGuaranteeDeposit"),
   clearFiltersButton: $("clearFiltersButton"),
   bidList: $("bidList"),
@@ -2697,9 +2701,37 @@ function applyEnvironmentConfig() {
 }
 
 function populateOptions() {
-  refs.filterStatus.innerHTML = statusOptionList(["Todos", ...STATUS_OPTIONS]);
+  refs.filterStatusOptions.innerHTML = STATUS_OPTIONS.map((status) => `
+    <label class="filter-status-option">
+      <input type="checkbox" name="filterStatus" value="${escapeHtml(status)}" />
+      <span>${escapeHtml(statusLabel(status))}</span>
+    </label>
+  `).join("");
   refs.bidStatus.innerHTML = statusOptionList(STATUS_OPTIONS);
   refs.salesUnit.innerHTML = optionList(SALES_UNIT_OPTIONS);
+  updateFilterStatusSummary();
+}
+
+function selectedFilterStatuses() {
+  return [...refs.filterStatusOptions.querySelectorAll("input[type='checkbox']:checked")].map((input) => input.value);
+}
+
+function setFilterStatuses(statuses = []) {
+  const selected = new Set(statuses);
+  refs.filterStatusOptions.querySelectorAll("input[type='checkbox']").forEach((input) => {
+    input.checked = selected.has(input.value);
+  });
+  updateFilterStatusSummary();
+}
+
+function updateFilterStatusSummary() {
+  const selected = selectedFilterStatuses();
+  const summary = selected.length === 0 || selected.length === STATUS_OPTIONS.length
+    ? "Todos"
+    : selected.length === 1
+      ? statusLabel(selected[0])
+      : `${selected.length} selecionados`;
+  refs.filterStatusSummaryValue.textContent = summary;
 }
 
 function setBidType(value) {
@@ -2965,6 +2997,18 @@ function bindEvents() {
     renderBids();
   });
   refs.filterSearch.addEventListener("input", renderBids);
+  refs.filterStatusOptions.addEventListener("change", updateFilterStatusSummary);
+  refs.selectAllFilterStatusesButton.addEventListener("click", () => setFilterStatuses(STATUS_OPTIONS));
+  refs.clearFilterStatusesButton.addEventListener("click", () => setFilterStatuses());
+  refs.filterStatus.addEventListener("keydown", (event) => {
+    if (event.key !== "Escape" || !refs.filterStatus.open) return;
+    event.preventDefault();
+    refs.filterStatus.open = false;
+    refs.filterStatusSummaryValue.closest("summary").focus();
+  });
+  document.addEventListener("pointerdown", (event) => {
+    if (!refs.filterStatus.contains(event.target)) refs.filterStatus.open = false;
+  });
   refs.clearFiltersButton.addEventListener("click", clearFilters);
   document.querySelectorAll("[data-home-status]").forEach((button) => {
     button.addEventListener("click", () => applyHomeStatusFilter(button.dataset.homeStatus));
@@ -5191,7 +5235,8 @@ function shouldCalculateWonItemsTotal(status) {
 }
 
 function applyHomeStatusFilter(status) {
-  refs.filterStatus.value = status || "Todos";
+  setFilterStatuses(status && status !== "Todos" ? [normalizeBidStatus(status)] : []);
+  refs.filterStatus.open = false;
   setPage("bids");
   renderBids();
 }
@@ -5272,12 +5317,14 @@ function renderBids() {
   renderHomeSummary();
   const searchFilter = refs.filterSearch.value;
   const dateFilter = refs.filterDate.value;
-  const statusFilter = refs.filterStatus.value;
+  const statusFilters = new Set(selectedFilterStatuses());
   const guaranteeDepositFilter = refs.filterGuaranteeDeposit.checked;
   const filteredRows = appState.bids.filter((bid) => {
     const matchesSearch = bidMatchesSearch(bid, searchFilter);
     const matchesDate = !dateFilter || toDateInputValue(bid.session_datetime) === dateFilter;
-    const matchesStatus = statusFilter === "Todos" || bid.status === statusFilter;
+    const matchesStatus = statusFilters.size === 0
+      || statusFilters.size === STATUS_OPTIONS.length
+      || statusFilters.has(bid.status);
     const matchesGuaranteeDeposit = !guaranteeDepositFilter || bid.has_guarantee_deposit;
     return matchesSearch && matchesDate && matchesStatus && matchesGuaranteeDeposit;
   });
@@ -5348,7 +5395,8 @@ function renderBids() {
 function clearFilters() {
   refs.filterSearch.value = "";
   refs.filterDate.value = "";
-  refs.filterStatus.value = "Todos";
+  setFilterStatuses();
+  refs.filterStatus.open = false;
   refs.filterGuaranteeDeposit.checked = false;
   renderBids();
 }
