@@ -32,7 +32,7 @@
         <p id="environmentLabel">Entre com suas credenciais para continuar.</p>
         <label>
           E-mail
-          <input id="loginEmail" name="email" type="email" autocomplete="username" required />
+          <input id="loginEmail" name="email" type="email" autocomplete="email" required />
         </label>
         <div class="password-field">
           <label for="loginPassword">Senha</label>
@@ -48,6 +48,22 @@
         <button class="primary-action full-action" type="submit">Entrar</button>
         <p id="loginHint" class="login-hint hidden">Modo local: demo@gll.local / gll-demo-local</p>
       </form>
+    </main>
+
+    <main id="invitationAcceptView" class="login-view hidden">
+      <section class="login-brand" aria-label="Aceitação do convite GLL">
+        <span class="brand-mark">GLL</span>
+        <h1>Aceite seu convite</h1>
+        <p>Confirme o convite para configurar seu acesso ao sistema.</p>
+      </section>
+      <section class="login-panel login-form invitation-accept-panel" aria-labelledby="invitationAcceptTitle">
+        <span class="eyebrow">CONVITE GLL</span>
+        <h2 id="invitationAcceptTitle">Continuar com segurança</h2>
+        <p>O link só será validado quando você acionar este botão. Depois, você poderá configurar seu perfil e sua senha.</p>
+        <p id="invitationAcceptError" class="form-error" role="alert" aria-live="assertive"></p>
+        <button id="acceptInvitationButton" class="primary-action full-action" type="button">Confirmar convite e continuar</button>
+        <button id="cancelInvitationButton" class="quiet-action full-action" type="button">Voltar ao login</button>
+      </section>
     </main>
 
     <main id="passwordResetView" class="login-view hidden">
@@ -84,6 +100,51 @@
         <p id="passwordResetError" class="form-error" role="alert"></p>
         <button class="primary-action full-action" type="submit">Salvar nova senha</button>
         <button id="passwordResetSignOutButton" class="quiet-action full-action" type="button">Sair</button>
+      </form>
+    </main>
+
+    <main id="firstAccessView" class="login-view hidden">
+      <section class="login-brand" aria-label="Configuração do primeiro acesso">
+        <span class="brand-mark">GLL</span>
+        <h1>Configure seu acesso ao GLL</h1>
+        <p>Preencha seus dados e crie sua senha para acessar o sistema.</p>
+      </section>
+      <form id="firstAccessForm" class="login-panel login-form" novalidate>
+        <span class="eyebrow">PRIMEIRO ACESSO · ETAPA 1 DE 3</span>
+        <h2>Finalize sua configuração</h2>
+        <p id="firstAccessDescription">O convite foi validado. Seu e-mail e seu tipo de usuário vêm do convite e não podem ser alterados.</p>
+        <div id="firstAccessFields" class="first-access-fields">
+        <label for="firstAccessEmail">E-mail vinculado<input id="firstAccessEmail" type="email" readonly aria-readonly="true" /></label>
+        <label for="firstAccessRole">Tipo de usuário<input id="firstAccessRole" type="text" readonly aria-readonly="true" /></label>
+        <label for="firstAccessFullName">Nome completo<input id="firstAccessFullName" autocomplete="name" maxlength="160" required aria-describedby="firstAccessFullNameHelp" /></label>
+        <small id="firstAccessFullNameHelp" class="first-access-help">Use seu nome completo. Espaços extras serão removidos.</small>
+        <label for="firstAccessDisplayName">Nome de exibição<input id="firstAccessDisplayName" autocomplete="nickname" maxlength="100" required /></label>
+        <div class="password-field">
+          <label for="firstAccessPassword">Senha</label>
+          <span class="password-input-wrap">
+            <input id="firstAccessPassword" type="password" autocomplete="new-password" minlength="8" maxlength="72" required />
+            <button class="password-visibility-toggle" type="button" data-password-toggle="firstAccessPassword" aria-controls="firstAccessPassword" aria-label="Mostrar senha" aria-pressed="false">
+              <svg class="password-eye-icon password-eye-open" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M2 12s3.5-6.5 10-6.5S22 12 22 12s-3.5 6.5-10 6.5S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg>
+              <svg class="password-eye-icon password-eye-closed" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M2 12s3.5-6.5 10-6.5S22 12 22 12s-3.5 6.5-10 6.5S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/><path d="m4 4 16 16"/></svg>
+            </button>
+          </span>
+        </div>
+        <div class="password-field">
+          <label for="firstAccessPasswordConfirm">Confirme a senha</label>
+          <span class="password-input-wrap">
+            <input id="firstAccessPasswordConfirm" type="password" autocomplete="new-password" minlength="8" maxlength="72" required />
+            <button class="password-visibility-toggle" type="button" data-password-toggle="firstAccessPasswordConfirm" aria-controls="firstAccessPasswordConfirm" aria-label="Mostrar senha" aria-pressed="false">
+              <svg class="password-eye-icon password-eye-open" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M2 12s3.5-6.5 10-6.5S22 12 22 12s-3.5 6.5-10 6.5S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg>
+              <svg class="password-eye-icon password-eye-closed" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M2 12s3.5-6.5 10-6.5S22 12 22 12s-3.5 6.5-10 6.5S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/><path d="m4 4 16 16"/></svg>
+            </button>
+          </span>
+        </div>
+        <div id="firstAccessPhotoMount"></div>
+        </div>
+        <p id="firstAccessError" class="form-error" role="alert"></p>
+        <p id="firstAccessExpiredNotice" class="form-error hidden" role="status">Este convite expirou. Solicite um novo convite ao administrador.</p>
+        <button id="firstAccessSubmitButton" class="primary-action full-action" type="submit">Concluir configuração</button>
+        <button id="firstAccessSignOutButton" class="quiet-action full-action" type="button">Voltar ao login</button>
       </form>
     </main>
 
@@ -966,7 +1027,7 @@
               </label>
               <span id="userCountLabel" class="users-visible-count">0 usuários</span>
             </div>
-            <button id="userCreateOpenButton" class="primary-action user-create-trigger hidden" type="button"><span aria-hidden="true">＋</span>Cadastrar usuário</button>
+            <button id="userCreateOpenButton" class="primary-action user-create-trigger hidden" type="button"><span aria-hidden="true">＋</span>Convidar usuário</button>
           </div>
           <div class="table-wrap users-table-wrap">
             <table class="users-access-table">
@@ -984,51 +1045,55 @@
           </div>
         </section>
 
+        <section id="userInvitationsPanel" class="section-band user-invitations-panel hidden" aria-labelledby="userInvitationsTitle">
+          <div class="users-list-toolbar">
+            <div class="users-list-heading">
+              <h2 id="userInvitationsTitle">Convites</h2>
+            </div>
+          </div>
+          <div class="table-wrap users-table-wrap">
+            <table class="users-access-table">
+              <thead>
+                <tr>
+                  <th>E-mail</th>
+                  <th>Tipo de usuário</th>
+                  <th>Status</th>
+                  <th>Data do convite</th>
+                  <th>Administrador responsável</th>
+                  <th>Ações</th>
+                </tr>
+              </thead>
+              <tbody id="userInvitationsTableBody"></tbody>
+            </table>
+          </div>
+        </section>
+
       </section>
 
       <section id="userProfilePage" class="users-page user-profile-page hidden" aria-labelledby="userProfilePageTitle">
         <div class="page-heading user-profile-heading">
           <div>
-            <span id="userCreateEyebrow" class="eyebrow">CADASTRO DE USUÁRIO</span>
-            <h1 id="userProfilePageTitle">Cadastrar novo usuário</h1>
-            <p id="userCreateDescription" class="user-create-description">A pessoa deverá criar uma senha pessoal no primeiro acesso.</p>
+            <span id="userCreateEyebrow" class="eyebrow">CONVITE DE USUÁRIO</span>
+            <h1 id="userProfilePageTitle">Convidar usuário</h1>
+            <p id="userCreateDescription" class="user-create-description">A pessoa receberá um e-mail com um link para confirmar o endereço e configurar seus dados no primeiro acesso.</p>
           </div>
           <button id="backFromUserProfileButton" class="quiet-action" type="button">Voltar</button>
         </div>
         <section class="section-band user-profile-panel">
             <form id="userCreateForm" class="user-create-form">
-              <div class="form-grid three">
-                <label>Nome completo<input id="userCreateFullName" name="fullName" autocomplete="name" maxlength="160" required /></label>
-                <label>Nome de exibição<input id="userCreateDisplayName" name="displayName" autocomplete="nickname" maxlength="100" required /></label>
-                <label class="user-create-only">Login (e-mail)<input id="userCreateEmail" name="email" type="email" autocomplete="email" maxlength="254" required /></label>
-                <div class="password-field user-create-only">
-                  <label for="userCreatePassword">Senha provisória</label>
-                  <span class="password-input-wrap">
-                    <input id="userCreatePassword" name="temporaryPassword" type="password" autocomplete="new-password" minlength="8" maxlength="72" required />
-                    <button class="password-visibility-toggle" type="button" data-password-toggle="userCreatePassword" aria-controls="userCreatePassword" aria-label="Mostrar senha" aria-pressed="false">
-                      <svg class="password-eye-icon password-eye-open" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M2 12s3.5-6.5 10-6.5S22 12 22 12s-3.5 6.5-10 6.5S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg>
-                      <svg class="password-eye-icon password-eye-closed" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M2 12s3.5-6.5 10-6.5S22 12 22 12s-3.5 6.5-10 6.5S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/><path d="m4 4 16 16"/></svg>
-                    </button>
-                  </span>
-                </div>
-                <div class="password-field user-create-only">
-                  <label for="userCreatePasswordConfirm">Confirme a senha provisória</label>
-                  <span class="password-input-wrap">
-                    <input id="userCreatePasswordConfirm" name="temporaryPasswordConfirm" type="password" autocomplete="new-password" minlength="8" maxlength="72" required />
-                    <button class="password-visibility-toggle" type="button" data-password-toggle="userCreatePasswordConfirm" aria-controls="userCreatePasswordConfirm" aria-label="Mostrar senha" aria-pressed="false">
-                      <svg class="password-eye-icon password-eye-open" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M2 12s3.5-6.5 10-6.5S22 12 22 12s-3.5 6.5-10 6.5S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg>
-                      <svg class="password-eye-icon password-eye-closed" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M2 12s3.5-6.5 10-6.5S22 12 22 12s-3.5 6.5-10 6.5S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/><path d="m4 4 16 16"/></svg>
-                    </button>
-                  </span>
-                </div>
+              <div class="form-grid two">
+                <label class="user-create-only">E-mail do convidado<input id="userCreateEmail" name="email" type="email" autocomplete="email" maxlength="254" required /></label>
                 <label class="user-create-only">Tipo de usuário
                   <select id="userCreateRole" name="role" required>
                     <option value="Analista">Analista</option>
                     <option value="Administrador">Administrador</option>
                   </select>
                 </label>
+                <label class="user-profile-edit-only">Nome completo<input id="userCreateFullName" name="fullName" autocomplete="name" maxlength="160" required /></label>
+                <label class="user-profile-edit-only">Nome de exibição<input id="userCreateDisplayName" name="displayName" autocomplete="nickname" maxlength="100" required /></label>
               </div>
-              <section class="profile-photo-editor" aria-labelledby="userProfilePhotoTitle">
+              <div id="userProfilePhotoMount" class="user-profile-edit-only"></div>
+              <section id="profilePhotoEditor" class="profile-photo-editor hidden" aria-labelledby="userProfilePhotoTitle">
                 <div class="profile-photo-preview-wrap">
                   <img id="userProfilePhotoCurrent" class="profile-photo-current hidden" src="" alt="" width="192" height="192" />
                   <canvas id="userProfilePhotoCanvas" class="profile-photo-canvas hidden" width="256" height="256" role="img" aria-label="Pré-visualização do recorte da foto de perfil. Arraste para reposicionar."></canvas>
@@ -1060,7 +1125,7 @@
               <p id="userCreateError" class="form-error" role="alert"></p>
               <div class="button-row end">
                 <button id="cancelUserCreateButton" class="quiet-action" type="button">Cancelar</button>
-                <button id="userCreateSubmitButton" class="primary-action" type="submit">Cadastrar usuário</button>
+                <button id="userCreateSubmitButton" class="primary-action" type="submit">Enviar convite</button>
               </div>
             </form>
         </section>
