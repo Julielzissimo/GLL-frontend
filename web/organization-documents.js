@@ -140,13 +140,6 @@ export function reconcileDocumentSelection(selectedDocumentIds, documents) {
   return new Set(Array.from(selectedDocumentIds || [], String).filter((id) => eligibleIds.has(id)));
 }
 
-export function createOrganizationDocumentsZipFileName(organizationName) {
-  const safeName = String(organizationName ?? "")
-    .replace(/[<>:"/\\|?*\u0000-\u001f\u007f]+/g, "-");
-  if (!safeName.trim()) throw new Error("Não foi possível identificar o nome da organização autenticada.");
-  return "docs-" + safeName + ".zip";
-}
-
 export function validateDocumentFields({ mode, title, file, expiresOn, noExpiration }) {
   if (mode === "create" && !String(title || "").trim()) return "Informe o título do documento.";
   if ((mode === "create" || mode === "replace") && (!file || !Number(file.size))) return "Selecione um arquivo.";
@@ -196,11 +189,10 @@ function formatDate(value) {
  * @property {(input: {documentId: string, expectedVersion?: number, expiresOn: string|null}) => Promise<OrganizationDocument>} updateValidity
  * @property {(input: {alertDays: number}) => Promise<OrganizationDocumentSettings>} saveAlertDays
  * @property {(input: {documentId: string}) => Promise<Blob>} downloadDocument
- * @property {(input: {documentIds: string[]}) => Promise<Blob>} downloadDocumentsZip
+ * @property {(input: {documentIds: string[]}) => Promise<{blob: Blob, fileName: string}>} downloadDocumentsZip
  */
 export function createOrganizationDocumentsFeature({
   getApi,
-  getOrganizationName = () => "",
   isAdmin = () => false,
   canManageDocuments = () => true,
   onAlertsChanged = () => undefined,
@@ -350,7 +342,7 @@ export function createOrganizationDocumentsFeature({
     const count = state.selectedDocumentIds.size;
     if (!count) return "";
     const busy = state.busy === "bulk-download";
-    const label = "Baixar " + count + (count === 1 ? " documento (.zip)" : " documentos (.zip)");
+    const label = "Baixar selecionados (.zip)";
     const buttonFactory = globalThis.window?.GLLDesignSystem?.COMPONENTS?.button;
     let downloadButton = buttonFactory?.({ label, loading: busy })
       || '<button class="primary-action" type="button"' + (busy ? ' disabled aria-busy="true"' : '') + '>'
@@ -851,12 +843,8 @@ export function createOrganizationDocumentsFeature({
   async function downloadSelectedDocuments() {
     if (state.busy === "bulk-download") return;
     const selectedDocuments = state.documents.filter((document) => state.selectedDocumentIds.has(String(document.id)));
-    if (!selectedDocuments.length) return;
-    let fileName;
-    try {
-      fileName = createOrganizationDocumentsZipFileName(getOrganizationName());
-    } catch (error) {
-      toast(error?.message || "Não foi possível identificar a organização autenticada.", "error");
+    if (!selectedDocuments.length) {
+      toast("Selecione pelo menos um documento para baixar.", "error");
       return;
     }
 
@@ -867,14 +855,17 @@ export function createOrganizationDocumentsFeature({
       if (typeof gateway.downloadDocumentsZip !== "function") {
         throw new Error("O serviço de download ZIP ainda não está disponível.");
       }
-      const blob = await gateway.downloadDocumentsZip({
+      const result = await gateway.downloadDocumentsZip({
         documentIds: selectedDocuments.map((document) => String(document.id)),
       });
-      if (!(blob instanceof Blob)) throw new Error("O serviço ZIP retornou um arquivo inválido.");
-      const url = URL.createObjectURL(blob);
+      if (!(result?.blob instanceof Blob) || result.blob.type.toLowerCase() !== "application/zip" ||
+        !/^docs-.+\.zip$/u.test(String(result.fileName || ""))) {
+        throw new Error("O serviço ZIP retornou um arquivo inválido.");
+      }
+      const url = URL.createObjectURL(result.blob);
       const anchor = globalThis.document.createElement("a");
       anchor.href = url;
-      anchor.download = fileName;
+      anchor.download = result.fileName;
       anchor.rel = "noopener";
       globalThis.document.body.append(anchor);
       anchor.click();
@@ -994,7 +985,6 @@ if (typeof window !== "undefined") {
   window.GLLOrganizationDocuments = {
     createOrganizationDocumentsFeature,
     countDocumentStatuses,
-    createOrganizationDocumentsZipFileName,
     daysUntilExpiration,
     filterOrganizationDocuments,
     getDocumentSelectionState,
