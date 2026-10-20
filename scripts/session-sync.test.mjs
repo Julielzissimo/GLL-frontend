@@ -488,6 +488,68 @@ test("reload restores a persisted session without entering a password", async ()
   assert.equal(reloaded.appState.bids.length, 1);
 });
 
+test("login with an active profile does not depend on the password reset Edge Function", async () => {
+  const app = client();
+  const account = vm.runInContext("new SupabaseStore()", app.context);
+  let statusCalls = 0;
+  account.client = {
+    auth: {
+      signInWithPassword: async () => ({
+        data: { user: { ...user, created_at: "2026-01-01T00:00:00Z" } },
+        error: null,
+      }),
+      signOut: async () => ({ error: null }),
+    },
+  };
+  account.getUser = async () => ({ ...user, must_change_password: false });
+  account.isPasswordResetRequired = async () => {
+    statusCalls += 1;
+    throw new Error("Failed to send a request to the Edge Function");
+  };
+
+  const authenticatedUser = await account.authenticate("TEST@example.test", "SenhaSegura123!");
+
+  assert.equal(authenticatedUser.email, user.email);
+  assert.equal(authenticatedUser.authUserCreatedAt, "2026-01-01T00:00:00Z");
+  assert.equal(statusCalls, 0);
+});
+
+test("login still checks password reset status when RLS hides the profile", async () => {
+  const app = client();
+  const account = vm.runInContext("new SupabaseStore()", app.context);
+  account.client = {
+    auth: {
+      signInWithPassword: async () => ({ data: { user }, error: null }),
+      signOut: async () => ({ error: null }),
+    },
+  };
+  account.getUser = async () => null;
+  account.isPasswordResetRequired = async () => true;
+
+  const authenticatedUser = await account.authenticate(user.email, "SenhaTemporaria123!");
+
+  assert.equal(authenticatedUser.email, user.email);
+  assert.equal(authenticatedUser.mustChangePassword, true);
+});
+
+test("restoring an active session does not depend on the password reset Edge Function", async () => {
+  const app = client();
+  const edgeCalls = [];
+  app.store.client.functions.invoke = async (name) => {
+    edgeCalls.push(name);
+    if (name === "password-reset-status") {
+      throw new Error("Failed to send a request to the Edge Function");
+    }
+    return { data: { invitations: [] }, error: null };
+  };
+
+  await app.restoreSession();
+  app.stopLiveUpdates();
+
+  assert.equal(app.appState.authenticated, true);
+  assert.equal(edgeCalls.includes("password-reset-status"), false);
+});
+
 test("empty remote database stays empty after authentication", async () => {
   const db = backend();
   for (const table of Object.keys(db.tables)) db.tables[table] = [];
