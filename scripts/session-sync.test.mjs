@@ -582,34 +582,31 @@ test("startup shows login promptly when no persisted session exists and has no g
   assert.doesNotMatch(source, /withBlockingLoading\(main/);
 });
 
-test("session and profile validate before protected data; the authorized shell appears before hydration", async () => {
+test("active profile skips password reset lookup; the authorized shell appears before hydration", async () => {
   const app = client();
   app.showAuthBootstrap();
   const calls = [];
   let resolveInvitation;
-  let resolvePassword;
   let resolveProfile;
   let releaseData;
   const invitation = new Promise((resolve) => { resolveInvitation = resolve; });
-  const password = new Promise((resolve) => { resolvePassword = resolve; });
   const profile = new Promise((resolve) => { resolveProfile = resolve; });
   const dataGate = new Promise((resolve) => { releaseData = resolve; });
   const getUser = app.store.getUser;
   const getAll = app.store.getAll;
   app.store.getFirstAccessStatus = () => { calls.push("invitation"); return invitation; };
-  app.store.isPasswordResetRequired = () => { calls.push("password"); return password; };
+  app.store.isPasswordResetRequired = () => { calls.push("password"); return Promise.resolve(false); };
   app.store.getUser = () => { calls.push("profile"); return profile; };
   app.store.getAll = async (table) => { await dataGate; return getAll(table); };
 
   const restoring = app.rawRestoreSession();
   await new Promise((resolve) => setImmediate(resolve));
-  assert.deepEqual(calls.sort(), ["invitation", "password", "profile"]);
+  assert.deepEqual(calls.sort(), ["invitation", "profile"]);
   assert.equal(app.appState.authenticated, false);
   assert.equal(app.element("appView").classList.contains("hidden"), true);
   assert.equal(app.element("loginView").classList.contains("hidden"), true);
 
   resolveInvitation({ firstAccessRequired: false });
-  resolvePassword(false);
   resolveProfile(await getUser(user.email));
   await restoring;
 
