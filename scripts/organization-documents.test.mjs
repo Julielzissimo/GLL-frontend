@@ -3,7 +3,6 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 import {
   countDocumentStatuses,
-  createOrganizationDocumentsZipFileName,
   daysUntilExpiration,
   filterOrganizationDocuments,
   getDocumentSelectionState,
@@ -81,12 +80,6 @@ test("seleção em lote atua sobre os resultados visíveis e preserva itens ocul
   assert.deepEqual([...reconcileDocumentSelection(afterPartialDeselect, [{ id: "visible-b" }, { id: "hidden" }])].sort(), ["hidden", "visible-b"]);
 });
 
-test("gera nome ZIP pela organização e substitui só caracteres incompatíveis", () => {
-  assert.equal(createOrganizationDocumentsZipFileName("LSMS Suprimentos"), "docs-LSMS Suprimentos.zip");
-  assert.equal(createOrganizationDocumentsZipFileName("Razão / Empresarial: Ltda?"), "docs-Razão - Empresarial- Ltda-.zip");
-  assert.throws(() => createOrganizationDocumentsZipFileName("  "), /nome da organização autenticada/);
-});
-
 test("valida cadastro, substituição, edição de validade e antecedência dos alertas", () => {
   const file = { name: "certidao.pdf", size: 128 };
   assert.equal(validateDocumentFields({ mode: "create", title: "  ", file, expiresOn: TODAY }), "Informe o título do documento.");
@@ -125,7 +118,8 @@ test("reutiliza componentes do Design System e mantém uma gateway de dados tipa
   assert.match(feature, /replaceDocument\(/);
   assert.match(feature, /updateValidity\(/);
   assert.match(feature, /downloadDocumentsZip\(/);
-  assert.match(feature, /anchor\.download = fileName/);
+  assert.match(feature, /const label = "Baixar selecionados \(\.zip\)"/);
+  assert.match(feature, /anchor\.download = result\.fileName/);
   assert.match(styles, /\.organization-documents-page\s*\{[^}]*grid-template-columns:\s*minmax\(0,\s*1fr\)/);
   assert.match(styles, /\.organization-documents-settings,\s*\.organization-documents-list\s*\{[^}]*grid-template-columns:\s*minmax\(0,\s*1fr\)/);
   assert.match(styles, /\.organization-documents-table-wrap\s*\{[^}]*min-width:\s*0;[^}]*overflow-x:\s*auto/);

@@ -19,6 +19,12 @@ const documentRow = (overrides = {}) => ({
 function createFixture({ rpcResult, invokeResult } = {}) {
   const calls = [];
   const client = {
+    auth: {
+      async getSession() {
+        calls.push({ type: "session" });
+        return { data: { session: { access_token: "test-access-token" } }, error: null };
+      },
+    },
     async rpc(name, args) {
       calls.push({ type: "rpc", name, args });
       return rpcResult ? rpcResult(name, args) : { data: [], error: null };
@@ -122,13 +128,85 @@ test("removes a newly uploaded replacement when the document update fails", asyn
   assert.ok(fixture.calls.some((call) => call.type === "invoke" && call.body.action === "delete"));
 });
 
-test("reserva a integração ZIP no gateway sem criar uma rota paralela de armazenamento", async () => {
+test("baixa o ZIP pelo endpoint autenticado e usa o nome UTF-8 calculado pelo servidor", async () => {
   const fixture = createFixture();
-  const api = createOrganizationDocumentsApi({ getClient: () => fixture.client });
+  let request;
+  const api = createOrganizationDocumentsApi({
+    getClient: () => fixture.client,
+    getSupabaseUrl: () => "https://project.test/",
+    getSupabaseAnonKey: () => "public-key",
+    fetchImpl: async (url, options) => {
+      request = { url, options };
+      return new Response(new Blob(["valid zip bytes"], { type: "application/zip" }), {
+        status: 200,
+        headers: {
+          "Content-Type": "application/zip",
+          "Content-Disposition": "attachment; filename=\"docs-Raz_o Ltda.zip\"; filename*=UTF-8''docs-Raz%C3%A3o%20Ltda.zip",
+        },
+      });
+    },
+  });
+
+  const result = await api.downloadDocumentsZip({ documentIds: ["document-1", "document-2"] });
+  assert.equal(result.fileName, "docs-Razão Ltda.zip");
+  assert.equal(result.blob.type, "application/zip");
+  assert.equal(await result.blob.text(), "valid zip bytes");
+  assert.equal(request.url, "https://project.test/functions/v1/file-storage");
+  assert.equal(request.options.headers.Authorization, "Bearer test-access-token");
+  assert.equal(request.options.headers.apikey, "public-key");
+  assert.deepEqual(JSON.parse(request.options.body), {
+    action: "download-zip", bucket: "organization-documents", documentIds: ["document-1", "document-2"],
+  });
+  assert.ok(fixture.calls.some((call) => call.type === "session"));
+  assert.ok(!fixture.calls.some((call) => call.type === "invoke"));
+});
+
+test("rejeita seleção vazia, sessão expirada e falha de autorização", async () => {
+  const fixture = createFixture();
+  let fetchCount = 0;
+  const api = createOrganizationDocumentsApi({
+    getClient: () => fixture.client,
+    getSupabaseUrl: () => "https://project.test",
+    getSupabaseAnonKey: () => "public-key",
+    fetchImpl: async () => {
+      fetchCount += 1;
+      return new Response(JSON.stringify({ error: "Você não tem autorização para baixar esses documentos." }), {
+        status: 403, headers: { "Content-Type": "application/json" },
+      });
+    },
+  });
+
+  await assert.rejects(api.downloadDocumentsZip({ documentIds: [] }), /Selecione pelo menos um documento/);
+  await assert.rejects(api.downloadDocumentsZip({ documentIds: ["document-1"] }), /autorização/);
+  assert.equal(fetchCount, 1);
+
+  fixture.client.auth.getSession = async () => ({ data: { session: null }, error: null });
+  await assert.rejects(api.downloadDocumentsZip({ documentIds: ["document-1"] }), /sessão expirou/);
+  assert.equal(fetchCount, 1);
+});
+
+test("não retorna um ZIP se o fluxo de resposta for interrompido", async () => {
+  const fixture = createFixture();
+  const api = createOrganizationDocumentsApi({
+    getClient: () => fixture.client,
+    getSupabaseUrl: () => "https://project.test",
+    getSupabaseAnonKey: () => "public-key",
+    fetchImpl: async () => new Response(new ReadableStream({
+      start(controller) {
+        controller.enqueue(new TextEncoder().encode("partial"));
+        controller.error(new Error("storage stream failed"));
+      },
+    }), {
+      status: 200,
+      headers: {
+        "Content-Type": "application/zip",
+        "Content-Disposition": "attachment; filename*=UTF-8''docs-LSMS%20Suprimentos.zip",
+      },
+    }),
+  });
 
   await assert.rejects(
-    api.downloadDocumentsZip({ documentIds: ["document-1", "document-2"] }),
-    /serviço de download ZIP ainda não está disponível/,
+    api.downloadDocumentsZip({ documentIds: ["document-1"] }),
+    /download foi interrompido antes de concluir/,
   );
-  assert.deepEqual(fixture.calls, []);
 });

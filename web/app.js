@@ -2073,8 +2073,9 @@ const organizationDocumentsFeature = createOrganizationDocumentsFeature({
   getApi: () => window.GLLOrganizationDocumentsApi?.createOrganizationDocumentsApi?.({
     getClient: () => (store.requiresAuthenticationBeforeData ? store.client : null),
     getUserRole: () => appState.currentUserRole,
+    getSupabaseUrl: () => GLL_CONFIG.supabaseUrl,
+    getSupabaseAnonKey: () => GLL_CONFIG.supabaseAnonKey,
   }) || null,
-  getOrganizationName: () => appState.currentOrganizationName,
   isAdmin: () => isCurrentUserAdmin(),
   canManageDocuments: () => appState.authenticated
     && [USER_ROLES.ADMIN, USER_ROLES.ANALYST].includes(appState.currentUserRole),
