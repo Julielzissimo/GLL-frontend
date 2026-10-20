@@ -1244,11 +1244,16 @@ class SupabaseStore {
       password,
     });
     if (error || !data.user) return null;
+    const profile = await this.getUser(data.user.email);
+    if (profile) {
+      if (profile.must_change_password) {
+        return { ...profile, mustChangePassword: true, authUserCreatedAt: data.user.created_at };
+      }
+      return { ...profile, authUserCreatedAt: data.user.created_at };
+    }
     if (await this.isPasswordResetRequired()) {
       return { email: data.user.email, mustChangePassword: true };
     }
-    const profile = await this.getUser(data.user.email);
-    if (profile) return { ...profile, authUserCreatedAt: data.user.created_at };
     await client.auth.signOut();
     return null;
   }
@@ -3411,6 +3416,23 @@ async function restoreSessionInternal() {
   const { data, error } = await store.client.auth.getSession();
   assertSupabase(error);
   if (!data.session) return;
+  const email = data.session.user.email;
+  const user = await store.getUser(email);
+  if (epoch !== sessionEpoch) return;
+  if (user) {
+    if (user.must_change_password) {
+      showPasswordResetView(email);
+      return;
+    }
+    beginSessionPolicy(email);
+    const expirationMessage = sessionPolicyExpiration();
+    if (expirationMessage) {
+      await expireSession(expirationMessage);
+      return;
+    }
+    await enterAuthenticatedView(user, data.session.user.created_at);
+    return;
+  }
   if (store instanceof SupabaseStore) {
     try {
       const invitationStatus = await store.getFirstAccessStatus();
@@ -3426,22 +3448,10 @@ async function restoreSessionInternal() {
   const mustChangePassword = await store.isPasswordResetRequired();
   if (epoch !== sessionEpoch) return;
   if (mustChangePassword) {
-    showPasswordResetView(data.session.user.email);
+    showPasswordResetView(email);
     return;
   }
-  beginSessionPolicy(data.session.user.email);
-  const expirationMessage = sessionPolicyExpiration();
-  if (expirationMessage) {
-    await expireSession(expirationMessage);
-    return;
-  }
-  const user = await store.getUser(data.session.user.email);
-  if (epoch !== sessionEpoch) return;
-  if (!user) {
-    await logout();
-    return;
-  }
-  await enterAuthenticatedView(user, data.session.user.created_at);
+  await logout();
 }
 
 function restoreSession() {
