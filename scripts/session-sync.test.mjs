@@ -8,6 +8,9 @@ const html = await readFile(new URL("../web/index.html", import.meta.url), "utf8
 const classicSource = source.replace(
   /^import \{ createRadarEngineAdminFeature \} from "\.\/radar-engine-admin\.js";\r?\n/m,
   "",
+).replace(
+  /^import \{ formatCnpj, isValidCnpj \} from "\.\/company-data\.js";\r?\n/m,
+  "",
 );
 const application = classicSource.slice(
   0,

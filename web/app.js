@@ -1,4 +1,5 @@
 import { createRadarEngineAdminFeature } from "./radar-engine-admin.js";
+import { formatCnpj, isValidCnpj } from "./company-data.js";
 
 const STATUS_OPTIONS = ["Em Analise", "Aguard. Disputa", "Descartada", "Aprovada", "Em Fornecimento", "Faturado", "Desclassificado", "Disputada"];
 const storageBucket = globalThis.window?.GLLFileStorage?.storageBucket || ((client, bucket) => client.storage.from(bucket));
@@ -194,6 +195,18 @@ const refs = {
   authBootstrapError: $("authBootstrapError"),
   retryAuthBootstrapButton: $("retryAuthBootstrapButton"),
   loginView: $("loginView"),
+  organizationSignupView: $("organizationSignupView"),
+  showOrganizationSignupButton: $("showOrganizationSignupButton"),
+  organizationSignupForm: $("organizationSignupForm"),
+  organizationSignupName: $("organizationSignupName"),
+  organizationSignupCnpj: $("organizationSignupCnpj"),
+  organizationSignupFullName: $("organizationSignupFullName"),
+  organizationSignupDisplayName: $("organizationSignupDisplayName"),
+  organizationSignupEmail: $("organizationSignupEmail"),
+  organizationSignupPassword: $("organizationSignupPassword"),
+  organizationSignupPasswordConfirm: $("organizationSignupPasswordConfirm"),
+  organizationSignupError: $("organizationSignupError"),
+  cancelOrganizationSignupButton: $("cancelOrganizationSignupButton"),
   invitationAcceptView: $("invitationAcceptView"),
   invitationAcceptError: $("invitationAcceptError"),
   acceptInvitationButton: $("acceptInvitationButton"),
@@ -1453,6 +1466,27 @@ class SupabaseStore {
     return null;
   }
 
+  async createOrganizationAccount({ email, password, fullName, displayName, organizationName, cnpj }) {
+    const client = await this.open();
+    const { data, error } = await client.auth.signUp({
+      email: normalizeEmail(email),
+      password,
+      options: {
+        data: {
+          gll_signup: {
+            version: "1",
+            organization_name: organizationName.trim(),
+            cnpj: formatCnpj(cnpj),
+            full_name: fullName.trim(),
+            display_name: displayName.trim(),
+          },
+        },
+      },
+    });
+    assertSupabase(error);
+    return data;
+  }
+
   async isPasswordResetRequired() {
     const client = await this.open();
     const data = await invokeSupabaseFunction(client, "password-reset-status");
@@ -2451,6 +2485,94 @@ function setLoginMessage(message, tone = "error") {
   refs.loginError.classList.toggle("is-success", tone === "success");
 }
 
+function organizationSignupErrorMessage(error) {
+  const details = [error?.message, error?.details, error?.hint].filter(Boolean).join(" ");
+  if (/organization_signup_cnpj_exists|organizations_cnpj_key/i.test(details)) {
+    return "Este CNPJ já está vinculado a uma organização no GLL.";
+  }
+  if (/organization_signup_invalid_cnpj/i.test(details)) {
+    return "Informe um CNPJ válido.";
+  }
+  if (/signups_not_allowed|signup.*disabled|signups.*disabled/i.test(details)) {
+    return "O cadastro de contas está desativado neste ambiente. Entre em contato com o suporte.";
+  }
+  if (/already registered|user exists|email exists/i.test(details)) {
+    return "Não foi possível criar a conta com este e-mail. Se você já tem acesso, entre pelo login.";
+  }
+  return "Não foi possível criar sua conta. Verifique os dados informados e tente novamente.";
+}
+
+async function handleOrganizationSignupSubmit(event) {
+  event.preventDefault();
+  refs.organizationSignupError.textContent = "";
+
+  const cnpj = formatCnpj(refs.organizationSignupCnpj.value);
+  refs.organizationSignupCnpj.setCustomValidity(isValidCnpj(cnpj) ? "" : "Informe um CNPJ válido.");
+  refs.organizationSignupPasswordConfirm.setCustomValidity(
+    refs.organizationSignupPassword.value === refs.organizationSignupPasswordConfirm.value
+      ? ""
+      : "As senhas não coincidem."
+  );
+  if (!refs.organizationSignupForm.reportValidity()) return;
+
+  if (!(store instanceof SupabaseStore)) {
+    refs.organizationSignupError.textContent = "O cadastro de contas está disponível somente nos ambientes conectados ao GLL.";
+    return;
+  }
+
+  const previousAuthFlow = authFlowInProgress;
+  let sessionStarted = false;
+  authFlowInProgress = true;
+  try {
+    const email = normalizeEmail(refs.organizationSignupEmail.value);
+    const data = await store.createOrganizationAccount({
+      email,
+      password: refs.organizationSignupPassword.value,
+      fullName: refs.organizationSignupFullName.value,
+      displayName: refs.organizationSignupDisplayName.value,
+      organizationName: refs.organizationSignupName.value,
+      cnpj,
+    });
+
+    if (data?.session && data.user?.id) {
+      sessionStarted = true;
+      const profile = await store.getUser(email);
+      if (!profile || profile.auth_user_id !== data.user.id || profile.role !== USER_ROLES.ADMIN || !profile.organization_id) {
+        throw new Error("A conta foi criada, mas não foi possível confirmar o vínculo com a organização. Tente entrar novamente.");
+      }
+      refs.organizationSignupForm.reset();
+      refs.loginEmail.value = email;
+      beginSessionPolicy(email, { forceNew: true });
+      await enterAuthenticatedView({
+        ...profile,
+        authUserCreatedAt: data.user.created_at,
+        verifiedAuthUserId: data.user.id,
+      }, data.user.created_at, data.user.id);
+      showToast("Conta criada. Você é Administrador da organização.");
+      return;
+    }
+
+    refs.organizationSignupForm.reset();
+    refs.loginEmail.value = email;
+    showLoginView();
+    setLoginMessage("Conta criada. Sua organização foi cadastrada e esta conta é Administradora. Se a confirmação de e-mail estiver habilitada, confirme o endereço antes de entrar.", "success");
+  } catch (error) {
+    if (sessionStarted) {
+      try {
+        await store.client.auth.signOut({ scope: "local" });
+      } catch {
+        // A mensagem do cadastro continua disponível caso o encerramento local falhe.
+      }
+      resetAuthenticatedView();
+      refs.loginView.classList.add("hidden");
+      refs.organizationSignupView.classList.remove("hidden");
+    }
+    refs.organizationSignupError.textContent = organizationSignupErrorMessage(error);
+  } finally {
+    authFlowInProgress = previousAuthFlow;
+  }
+}
+
 function setAuthStatus(status) {
   authState.status = status;
   if (status === AUTH_STATUS.AUTHENTICATED) authState.accessVerified = true;
@@ -2550,9 +2672,24 @@ function showLoginView() {
   hideAuthBootstrap();
   refs.appView.classList.add("hidden");
   refs.loginView.classList.remove("hidden");
+  refs.organizationSignupView.classList.add("hidden");
   refs.invitationAcceptView.classList.add("hidden");
   refs.passwordResetView.classList.add("hidden");
   refs.firstAccessView.classList.add("hidden");
+}
+
+function showOrganizationSignupView() {
+  showLoginView();
+  refs.loginView.classList.add("hidden");
+  refs.organizationSignupError.textContent = "";
+  refs.organizationSignupView.classList.remove("hidden");
+  refs.organizationSignupFullName.focus();
+}
+
+function returnToLoginFromOrganizationSignup() {
+  refs.organizationSignupForm.reset();
+  refs.organizationSignupError.textContent = "";
+  showLoginView();
 }
 
 function initializeAuthStateListener() {
@@ -2730,6 +2867,7 @@ function applyEnvironmentConfig() {
   refs.storageStatus.textContent = GLL_CONFIG.storageLabel;
   refs.loginHint.classList.toggle("hidden", hasSupabaseConfig());
   refs.userCreateOpenButton.classList.toggle("hidden", !hasSupabaseConfig());
+  refs.showOrganizationSignupButton.classList.toggle("hidden", !hasSupabaseConfig());
   const suppliersEnabled = GLL_CONFIG.suppliersEnabled !== false;
   refs.navSuppliersButton.disabled = !suppliersEnabled;
   refs.navSuppliersButton.classList.toggle("nav-link-disabled", !suppliersEnabled);
@@ -2906,6 +3044,14 @@ function bindEvents() {
   bindAutoGrowTextareas(refs.supplierProductForm);
   document.getElementById("blockingLoadingModal").addEventListener("cancel", (event) => event.preventDefault());
   refs.loginForm.addEventListener("submit", withBlockingLoading(handleLogin, "Entrando no sistema…"));
+  refs.showOrganizationSignupButton.addEventListener("click", showOrganizationSignupView);
+  refs.cancelOrganizationSignupButton.addEventListener("click", returnToLoginFromOrganizationSignup);
+  refs.organizationSignupForm.addEventListener("submit", withBlockingLoading(handleOrganizationSignupSubmit, "Criando sua conta…"));
+  refs.organizationSignupCnpj.addEventListener("input", () => refs.organizationSignupCnpj.setCustomValidity(""));
+  refs.organizationSignupCnpj.addEventListener("blur", () => {
+    refs.organizationSignupCnpj.value = formatCnpj(refs.organizationSignupCnpj.value);
+  });
+  refs.organizationSignupPasswordConfirm.addEventListener("input", () => refs.organizationSignupPasswordConfirm.setCustomValidity(""));
   refs.acceptInvitationButton.addEventListener("click", withBlockingLoading(handleInvitationAcceptance, "Validando convite…"));
   refs.cancelInvitationButton.addEventListener("click", handleCancelInvitationAcceptance);
   refs.passwordResetForm.addEventListener("submit", withBlockingLoading(handlePasswordReset, "Atualizando sua senha…"));
