@@ -66,6 +66,7 @@ const DEFAULT_GLL_CONFIG = {
   designSystemEnabled: true,
   radarEngineAdminEnabled: false,
   radarDetailsFallbackEnabled: false,
+  organizationDocumentsEnabled: false,
 };
 const GLL_CONFIG = {
   ...DEFAULT_GLL_CONFIG,
@@ -78,6 +79,12 @@ const createDeclarationsFeature = window.GLLDeclarations?.createDeclarationsFeat
 }));
 const createCompanyDataFeature = window.GLLCompanyData?.createCompanyDataFeature || (() => ({
   showPage: async () => undefined,
+  reset: () => undefined,
+  refresh: async () => undefined,
+}));
+const createOrganizationDocumentsFeature = window.GLLOrganizationDocuments?.createOrganizationDocumentsFeature || (() => ({
+  showPage: async () => undefined,
+  focusDocument: () => undefined,
   reset: () => undefined,
   refresh: async () => undefined,
 }));
@@ -118,6 +125,7 @@ const PAGE_ROUTE_NAMES = {
   commercialProposals: "propostas-comerciais",
   suppliers: "fornecedores",
   declarations: "declaracoes",
+  organizationDocuments: "kit-de-documentos",
   declarationLibrary: "declaracoes/biblioteca",
   declarationSettings: "declaracoes/configuracoes",
   declarationHistory: "declaracoes/historico",
@@ -189,6 +197,8 @@ const appState = {
   suppliers: [],
   supplierProducts: [],
   dismissedNotificationIds: [],
+  organizationDocumentNotifications: [],
+  organizationDocumentPendencies: [],
 };
 
 const $ = (id) => document.getElementById(id);
@@ -268,6 +278,7 @@ const refs = {
   navCommercialProposalsButton: $("navCommercialProposalsButton"),
   navSuppliersButton: $("navSuppliersButton"),
   navDeclarationsButton: $("navDeclarationsButton"),
+  navOrganizationDocumentsButton: $("navOrganizationDocumentsButton"),
   navUsersButton: $("navUsersButton"),
   navRadarEngineAdminButton: $("navRadarEngineAdminButton"),
   navSettingsButton: $("navSettingsButton"),
@@ -365,6 +376,7 @@ const refs = {
   cancelUserAccessButton: $("cancelUserAccessButton"),
   settingsPage: $("settingsPage"),
   companyDataPage: $("companyDataPage"),
+  organizationDocumentsPage: $("organizationDocumentsPage"),
   designSystemPage: $("designSystemPage"),
   radarEngineAdminPage: $("radarEngineAdminPage"),
   designSystemAccessCard: $("designSystemAccessCard"),
@@ -2341,6 +2353,59 @@ const companyDataFeature = createCompanyDataFeature({
   toast: (message, tone) => showToast(message, tone),
   runBusy: (operation, message) => withBlockingLoading(operation, message)(),
 });
+const organizationDocumentsFeature = createOrganizationDocumentsFeature({
+  getApi: () => window.GLLOrganizationDocumentsApi?.createOrganizationDocumentsApi?.({
+    getClient: () => (store.requiresAuthenticationBeforeData ? store.client : null),
+    getUserRole: () => appState.currentUserRole,
+  }) || null,
+  getOrganizationName: () => appState.currentOrganizationName,
+  isAdmin: () => isCurrentUserAdmin(),
+  canManageDocuments: () => appState.authenticated
+    && [USER_ROLES.ADMIN, USER_ROLES.ANALYST].includes(appState.currentUserRole),
+  onAlertsChanged: () => refreshOrganizationDocumentAlerts(),
+  toast: (message, tone) => showToast(message, tone),
+});
+
+let organizationDocumentAlertsRequest = 0;
+let organizationDocumentAlertsTimer = null;
+
+async function refreshOrganizationDocumentAlerts() {
+  const request = ++organizationDocumentAlertsRequest;
+  if (!appState.authenticated || !store.requiresAuthenticationBeforeData || GLL_CONFIG.organizationDocumentsEnabled !== true) {
+    appState.organizationDocumentNotifications = [];
+    appState.organizationDocumentPendencies = [];
+    updateNotificationsIndicator();
+    return;
+  }
+
+  const api = window.GLLOrganizationDocumentsApi?.createOrganizationDocumentsApi?.({
+    getClient: () => store.client,
+  });
+  if (!api) return;
+  const epoch = sessionEpoch;
+  const organizationId = appState.currentOrganizationId;
+  try {
+    const [notifications, pendencies] = await Promise.all([
+      api.listNotifications(),
+      api.listExpiringDocuments(),
+    ]);
+    if (
+      request !== organizationDocumentAlertsRequest
+      || epoch !== sessionEpoch
+      || !appState.authenticated
+      || organizationId !== appState.currentOrganizationId
+    ) return;
+    appState.organizationDocumentNotifications = Array.isArray(notifications) ? notifications : [];
+    appState.organizationDocumentPendencies = Array.isArray(pendencies) ? pendencies : [];
+    updateNotificationsIndicator();
+    if (appState.activePage === "home") renderHomeSummary();
+    if (!refs.notificationsMenu.classList.contains("hidden")) setNotificationsMenuOpen(true);
+  } catch {
+    if (request === organizationDocumentAlertsRequest && epoch === sessionEpoch) {
+      console.warn("Não foi possível atualizar as notificações e pendências de vencimento do Kit de Documentos.");
+    }
+  }
+}
 const commercialProposalsFeature = createCommercialProposalsFeature({
   getClient: () => (store.requiresAuthenticationBeforeData ? store.client : null),
   getContext: () => ({
@@ -3005,6 +3070,10 @@ function applyEnvironmentConfig() {
   refs.navCommercialProposalsButton.classList.toggle("nav-link-disabled", !commercialProposalsEnabled);
   refs.navCommercialProposalsButton.setAttribute("aria-disabled", String(!commercialProposalsEnabled));
   refs.navCommercialProposalsButton.title = commercialProposalsEnabled ? "" : "Proposta Comercial temporariamente indisponível";
+  const organizationDocumentsEnabled = GLL_CONFIG.organizationDocumentsEnabled === true;
+  refs.navOrganizationDocumentsButton.classList.toggle("hidden", !organizationDocumentsEnabled);
+  refs.navOrganizationDocumentsButton.disabled = !organizationDocumentsEnabled;
+  refs.navOrganizationDocumentsButton.setAttribute("aria-disabled", String(!organizationDocumentsEnabled));
 }
 
 function populateOptions() {
@@ -3283,7 +3352,9 @@ function bindEvents() {
     requestAnimationFrame(() => refs.filterSearch.focus());
   });
   refs.notificationsButton.addEventListener("click", () => {
-    setNotificationsMenuOpen(refs.notificationsMenu.classList.contains("hidden"));
+    const open = refs.notificationsMenu.classList.contains("hidden");
+    setNotificationsMenuOpen(open);
+    if (open) void refreshOrganizationDocumentAlerts();
   });
   refs.notificationsContainer.addEventListener("keydown", handleNotificationsKeydown);
   refs.notificationsMenu.addEventListener("click", handleNotificationClick);
@@ -4435,6 +4506,9 @@ function resetAuthenticatedView({ showLogin = true } = {}) {
   appState.currentUserAuthId = null;
   appState.currentUserCreatedAt = null;
   appState.dismissedNotificationIds = [];
+  appState.organizationDocumentNotifications = [];
+  appState.organizationDocumentPendencies = [];
+  organizationDocumentAlertsRequest += 1;
   appState.currentUserRole = null;
   appState.currentUserName = null;
   appState.currentOrganizationId = null;
@@ -4458,11 +4532,13 @@ function resetAuthenticatedView({ showLogin = true } = {}) {
   declarationsFeature.reset();
   commercialProposalsFeature.reset();
   companyDataFeature.reset();
+  organizationDocumentsFeature.reset();
   billingFeature.reset();
   radarSearchFeature.reset();
   refs.appView.classList.remove("mobile-nav-open");
   updateMainNavigationState();
   for (const key of DATA_KEYS) appState[key] = [];
+  updateNotificationsIndicator();
   userAvatarUrlCache.clear();
   resetProfilePhotoEditor();
   setOwnPasswordEditorOpen(false);
@@ -4572,8 +4648,28 @@ function navigationNotifications() {
     })
     .sort((a, b) => parseStoredDateTime(a.session_datetime) - parseStoredDateTime(b.session_datetime))
     .slice(0, 3);
+  const organizationDocumentNotifications = appState.organizationDocumentNotifications.map((notification) => {
+    const daysRemaining = Number(notification.daysRemaining);
+    const daysLate = Math.abs(daysRemaining);
+    const description = daysRemaining < 0
+      ? `Está vencida há ${daysLate} ${daysLate === 1 ? "dia" : "dias"}.`
+      : daysRemaining === 0
+        ? "Vence hoje."
+        : daysRemaining === 1
+          ? "Vence amanhã."
+          : `Vence em ${daysRemaining} dias.`;
+    return {
+      id: `organization-document:${notification.documentId}:${notification.notificationDate}:${notification.documentVersion}:${notification.expiresOn}:${notification.updatedAt}`,
+      page: "organizationDocuments",
+      documentId: notification.documentId,
+      icon: "fileText",
+      title: notification.title,
+      description,
+    };
+  });
 
   return [
+    ...organizationDocumentNotifications,
     ...pendingDocuments.map(({ document, bid }) => ({
       id: `document:${document.id}`,
       bidId: bid.id,
@@ -4604,7 +4700,9 @@ function setNotificationsMenuOpen(open) {
     const notifications = navigationNotifications();
     refs.notificationsMenu.innerHTML = notifications.length
       ? `<div class="notification-menu-heading">Notificações</div>${notifications.map((notification) => `
-          <button class="notification-menu-item" type="button" data-notification-bid="${escapeHtml(notification.bidId)}" data-notification-page="${escapeHtml(notification.page)}">
+          <button class="notification-menu-item" type="button" ${notification.documentId
+            ? `data-notification-document="${escapeHtml(notification.documentId)}"`
+            : `data-notification-bid="${escapeHtml(notification.bidId)}"`} data-notification-page="${escapeHtml(notification.page)}">
             <span class="notification-menu-icon" aria-hidden="true">${GLLDesignSystem.iconMarkup(notification.icon)}</span>
             <span><strong>${escapeHtml(notification.title)}</strong><small>${escapeHtml(notification.description)}</small></span>
           </button>`).join("")}`
@@ -4620,8 +4718,15 @@ function handleNotificationClick(event) {
     void clearAllNotifications();
     return;
   }
-  const button = event.target.closest("[data-notification-bid]");
+  const button = event.target.closest("[data-notification-bid], [data-notification-document]");
   if (!button) return;
+  const documentId = button.dataset.notificationDocument;
+  if (documentId) {
+    setNotificationsMenuOpen(false);
+    setPage("organizationDocuments");
+    organizationDocumentsFeature.focusDocument(documentId);
+    return;
+  }
   const bidId = button.dataset.notificationBid;
   const page = button.dataset.notificationPage;
   setNotificationsMenuOpen(false);
@@ -4673,6 +4778,7 @@ function isCurrentUserAdmin() {
 }
 
 function resolveAuthorizedPage(page) {
+  if (page === "organizationDocuments" && GLL_CONFIG.organizationDocumentsEnabled !== true) return "home";
   if (page === "suppliers" && GLL_CONFIG.suppliersEnabled === false) return "home";
   if (page === "commercialProposals" && GLL_CONFIG.commercialProposalsEnabled === false) return "home";
   if (page === "designSystem" && GLL_CONFIG.designSystemEnabled === false) return "home";
@@ -4696,6 +4802,7 @@ function breadcrumbItems(page) {
     declarationSettings: "Configurações",
     declarationHistory: "Histórico",
     companyData: "Dados da Empresa",
+    organizationDocuments: "Kit de Documentos",
     designSystem: "Design System",
     radarEngineAdmin: "Processamento do Radar",
   };
@@ -4758,6 +4865,7 @@ function breadcrumbItems(page) {
     settings: "Configurações",
     designSystem: "Design System",
     radarEngineAdmin: "Processamento do Radar",
+    organizationDocuments: "Kit de Documentos",
   };
   if (compact || page === "home") return [{ label: topLevelLabels[page] || topLevelLabels.home }];
   return [home, { label: topLevelLabels[page] || topLevelLabels.home }];
@@ -5242,6 +5350,9 @@ async function startLiveUpdates() {
     || !appState.authenticated
     || organizationId !== appState.currentOrganizationId
   ) return;
+  organizationDocumentAlertsTimer = setInterval(() => {
+    if (!document.hidden) void refreshOrganizationDocumentAlerts();
+  }, 5 * 60 * 1000);
   // Postgres Changes remains dedicated to chat; application data uses the private org Broadcast below.
   liveChannel = client.channel("gll-data-updates", { config: { broadcast: { self: false } } })
     .on("postgres_changes", {
@@ -5288,6 +5399,8 @@ function stopLiveUpdates() {
   backgroundRefreshActive = false;
   if (liveChannel) void store.client.removeChannel(liveChannel);
   liveChannel = null;
+  if (organizationDocumentAlertsTimer) clearInterval(organizationDocumentAlertsTimer);
+  organizationDocumentAlertsTimer = null;
   if (chatBroadcastChannel) void store.client.removeChannel(chatBroadcastChannel);
   chatBroadcastChannel = null;
   organizationChat.stopUnreadTracking();
@@ -5299,6 +5412,7 @@ function stopLiveUpdates() {
 async function reloadData({ background = false, initialAccessVerified = false } = {}) {
   const epoch = sessionEpoch;
   const request = ++dataRequest;
+  void refreshOrganizationDocumentAlerts();
   const rows = await Promise.all([
     store.getAll("bids"), store.getAll("items"), store.getAll("documents"),
     store.getAll("failure_history"), store.getAll("quotations"), store.getAll("quotation_items"),
@@ -5504,6 +5618,7 @@ function setPage(page, options = {}) {
   const showUserProfile = page === "userProfile";
   const showSettings = page === "settings";
   const showCompanyData = page === "companyData";
+  const showOrganizationDocuments = page === "organizationDocuments";
   const showDesignSystem = page === "designSystem";
   const showRadarEngineAdmin = page === "radarEngineAdmin";
   const showSuppliers = page === "suppliers";
@@ -5518,12 +5633,13 @@ function setPage(page, options = {}) {
   const showCatalog = page === "bids";
   const showEditor = page === "edit";
   const showDetail = detailPages.includes(page);
-  refs.bidsPage.classList.toggle("hidden", showUsers || showUserProfile || showSettings || showCompanyData || showDesignSystem || showRadarEngineAdmin || showQuotations || showSuppliers || showDeclarations || showCommercialProposals || showRadarSearch);
+  refs.bidsPage.classList.toggle("hidden", showUsers || showUserProfile || showSettings || showCompanyData || showOrganizationDocuments || showDesignSystem || showRadarEngineAdmin || showQuotations || showSuppliers || showDeclarations || showCommercialProposals || showRadarSearch);
   refs.radarSearchPage.classList.toggle("hidden", !showRadarSearch);
   refs.usersPage.classList.toggle("hidden", !showUsers);
   refs.userProfilePage.classList.toggle("hidden", !showUserProfile);
   refs.settingsPage.classList.toggle("hidden", !showSettings);
   refs.companyDataPage.classList.toggle("hidden", !showCompanyData);
+  refs.organizationDocumentsPage.classList.toggle("hidden", !showOrganizationDocuments);
   refs.designSystemPage.classList.toggle("hidden", !showDesignSystem);
   refs.radarEngineAdminPage.classList.toggle("hidden", !showRadarEngineAdmin);
   refs.quotationsPage.classList.toggle("hidden", !showQuotations);
@@ -5537,14 +5653,14 @@ function setPage(page, options = {}) {
   refs.documentsPanel.classList.toggle("hidden", page !== "documents");
   refs.billingPanel.classList.toggle("hidden", page !== "billing");
   refs.failuresPanel.classList.toggle("hidden", page !== "failures");
-  refs.appView.classList.toggle("users-active", showUsers || showUserProfile || showSettings || showCompanyData || showDesignSystem || showRadarEngineAdmin || showQuotations || showSuppliers || showDeclarations || showCommercialProposals || showRadarSearch);
+  refs.appView.classList.toggle("users-active", showUsers || showUserProfile || showSettings || showCompanyData || showOrganizationDocuments || showDesignSystem || showRadarEngineAdmin || showQuotations || showSuppliers || showDeclarations || showCommercialProposals || showRadarSearch);
   refs.itemsTabButton.classList.toggle("active", page === "items");
   refs.documentsTabButton.classList.toggle("active", page === "documents");
   refs.billingTabButton.classList.toggle("active", page === "billing");
   refs.billingTabButton.classList.toggle("hidden", !shouldShowBilling());
   refs.failuresTabButton.classList.toggle("active", page === "failures");
   refs.failuresTabButton.classList.toggle("hidden", !shouldShowFailureHistory());
-  const primaryPage = showRadarEngineAdmin ? "radarEngineAdmin" : showRadarSearch ? "radarSearch" : showCommercialProposals ? "commercialProposals" : showDeclarations ? "declarations" : showSuppliers ? "suppliers" : showUsers || (showUserProfile && isCurrentUserAdmin()) ? "users" : showSettings || showCompanyData || showDesignSystem ? "settings" : showQuotations ? "quotations" : showHome || showUserProfile ? "home" : "bids";
+  const primaryPage = showOrganizationDocuments ? "organizationDocuments" : showRadarEngineAdmin ? "radarEngineAdmin" : showRadarSearch ? "radarSearch" : showCommercialProposals ? "commercialProposals" : showDeclarations ? "declarations" : showSuppliers ? "suppliers" : showUsers || (showUserProfile && isCurrentUserAdmin()) ? "users" : showSettings || showCompanyData || showDesignSystem ? "settings" : showQuotations ? "quotations" : showHome || showUserProfile ? "home" : "bids";
   const activeNavigationPage = ["settings", "companyData", "designSystem", "radarEngineAdmin"].includes(page) ? page : primaryPage;
   renderBreadcrumb(page);
   document.querySelectorAll("[data-navigation-page]").forEach((button) => {
@@ -5564,6 +5680,7 @@ function setPage(page, options = {}) {
   if (showDeclarations) void declarationsFeature.showPage(page).catch((error) => showToast(error.message, "error"));
   if (showCommercialProposals) void commercialProposalsFeature.showPage().catch((error) => showToast(error.message, "error"));
   if (showCompanyData) void companyDataFeature.showPage().catch((error) => showToast(error.message, "error"));
+  if (showOrganizationDocuments) void organizationDocumentsFeature.showPage();
   if (showRadarSearch) void radarSearchFeature.showPage().catch((error) => showToast(error.message, "error"));
   if (showDesignSystem) window.GLLDesignSystem?.mountCatalog(refs.designSystemCatalog);
   if (showRadarEngineAdmin) void radarEngineAdminFeature.showPage();
@@ -6002,11 +6119,34 @@ function renderHomeSummary() {
     button.addEventListener("click", () => loadBid(button.dataset.upcomingBid));
   });
 
-  const pending = appState.documents
+  const organizationDocumentPendencies = [...appState.organizationDocumentPendencies]
+    .filter((document) => document.expiresOn && Number.isFinite(Number(document.daysRemaining)))
+    .sort((left, right) => Number(left.daysRemaining) - Number(right.daysRemaining));
+  const pendingBidDocuments = appState.documents
     .filter((document) => !document.has_document)
     .slice(0, 5);
+  const pending = [
+    ...organizationDocumentPendencies.map((document) => ({ type: "organization", document })),
+    ...pendingBidDocuments.map((document) => ({ type: "bid", document })),
+  ];
   refs.pendingDocumentsList.innerHTML = pending.length
-    ? pending.map((document) => {
+    ? pending.map(({ type, document }) => {
+        if (type === "organization") {
+          const daysRemaining = Number(document.daysRemaining);
+          const daysLate = Math.abs(daysRemaining);
+          const tone = daysRemaining <= 0 ? "critical" : "attention";
+          const status = daysRemaining < 0
+            ? `Vencido há ${daysLate} ${daysLate === 1 ? "dia" : "dias"}`
+            : daysRemaining === 0
+              ? "Vence hoje"
+              : daysRemaining === 1
+                ? "Falta 1 dia para vencer"
+                : `Faltam ${daysRemaining} dias para vencer`;
+          return `<button class="pending-item pending-organization-document" type="button" data-pending-organization-document="${escapeHtml(document.id)}">
+            <span class="pending-icon ${tone}" aria-hidden="true">!</span>
+            <span class="pending-document-copy"><strong>${escapeHtml(document.title || "Documento")}</strong><small class="pending-expiry-message ${tone}">${escapeHtml(status)}</small></span>
+          </button>`;
+        }
         const bid = appState.bids.find((row) => row.id === document.bid_id);
         return `<button class="pending-item" type="button" data-pending-bid="${escapeHtml(document.bid_id)}"><span class="pending-icon">!</span><span><strong>${escapeHtml(document.document_type || "Documento")}</strong><small>${escapeHtml(bidDisplayNumber(bid) || document.bid_id || "")}</small></span></button>`;
       }).join("")
@@ -6015,6 +6155,12 @@ function renderHomeSummary() {
     button.addEventListener("click", () => {
       loadBid(button.dataset.pendingBid);
       setPage("documents");
+    });
+  });
+  refs.pendingDocumentsList.querySelectorAll("[data-pending-organization-document]").forEach((button) => {
+    button.addEventListener("click", () => {
+      setPage("organizationDocuments");
+      organizationDocumentsFeature.focusDocument(button.dataset.pendingOrganizationDocument);
     });
   });
 

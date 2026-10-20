@@ -1499,6 +1499,38 @@
         "989fe7d0d28e6ddac946b1ef5a2b6c02006bf6f3"
       ],
       "migrations": []
+    },
+    {
+      "frontend_commits": [],
+      "backend_commits": [
+        "f1d78081916808f04c88a3c5b817754ad36d58e2"
+      ],
+      "migrations": [
+        "supabase/migrations/20261020195255_kit_documentos_backend.sql"
+      ],
+      "id": "ISSUE-152"
+    },
+    {
+      "frontend_commits": [
+        "21e735f00cabc35da3a0688312e3c33392c07db6"
+      ],
+      "backend_commits": [],
+      "migrations": [],
+      "id": "ISSUE-153"
+    },
+    {
+      "frontend_commits": [
+        "21e735f00cabc35da3a0688312e3c33392c07db6"
+      ],
+      "backend_commits": [
+        "f1d78081916808f04c88a3c5b817754ad36d58e2"
+      ],
+      "migrations": [
+        "supabase/migrations/20261020202019_organization_document_expiry_notifications.sql",
+        "supabase/migrations/20261020204111_fix_organization_document_settings_upsert_conflict.sql",
+        "supabase/migrations/20261020204205_fix_organization_document_settings_read_conflict.sql"
+      ],
+      "id": "ISSUE-154"
     }
   ]
 }
