@@ -548,6 +548,7 @@ let userProfileReturnPage = "home";
 let userProfileReturnFocusTarget = null;
 let pendingSessionRestore = null;
 let pendingInvitationAcceptance = null;
+let authFlowInProgress = false;
 let profilePhotoState = {
   image: null,
   objectUrl: "",
