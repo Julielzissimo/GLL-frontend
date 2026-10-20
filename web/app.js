@@ -29,6 +29,7 @@ const SALES_UNIT_OPTIONS = ["Unidade", "Pacote", "Caixa", "Kilo", "Metro", "Litr
 const BID_EDITAL_BUCKET = "bid-edital-files";
 const MAX_EDITAL_FILE_SIZE = 20 * 1024 * 1024;
 const MAX_EDITAL_FILES = 4;
+const HOME_RECENT_ACTIVITY_PAGE_SIZE = 15;
 const SUPABASE_CLIENT_VERSION = "2.118.0";
 const BUSINESS_TIME_ZONE = "America/Sao_Paulo";
 const MONEY_FRACTION_DIGITS = 2;
@@ -37,6 +38,7 @@ const MARGIN_FRACTION_DIGITS = 4;
 const USER_ROLES = { ADMIN: "Administrador", ANALYST: "Analista" };
 const USER_INVITATION_RESEND_COOLDOWN_MS = 15_000;
 let userInvitationResendCooldownTimer = null;
+let homeRecentActivityPage = 1;
 const DEFAULT_ADMIN = {
   email: "demo@gll.local",
   name: "Usuário local",
@@ -296,6 +298,7 @@ const refs = {
   upcomingBidsList: $("upcomingBidsList"),
   pendingDocumentsList: $("pendingDocumentsList"),
   homeRecentActivitiesList: $("homeRecentActivitiesList"),
+  homeRecentActivitiesPagination: $("homeRecentActivitiesPagination"),
   viewAllBidsButton: $("viewAllBidsButton"),
   viewRecentBidsButton: $("viewRecentBidsButton"),
   homeTotalBids: $("homeTotalBids"),
@@ -6015,8 +6018,18 @@ function renderHomeSummary() {
     });
   });
 
-  refs.homeRecentActivitiesList.innerHTML = appState.bidActivity.length
-    ? appState.bidActivity.map((entry, index) => {
+  renderHomeRecentActivities();
+}
+
+function renderHomeRecentActivities() {
+  const totalEntries = appState.bidActivity.length;
+  const totalPages = Math.ceil(totalEntries / HOME_RECENT_ACTIVITY_PAGE_SIZE);
+  homeRecentActivityPage = Math.min(Math.max(homeRecentActivityPage, 1), totalPages || 1);
+  const firstEntryIndex = (homeRecentActivityPage - 1) * HOME_RECENT_ACTIVITY_PAGE_SIZE;
+  const visibleEntries = appState.bidActivity.slice(firstEntryIndex, firstEntryIndex + HOME_RECENT_ACTIVITY_PAGE_SIZE);
+
+  refs.homeRecentActivitiesList.innerHTML = visibleEntries.length
+    ? visibleEntries.map((entry, index) => {
         const actor = entry.actor_name || "Usuário";
         const initials = actor.trim().split(/\s+/).filter(Boolean).map((part) => part[0]).filter(Boolean);
         const user = appState.users.find((profile) => profile.auth_user_id === entry.actor_id);
@@ -6024,13 +6037,40 @@ function renderHomeSummary() {
           ? `<img src="${escapeHtml(user.avatar_signed_url)}" alt="" loading="lazy" decoding="async" />`
           : escapeHtml((initials.length > 1 ? `${initials[0]}${initials.at(-1)}` : initials[0] || "?").toLocaleUpperCase("pt-BR"));
         const action = bidActivityDescription(entry);
-        const descriptionId = `homeActivityDescription-${index}`;
+        const descriptionId = `homeActivityDescription-${firstEntryIndex + index}`;
         return `<button class="home-activity-entry" type="button" aria-expanded="false" aria-controls="${descriptionId}" data-recent-activity-bid="${escapeHtml(entry.bid_id)}">
           <span class="home-activity-avatar" aria-hidden="true">${avatar}</span>
           <span class="home-activity-copy"><span class="home-activity-description" id="${descriptionId}"><strong>${escapeHtml(actor)}</strong> ${escapeHtml(action)}</span><time datetime="${escapeHtml(entry.created_at)}">${escapeHtml(formatDateTime(entry.created_at))}</time></span>
         </button>`;
       }).join("")
     : `<div class="empty-state compact-empty">Ainda não há atualizações de editais disponíveis.</div>`;
+
+  const pagination = refs.homeRecentActivitiesPagination;
+  pagination.hidden = totalPages <= 1;
+  pagination.innerHTML = totalPages > 1
+    ? `<span class="home-activity-pagination-summary">Exibindo ${firstEntryIndex + 1}–${Math.min(firstEntryIndex + HOME_RECENT_ACTIVITY_PAGE_SIZE, totalEntries)} de ${totalEntries} alterações</span>
+      <div class="home-activity-pagination-actions">
+        <button class="quiet-action" type="button" data-home-activity-page="${homeRecentActivityPage - 1}" aria-label="Página anterior"${homeRecentActivityPage === 1 ? " disabled" : ""}>Anterior</button>
+        <div class="home-activity-page-numbers" role="group" aria-label="Número da página">
+          ${Array.from({ length: totalPages }, (_, index) => {
+            const pageNumber = index + 1;
+            return `<button class="quiet-action home-activity-page-number" type="button" data-home-activity-page="${pageNumber}" aria-label="Página ${pageNumber}"${pageNumber === homeRecentActivityPage ? ' aria-current="page"' : ""}>${pageNumber}</button>`;
+          }).join("")}
+        </div>
+        <button class="quiet-action" type="button" data-home-activity-page="${homeRecentActivityPage + 1}" aria-label="Próxima página"${homeRecentActivityPage === totalPages ? " disabled" : ""}>Próxima</button>
+      </div>`
+    : "";
+
+  pagination.querySelectorAll("[data-home-activity-page]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const nextPage = Number(button.dataset.homeActivityPage);
+      if (!Number.isInteger(nextPage) || nextPage < 1 || nextPage > totalPages || nextPage === homeRecentActivityPage) return;
+      homeRecentActivityPage = nextPage;
+      renderHomeRecentActivities();
+      refs.homeRecentActivitiesPagination.querySelector('[aria-current="page"]')?.focus();
+    });
+  });
+
   refs.homeRecentActivitiesList.querySelectorAll("[data-recent-activity-bid]").forEach((button) => {
     button.addEventListener("click", (event) => {
       const description = button.querySelector(".home-activity-description");
