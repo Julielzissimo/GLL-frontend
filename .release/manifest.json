@@ -993,10 +993,12 @@
     {
       "id": "HOTFIX-LOGIN-EDGE-001",
       "backend_commits": [
-        "d911085e72ce7ef7204fe597885293ccd86381de"
+        "d911085e72ce7ef7204fe597885293ccd86381de",
+        "d3ec54cbd4732d19606a0d0d91a32ab4f482aa6e"
       ],
       "frontend_commits": [
-        "6f8b474d07d164da2f295de561d3f1164f1f3a7e"
+        "6f8b474d07d164da2f295de561d3f1164f1f3a7e",
+        "502a5c0038929a17608bee53ed8b055779e1567f"
       ],
       "migrations": []
     }
