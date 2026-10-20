@@ -54,6 +54,8 @@ function settingsFromRow(row) {
 /** Supabase gateway for the organization document module. */
 export function createOrganizationDocumentsApi({
   getClient,
+  getSupabaseUrl = () => "",
+  getSupabaseAnonKey = () => "",
   fetchImpl = globalThis.fetch,
   idGenerator = () => globalThis.crypto.randomUUID(),
 } = {}) {
@@ -75,6 +77,15 @@ export function createOrganizationDocumentsApi({
     });
     if (error || data?.error) throw apiError(error, data, "Não foi possível acessar o arquivo do documento.");
     return data;
+  }
+
+  function downloadFileNameFromHeader(header) {
+    const encoded = /(?:^|;)\s*filename\*\s*=\s*UTF-8''([^;]+)/i.exec(String(header || ""));
+    if (encoded) {
+      try { return decodeURIComponent(encoded[1].trim()); } catch { return ""; }
+    }
+    const quoted = /(?:^|;)\s*filename\s*=\s*"([^"]+)"/i.exec(String(header || ""));
+    return quoted?.[1] || "";
   }
 
   async function uploadFile(documentId, file) {
@@ -189,9 +200,58 @@ export function createOrganizationDocumentsApi({
     },
 
     async downloadDocumentsZip({ documentIds } = {}) {
-      const ids = Array.from(new Set((documentIds || []).map(String).filter(Boolean)));
+      const ids = Array.isArray(documentIds)
+        ? Array.from(new Set(documentIds.map(String).filter(Boolean)))
+        : [];
       if (!ids.length) throw new Error("Selecione pelo menos um documento para baixar.");
-      throw new Error("O serviço de download ZIP ainda não está disponível.");
+      const currentClient = client();
+      const { data: sessionData, error: sessionError } = await currentClient.auth.getSession();
+      const accessToken = sessionData?.session?.access_token;
+      if (sessionError || !accessToken) throw new Error("Sua sessão expirou. Entre novamente e tente baixar os documentos.");
+
+      const baseUrl = String(getSupabaseUrl?.() || "").trim().replace(/\/+$/, "");
+      const apiKey = String(getSupabaseAnonKey?.() || "").trim();
+      if (!baseUrl || !apiKey) throw new Error("A conexão segura com o serviço de documentos não está disponível.");
+
+      let response;
+      try {
+        response = await fetchImpl(baseUrl + "/functions/v1/file-storage", {
+          method: "POST",
+          headers: {
+            Authorization: "Bearer " + accessToken,
+            apikey: apiKey,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ action: "download-zip", bucket: DOCUMENT_BUCKET, documentIds: ids }),
+        });
+      } catch (error) {
+        if (error?.name === "AbortError") throw new Error("O download foi interrompido. Tente novamente.");
+        throw new Error("Não foi possível conectar ao serviço de documentos. Tente novamente.");
+      }
+
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        if (response.status === 401) throw new Error("Sua sessão expirou. Entre novamente e tente baixar os documentos.");
+        throw new Error(data?.error || "Não foi possível preparar o arquivo ZIP. Tente novamente.");
+      }
+
+      const contentType = String(response.headers?.get("content-type") || "").split(";")[0].trim().toLowerCase();
+      if (contentType !== "application/zip") throw new Error("O serviço não retornou um arquivo ZIP válido.");
+      const fileName = downloadFileNameFromHeader(response.headers?.get("content-disposition"));
+      if (!/^docs-.+\.zip$/u.test(fileName) || /[\\/]/u.test(fileName)) {
+        throw new Error("O serviço retornou um nome de arquivo inválido.");
+      }
+
+      let blob;
+      try {
+        blob = await response.blob();
+      } catch {
+        throw new Error("O download foi interrompido antes de concluir. Tente novamente.");
+      }
+      if (!(blob instanceof Blob) || blob.type.toLowerCase() !== "application/zip" || blob.size === 0) {
+        throw new Error("O serviço não conseguiu concluir um arquivo ZIP válido. Tente novamente.");
+      }
+      return { blob, fileName };
     },
   };
 }

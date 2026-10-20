@@ -1531,6 +1531,16 @@
         "supabase/migrations/20261020204205_fix_organization_document_settings_read_conflict.sql"
       ],
       "id": "ISSUE-154"
+    },
+    {
+      "id": "ISSUE-156",
+      "backend_commits": [
+        "1b7905bcfbfc16e603e77a99988fef380df4d45f"
+      ],
+      "frontend_commits": [
+        "494f6aae120a3dee0a67a36d2c5ce265b6116b1e"
+      ],
+      "migrations": []
     }
   ]
 }
