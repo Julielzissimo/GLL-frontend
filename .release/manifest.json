@@ -1453,6 +1453,18 @@
         "27a8568d93f8ecb22570000eb86cf86e5dd699eb"
       ],
       "migrations": []
+    },
+    {
+      "id": "ISSUE-141",
+      "backend_commits": [
+        "a3de68fa3670d69df9b17eaa199b0edf9d51ad70"
+      ],
+      "frontend_commits": [
+        "7d04c6f633fae9e5e4f20ea24c2cde95a1a0b062"
+      ],
+      "migrations": [
+        "supabase/migrations/20261020092810_organization_self_registration.sql"
+      ]
     }
   ]
 }
