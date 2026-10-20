@@ -989,6 +989,16 @@
         "ecfb7a9b1383526f25532499cb1a7efc83245928"
       ],
       "migrations": []
+    },
+    {
+      "id": "HOTFIX-LOGIN-EDGE-001",
+      "backend_commits": [
+        "d911085e72ce7ef7204fe597885293ccd86381de"
+      ],
+      "frontend_commits": [
+        "6f8b474d07d164da2f295de561d3f1164f1f3a7e"
+      ],
+      "migrations": []
     }
   ]
 }
