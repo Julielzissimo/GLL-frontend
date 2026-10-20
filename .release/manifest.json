@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "release_id": "2026-10-20-pacote-melhorias-1",
+  "release_id": "2026-10-20-cadastro-de-nova-organizacao",
   "environment": "production",
   "target_branch": "main",
   "items": [
@@ -1001,6 +1001,22 @@
         "502a5c0038929a17608bee53ed8b055779e1567f"
       ],
       "migrations": []
+    },
+    {
+      "id": "ISSUE-141",
+      "backend_commits": [
+        "8ea80cc1e190db31abb1de554f91184d29af1944",
+        "b4f6bff9cb1a0464d02c85c63e1386956d50103f",
+        "83ac7cf8b33863fe42da98a0e1372fc05967713a",
+        "54ac5ac00b5920e9d22283e4d6649097a25a703c"
+      ],
+      "frontend_commits": [
+        "236c388c8c7e7f9ae8d99a76b557822b8725b6d3",
+        "7a21161a72696115bc1dd13973ff3442df517aba"
+      ],
+      "migrations": [
+        "supabase/migrations/20261020092810_organization_self_registration.sql"
+      ]
     }
   ]
 }

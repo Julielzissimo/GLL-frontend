@@ -1,4 +1,6 @@
 ﻿const STATUS_OPTIONS = ["Em Analise", "Aguard. Disputa", "Descartada", "Aprovada", "Em Fornecimento", "Faturado", "Desclassificado", "Disputada"];
+import { formatCnpj, isValidCnpj } from "./company-data.js";
+
 const storageBucket = globalThis.window?.GLLFileStorage?.storageBucket || ((client, bucket) => client.storage.from(bucket));
 const WON_ITEM_STATUSES = ["Aprovada", "Em Fornecimento", "Faturado", "Desclassificado", "Disputada"];
 const WON_ITEM_TOTAL_STATUSES = ["Descartada", "Aprovada", "Em Fornecimento", "Faturado", "Disputada"];
@@ -52,6 +54,7 @@ const DEFAULT_GLL_CONFIG = {
   appName: "GLL Web",
   supabaseUrl: "",
   supabaseAnonKey: "",
+  authRedirectUrl: "",
   sessionIdleTimeoutMinutes: 30,
   sessionMaxLifetimeHours: 8,
   suppliersEnabled: true,
@@ -154,6 +157,25 @@ const $ = (id) => document.getElementById(id);
 
 const refs = {
   loginView: $("loginView"),
+  signupConfirmationView: $("signupConfirmationView"),
+  signupConfirmationEmail: $("signupConfirmationEmail"),
+  signupConfirmationMessage: $("signupConfirmationMessage"),
+  confirmSignupEmailButton: $("confirmSignupEmailButton"),
+  resendSignupConfirmationButton: $("resendSignupConfirmationButton"),
+  cancelSignupConfirmationButton: $("cancelSignupConfirmationButton"),
+  resendSignupFromLoginButton: $("resendSignupFromLoginButton"),
+  organizationSignupView: $("organizationSignupView"),
+  showOrganizationSignupButton: $("showOrganizationSignupButton"),
+  organizationSignupForm: $("organizationSignupForm"),
+  organizationSignupName: $("organizationSignupName"),
+  organizationSignupCnpj: $("organizationSignupCnpj"),
+  organizationSignupFullName: $("organizationSignupFullName"),
+  organizationSignupDisplayName: $("organizationSignupDisplayName"),
+  organizationSignupEmail: $("organizationSignupEmail"),
+  organizationSignupPassword: $("organizationSignupPassword"),
+  organizationSignupPasswordConfirm: $("organizationSignupPasswordConfirm"),
+  organizationSignupError: $("organizationSignupError"),
+  cancelOrganizationSignupButton: $("cancelOrganizationSignupButton"),
   invitationAcceptView: $("invitationAcceptView"),
   invitationAcceptError: $("invitationAcceptError"),
   acceptInvitationButton: $("acceptInvitationButton"),
@@ -1243,6 +1265,9 @@ class SupabaseStore {
       email: normalizeEmail(email),
       password,
     });
+    if (error?.code === "email_not_confirmed") {
+      throw Object.assign(new Error("Confirme seu endereço de e-mail antes de entrar."), { code: "email_not_confirmed" });
+    }
     if (error || !data.user) return null;
     const profile = await this.getUser(data.user.email);
     if (profile) {
@@ -1344,6 +1369,38 @@ class SupabaseStore {
     const { data, error } = await client.from("app_users").select("*, organization:organizations(name, cnpj)").eq("email", normalizeEmail(email)).maybeSingle();
     assertSupabase(error);
     return data;
+  }
+
+  async createOrganizationAccount({ email, password, fullName, displayName, organizationName, cnpj }) {
+    const client = await this.open();
+    const { data, error } = await client.auth.signUp({
+      email: normalizeEmail(email),
+      password,
+      options: {
+        emailRedirectTo: GLL_CONFIG.authRedirectUrl,
+        data: {
+          gll_signup: {
+            version: "1",
+            organization_name: organizationName.trim(),
+            cnpj: formatCnpj(cnpj),
+            full_name: fullName.trim(),
+            display_name: displayName.trim(),
+          },
+        },
+      },
+    });
+    assertSupabase(error);
+    return data;
+  }
+
+  async resendSignupConfirmation(email) {
+    const client = await this.open();
+    const { error } = await client.auth.resend({
+      type: "signup",
+      email: normalizeEmail(email),
+      options: { emailRedirectTo: GLL_CONFIG.authRedirectUrl },
+    });
+    assertSupabase(error);
   }
 
   async addSignedAvatarUrls(users, { refreshPaths = [] } = {}) {
@@ -2143,6 +2200,151 @@ function setLoginMessage(message, tone = "error") {
   refs.loginError.classList.toggle("is-success", tone === "success");
 }
 
+let pendingSignupConfirmation = null;
+
+function showSignupConfirmationView(email, message = "") {
+  pendingSignupConfirmation = email ? { email: normalizeEmail(email) } : pendingSignupConfirmation;
+  refs.loginView.classList.add("hidden");
+  refs.organizationSignupView.classList.add("hidden");
+  refs.invitationAcceptView.classList.add("hidden");
+  refs.passwordResetView.classList.add("hidden");
+  refs.firstAccessView.classList.add("hidden");
+  refs.appView.classList.add("hidden");
+  refs.signupConfirmationView.classList.remove("hidden");
+  refs.signupConfirmationEmail.textContent = pendingSignupConfirmation?.email || "seu e-mail";
+  refs.signupConfirmationMessage.textContent = message;
+  refs.confirmSignupEmailButton.disabled = !pendingSignupConfirmation?.tokenHash;
+  refs.confirmSignupEmailButton.classList.toggle("hidden", !pendingSignupConfirmation?.tokenHash);
+  refs.signupConfirmationView.querySelector("h2").textContent = pendingSignupConfirmation?.tokenHash
+    ? "Confirme para ativar sua conta"
+    : "Verifique sua caixa de entrada";
+  (pendingSignupConfirmation?.tokenHash
+    ? refs.confirmSignupEmailButton
+    : refs.resendSignupConfirmationButton).focus();
+}
+
+function showSignupCheckEmail(email) {
+  pendingSignupConfirmation = { email: normalizeEmail(email) };
+  showSignupConfirmationView(email, "Confira também a pasta de spam ou lixo eletrônico.");
+}
+
+function showLoginView() {
+  refs.signupConfirmationView.classList.add("hidden");
+  pendingSignupConfirmation = null;
+  refs.resendSignupFromLoginButton.classList.add("hidden");
+  refs.organizationSignupView.classList.add("hidden");
+  refs.invitationAcceptView.classList.add("hidden");
+  refs.passwordResetView.classList.add("hidden");
+  refs.firstAccessView.classList.add("hidden");
+  refs.appView.classList.add("hidden");
+  refs.loginView.classList.remove("hidden");
+}
+
+function organizationSignupErrorMessage(error) {
+  const details = [error?.message, error?.details, error?.hint].filter(Boolean).join(" ");
+  if (/organization_signup_cnpj_exists|organizations_cnpj_key/i.test(details)) {
+    return "Este CNPJ já está vinculado a uma organização no GLL.";
+  }
+  if (/organization_signup_invalid_cnpj/i.test(details)) {
+    return "Informe um CNPJ válido.";
+  }
+  if (/signups_not_allowed|signup.*disabled|signups.*disabled/i.test(details)) {
+    return "O cadastro de contas está desativado neste ambiente. Entre em contato com o suporte.";
+  }
+  if (/already registered|user exists|email exists/i.test(details)) {
+    return "Não foi possível criar a conta com este e-mail. Se você já tem acesso, entre pelo login.";
+  }
+  return "Não foi possível criar sua conta. Verifique os dados informados e tente novamente.";
+}
+
+async function handleOrganizationSignupSubmit(event) {
+  event.preventDefault();
+  refs.organizationSignupError.textContent = "";
+
+  const cnpj = formatCnpj(refs.organizationSignupCnpj.value);
+  refs.organizationSignupCnpj.setCustomValidity(isValidCnpj(cnpj) ? "" : "Informe um CNPJ válido.");
+  refs.organizationSignupPasswordConfirm.setCustomValidity(
+    refs.organizationSignupPassword.value === refs.organizationSignupPasswordConfirm.value
+      ? ""
+      : "As senhas não coincidem."
+  );
+  if (!refs.organizationSignupForm.reportValidity()) return;
+
+  if (!(store instanceof SupabaseStore)) {
+    refs.organizationSignupError.textContent = "O cadastro de contas está disponível somente nos ambientes conectados ao GLL.";
+    return;
+  }
+
+  const previousAuthFlow = authFlowInProgress;
+  let sessionStarted = false;
+  authFlowInProgress = true;
+  try {
+    const email = normalizeEmail(refs.organizationSignupEmail.value);
+    const data = await store.createOrganizationAccount({
+      email,
+      password: refs.organizationSignupPassword.value,
+      fullName: refs.organizationSignupFullName.value,
+      displayName: refs.organizationSignupDisplayName.value,
+      organizationName: refs.organizationSignupName.value,
+      cnpj,
+    });
+
+    if (data?.session && data.user?.id) {
+      sessionStarted = true;
+      const profile = await store.getUser(email);
+      if (!profile || profile.auth_user_id !== data.user.id || profile.role !== USER_ROLES.ADMIN || !profile.organization_id) {
+        throw new Error("A conta foi criada, mas não foi possível confirmar o vínculo com a organização. Tente entrar novamente.");
+      }
+      refs.organizationSignupForm.reset();
+      refs.loginEmail.value = email;
+      beginSessionPolicy(email, { forceNew: true });
+      await enterAuthenticatedView({
+        ...profile,
+        authUserCreatedAt: data.user.created_at,
+        verifiedAuthUserId: data.user.id,
+      }, data.user.created_at, data.user.id);
+      showToast("Conta criada. Você é Administrador da organização.");
+      return;
+    }
+
+    refs.organizationSignupForm.reset();
+    refs.loginEmail.value = email;
+    showSignupCheckEmail(email);
+  } catch (error) {
+    if (sessionStarted) {
+      try {
+        await store.client.auth.signOut({ scope: "local" });
+      } catch {
+        // A mensagem do cadastro continua disponível caso o encerramento local falhe.
+      }
+      resetAuthenticatedView();
+      refs.loginView.classList.add("hidden");
+      refs.organizationSignupView.classList.remove("hidden");
+    }
+    refs.organizationSignupError.textContent = organizationSignupErrorMessage(error);
+  } finally {
+    authFlowInProgress = previousAuthFlow;
+  }
+}
+
+function showOrganizationSignupView() {
+  refs.loginView.classList.add("hidden");
+  refs.signupConfirmationView.classList.add("hidden");
+  refs.invitationAcceptView.classList.add("hidden");
+  refs.passwordResetView.classList.add("hidden");
+  refs.firstAccessView.classList.add("hidden");
+  refs.appView.classList.add("hidden");
+  refs.organizationSignupError.textContent = "";
+  refs.organizationSignupView.classList.remove("hidden");
+  refs.organizationSignupFullName.focus();
+}
+
+function returnToLoginFromOrganizationSignup() {
+  refs.organizationSignupForm.reset();
+  refs.organizationSignupError.textContent = "";
+  showLoginView();
+}
+
 async function main() {
   applyEnvironmentConfig();
   populateOptions();
@@ -2162,8 +2364,9 @@ async function main() {
       }
     });
     try {
-      const hasPendingInvitation = await consumeInvitationCallback();
-      if (!hasPendingInvitation) await restoreSession();
+      const hasPendingSignupConfirmation = await consumeSignupConfirmationCallback();
+      const hasPendingInvitation = hasPendingSignupConfirmation ? false : await consumeInvitationCallback();
+      if (!hasPendingSignupConfirmation && !hasPendingInvitation) await restoreSession();
     } catch (error) {
       setLoginMessage("Não foi possível recuperar sua sessão. Verifique a conexão e tente novamente.");
     }
@@ -2197,6 +2400,7 @@ async function consumeInvitationCallback() {
 
 function showInvitationAcceptView(message = "") {
   refs.loginView.classList.add("hidden");
+  refs.signupConfirmationView.classList.add("hidden");
   refs.passwordResetView.classList.add("hidden");
   refs.firstAccessView.classList.add("hidden");
   refs.appView.classList.add("hidden");
@@ -2266,6 +2470,7 @@ function applyEnvironmentConfig() {
   refs.storageStatus.textContent = GLL_CONFIG.storageLabel;
   refs.loginHint.classList.toggle("hidden", hasSupabaseConfig());
   refs.userCreateOpenButton.classList.toggle("hidden", !hasSupabaseConfig());
+  refs.showOrganizationSignupButton.classList.toggle("hidden", !hasSupabaseConfig());
   const suppliersEnabled = GLL_CONFIG.suppliersEnabled !== false;
   refs.navSuppliersButton.disabled = !suppliersEnabled;
   refs.navSuppliersButton.classList.toggle("nav-link-disabled", !suppliersEnabled);
@@ -2412,6 +2617,21 @@ function bindEvents() {
   bindAutoGrowTextareas(refs.supplierProductForm);
   document.getElementById("blockingLoadingModal").addEventListener("cancel", (event) => event.preventDefault());
   refs.loginForm.addEventListener("submit", withBlockingLoading(handleLogin, "Entrando no sistema…"));
+  refs.resendSignupFromLoginButton.addEventListener("click", withBlockingLoading(handleResendSignupFromLogin, "Enviando confirmação…"));
+  refs.confirmSignupEmailButton.addEventListener("click", withBlockingLoading(handleSignupConfirmation, "Confirmando e-mail…"));
+  refs.resendSignupConfirmationButton.addEventListener("click", withBlockingLoading(handleResendSignupConfirmation, "Enviando confirmação…"));
+  refs.cancelSignupConfirmationButton.addEventListener("click", () => {
+    pendingSignupConfirmation = null;
+    showLoginView();
+  });
+  refs.showOrganizationSignupButton.addEventListener("click", showOrganizationSignupView);
+  refs.cancelOrganizationSignupButton.addEventListener("click", returnToLoginFromOrganizationSignup);
+  refs.organizationSignupForm.addEventListener("submit", withBlockingLoading(handleOrganizationSignupSubmit, "Criando sua conta…"));
+  refs.organizationSignupCnpj.addEventListener("input", () => refs.organizationSignupCnpj.setCustomValidity(""));
+  refs.organizationSignupCnpj.addEventListener("blur", () => {
+    refs.organizationSignupCnpj.value = formatCnpj(refs.organizationSignupCnpj.value);
+  });
+  refs.organizationSignupPasswordConfirm.addEventListener("input", () => refs.organizationSignupPasswordConfirm.setCustomValidity(""));
   refs.acceptInvitationButton.addEventListener("click", withBlockingLoading(handleInvitationAcceptance, "Validando convite…"));
   refs.cancelInvitationButton.addEventListener("click", handleCancelInvitationAcceptance);
   refs.passwordResetForm.addEventListener("submit", withBlockingLoading(handlePasswordReset, "Atualizando sua senha…"));
@@ -2749,6 +2969,7 @@ function bindPasswordVisibility() {
 async function handleLogin(event) {
   event.preventDefault();
   setLoginMessage("");
+  refs.resendSignupFromLoginButton.classList.add("hidden");
   const email = refs.loginEmail.value.trim();
   const password = refs.loginPassword.value;
   try {
@@ -2766,6 +2987,93 @@ async function handleLogin(event) {
     showToast("Login realizado.");
   } catch (error) {
     setLoginMessage(error.message);
+    if (error?.code === "email_not_confirmed") refs.resendSignupFromLoginButton.classList.remove("hidden");
+  }
+}
+
+async function consumeSignupConfirmationCallback() {
+  const hash = window.location.hash.replace(/^#/, "");
+  if (!hash) return false;
+  const params = new URLSearchParams(hash);
+  if (params.get("type") !== "signup" || !params.has("gll_signup_confirm")) return false;
+
+  const tokenHash = params.get("gll_signup_confirm") || "";
+  window.history.replaceState({}, document.title, `${window.location.pathname}${window.location.search}`);
+  pendingSignupConfirmation = tokenHash ? { tokenHash } : null;
+  showSignupConfirmationView("", tokenHash
+    ? "Este link só será validado quando você confirmar abaixo."
+    : "Este link está incompleto ou expirou. Volte ao login para solicitar outra confirmação.");
+  return true;
+}
+
+async function handleSignupConfirmation(event) {
+  refs.signupConfirmationMessage.textContent = "";
+  if (!event?.isTrusted) {
+    refs.signupConfirmationMessage.textContent = "Clique em Confirmar e-mail para validar o link.";
+    return;
+  }
+  if (!(store instanceof SupabaseStore) || !pendingSignupConfirmation?.tokenHash) {
+    refs.signupConfirmationMessage.textContent = "Este link está incompleto ou expirou. Volte ao login e solicite outra confirmação.";
+    refs.confirmSignupEmailButton.disabled = true;
+    return;
+  }
+
+  try {
+    const { data, error } = await store.client.auth.verifyOtp({
+      token_hash: pendingSignupConfirmation.tokenHash,
+      type: "signup",
+    });
+    if (error) {
+      pendingSignupConfirmation = null;
+      refs.signupConfirmationMessage.textContent = "Este link expirou ou já foi usado. Volte ao login para solicitar outra confirmação.";
+      refs.confirmSignupEmailButton.classList.add("hidden");
+      return;
+    }
+
+    const email = normalizeEmail(data?.user?.email || "");
+    pendingSignupConfirmation = null;
+    refs.signupConfirmationView.classList.add("hidden");
+    if (email) refs.loginEmail.value = email;
+    await restoreSession();
+    if (!appState.authenticated) {
+      showLoginView();
+      setLoginMessage("E-mail confirmado. Entre com a senha criada no cadastro.", "success");
+    } else {
+      showToast("E-mail confirmado. Sua organização está pronta.");
+    }
+  } catch {
+    refs.signupConfirmationMessage.textContent = "Não foi possível confirmar o e-mail. Tente novamente.";
+  }
+}
+
+async function handleResendSignupFromLogin() {
+  const email = normalizeEmail(refs.loginEmail.value);
+  if (!email) {
+    setLoginMessage("Informe o e-mail cadastrado para reenviar a confirmação.");
+    refs.loginEmail.focus();
+    return;
+  }
+  try {
+    await store.resendSignupConfirmation(email);
+    showSignupCheckEmail(email);
+  } catch {
+    setLoginMessage("Não foi possível reenviar a confirmação. Aguarde um momento e tente novamente.");
+  }
+}
+
+async function handleResendSignupConfirmation() {
+  const email = pendingSignupConfirmation?.email || normalizeEmail(refs.loginEmail.value);
+  if (!email) {
+    refs.signupConfirmationMessage.textContent = "Volte ao login, informe o e-mail cadastrado e tente novamente.";
+    return;
+  }
+  try {
+    await store.resendSignupConfirmation(email);
+    pendingSignupConfirmation = { email };
+    refs.signupConfirmationEmail.textContent = email;
+    refs.signupConfirmationMessage.textContent = "Se o cadastro puder receber uma confirmação, enviaremos uma nova mensagem para este endereço.";
+  } catch {
+    refs.signupConfirmationMessage.textContent = "Não foi possível reenviar a confirmação. Aguarde um momento e tente novamente.";
   }
 }
 
@@ -3312,6 +3620,7 @@ async function handleUserAccessChange(event) {
 function showPasswordResetView(email) {
   resetAuthenticatedView();
   refs.invitationAcceptView.classList.add("hidden");
+  refs.signupConfirmationView.classList.add("hidden");
   refs.loginView.classList.add("hidden");
   refs.firstAccessView.classList.add("hidden");
   refs.passwordResetView.classList.remove("hidden");
@@ -3329,6 +3638,7 @@ function moveProfilePhotoEditor(target) {
 
 function showFirstAccessView(status) {
   refs.loginView.classList.add("hidden");
+  refs.signupConfirmationView.classList.add("hidden");
   refs.invitationAcceptView.classList.add("hidden");
   refs.passwordResetView.classList.add("hidden");
   refs.appView.classList.add("hidden");
@@ -3474,6 +3784,7 @@ async function enterAuthenticatedView(user, authUserCreatedAt = user.authUserCre
   appState.currentOrganizationId = user.organization_id || user.organization?.id || null;
   appState.currentOrganizationName = user.organization?.name || "LSMS Suprimentos";
   appState.currentOrganizationCnpj = user.organization?.cnpj || "";
+  refs.signupConfirmationView.classList.add("hidden");
   try {
     updateAccessInterface();
     await reloadData();
@@ -3512,6 +3823,7 @@ async function logout() {
 
 function resetAuthenticatedView() {
   pendingInvitationAcceptance = null;
+  pendingSignupConfirmation = null;
   organizationChat.close();
   sessionEpoch += 1;
   stopSessionPolicyMonitoring();
@@ -3529,6 +3841,7 @@ function resetAuthenticatedView() {
   appState.currentOrganizationCnpj = null;
   refs.appView.classList.add("hidden");
   refs.invitationAcceptView.classList.add("hidden");
+  refs.signupConfirmationView.classList.add("hidden");
   refs.passwordResetView.classList.add("hidden");
   refs.firstAccessView.classList.add("hidden");
   refs.loginView.classList.remove("hidden");

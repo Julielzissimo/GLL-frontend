@@ -5,7 +5,11 @@ import test from "node:test";
 
 const source = await readFile(new URL("../web/app.js", import.meta.url), "utf8");
 const html = await readFile(new URL("../web/index.html", import.meta.url), "utf8");
-const application = source.slice(0, source.lastIndexOf('withBlockingLoading(main, "Verificando sessão…")'));
+const classicSource = source.replace(
+  /^import \{ formatCnpj, isValidCnpj \} from "\.\/company-data\.js";\r?\n/m,
+  "",
+);
+const application = classicSource.slice(0, classicSource.lastIndexOf('withBlockingLoading(main, "Verificando sessão…")'));
 const user = { email: "test@example.test", name: "Teste" };
 
 test("feed descreve alterações específicas do edital e do orçamento", () => {
