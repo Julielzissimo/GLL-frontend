@@ -7,12 +7,14 @@ export function documentDigits(value) {
 }
 
 export function formatCnpj(value) {
-  const digits = documentDigits(value).slice(0, 14);
-  return digits
-    .replace(/^(\d{2})(\d)/, "$1.$2")
-    .replace(/^(\d{2})\.(\d{3})(\d)/, "$1.$2.$3")
-    .replace(/\.(\d{3})(\d)/, ".$1/$2")
-    .replace(/(\d{4})(\d)/, "$1-$2");
+  const characters = String(value || "").toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 14);
+  if (characters.length <= 2) return characters;
+  if (characters.length <= 5) return `${characters.slice(0, 2)}.${characters.slice(2)}`;
+  if (characters.length <= 8) return `${characters.slice(0, 2)}.${characters.slice(2, 5)}.${characters.slice(5)}`;
+  if (characters.length <= 12) {
+    return `${characters.slice(0, 2)}.${characters.slice(2, 5)}.${characters.slice(5, 8)}/${characters.slice(8)}`;
+  }
+  return `${characters.slice(0, 2)}.${characters.slice(2, 5)}.${characters.slice(5, 8)}/${characters.slice(8, 12)}-${characters.slice(12)}`;
 }
 
 export function formatCpf(value) {
@@ -56,7 +58,17 @@ export function isValidCpf(value) {
 }
 
 export function isValidCnpj(value) {
-  return hasValidCheckDigits(value, 12);
+  const cnpj = String(value || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+  if (!/^[A-Z0-9]{12}\d{2}$/.test(cnpj) || /^([A-Z0-9])\1{13}$/.test(cnpj)) return false;
+  const calculateDigit = (partial, weights) => {
+    const sum = [...partial].reduce((total, character, index) =>
+      total + (character.charCodeAt(0) - 48) * weights[index], 0);
+    const remainder = sum % 11;
+    return remainder < 2 ? 0 : 11 - remainder;
+  };
+  const first = calculateDigit(cnpj.slice(0, 12), [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]);
+  const second = calculateDigit(`${cnpj.slice(0, 12)}${first}`, [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]);
+  return cnpj.endsWith(`${first}${second}`);
 }
 
 function escapeHtml(value) {
