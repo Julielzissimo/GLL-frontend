@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "release_id": "2026-10-19-migracao-storage-cloudflare-r2",
+  "release_id": "2026-10-20-pacote-melhorias-1",
   "environment": "production",
   "target_branch": "main",
   "items": [
@@ -815,6 +815,50 @@
       "migrations": [
         "supabase/migrations/20261009223408_r2_file_objects_and_quota.sql"
       ]
+    },
+    {
+      "id": "ISSUE-102",
+      "backend_commits": [
+        "9f1cf80b3be7601eecdefabdb514cde05765c3b5"
+      ],
+      "frontend_commits": [
+        "8f78da8007ecaaae78dfd33916c6e812e29d77f1"
+      ],
+      "migrations": [
+        "supabase/migrations/20261018143551_add_em_fornecimento_bid_status.sql"
+      ]
+    },
+    {
+      "id": "ISSUE-121",
+      "backend_commits": [],
+      "frontend_commits": [
+        "4182bc75f522ab538b73b87453f4d9efbc706105"
+      ],
+      "migrations": []
+    },
+    {
+      "id": "ISSUE-123",
+      "backend_commits": [],
+      "frontend_commits": [
+        "84df4386b4a179031319c9da98fe34bc6a3e833a"
+      ],
+      "migrations": []
+    },
+    {
+      "id": "ISSUE-126",
+      "backend_commits": [],
+      "frontend_commits": [
+        "a0b4cc57a73b7faa367722a6ebd2375ce1e52598"
+      ],
+      "migrations": []
+    },
+    {
+      "id": "ISSUE-137",
+      "backend_commits": [],
+      "frontend_commits": [
+        "ecfb7a9b1383526f25532499cb1a7efc83245928"
+      ],
+      "migrations": []
     }
   ]
 }
