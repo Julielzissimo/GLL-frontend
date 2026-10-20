@@ -1,14 +1,15 @@
-﻿const STATUS_OPTIONS = ["Em Analise", "Aguard. Disputa", "Descartada", "Aprovada", "Faturado", "Desclassificado", "Disputada"];
+﻿const STATUS_OPTIONS = ["Em Analise", "Aguard. Disputa", "Descartada", "Aprovada", "Em Fornecimento", "Faturado", "Desclassificado", "Disputada"];
 const storageBucket = globalThis.window?.GLLFileStorage?.storageBucket || ((client, bucket) => client.storage.from(bucket));
-const WON_ITEM_STATUSES = ["Aprovada", "Faturado", "Desclassificado", "Disputada"];
-const WON_ITEM_TOTAL_STATUSES = ["Descartada", "Aprovada", "Faturado", "Disputada"];
+const WON_ITEM_STATUSES = ["Aprovada", "Em Fornecimento", "Faturado", "Desclassificado", "Disputada"];
+const WON_ITEM_TOTAL_STATUSES = ["Descartada", "Aprovada", "Em Fornecimento", "Faturado", "Disputada"];
 const FINAL_BID_STATUS = "Faturado";
 const BID_STATUS_LABELS = Object.freeze({ "Em Analise": "Em Cadastro", "Aguard. Disputa": "Aguard. Disputa" });
 const BID_STATUS_TRANSITIONS = Object.freeze({
   "Em Analise": ["Aguard. Disputa", "Descartada", "Aprovada", "Desclassificado", "Disputada"],
   "Aguard. Disputa": ["Em Analise", "Descartada", "Aprovada", "Desclassificado", "Disputada"],
   Descartada: ["Em Analise", "Disputada"],
-  Aprovada: ["Em Analise", "Faturado", "Desclassificado", "Disputada"],
+  Aprovada: ["Em Analise", "Em Fornecimento", "Faturado", "Desclassificado", "Disputada"],
+  "Em Fornecimento": ["Aprovada", "Faturado"],
   Faturado: ["Aprovada"],
   Desclassificado: ["Em Analise", "Disputada"],
   Disputada: ["Em Analise", "Descartada", "Aprovada", "Desclassificado"],
@@ -233,6 +234,7 @@ const refs = {
   homeReadyToDisputeBids: $("homeReadyToDisputeBids"),
   homeDiscardedBids: $("homeDiscardedBids"),
   homeApprovedBids: $("homeApprovedBids"),
+  homeSupplyingBids: $("homeSupplyingBids"),
   homeBilledBids: $("homeBilledBids"),
   homeDisqualifiedBids: $("homeDisqualifiedBids"),
   homeDisputedBids: $("homeDisputedBids"),
@@ -333,6 +335,10 @@ const refs = {
   filterSearch: $("filterSearch"),
   filterDate: $("filterDate"),
   filterStatus: $("filterStatus"),
+  filterStatusSummaryValue: $("filterStatusSummaryValue"),
+  filterStatusOptions: $("filterStatusOptions"),
+  selectAllFilterStatusesButton: $("selectAllFilterStatusesButton"),
+  clearFilterStatusesButton: $("clearFilterStatusesButton"),
   filterGuaranteeDeposit: $("filterGuaranteeDeposit"),
   clearFiltersButton: $("clearFiltersButton"),
   bidList: $("bidList"),
@@ -459,7 +465,6 @@ const refs = {
   clearQuotationButton: $("clearQuotationButton"),
   quotationItemsSection: $("quotationItemsSection"),
   quotationItemsStatus: $("quotationItemsStatus"),
-  quotationGrandTotal: $("quotationGrandTotal"),
   downloadQuotationItemsButton: $("downloadQuotationItemsButton"),
   openQuotationItemModalButton: $("openQuotationItemModalButton"),
   quotationItemModal: $("quotationItemModal"),
@@ -516,6 +521,7 @@ const refs = {
 };
 
 const userAvatarUrlCache = new Map();
+const currentUserAvatarRefreshAttempts = new Set();
 let userProfileReturnPage = "home";
 let userProfileReturnFocusTarget = null;
 let pendingSessionRestore = null;
@@ -1335,27 +1341,40 @@ class SupabaseStore {
     return data;
   }
 
-  async addSignedAvatarUrls(users) {
+  async addSignedAvatarUrls(users, { refreshPaths = [] } = {}) {
     const now = Date.now();
     const paths = [...new Set(users.map((user) => user.avatar_path).filter(Boolean))];
+    const pathsToRefresh = new Set(refreshPaths);
+    pathsToRefresh.forEach((path) => userAvatarUrlCache.delete(path));
     const pathsToSign = paths.filter((path) => {
       const cached = userAvatarUrlCache.get(path);
-      return !cached || cached.expiresAt <= now + 60_000;
+      return pathsToRefresh.has(path) || !cached || cached.expiresAt <= now + 60_000;
     });
 
     if (pathsToSign.length) {
       const client = await this.open();
       const r2Enabled = window.GLL_CONFIG?.storageProvider === "r2";
-      const { data, error } = await storageBucket(client, "profile-avatars").createSignedUrls(pathsToSign, r2Enabled ? 120 : 3600);
-      if (error) {
-        console.warn("Não foi possível carregar algumas fotos de perfil.");
-      } else {
-        (data || []).forEach((entry, index) => {
-          if (!entry.signedUrl || entry.error) return;
-          const path = entry.path || pathsToSign[index];
-          userAvatarUrlCache.set(path, { url: entry.signedUrl, expiresAt: now + (r2Enabled ? 90_000 : 3_000_000) });
-        });
+      const signPaths = async (pendingPaths) => {
+        const failedPaths = new Set(pendingPaths);
+        try {
+          const { data } = await storageBucket(client, "profile-avatars").createSignedUrls(pendingPaths, r2Enabled ? 120 : 3600);
+          (data || []).forEach((entry, index) => {
+            if (!entry.signedUrl || entry.error) return;
+            const path = entry.path || pendingPaths[index];
+            userAvatarUrlCache.set(path, { url: entry.signedUrl, expiresAt: Date.now() + (r2Enabled ? 90_000 : 3_000_000) });
+            failedPaths.delete(path);
+          });
+        } catch {
+          // Keep the app usable when Storage is temporarily unavailable; retry below.
+        }
+        return [...failedPaths];
+      };
+      let failedPaths = await signPaths(pathsToSign);
+      if (failedPaths.length) {
+        await new Promise((resolve) => setTimeout(resolve, 300));
+        failedPaths = await signPaths(failedPaths);
       }
+      if (failedPaths.length) console.warn("Não foi possível carregar algumas fotos de perfil.");
     }
 
     return users.map((user) => {
@@ -2255,9 +2274,37 @@ function applyEnvironmentConfig() {
 }
 
 function populateOptions() {
-  refs.filterStatus.innerHTML = statusOptionList(["Todos", ...STATUS_OPTIONS]);
+  refs.filterStatusOptions.innerHTML = STATUS_OPTIONS.map((status) => `
+    <label class="filter-status-option">
+      <input type="checkbox" name="filterStatus" value="${escapeHtml(status)}" />
+      <span>${escapeHtml(statusLabel(status))}</span>
+    </label>
+  `).join("");
   refs.bidStatus.innerHTML = statusOptionList(STATUS_OPTIONS);
   refs.salesUnit.innerHTML = optionList(SALES_UNIT_OPTIONS);
+  updateFilterStatusSummary();
+}
+
+function selectedFilterStatuses() {
+  return [...refs.filterStatusOptions.querySelectorAll("input[type='checkbox']:checked")].map((input) => input.value);
+}
+
+function setFilterStatuses(statuses = []) {
+  const selected = new Set(statuses);
+  refs.filterStatusOptions.querySelectorAll("input[type='checkbox']").forEach((input) => {
+    input.checked = selected.has(input.value);
+  });
+  updateFilterStatusSummary();
+}
+
+function updateFilterStatusSummary() {
+  const selected = selectedFilterStatuses();
+  const summary = selected.length === 0 || selected.length === STATUS_OPTIONS.length
+    ? "Todos"
+    : selected.length === 1
+      ? statusLabel(selected[0])
+      : `${selected.length} selecionados`;
+  refs.filterStatusSummaryValue.textContent = summary;
 }
 
 function setBidType(value) {
@@ -2494,6 +2541,18 @@ function bindEvents() {
     renderBids();
   });
   refs.filterSearch.addEventListener("input", renderBids);
+  refs.filterStatusOptions.addEventListener("change", updateFilterStatusSummary);
+  refs.selectAllFilterStatusesButton.addEventListener("click", () => setFilterStatuses(STATUS_OPTIONS));
+  refs.clearFilterStatusesButton.addEventListener("click", () => setFilterStatuses());
+  refs.filterStatus.addEventListener("keydown", (event) => {
+    if (event.key !== "Escape" || !refs.filterStatus.open) return;
+    event.preventDefault();
+    refs.filterStatus.open = false;
+    refs.filterStatusSummaryValue.closest("summary").focus();
+  });
+  document.addEventListener("pointerdown", (event) => {
+    if (!refs.filterStatus.contains(event.target)) refs.filterStatus.open = false;
+  });
   refs.clearFiltersButton.addEventListener("click", clearFilters);
   document.querySelectorAll("[data-home-status]").forEach((button) => {
     button.addEventListener("click", () => applyHomeStatusFilter(button.dataset.homeStatus));
@@ -3489,6 +3548,11 @@ function resetAuthenticatedView() {
   refs.currentUserName.textContent = "";
   refs.currentUserRole.textContent = "";
   refs.currentUserAvatar.textContent = "";
+  delete refs.currentUserAvatar.dataset.avatarPath;
+  delete refs.currentUserAvatar.dataset.avatarUrl;
+  delete refs.currentUserAvatar.dataset.avatarHasImage;
+  delete refs.currentUserAvatar.dataset.fallbackInitials;
+  currentUserAvatarRefreshAttempts.clear();
   updateWorkspaceSummary();
   setNotificationsMenuOpen(false);
   updateNotificationsIndicator();
@@ -4552,7 +4616,11 @@ function shouldShowFailureHistory() {
 }
 
 function shouldUseWonItems() {
-  return Boolean(appState.currentBidId) && WON_ITEM_STATUSES.includes(refs.bidStatus.value);
+  return Boolean(appState.currentBidId) && canMarkWonItems(refs.bidStatus.value);
+}
+
+function canMarkWonItems(status) {
+  return WON_ITEM_STATUSES.includes(status);
 }
 
 function isCurrentBidReadOnly() {
@@ -4572,7 +4640,8 @@ function shouldCalculateWonItemsTotal(status) {
 }
 
 function applyHomeStatusFilter(status) {
-  refs.filterStatus.value = status || "Todos";
+  setFilterStatuses(status && status !== "Todos" ? [normalizeBidStatus(status)] : []);
+  refs.filterStatus.open = false;
   setPage("bids");
   renderBids();
 }
@@ -4653,12 +4722,14 @@ function renderBids() {
   renderHomeSummary();
   const searchFilter = refs.filterSearch.value;
   const dateFilter = refs.filterDate.value;
-  const statusFilter = refs.filterStatus.value;
+  const statusFilters = new Set(selectedFilterStatuses());
   const guaranteeDepositFilter = refs.filterGuaranteeDeposit.checked;
   const filteredRows = appState.bids.filter((bid) => {
     const matchesSearch = bidMatchesSearch(bid, searchFilter);
     const matchesDate = !dateFilter || toDateInputValue(bid.session_datetime) === dateFilter;
-    const matchesStatus = statusFilter === "Todos" || bid.status === statusFilter;
+    const matchesStatus = statusFilters.size === 0
+      || statusFilters.size === STATUS_OPTIONS.length
+      || statusFilters.has(bid.status);
     const matchesGuaranteeDeposit = !guaranteeDepositFilter || bid.has_guarantee_deposit;
     return matchesSearch && matchesDate && matchesStatus && matchesGuaranteeDeposit;
   });
@@ -4729,7 +4800,8 @@ function renderBids() {
 function clearFilters() {
   refs.filterSearch.value = "";
   refs.filterDate.value = "";
-  refs.filterStatus.value = "Todos";
+  setFilterStatuses();
+  refs.filterStatus.open = false;
   refs.filterGuaranteeDeposit.checked = false;
   renderBids();
 }
@@ -4887,18 +4959,20 @@ function renderHomeSummary() {
       if (bid.status === "Aguard. Disputa") acc.readyToDispute += 1;
       if (bid.status === "Descartada") acc.discarded += 1;
       if (bid.status === "Aprovada") acc.approved += 1;
+      if (bid.status === "Em Fornecimento") acc.supplying += 1;
       if (bid.status === "Faturado") acc.billed += 1;
       if (bid.status === "Desclassificado") acc.disqualified += 1;
       if (bid.status === "Disputada") acc.disputed += 1;
       return acc;
     },
-    { total: 0, registration: 0, readyToDispute: 0, discarded: 0, approved: 0, billed: 0, disqualified: 0, disputed: 0 }
+    { total: 0, registration: 0, readyToDispute: 0, discarded: 0, approved: 0, supplying: 0, billed: 0, disqualified: 0, disputed: 0 }
   );
   refs.homeTotalBids.textContent = String(counts.total);
   refs.homeRegistrationBids.textContent = String(counts.registration);
   refs.homeReadyToDisputeBids.textContent = String(counts.readyToDispute);
   refs.homeDiscardedBids.textContent = String(counts.discarded);
   refs.homeApprovedBids.textContent = String(counts.approved);
+  refs.homeSupplyingBids.textContent = String(counts.supplying);
   refs.homeBilledBids.textContent = String(counts.billed);
   refs.homeDisqualifiedBids.textContent = String(counts.disqualified);
   refs.homeDisputedBids.textContent = String(counts.disputed);
@@ -6406,13 +6480,10 @@ function renderQuotationItems() {
   refs.downloadQuotationItemsButton.disabled = !quotation;
   if (!quotation) {
     refs.quotationItemsTableBody.innerHTML = "";
-    refs.quotationGrandTotal.textContent = `Total: ${money(0)}`;
     return;
   }
   const items = currentQuotationItems();
-  const grandTotal = items.reduce((sum, item) => roundMoney(sum + Number(item.total || 0)), 0);
   refs.quotationItemsStatus.textContent = `${items.length} ${items.length === 1 ? "item cadastrado" : "itens cadastrados"}`;
-  refs.quotationGrandTotal.textContent = `Total: ${money(grandTotal)}`;
   if (!items.length) {
     refs.quotationItemsTableBody.innerHTML = `<tr><td colspan="${showWonItems ? 11 : 10}"><div class="empty-state compact-empty">Nenhum item cadastrado neste orçamento.</div></td></tr>`;
     return;
@@ -6814,7 +6885,7 @@ function renderUsers() {
         : user.access_revoked_at ? "revoked" : "active";
       return `
         <tr>
-          <td><div class="user-identity"><span class="user-avatar" aria-hidden="true">${user.avatar_signed_url ? `<img src="${escapeHtml(user.avatar_signed_url)}" alt="" width="48" height="48" loading="lazy" decoding="async" />` : escapeHtml(initials)}</span><span><strong>${escapeHtml(displayName)}</strong><small>${escapeHtml(role === USER_ROLES.ADMIN ? "Conta principal" : role)}</small></span></div></td>
+          <td><div class="user-identity"><span class="user-avatar" aria-hidden="true" data-fallback-initials="${escapeHtml(initials)}">${user.avatar_signed_url ? `<img src="${escapeHtml(user.avatar_signed_url)}" alt="" width="48" height="48" loading="lazy" decoding="async" />` : escapeHtml(initials)}</span><span><strong>${escapeHtml(displayName)}</strong><small>${escapeHtml(role === USER_ROLES.ADMIN ? "Conta principal" : role)}</small></span></div></td>
           <td>${escapeHtml(user.email || "")}</td>
           <td><span class="user-role-pill ${role === USER_ROLES.ADMIN ? "admin" : "analyst"}"><span aria-hidden="true">${role === USER_ROLES.ADMIN ? "♢" : "♙"}</span> ${escapeHtml(role)}</span><small class="user-access-status ${accessStatusClass}" title="${escapeHtml(accessDetails)}">${escapeHtml(accessStatus)}</small></td>
           <td>${assignedBids}</td>
@@ -6823,6 +6894,13 @@ function renderUsers() {
       `;
     })
     .join("");
+  refs.usersTableBody.querySelectorAll(".user-avatar img").forEach((image) => {
+    image.addEventListener("error", () => {
+      const avatar = image.closest(".user-avatar");
+      if (!avatar || !image.isConnected) return;
+      avatar.textContent = avatar.dataset.fallbackInitials || "";
+    });
+  });
 }
 
 function invitationStatusLabel(status) {
@@ -6930,10 +7008,65 @@ function updateCurrentUserProfile() {
   const name = user ? userDisplayName(user) : appState.currentUserName || appState.currentUserEmail || "Usuário";
   appState.currentUserName = name;
   refs.currentUserName.textContent = name;
-  refs.currentUserAvatar.innerHTML = user?.avatar_signed_url
-    ? `<img src="${escapeHtml(user.avatar_signed_url)}" alt="" width="38" height="38" decoding="async" />`
-    : escapeHtml(userInitials(name));
+  const avatar = refs.currentUserAvatar;
+  const avatarPath = user?.avatar_path || "";
+  const avatarPathChanged = avatar.dataset.avatarPath !== avatarPath;
+  const signedAvatarAvailable = Boolean(avatarPath && user?.avatar_signed_url);
+  const initials = userInitials(name);
+
+  if (avatarPathChanged || (signedAvatarAvailable && avatar.dataset.avatarHasImage !== "true" && avatar.dataset.avatarUrl !== user.avatar_signed_url)) {
+    avatar.dataset.avatarPath = avatarPath;
+    avatar.dataset.avatarHasImage = String(signedAvatarAvailable);
+    if (signedAvatarAvailable) {
+      const signedAvatarUrl = user.avatar_signed_url;
+      avatar.dataset.avatarUrl = signedAvatarUrl;
+      avatar.innerHTML = `<img src="${escapeHtml(signedAvatarUrl)}" alt="" width="38" height="38" decoding="async" />`;
+      delete avatar.dataset.fallbackInitials;
+      const image = avatar.querySelector("img");
+      if (image) {
+        image.addEventListener("load", () => {
+          if (avatar.dataset.avatarPath !== avatarPath || avatar.dataset.avatarUrl !== signedAvatarUrl) return;
+          currentUserAvatarRefreshAttempts.delete(`${user.auth_user_id}:${avatarPath}`);
+        }, { once: true });
+        image.addEventListener("error", () => {
+          if (avatar.dataset.avatarPath !== avatarPath || avatar.dataset.avatarUrl !== signedAvatarUrl) return;
+          avatar.dataset.avatarHasImage = "false";
+          avatar.textContent = initials;
+          avatar.dataset.fallbackInitials = initials;
+          void refreshCurrentUserAvatarUrl(user, avatarPath, signedAvatarUrl);
+        }, { once: true });
+      }
+    } else {
+      avatar.dataset.avatarUrl = "";
+      avatar.textContent = initials;
+      avatar.dataset.fallbackInitials = initials;
+    }
+  } else if (!avatarPath && avatar.dataset.fallbackInitials !== initials) {
+    avatar.textContent = initials;
+    avatar.dataset.fallbackInitials = initials;
+  }
   setProfileMenuOpen(!refs.profileDropdown.classList.contains("hidden"));
+}
+
+async function refreshCurrentUserAvatarUrl(user, avatarPath, failedUrl) {
+  if (!(store instanceof SupabaseStore) || !avatarPath) return;
+  const userId = user?.auth_user_id || "";
+  const attemptKey = `${userId}:${avatarPath}`;
+  if (currentUserAvatarRefreshAttempts.has(attemptKey)) return;
+  currentUserAvatarRefreshAttempts.add(attemptKey);
+
+  try {
+    const [refreshedUser] = await store.addSignedAvatarUrls([user], { refreshPaths: [avatarPath] });
+    const refreshedUrl = refreshedUser?.avatar_signed_url;
+    if (!refreshedUrl || refreshedUrl === failedUrl) return;
+    const userIndex = appState.users.findIndex((profile) => profile.auth_user_id === userId);
+    if (userIndex < 0 || appState.users[userIndex].avatar_path !== avatarPath) return;
+    appState.users[userIndex] = { ...appState.users[userIndex], avatar_signed_url: refreshedUrl };
+    updateCurrentUserProfile();
+    if (appState.activePage === "users") renderUsers();
+  } catch {
+    console.warn("Não foi possível renovar a foto de perfil.");
+  }
 }
 
 function userInitials(value) {
@@ -7051,12 +7184,13 @@ function calculateBidSummary(bidId) {
 
 function calculateLinkedQuotationProfit(bid) {
   if (!bid?.quotation_id) return null;
+  const onlyWonItems = canMarkWonItems(bid.status);
   return appState.quotationItems
     .filter((item) => Number(item.quotation_id) === Number(bid.quotation_id))
-    .reduce(
-      (total, item) => roundMoney(total + calculateItemProfit(item.final_bid, item.supplier_cost, item.quantity)),
-      0
-    );
+    .reduce((total, item) => {
+      if (onlyWonItems && !Boolean(Number(bidItemForQuotationItem(item, bid.id)?.is_won))) return total;
+      return roundMoney(total + calculateItemProfit(item.final_bid, item.supplier_cost, item.quantity));
+    }, 0);
 }
 
 function roundDecimal(value, fractionDigits) {

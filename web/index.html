@@ -267,6 +267,7 @@
                 <button class="home-status-card info" type="button" data-home-status="Aguard. Disputa"><span>Aguard. Disputa</span><strong id="homeReadyToDisputeBids">0</strong><small>Orçamento e edital concluídos</small></button>
                 <button class="home-status-card discarded" type="button" data-home-status="Descartada"><span>Descartadas</span><strong id="homeDiscardedBids">0</strong><small>Nenhum item ganho</small></button>
                 <button class="home-status-card success" type="button" data-home-status="Aprovada"><span>Aprovadas</span><strong id="homeApprovedBids">0</strong><small>Aguardando nota de empenho</small></button>
+                <button class="home-status-card info" type="button" data-home-status="Em Fornecimento"><span>Em Fornecimento</span><strong id="homeSupplyingBids">0</strong><small>Fornecimento de produtos em andamento</small></button>
                 <button class="home-status-card billed" type="button" data-home-status="Faturado"><span>Faturadas</span><strong id="homeBilledBids">0</strong><small>Processo concluído</small></button>
                 <button class="home-status-card info" type="button" data-home-status="Disputada"><span>Disputadas</span><strong id="homeDisputedBids">0</strong><small>Aguardando formalização</small></button>
                 <button class="home-status-card danger" type="button" data-home-status="Desclassificado"><span>Desclassificadas</span><strong id="homeDisqualifiedBids">0</strong><small>Plano de ação</small></button>
@@ -300,7 +301,23 @@
               <form id="filterForm" class="section-band filter-form">
                 <label>Pesquisa dinâmica<input id="filterSearch" type="search" placeholder="Órgão, modalidade, edital ou prazo de entrega..." /></label>
                 <label>Data da sessão<input id="filterDate" type="date" /></label>
-                <label>Status<select id="filterStatus"></select></label>
+                <div class="filter-status-picker">
+                  <span class="filter-status-field-label" id="filterStatusLabel">Status</span>
+                  <details id="filterStatus" class="filter-status-dropdown">
+                    <summary id="filterStatusSummary" aria-labelledby="filterStatusLabel filterStatusSummaryValue" aria-controls="filterStatusMenu">
+                      <span id="filterStatusSummaryValue" aria-live="polite" aria-atomic="true">Todos</span>
+                    </summary>
+                    <div id="filterStatusMenu" class="filter-status-menu">
+                      <div class="filter-status-actions">
+                        <button id="selectAllFilterStatusesButton" type="button">Marcar todos</button>
+                        <button id="clearFilterStatusesButton" type="button">Desmarcar todos</button>
+                      </div>
+                      <fieldset id="filterStatusOptions" class="filter-status-options">
+                        <legend class="sr-only">Filtrar por status</legend>
+                      </fieldset>
+                    </div>
+                  </details>
+                </div>
                 <label class="checkbox-field filter-checkbox-field">
                   <input id="filterGuaranteeDeposit" type="checkbox" />
                   <span>Possui depósito de garantia?<small>Mostrar somente licitações confirmadas.</small></span>
@@ -836,7 +853,6 @@
           <div class="quotation-items-toolbar">
             <div class="quotation-items-summary">
               <span id="quotationItemsStatus">Salve o orçamento para cadastrar itens</span>
-              <span id="quotationGrandTotal" class="quotation-grand-total">Total: R$ 0,00</span>
             </div>
             <div class="quotation-items-actions">
               <button id="downloadQuotationItemsButton" class="quiet-action download-items-button" type="button">

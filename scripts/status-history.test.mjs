@@ -21,6 +21,14 @@ test("status faturado exige aprovação anterior e só reabre para aprovada", ()
   assert.throws(() => context.validate("Faturado", "Disputada", "Reabrir"), /Não é permitido/);
 });
 
+test("Em Fornecimento fica entre Aprovada e Faturado", () => {
+  assert.match(source, /"Aprovada",\s*"Em Fornecimento",\s*"Faturado"/);
+  assert.doesNotThrow(() => context.validate("Aprovada", "Em Fornecimento", "Início do fornecimento"));
+  assert.doesNotThrow(() => context.validate("Em Fornecimento", "Faturado", "Nota fiscal emitida"));
+  assert.doesNotThrow(() => context.validate("Em Fornecimento", "Aprovada", "Correção operacional"));
+  assert.throws(() => context.validate("Em Analise", "Em Fornecimento", "Atalho"), /Não é permitido/);
+});
+
 test("toda transição de status exige motivo", () => {
   assert.throws(() => context.validate("Em Analise", "Disputada", "  "), /Informe o motivo/);
   assert.doesNotThrow(() => context.validate("Em Analise", "Disputada", "Sessão concluída"));

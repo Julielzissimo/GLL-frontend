@@ -190,7 +190,7 @@ function client(db = backend(), auth = { session: { user } }, config = {}) {
     if (!elements.has(id)) {
       const classes = new Set();
       elements.set(id, {
-        id, value: "", textContent: "", classList: {
+        id, value: "", textContent: "", dataset: {}, classList: {
           add: (...values) => values.forEach((v) => classes.add(v)),
           remove: (...values) => values.forEach((v) => classes.delete(v)),
           contains: (v) => classes.has(v),
