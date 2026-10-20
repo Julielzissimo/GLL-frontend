@@ -47,6 +47,58 @@
         <p id="loginError" class="form-error" role="status" aria-live="polite"></p>
         <button class="primary-action full-action" type="submit">Entrar</button>
         <p id="loginHint" class="login-hint hidden">Modo local: demo@gll.local / gll-demo-local</p>
+        <button id="showOrganizationSignupButton" class="quiet-action full-action" type="button">Criar conta</button>
+      </form>
+    </main>
+
+    <main id="organizationSignupView" class="login-view hidden">
+      <section class="login-brand" aria-label="Criação de conta no GLL">
+        <span class="brand-mark">GLL</span>
+        <h1>Comece a usar o GLL</h1>
+        <p>Crie sua conta e organize o acesso da sua empresa.</p>
+      </section>
+      <form id="organizationSignupForm" class="login-panel login-form" novalidate>
+        <span class="eyebrow">NOVA CONTA</span>
+        <h2>Criar conta</h2>
+        <p>Sua empresa será cadastrada e esta conta receberá o perfil Administrador.</p>
+        <label for="organizationSignupName">Nome da organização
+          <input id="organizationSignupName" name="organizationName" type="text" maxlength="160" autocomplete="organization" required />
+        </label>
+        <label for="organizationSignupCnpj">CNPJ
+          <input id="organizationSignupCnpj" name="cnpj" type="text" maxlength="18" inputmode="text" autocapitalize="characters" spellcheck="false" autocomplete="off" placeholder="00.000.000/0000-00" required />
+        </label>
+        <label for="organizationSignupFullName">Nome completo
+          <input id="organizationSignupFullName" name="fullName" type="text" maxlength="160" autocomplete="name" required />
+        </label>
+        <label for="organizationSignupDisplayName">Nome de exibição
+          <input id="organizationSignupDisplayName" name="displayName" type="text" maxlength="100" autocomplete="nickname" required />
+        </label>
+        <label for="organizationSignupEmail">E-mail
+          <input id="organizationSignupEmail" name="email" type="email" maxlength="254" autocomplete="email" required />
+        </label>
+        <div class="password-field">
+          <label for="organizationSignupPassword">Senha</label>
+          <span class="password-input-wrap">
+            <input id="organizationSignupPassword" name="password" type="password" autocomplete="new-password" minlength="8" maxlength="72" required />
+            <button class="password-visibility-toggle" type="button" data-password-toggle="organizationSignupPassword" aria-controls="organizationSignupPassword" aria-label="Mostrar senha" aria-pressed="false">
+              <svg class="password-eye-icon password-eye-open" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M2 12s3.5-6.5 10-6.5S22 12 22 12s-3.5 6.5-10 6.5S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg>
+              <svg class="password-eye-icon password-eye-closed" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M2 12s3.5-6.5 10-6.5S22 12 22 12s-3.5 6.5-10 6.5S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/><path d="m4 4 16 16"/></svg>
+            </button>
+          </span>
+        </div>
+        <div class="password-field">
+          <label for="organizationSignupPasswordConfirm">Confirme a senha</label>
+          <span class="password-input-wrap">
+            <input id="organizationSignupPasswordConfirm" name="passwordConfirm" type="password" autocomplete="new-password" minlength="8" maxlength="72" required />
+            <button class="password-visibility-toggle" type="button" data-password-toggle="organizationSignupPasswordConfirm" aria-controls="organizationSignupPasswordConfirm" aria-label="Mostrar senha" aria-pressed="false">
+              <svg class="password-eye-icon password-eye-open" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M2 12s3.5-6.5 10-6.5S22 12 22 12s-3.5 6.5-10 6.5S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg>
+              <svg class="password-eye-icon password-eye-closed" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M2 12s3.5-6.5 10-6.5S22 12 22 12s-3.5-6.5-10-6.5S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/><path d="m4 4 16 16"/></svg>
+            </button>
+          </span>
+        </div>
+        <p id="organizationSignupError" class="form-error" role="alert" aria-live="assertive"></p>
+        <button id="organizationSignupSubmitButton" class="primary-action full-action" type="submit">Criar conta e organização</button>
+        <button id="cancelOrganizationSignupButton" class="quiet-action full-action" type="button">Voltar ao login</button>
       </form>
     </main>
 
@@ -1478,7 +1530,7 @@
             </div>
             <div class="form-grid company-data-organization-grid">
               <label>Razão social *<input id="companyLegalName" maxlength="240" autocomplete="organization" required /></label>
-              <label>CNPJ *<input id="companyCnpj" maxlength="18" inputmode="numeric" autocomplete="off" placeholder="00.000.000/0000-00" required /></label>
+              <label>CNPJ *<input id="companyCnpj" maxlength="18" inputmode="text" autocapitalize="characters" spellcheck="false" autocomplete="off" placeholder="00.000.000/0000-00" required /></label>
             </div>
           </section>
 

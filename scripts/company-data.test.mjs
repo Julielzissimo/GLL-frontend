@@ -19,13 +19,16 @@ const [html, app, feature, styles] = await Promise.all([
 
 test("documentos brasileiros são formatados sem perder os dígitos", () => {
   assert.equal(formatCnpj("11222333000181"), "11.222.333/0001-81");
+  assert.equal(formatCnpj("12.abc.345/01de35"), "12.ABC.345/01DE-35");
   assert.equal(formatCpf("52998224725"), "529.982.247-25");
   assert.equal(documentDigits("529.982.247-25"), "52998224725");
 });
 
-test("CNPJ e CPF exigem dígitos verificadores válidos", () => {
+test("CNPJ numérico e alfanumérico e CPF exigem dígitos verificadores válidos", () => {
   assert.equal(isValidCnpj("11.222.333/0001-81"), true);
   assert.equal(isValidCnpj("11.111.111/1111-11"), false);
+  assert.equal(isValidCnpj("12.ABC.345/01DE-35"), true);
+  assert.equal(isValidCnpj("12.ABC.345/01DE-36"), false);
   assert.equal(isValidCpf("529.982.247-25"), true);
   assert.equal(isValidCpf("111.111.111-11"), false);
 });
@@ -57,4 +60,12 @@ test("salvar a razão social atualiza a navbar e expõe o nome completo no toolt
   assert.match(app, /function truncateWorkspaceName\(\)[\s\S]*?const suffix = "\.\.\.";[\s\S]*?nameElement\.scrollWidth <= nameElement\.clientWidth/);
   assert.match(app, /new ResizeObserver\(truncateWorkspaceName\)/);
   assert.match(styles, /\.workspace-copy strong \{[\s\S]*?text-overflow: ellipsis;/);
+});
+
+test("login abre o cadastro de conta com nova organização e primeiro perfil", () => {
+  assert.match(html, /id="showOrganizationSignupButton"[^>]*>Criar conta</);
+  assert.match(html, /id="organizationSignupView"[\s\S]*?id="organizationSignupName"[\s\S]*?id="organizationSignupCnpj"[\s\S]*?id="organizationSignupEmail"[\s\S]*?id="organizationSignupPassword"[\s\S]*?Criar conta e organização/);
+  assert.match(app, /async createOrganizationAccount\([\s\S]*?client\.auth\.signUp\(/);
+  assert.match(app, /gll_signup:\s*\{[\s\S]*?organization_name:[\s\S]*?cnpj:[\s\S]*?full_name:[\s\S]*?display_name:/);
+  assert.match(app, /profile\.role !== USER_ROLES\.ADMIN/);
 });
