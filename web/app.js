@@ -32,6 +32,8 @@ const MONEY_FRACTION_DIGITS = 2;
 const QUANTITY_FRACTION_DIGITS = 4;
 const MARGIN_FRACTION_DIGITS = 4;
 const USER_ROLES = { ADMIN: "Administrador", ANALYST: "Analista" };
+const USER_INVITATION_RESEND_COOLDOWN_MS = 15_000;
+let userInvitationResendCooldownTimer = null;
 const DEFAULT_ADMIN = {
   email: "demo@gll.local",
   name: "Usuário local",
@@ -103,6 +105,7 @@ const appState = {
   activePage: "home",
   currentUserEmail: null,
   currentUserAuthId: null,
+  currentUserCreatedAt: null,
   currentUserRole: null,
   currentUserName: null,
   currentOrganizationId: null,
@@ -141,6 +144,7 @@ const appState = {
   quotations: [],
   quotationItems: [],
   users: [],
+  userInvitations: [],
   suppliers: [],
   supplierProducts: [],
   dismissedNotificationIds: [],
@@ -150,7 +154,25 @@ const $ = (id) => document.getElementById(id);
 
 const refs = {
   loginView: $("loginView"),
+  invitationAcceptView: $("invitationAcceptView"),
+  invitationAcceptError: $("invitationAcceptError"),
+  acceptInvitationButton: $("acceptInvitationButton"),
+  cancelInvitationButton: $("cancelInvitationButton"),
   passwordResetView: $("passwordResetView"),
+  firstAccessView: $("firstAccessView"),
+  firstAccessForm: $("firstAccessForm"),
+  firstAccessEmail: $("firstAccessEmail"),
+  firstAccessRole: $("firstAccessRole"),
+  firstAccessFields: $("firstAccessFields"),
+  firstAccessFullName: $("firstAccessFullName"),
+  firstAccessDisplayName: $("firstAccessDisplayName"),
+  firstAccessPassword: $("firstAccessPassword"),
+  firstAccessPasswordConfirm: $("firstAccessPasswordConfirm"),
+  firstAccessError: $("firstAccessError"),
+  firstAccessExpiredNotice: $("firstAccessExpiredNotice"),
+  firstAccessSubmitButton: $("firstAccessSubmitButton"),
+  firstAccessSignOutButton: $("firstAccessSignOutButton"),
+  firstAccessPhotoMount: $("firstAccessPhotoMount"),
   passwordResetForm: $("passwordResetForm"),
   passwordResetEmail: $("passwordResetEmail"),
   newPassword: $("newPassword"),
@@ -243,10 +265,10 @@ const refs = {
   userCreateFullName: $("userCreateFullName"),
   userCreateDisplayName: $("userCreateDisplayName"),
   userCreateEmail: $("userCreateEmail"),
-  userCreatePassword: $("userCreatePassword"),
-  userCreatePasswordConfirm: $("userCreatePasswordConfirm"),
   userCreateRole: $("userCreateRole"),
   userCreateError: $("userCreateError"),
+  userProfilePhotoMount: $("userProfilePhotoMount"),
+  profilePhotoEditor: $("profilePhotoEditor"),
   userProfilePhotoInput: $("userProfilePhotoInput"),
   chooseUserProfilePhotoButton: $("chooseUserProfilePhotoButton"),
   clearUserProfilePhotoButton: $("clearUserProfilePhotoButton"),
@@ -482,6 +504,8 @@ const refs = {
   userSearchInput: $("userSearchInput"),
   userRoleFilter: $("userRoleFilter"),
   usersTableBody: $("usersTableBody"),
+  userInvitationsPanel: $("userInvitationsPanel"),
+  userInvitationsTableBody: $("userInvitationsTableBody"),
   userAssignmentsModal: $("userAssignmentsModal"),
   userAssignmentsForm: $("userAssignmentsForm"),
   userAssignmentsTitle: $("userAssignmentsTitle"),
@@ -500,6 +524,8 @@ const userAvatarUrlCache = new Map();
 const currentUserAvatarRefreshAttempts = new Set();
 let userProfileReturnPage = "home";
 let userProfileReturnFocusTarget = null;
+let pendingSessionRestore = null;
+let pendingInvitationAcceptance = null;
 let profilePhotoState = {
   image: null,
   objectUrl: "",
@@ -1222,7 +1248,7 @@ class SupabaseStore {
       return { email: data.user.email, mustChangePassword: true };
     }
     const profile = await this.getUser(data.user.email);
-    if (profile) return profile;
+    if (profile) return { ...profile, authUserCreatedAt: data.user.created_at };
     await client.auth.signOut();
     return null;
   }
@@ -1458,15 +1484,45 @@ class SupabaseStore {
     await insertSupabaseRows(client, "failure_history", failures);
   }
 
-  async saveUser(userData) {
+  async sendUserInvitation({ email, role }) {
     const client = await this.open();
-    await invokeSupabaseFunction(client, "create-user", {
-      email: normalizeEmail(userData.email),
-      fullName: userData.fullName?.trim(),
-      displayName: userData.displayName?.trim(),
-      temporaryPassword: userData.temporaryPassword,
-      role: userData.role || USER_ROLES.ANALYST,
+    return invokeSupabaseFunction(client, "user-invitations", {
+      action: "send",
+      email: normalizeEmail(email),
+      role,
     });
+  }
+
+  async getUserInvitations() {
+    const client = await this.open();
+    const data = await invokeSupabaseFunction(client, "user-invitations", { action: "list" });
+    return Array.isArray(data?.invitations) ? data.invitations : [];
+  }
+
+  async resendUserInvitation(invitationId) {
+    const client = await this.open();
+    return invokeSupabaseFunction(client, "user-invitations", { action: "resend", invitationId });
+  }
+
+  async revokeUserInvitation(invitationId) {
+    const client = await this.open();
+    return invokeSupabaseFunction(client, "user-invitations", { action: "revoke", invitationId });
+  }
+
+  async getFirstAccessStatus() {
+    const client = await this.open();
+    return invokeSupabaseFunction(client, "complete-first-access", { action: "status" });
+  }
+
+  async completeFirstAccess({ fullName, displayName, password, avatarBlob }) {
+    const client = await this.open();
+    const body = new FormData();
+    body.set("action", "complete");
+    body.set("fullName", fullName);
+    body.set("displayName", displayName);
+    body.set("password", password);
+    if (avatarBlob) body.set("avatar", avatarBlob, "profile.webp");
+    return invokeSupabaseFunction(client, "complete-first-access", body);
   }
 
   async setUserAccess({ targetUserId, action, reason, temporaryPassword }) {
@@ -1901,6 +1957,7 @@ const organizationChat = (window.GLLOrganizationChat?.createOrganizationChat || 
   getOrganizationId: () => appState.currentOrganizationId,
   getOrganizationName: () => appState.currentOrganizationName,
   getUserId: () => appState.currentUserAuthId,
+  getUserCreatedAt: () => appState.currentUserCreatedAt,
 });
 const declarationsFeature = createDeclarationsFeature({
   getClient: () => (store.requiresAuthenticationBeforeData ? store.client : null),
@@ -2100,7 +2157,8 @@ async function main() {
       }
     });
     try {
-      await restoreSession();
+      const hasPendingInvitation = await consumeInvitationCallback();
+      if (!hasPendingInvitation) await restoreSession();
     } catch (error) {
       setLoginMessage("Não foi possível recuperar sua sessão. Verifique a conexão e tente novamente.");
     }
@@ -2108,6 +2166,89 @@ async function main() {
   if (!store.requiresAuthenticationBeforeData) {
     const seedData = await loadSeedData();
     await store.seedIfEmpty(seedData);
+  }
+}
+
+async function consumeInvitationCallback() {
+  const hash = window.location.hash.replace(/^#/, "");
+  if (!hash) return false;
+  const params = new URLSearchParams(hash);
+  if (params.get("type") !== "invite") return false;
+
+  const tokenHash = params.get("gll_invite") || "";
+  const accessToken = params.get("access_token") || "";
+  const refreshToken = params.get("refresh_token") || "";
+  window.history.replaceState({}, document.title, `${window.location.pathname}${window.location.search}`);
+  pendingInvitationAcceptance = tokenHash
+    ? { kind: "token_hash", tokenHash }
+    : accessToken && refreshToken
+      ? { kind: "session", accessToken, refreshToken }
+      : null;
+  showInvitationAcceptView(pendingInvitationAcceptance
+    ? ""
+    : "Este link está incompleto ou expirou. Solicite um novo convite ao administrador.");
+  return true;
+}
+
+function showInvitationAcceptView(message = "") {
+  refs.loginView.classList.add("hidden");
+  refs.passwordResetView.classList.add("hidden");
+  refs.firstAccessView.classList.add("hidden");
+  refs.appView.classList.add("hidden");
+  refs.invitationAcceptView.classList.remove("hidden");
+  refs.invitationAcceptError.textContent = message;
+  refs.acceptInvitationButton.disabled = !pendingInvitationAcceptance;
+  refs.acceptInvitationButton.focus();
+}
+
+async function handleInvitationAcceptance(event) {
+  refs.invitationAcceptError.textContent = "";
+  if (!event?.isTrusted) {
+    refs.invitationAcceptError.textContent = "Clique em Confirmar convite e continuar para validar o link.";
+    return;
+  }
+  if (!(store instanceof SupabaseStore) || !pendingInvitationAcceptance) {
+    refs.invitationAcceptError.textContent = "Este link está incompleto ou expirou. Solicite um novo convite ao administrador.";
+    refs.acceptInvitationButton.disabled = true;
+    return;
+  }
+
+  let error = null;
+  if (pendingInvitationAcceptance.kind === "token_hash") {
+    ({ error } = await store.client.auth.verifyOtp({
+      token_hash: pendingInvitationAcceptance.tokenHash,
+      type: "invite",
+    }));
+  } else {
+    ({ error } = await store.client.auth.setSession({
+      access_token: pendingInvitationAcceptance.accessToken,
+      refresh_token: pendingInvitationAcceptance.refreshToken,
+    }));
+  }
+  if (error) {
+    refs.invitationAcceptError.textContent = "Este convite expirou ou já foi usado. Solicite um novo convite ao administrador.";
+    return;
+  }
+
+  pendingInvitationAcceptance = null;
+  refs.invitationAcceptView.classList.add("hidden");
+  await restoreSession();
+  if (refs.firstAccessView.classList.contains("hidden") && !appState.authenticated) {
+    refs.invitationAcceptError.textContent = "Não foi possível confirmar os dados deste convite. Contate o administrador.";
+    refs.invitationAcceptView.classList.remove("hidden");
+  }
+}
+
+async function handleCancelInvitationAcceptance() {
+  pendingInvitationAcceptance = null;
+  refs.invitationAcceptView.classList.add("hidden");
+  resetAuthenticatedView();
+  if (store instanceof SupabaseStore) {
+    try {
+      await restoreSession();
+    } catch {
+      setLoginMessage("Não foi possível recuperar sua sessão. Verifique a conexão e tente novamente.");
+    }
   }
 }
 
@@ -2266,8 +2407,12 @@ function bindEvents() {
   bindAutoGrowTextareas(refs.supplierProductForm);
   document.getElementById("blockingLoadingModal").addEventListener("cancel", (event) => event.preventDefault());
   refs.loginForm.addEventListener("submit", withBlockingLoading(handleLogin, "Entrando no sistema…"));
+  refs.acceptInvitationButton.addEventListener("click", withBlockingLoading(handleInvitationAcceptance, "Validando convite…"));
+  refs.cancelInvitationButton.addEventListener("click", handleCancelInvitationAcceptance);
   refs.passwordResetForm.addEventListener("submit", withBlockingLoading(handlePasswordReset, "Atualizando sua senha…"));
   refs.passwordResetSignOutButton.addEventListener("click", logout);
+  refs.firstAccessForm.addEventListener("submit", withBlockingLoading(handleFirstAccessCompletion, "Configurando seu acesso…"));
+  refs.firstAccessSignOutButton.addEventListener("click", logout);
   refs.userCreateOpenButton.addEventListener("click", openUserCreatePage);
   refs.profileMenuButton.addEventListener("click", () => setProfileMenuOpen(refs.profileDropdown.classList.contains("hidden")));
   refs.profileMenuContainer.addEventListener("keydown", handleProfileMenuKeydown);
@@ -2284,6 +2429,12 @@ function bindEvents() {
   refs.backFromUserProfileButton.addEventListener("click", closeUserProfilePage);
   refs.cancelUserCreateButton.addEventListener("click", closeUserProfilePage);
   refs.userCreateForm.addEventListener("submit", withBlockingLoading(handleUserCreate, "Salvando perfil…"));
+  refs.firstAccessFullName.addEventListener("input", updateProfilePhotoFallback);
+  refs.firstAccessDisplayName.addEventListener("input", updateProfilePhotoFallback);
+  refs.firstAccessFullName.addEventListener("input", () => refs.firstAccessFullName.removeAttribute("aria-invalid"));
+  refs.firstAccessDisplayName.addEventListener("input", () => refs.firstAccessDisplayName.removeAttribute("aria-invalid"));
+  refs.firstAccessPassword.addEventListener("input", () => refs.firstAccessPassword.removeAttribute("aria-invalid"));
+  refs.firstAccessPasswordConfirm.addEventListener("input", () => refs.firstAccessPasswordConfirm.removeAttribute("aria-invalid"));
   refs.toggleOwnPasswordButton.addEventListener("click", () => setOwnPasswordEditorOpen(refs.ownPasswordForm.classList.contains("hidden")));
   refs.cancelOwnPasswordButton.addEventListener("click", () => {
     setOwnPasswordEditorOpen(false);
@@ -2327,6 +2478,7 @@ function bindEvents() {
   });
   refs.userAccessForm.addEventListener("submit", withBlockingLoading(handleUserAccessChange, "Atualizando acesso…"));
   refs.usersTableBody.addEventListener("click", handleUserManagementAction);
+  refs.userInvitationsTableBody.addEventListener("click", handleInvitationManagementAction);
   window.addEventListener("popstate", () => {
     if (appState.authenticated) applyNavigationRoute();
   });
@@ -2685,7 +2837,7 @@ function openUserCreatePage() {
   setUserFormMode("create");
   refs.userCreateError.textContent = "";
   setPage("userProfile");
-  refs.userCreateFullName.focus();
+  refs.userCreateEmail.focus();
 }
 
 function canEditUserProfile(user) {
@@ -2714,23 +2866,29 @@ function setUserFormMode(mode, user = null) {
   refs.userCreateForm.dataset.mode = editing ? "edit" : "create";
   refs.userCreateForm.dataset.targetAuthUserId = editing ? user.auth_user_id : "";
   refs.userProfilePage.classList.toggle("is-profile-edit", editing);
-  refs.userCreateEyebrow.textContent = editing ? "PERFIL DE USUÁRIO" : "CADASTRO DE USUÁRIO";
-  refs.userProfilePageTitle.textContent = editing ? "Editar perfil" : "Cadastrar novo usuário";
+  refs.userCreateEyebrow.textContent = editing ? "PERFIL DE USUÁRIO" : "CONVITE DE USUÁRIO";
+  refs.userProfilePageTitle.textContent = editing ? "Editar perfil" : "Convidar usuário";
   refs.userCreateDescription.textContent = editing
     ? "Atualize o nome e a foto usados nas páginas do GLL."
-    : "A pessoa deverá criar uma senha pessoal no primeiro acesso.";
-  refs.userCreateSubmitButton.textContent = editing ? "Salvar perfil" : "Cadastrar usuário";
+    : "A pessoa receberá um e-mail com um link para confirmar o endereço e configurar seus dados no primeiro acesso.";
+  refs.userCreateSubmitButton.textContent = editing ? "Salvar perfil" : "Enviar convite";
   refs.userCreateSubmitButton.disabled = false;
   refs.userCreateForm.querySelectorAll(".user-create-only").forEach((field) => field.classList.toggle("hidden", editing));
-  for (const field of [refs.userCreateEmail, refs.userCreatePassword, refs.userCreatePasswordConfirm, refs.userCreateRole]) {
-    field.disabled = editing;
-  }
+  refs.userCreateForm.querySelectorAll(".user-profile-edit-only").forEach((field) => field.classList.toggle("hidden", !editing));
+  refs.userCreateFullName.required = editing;
+  refs.userCreateDisplayName.required = editing;
+  refs.userCreateFullName.disabled = !editing;
+  refs.userCreateDisplayName.disabled = !editing;
+  refs.userCreateEmail.required = !editing;
+  refs.userCreateRole.required = !editing;
+  refs.userCreateEmail.disabled = editing;
+  refs.userCreateRole.disabled = editing;
   refs.userCreateFullName.value = editing ? user.full_name || user.name || "" : "";
   refs.userCreateDisplayName.value = editing ? userDisplayName(user) : "";
   refs.userCreateEmail.value = editing ? user.email || "" : "";
-  refs.userCreatePassword.value = "";
-  refs.userCreatePasswordConfirm.value = "";
   if (!editing) refs.userCreateRole.value = USER_ROLES.ANALYST;
+  moveProfilePhotoEditor("profile");
+  refs.profilePhotoEditor.classList.toggle("hidden", !editing);
   resetProfilePhotoEditor(editing ? user : null);
   const editingOwnProfile = editing && user.auth_user_id === appState.currentUserAuthId && store instanceof SupabaseStore;
   refs.ownPasswordSection.classList.toggle("hidden", !editingOwnProfile);
@@ -2784,6 +2942,8 @@ function closeUserProfilePage() {
   const returnPage = userProfileReturnPage;
   refs.userCreateForm.reset();
   refs.userCreateError.textContent = "";
+  moveProfilePhotoEditor("profile");
+  refs.profilePhotoEditor.classList.add("hidden");
   resetProfilePhotoEditor();
   setOwnPasswordEditorOpen(false);
   userProfileReturnFocusTarget = null;
@@ -2826,47 +2986,25 @@ async function handleUserCreate(event) {
     return;
   }
 
-  if (refs.userCreatePassword.value !== refs.userCreatePasswordConfirm.value) {
-    refs.userCreateError.textContent = "As senhas provisórias não coincidem.";
+  if (!isCurrentUserAdmin()) {
+    refs.userCreateError.textContent = "Você não tem permissão para enviar convites.";
     return;
   }
-  if (!isCurrentUserAdmin()) {
-    refs.userCreateError.textContent = "Você não tem permissão para cadastrar usuários.";
+  if (!(store instanceof SupabaseStore)) {
+    refs.userCreateError.textContent = "O envio de convites está disponível somente no ambiente autenticado.";
     return;
   }
   try {
-    const avatarBlob = await prepareProfilePhotoBlob();
-    await store.saveUser({
+    const result = await store.sendUserInvitation({
       email: refs.userCreateEmail.value,
-      fullName: refs.userCreateFullName.value,
-      displayName: refs.userCreateDisplayName.value,
-      temporaryPassword: refs.userCreatePassword.value,
       role: refs.userCreateRole.value,
     });
-    let avatarSaveError = "";
-    if (avatarBlob && store instanceof SupabaseStore) {
-      try {
-        const createdUser = await store.getUser(refs.userCreateEmail.value);
-        if (!createdUser?.auth_user_id) throw new Error("O usuário foi criado, mas o perfil ainda não está disponível.");
-        await store.updateUserProfile({
-          targetAuthUserId: createdUser.auth_user_id,
-          fullName: refs.userCreateFullName.value,
-          displayName: refs.userCreateDisplayName.value,
-          avatarBlob,
-        });
-      } catch (error) {
-        avatarSaveError = ` O usuário foi cadastrado, mas a foto não pôde ser salva: ${error.message}`;
-      }
-    }
-    try {
-      await reloadData();
-    } catch (error) {
-      closeUserProfilePage();
-      showToast(`Usuário cadastrado, mas não foi possível atualizar a lista: ${error.message}`, "error");
-      return;
-    }
+    if (result?.acceptedByProvider !== true) throw new Error("O provedor não confirmou a aceitação do convite.");
+    try { await reloadData(); } catch { /* O envio aceito continua válido; a lista será atualizada na próxima consulta. */ }
     closeUserProfilePage();
-    showToast(`Usuário cadastrado. A troca de senha será obrigatória no primeiro acesso.${avatarSaveError}`);
+    showToast(result.resent
+      ? "Convite reenviado. O usuário receberá um novo e-mail para configurar seu acesso."
+      : "Convite enviado. O usuário receberá um e-mail com as instruções para configurar seu acesso.");
   } catch (error) {
     refs.userCreateError.textContent = error.message;
   }
@@ -2947,7 +3085,10 @@ function updateProfilePhotoEditor() {
 }
 
 function updateProfilePhotoFallback() {
-  const name = refs.userCreateDisplayName.value.trim() || refs.userCreateFullName.value.trim() || "Usuário";
+  const firstAccessActive = !refs.firstAccessView.classList.contains("hidden");
+  const name = firstAccessActive
+    ? refs.firstAccessDisplayName.value.trim() || refs.firstAccessFullName.value.trim() || "Usuário"
+    : refs.userCreateDisplayName.value.trim() || refs.userCreateFullName.value.trim() || "Usuário";
   refs.userProfilePhotoFallback.textContent = userInitials(name);
 }
 
@@ -2976,11 +3117,12 @@ function resetProfilePhotoEditor(user = null) {
 }
 
 function handleProfilePhotoSelection() {
-  refs.userCreateError.textContent = "";
+  const errorTarget = refs.firstAccessView.classList.contains("hidden") ? refs.userCreateError : refs.firstAccessError;
+  errorTarget.textContent = "";
   const file = refs.userProfilePhotoInput.files?.[0];
   if (!file) return;
   if (!(["image/jpeg", "image/png", "image/webp"].includes(file.type)) || file.size > 10 * 1024 * 1024) {
-    refs.userCreateError.textContent = "Escolha uma foto JPG, PNG ou WebP de até 10 MB.";
+    errorTarget.textContent = "Escolha uma foto JPG, PNG ou WebP de até 10 MB.";
     refs.userProfilePhotoInput.value = "";
     return;
   }
@@ -3000,7 +3142,7 @@ function handleProfilePhotoSelection() {
   };
   image.onerror = () => {
     URL.revokeObjectURL(objectUrl);
-    refs.userCreateError.textContent = "Não foi possível abrir essa imagem. Escolha outro arquivo JPG, PNG ou WebP.";
+    errorTarget.textContent = "Não foi possível abrir essa imagem. Escolha outro arquivo JPG, PNG ou WebP.";
   };
   image.src = objectUrl;
 }
@@ -3164,7 +3306,9 @@ async function handleUserAccessChange(event) {
 
 function showPasswordResetView(email) {
   resetAuthenticatedView();
+  refs.invitationAcceptView.classList.add("hidden");
   refs.loginView.classList.add("hidden");
+  refs.firstAccessView.classList.add("hidden");
   refs.passwordResetView.classList.remove("hidden");
   refs.passwordResetEmail.value = email || "";
   refs.passwordResetError.textContent = "";
@@ -3173,11 +3317,112 @@ function showPasswordResetView(email) {
   refs.newPassword.focus();
 }
 
-async function restoreSession() {
+function moveProfilePhotoEditor(target) {
+  const mount = target === "first-access" ? refs.firstAccessPhotoMount : refs.userProfilePhotoMount;
+  if (mount && refs.profilePhotoEditor.parentElement !== mount) mount.append(refs.profilePhotoEditor);
+}
+
+function showFirstAccessView(status) {
+  refs.loginView.classList.add("hidden");
+  refs.invitationAcceptView.classList.add("hidden");
+  refs.passwordResetView.classList.add("hidden");
+  refs.appView.classList.add("hidden");
+  refs.firstAccessView.classList.remove("hidden");
+  refs.firstAccessForm.reset();
+  refs.firstAccessEmail.value = status.email || "";
+  refs.firstAccessRole.value = status.role || "";
+  refs.firstAccessError.textContent = "";
+  const expired = status.expired === true;
+  refs.firstAccessFields.classList.toggle("hidden", expired);
+  refs.firstAccessExpiredNotice.classList.toggle("hidden", !expired);
+  refs.firstAccessSubmitButton.classList.toggle("hidden", expired);
+  refs.firstAccessSubmitButton.disabled = expired;
+  moveProfilePhotoEditor("first-access");
+  refs.profilePhotoEditor.classList.toggle("hidden", expired);
+  resetProfilePhotoEditor();
+  if (!expired) refs.firstAccessFullName.focus();
+}
+
+async function handleFirstAccessCompletion(event) {
+  event.preventDefault();
+  refs.firstAccessError.textContent = "";
+  if (!(store instanceof SupabaseStore)) {
+    refs.firstAccessError.textContent = "Não foi possível validar a sessão do convite.";
+    return;
+  }
+  const fullName = refs.firstAccessFullName.value.trim().replace(/\s+/gu, " ");
+  const displayName = refs.firstAccessDisplayName.value.trim().replace(/\s+/gu, " ");
+  const password = refs.firstAccessPassword.value;
+  const fullNamePattern = /^[\p{L}\p{M}][\p{L}\p{M} .’'-]*[\p{L}\p{M}.]$/u;
+  const failField = (field, message) => {
+    refs.firstAccessError.textContent = message;
+    field.setAttribute("aria-invalid", "true");
+    field.focus();
+  };
+
+  if (fullName.length < 2 || fullName.length > 160 || !fullNamePattern.test(fullName)) {
+    failField(refs.firstAccessFullName, "Informe seu nome completo usando letras, espaços, hífen, apóstrofo ou ponto.");
+    return;
+  }
+  if (displayName.length < 2 || displayName.length > 100 || /\p{Cc}/u.test(displayName)) {
+    failField(refs.firstAccessDisplayName, "Informe um nome de exibição entre 2 e 100 caracteres.");
+    return;
+  }
+  if (new TextEncoder().encode(password).length < 8 || new TextEncoder().encode(password).length > 72) {
+    failField(refs.firstAccessPassword, "A senha deve ter entre 8 e 72 bytes.");
+    return;
+  }
+  if (password !== refs.firstAccessPasswordConfirm.value) {
+    failField(refs.firstAccessPasswordConfirm, "As senhas não coincidem.");
+    return;
+  }
+
+  let avatarBlob = null;
+  try {
+    avatarBlob = await prepareProfilePhotoBlob();
+    await store.completeFirstAccess({
+      fullName,
+      displayName,
+      password,
+      avatarBlob,
+    });
+  } catch (error) {
+    refs.firstAccessError.textContent = error.message;
+    return;
+  }
+
+  refs.firstAccessForm.reset();
+  moveProfilePhotoEditor("profile");
+  refs.profilePhotoEditor.classList.add("hidden");
+  try {
+    await restoreSession();
+  } catch {
+    // A configuração foi salva; se a sessão não retomar, o usuário pode entrar com a nova senha.
+  }
+  if (appState.authenticated) {
+    showToast("Seu acesso foi configurado com sucesso. Bem-vindo ao GLL!");
+  } else {
+    await returnToLoginAfterPasswordReset();
+  }
+}
+
+async function restoreSessionInternal() {
   const epoch = sessionEpoch;
   const { data, error } = await store.client.auth.getSession();
   assertSupabase(error);
   if (!data.session) return;
+  if (store instanceof SupabaseStore) {
+    try {
+      const invitationStatus = await store.getFirstAccessStatus();
+      if (epoch !== sessionEpoch) return;
+      if (invitationStatus?.firstAccessRequired) {
+        showFirstAccessView(invitationStatus);
+        return;
+      }
+    } catch {
+      // Perfis legados continuam usando a recuperação de senha já existente.
+    }
+  }
   const mustChangePassword = await store.isPasswordResetRequired();
   if (epoch !== sessionEpoch) return;
   if (mustChangePassword) {
@@ -3196,14 +3441,23 @@ async function restoreSession() {
     await logout();
     return;
   }
-  await enterAuthenticatedView(user);
+  await enterAuthenticatedView(user, data.session.user.created_at);
 }
 
-async function enterAuthenticatedView(user) {
+function restoreSession() {
+  if (pendingSessionRestore) return pendingSessionRestore;
+  pendingSessionRestore = restoreSessionInternal().finally(() => {
+    pendingSessionRestore = null;
+  });
+  return pendingSessionRestore;
+}
+
+async function enterAuthenticatedView(user, authUserCreatedAt = user.authUserCreatedAt) {
   const epoch = ++sessionEpoch;
   appState.authenticated = true;
   appState.currentUserEmail = user.email;
   appState.currentUserAuthId = user.auth_user_id || user.email;
+  appState.currentUserCreatedAt = authUserCreatedAt || null;
   appState.dismissedNotificationIds = [];
   appState.currentUserRole = normalizeUserRole(user.role);
   appState.currentUserName = userDisplayName(user);
@@ -3217,7 +3471,9 @@ async function enterAuthenticatedView(user) {
     updateCurrentUserProfile();
     refs.currentUserRole.textContent = appState.currentUserRole;
     refs.loginView.classList.add("hidden");
+    refs.invitationAcceptView.classList.add("hidden");
     refs.passwordResetView.classList.add("hidden");
+    refs.firstAccessView.classList.add("hidden");
     refs.appView.classList.remove("hidden");
     truncateWorkspaceName();
     refs.loginPassword.value = "";
@@ -3245,6 +3501,7 @@ async function logout() {
 }
 
 function resetAuthenticatedView() {
+  pendingInvitationAcceptance = null;
   organizationChat.close();
   sessionEpoch += 1;
   stopSessionPolicyMonitoring();
@@ -3253,6 +3510,7 @@ function resetAuthenticatedView() {
   appState.authenticated = false;
   appState.currentUserEmail = null;
   appState.currentUserAuthId = null;
+  appState.currentUserCreatedAt = null;
   appState.dismissedNotificationIds = [];
   appState.currentUserRole = null;
   appState.currentUserName = null;
@@ -3260,11 +3518,18 @@ function resetAuthenticatedView() {
   appState.currentOrganizationName = null;
   appState.currentOrganizationCnpj = null;
   refs.appView.classList.add("hidden");
+  refs.invitationAcceptView.classList.add("hidden");
   refs.passwordResetView.classList.add("hidden");
+  refs.firstAccessView.classList.add("hidden");
   refs.loginView.classList.remove("hidden");
   refs.loginPassword.value = "";
   refs.passwordResetForm.reset();
   refs.passwordResetError.textContent = "";
+  refs.firstAccessForm.reset();
+  refs.firstAccessError.textContent = "";
+  refs.firstAccessExpiredNotice.classList.add("hidden");
+  refs.firstAccessSubmitButton.classList.remove("hidden");
+  refs.firstAccessSubmitButton.disabled = false;
   declarationsFeature.reset();
   commercialProposalsFeature.reset();
   companyDataFeature.reset();
@@ -3516,7 +3781,7 @@ function breadcrumbItems(page) {
       : [home, { label: "Licitações", page: "bids" }, { label: "Nova licitação" }];
   }
   if (page === "userProfile") {
-    const label = refs.userCreateForm.dataset.mode === "create" ? "Cadastrar usuário" : "Editar perfil";
+    const label = refs.userCreateForm.dataset.mode === "create" ? "Convidar usuário" : "Editar perfil";
     if (isCurrentUserAdmin()) return compact ? [{ label: "Usuários", page: "users" }, { label }] : [home, { label: "Usuários", page: "users" }, { label }];
     return compact ? [{ label }] : [home, { label }];
   }
@@ -3666,7 +3931,7 @@ if (typeof ResizeObserver === "function") {
   workspaceNameResizeObserver.observe(refs.workspaceName);
 }
 
-const DATA_KEYS = ["bids", "items", "documents", "failureHistory", "statusHistory", "bidActivity", "quotations", "quotationItems", "users", "suppliers", "supplierProducts"];
+const DATA_KEYS = ["bids", "items", "documents", "failureHistory", "statusHistory", "bidActivity", "quotations", "quotationItems", "users", "userInvitations", "suppliers", "supplierProducts"];
 const LIVE_RESOURCE_TABLES = new Set([
   "bids", "items", "documents", "failure_history", "bid_status_history", "bid_activity",
   "quotations", "quotation_items", "app_users", "app_user_invitations", "suppliers",
@@ -4073,6 +4338,7 @@ async function reloadData({ background = false } = {}) {
     store.getAll("failure_history"), store.getAll("quotations"), store.getAll("quotation_items"),
     store.getUsers(), store.getAll("suppliers"), store.getAll("supplier_products"), store.getAll("bid_status_history"), store.getBidActivity(),
     store.getDismissedNotificationIds(appState.currentUserAuthId),
+    store instanceof SupabaseStore && isCurrentUserAdmin() ? store.getUserInvitations() : Promise.resolve([]),
   ]);
   // Discard stale responses after logout, another login, or a newer refresh.
   if (epoch !== sessionEpoch || request !== dataRequest || !appState.authenticated) return;
@@ -4108,7 +4374,13 @@ async function reloadData({ background = false } = {}) {
     .sort((a, b) => Number(a.item_number || 0) - Number(b.item_number || 0));
   next.suppliers = rows[7].map(normalizeSupplierRecord).sort((a, b) => a.name.localeCompare(b.name, "pt-BR"));
   next.supplierProducts = (rows[8] || []).map(normalizeSupplierProductRecord).sort((a, b) => a.name.localeCompare(b.name, "pt-BR"));
-  next.users = rows[6].sort((a, b) => userDisplayName(a).localeCompare(userDisplayName(b), "pt-BR"));
+  next.userInvitations = rows[12] || [];
+  const unfinishedInvitationEmails = new Set(next.userInvitations
+    .filter((invitation) => invitation.status !== "completed")
+    .map((invitation) => normalizeEmail(invitation.email)));
+  next.users = rows[6]
+    .filter((user) => !unfinishedInvitationEmails.has(normalizeEmail(user.email)))
+    .sort((a, b) => userDisplayName(a).localeCompare(userDisplayName(b), "pt-BR"));
   next.dismissedNotificationIds = normalizeNotificationDismissalIds(rows[11]);
   if (store.requiresAuthenticationBeforeData && !next.users.some((user) => normalizeEmail(user.email) === normalizeEmail(appState.currentUserEmail))) {
     resetAuthenticatedView();
@@ -6548,7 +6820,10 @@ function formatNumber(value) {
 }
 
 function renderUsers() {
-  if (!isCurrentUserAdmin()) return;
+  if (!isCurrentUserAdmin()) {
+    refs.userInvitationsPanel.classList.add("hidden");
+    return;
+  }
   const totalLabel = `${appState.users.length} ${appState.users.length === 1 ? "usuário" : "usuários"}`;
   const query = normalizeSearchText(refs.userSearchInput.value);
   const roleFilter = refs.userRoleFilter.value;
@@ -6562,6 +6837,7 @@ function renderUsers() {
   refs.userCountLabel.textContent = query || roleFilter !== "all"
     ? `${visibleUsers.length} de ${totalLabel}`
     : totalLabel;
+  renderUserInvitations();
   if (!visibleUsers.length) {
     const message = appState.users.length
       ? "Nenhum usuário corresponde à busca ou ao filtro selecionado."
@@ -6625,6 +6901,94 @@ function renderUsers() {
       avatar.textContent = avatar.dataset.fallbackInitials || "";
     });
   });
+}
+
+function invitationStatusLabel(status) {
+  return ({
+    pending: "Preparando",
+    sent: "Pendente",
+    accepted: "Aceito",
+    completed: "Concluído",
+    expired: "Expirado",
+    revoked: "Revogado",
+    failed: "Falha no envio",
+  })[status] || "Status indisponível";
+}
+
+function renderUserInvitations() {
+  if (userInvitationResendCooldownTimer) clearTimeout(userInvitationResendCooldownTimer);
+  userInvitationResendCooldownTimer = null;
+  const visible = store instanceof SupabaseStore && isCurrentUserAdmin();
+  refs.userInvitationsPanel.classList.toggle("hidden", !visible);
+  if (!visible) return;
+  if (!appState.userInvitations.length) {
+    refs.userInvitationsTableBody.innerHTML = '<tr><td colspan="6" class="users-empty-row">Nenhum convite enviado nesta organização.</td></tr>';
+    return;
+  }
+
+  const now = Date.now();
+  let nextCooldownMs = Infinity;
+  refs.userInvitationsTableBody.innerHTML = appState.userInvitations.map((invitation) => {
+    const adminName = invitation.responsibleAdmin?.name || invitation.responsibleAdmin?.email || "Administrador removido";
+    const adminEmail = invitation.responsibleAdmin?.email || "";
+    const lastSentAt = Date.parse(invitation.lastSentAt || "");
+    const resendCooldownMs = invitation.canResend && Number.isFinite(lastSentAt)
+      ? Math.max(0, lastSentAt + USER_INVITATION_RESEND_COOLDOWN_MS - now)
+      : 0;
+    if (resendCooldownMs > 0) nextCooldownMs = Math.min(nextCooldownMs, resendCooldownMs);
+    const resendAction = !invitation.canResend
+      ? ""
+      : resendCooldownMs > 0
+        ? `<button class="quiet-action compact-action" type="button" disabled title="Você poderá reenviar este convite em ${Math.ceil(resendCooldownMs / 1000)} segundos.">Reenviar (${Math.ceil(resendCooldownMs / 1000)}s)</button>`
+        : `<button class="quiet-action compact-action" type="button" data-invitation-action="resend" data-invitation-id="${escapeHtml(invitation.id)}">Reenviar</button>`;
+    const actionButtons = [
+      resendAction,
+      invitation.canRevoke
+        ? `<button class="danger-action compact-action" type="button" data-invitation-action="revoke" data-invitation-id="${escapeHtml(invitation.id)}">Revogar</button>`
+        : "",
+    ].filter(Boolean).join("");
+    const statusDetail = invitation.recoveryRequired
+      ? "A operação parou antes de registrar o envio. Você pode reenviar ou revogar com segurança."
+      : invitation.failureCode ? `Falha registrada: ${invitation.failureCode}` : "";
+    const statusLabel = invitation.recoveryRequired
+      ? "Preparação interrompida"
+      : invitationStatusLabel(invitation.status);
+    return `<tr>
+      <td>${escapeHtml(invitation.email || "")}</td>
+      <td>${escapeHtml(invitation.role || "")}</td>
+      <td><span class="user-access-status ${invitation.status === "completed" ? "active" : ["expired", "failed", "revoked"].includes(invitation.status) ? "revoked" : "pending"}" title="${escapeHtml(statusDetail)}">${escapeHtml(statusLabel)}</span></td>
+      <td>${escapeHtml(invitation.createdAt ? formatDateTime(invitation.createdAt) : "—")}</td>
+      <td>${escapeHtml(adminName)}${adminEmail && adminEmail !== adminName ? `<small>${escapeHtml(adminEmail)}</small>` : ""}</td>
+      <td><div class="user-management-actions">${actionButtons || '<span class="muted-text">—</span>'}</div></td>
+    </tr>`;
+  }).join("");
+  if (Number.isFinite(nextCooldownMs)) {
+    userInvitationResendCooldownTimer = setTimeout(() => {
+      userInvitationResendCooldownTimer = null;
+      renderUserInvitations();
+    }, Math.min(1000, nextCooldownMs));
+  }
+}
+
+async function handleInvitationManagementAction(event) {
+  const button = event.target.closest("[data-invitation-action]");
+  if (!button || !isCurrentUserAdmin() || !(store instanceof SupabaseStore)) return;
+  const invitationId = button.dataset.invitationId;
+  const action = button.dataset.invitationAction;
+  if (action === "revoke" && !confirm("Revogar este convite pendente? O link deixará de dar acesso ao GLL.")) return;
+  await withBlockingLoading(async () => {
+    if (action === "resend") {
+      await store.resendUserInvitation(invitationId);
+      await reloadData();
+      showToast("O provedor aceitou o reenvio do convite.");
+      return;
+    }
+    if (action === "revoke") {
+      await store.revokeUserInvitation(invitationId);
+      await reloadData();
+      showToast("Convite revogado.");
+    }
+  }, action === "resend" ? "Reenviando convite…" : "Revogando convite…")();
 }
 
 function normalizeSearchText(value) {

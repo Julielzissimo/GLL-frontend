@@ -817,6 +817,136 @@
       ]
     },
     {
+      "id": "EMAIL-05",
+      "backend_commits": [
+        "691458d4b1cdb558767abc63771a9e7c2b94e1e2",
+        "4bfffec7536647ae3b857836fac6d690192b137d"
+      ],
+      "frontend_commits": [
+        "eb326bc1eeae484d35a3cb7a184088045a8356d7"
+      ],
+      "migrations": []
+    },
+    {
+      "id": "EMAIL-02",
+      "backend_commits": [
+        "b33c899eded3aa9e7d6f912219c5e159c0f387ed",
+        "79ffdc580dd870cb747dacea7c9d89c7961f346d"
+      ],
+      "frontend_commits": [
+        "7778e0106aaadf405d78fd79abfef7d290fa7bae"
+      ],
+      "migrations": [
+        "supabase/migrations/20261011180704_user_invitation_operations.sql"
+      ]
+    },
+    {
+      "id": "EMAIL-03",
+      "backend_commits": [
+        "fa27407361e280df2067d9bb5398b4c738301023",
+        "a86e6c14796fb19d4f50909ccefa8e8ed7334ea4",
+        "90c70bd75593897f032904262f8999a94b2394ca",
+        "52810c3dde8df390775a94164d79117a3d95d57f"
+      ],
+      "frontend_commits": [
+        "8cd1835f334abc40e6d8838dcce9c4953d48fc12"
+      ],
+      "migrations": [
+        "supabase/migrations/20261011184318_first_access_username_avatar.sql"
+      ]
+    },
+    {
+      "id": "EMAIL-06",
+      "backend_commits": [
+        "aaf25e539b07d162ca757f2f4a2832785dbb61d2",
+        "a1091790fc8ddb17fd7ece4665fe88d65991d28d",
+        "d4171281a9ac5a31298cbbeb66e2f9eb48ee868c",
+        "d78f6e19e783a37dbce307eb7c915af5959277cd",
+        "c6b5e20c420766588ee190f53bee9533b3a599f3",
+        "2072d3359481984a990a273f52bc9cf9f892012d",
+        "536ea9c1fc36cdaabf30b3b5805dd0de8fd09054"
+      ],
+      "frontend_commits": [],
+      "migrations": [
+        "supabase/migrations/20261011201757_record_user_invitation_acceptance.sql",
+        "supabase/migrations/20261011235419_prepare_app_user_invitation_security_definer.sql"
+      ]
+    },
+    {
+      "id": "EMAIL-08",
+      "backend_commits": [
+        "8b30b1b0e715e03d37f2b24020140cca1ea8fc5b"
+      ],
+      "frontend_commits": [],
+      "migrations": []
+    },
+    {
+      "id": "EMAIL-09",
+      "backend_commits": [
+        "9e2465c44a7180eb3f3eaf38b34051a0dbcce763"
+      ],
+      "frontend_commits": [],
+      "migrations": []
+    },
+    {
+      "id": "EMAIL-10",
+      "backend_commits": [
+        "2eb64035ef8b084bde37ec34d5e9dbd1416d066d",
+        "15271424c0532f33cf81ef42f1af5fad149b030e"
+      ],
+      "frontend_commits": [
+        "241e53d58b35937516d01f3b8e8552518ef63255"
+      ],
+      "migrations": [
+        "supabase/migrations/20261012012343_email_invitation_resend_cooldown_15_seconds.sql",
+        "supabase/migrations/20261012014150_email_invitation_resend_security_definer_fix.sql"
+      ]
+    },
+    {
+      "id": "EMAIL-11",
+      "backend_commits": [
+        "bdba9f48a68d7b01c1e86d0daf6804c365626b0b",
+        "9f5d33d29f8bda768ac1592310e968e14fe9e1c7",
+        "63168d4b3f7911641283feb541df4cff88bb1e9a"
+      ],
+      "frontend_commits": [],
+      "migrations": []
+    },
+    {
+      "id": "EMAIL-12",
+      "backend_commits": [
+        "e915de06d98410a6603b06ed0767a4258486f9a2"
+      ],
+      "frontend_commits": [
+        "839731ac46230fddce7cd948208f120601d9a369"
+      ],
+      "migrations": [
+        "supabase/migrations/20261012031234_remove_username_from_first_access.sql"
+      ]
+    },
+    {
+      "id": "EMAIL-01",
+      "backend_commits": [
+        "1cb54ae195ad3e172097306337096e371ff4537a"
+      ],
+      "frontend_commits": [],
+      "migrations": [
+        "supabase/migrations/20261011164028_email_invitation_access.sql"
+      ]
+    },
+    {
+      "id": "ISSUE-93",
+      "backend_commits": [
+        "1d2cfd61f652f8303ed440727656e21eac9cd6ed"
+      ],
+      "frontend_commits": [
+        "a25b5a870d7995fc0db41bf7a19bc6d25db2a417"
+      ],
+      "migrations": [
+        "supabase/migrations/20261019195431_email_chat_history_rls_privacy.sql"
+      ]
+    },
+    {
       "id": "ISSUE-102",
       "backend_commits": [
         "9f1cf80b3be7601eecdefabdb514cde05765c3b5"
