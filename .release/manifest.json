@@ -1455,11 +1455,24 @@
       "migrations": []
     },
     {
+      "id": "HOTFIX-LOGIN-EDGE-001",
+      "backend_commits": [
+        "d911085e72ce7ef7204fe597885293ccd86381de",
+        "d3ec54cbd4732d19606a0d0d91a32ab4f482aa6e"
+      ],
+      "frontend_commits": [
+        "6f8b474d07d164da2f295de561d3f1164f1f3a7e",
+        "502a5c0038929a17608bee53ed8b055779e1567f"
+      ],
+      "migrations": []
+    },
+    {
       "id": "ISSUE-141",
       "backend_commits": [
         "a3de68fa3670d69df9b17eaa199b0edf9d51ad70",
         "c14063dd391113819b7c9d6db12da9c899d51c37",
-        "4df2703e96e71724e3d4de981bc01da2f0964e6e"
+        "4df2703e96e71724e3d4de981bc01da2f0964e6e",
+        "54ac5ac00b5920e9d22283e4d6649097a25a703c"
       ],
       "frontend_commits": [
         "7d04c6f633fae9e5e4f20ea24c2cde95a1a0b062",
