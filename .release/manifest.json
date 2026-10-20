@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "release_id": "2026-10-20-cadastro-de-nova-organizacao",
+  "release_id": "2026-10-20-hotfix-organization-signup-authflow",
   "environment": "production",
   "target_branch": "main",
   "items": [
@@ -1017,6 +1017,16 @@
       "migrations": [
         "supabase/migrations/20261020092810_organization_self_registration.sql"
       ]
+    },
+    {
+      "id": "HOTFIX-ORG-SIGNUP-AUTH-001",
+      "backend_commits": [
+        "bee3ced6a58d483f294f4c2156dfa84289343a36"
+      ],
+      "frontend_commits": [
+        "0117466f7d8df292a228f77afe8dc0d60784779e"
+      ],
+      "migrations": []
     }
   ]
 }
