@@ -298,14 +298,14 @@ test("sets the Realtime JWT before subscribing to the private organization chann
   assert.equal(calls[0], "set-auth");
   const privateChannel = calls.find((call) => typeof call === "object" && call.topic === "organization:org-1");
   assert.deepEqual(JSON.parse(JSON.stringify(privateChannel.options)), { config: { private: true, broadcast: { self: false } } });
-  assert.deepEqual(app.intervalDelays, []);
+  assert.deepEqual(app.intervalDelays, [5 * 60 * 1000]);
   app.stopLiveUpdates();
 });
 
-test("removes the 15-second full-data polling interval", async () => {
+test("refreshes document alerts every five minutes without restoring full-data polling", async () => {
   const app = client();
   await app.restoreSession();
-  assert.deepEqual(app.intervalDelays, [60_000]);
+  assert.deepEqual(app.intervalDelays, [60_000, 5 * 60 * 1000]);
   await app.logout();
 });
 
@@ -324,6 +324,34 @@ test("limpar notificações persiste os avisos dispensados somente para o perfil
   assert.equal(app.navigationNotifications().length, 1);
   assert.match(source, /data-clear-notifications[\s\S]*Limpar notificações/);
 });
+
+test("notificações do Kit informam urgência, prazo e versão atual do documento", () => {
+  const app = client();
+  app.appState.organizationDocumentNotifications = [
+    {
+      documentId: "document-near", notificationDate: "2026-10-20", documentVersion: 1,
+      expiresOn: "2026-10-30", updatedAt: "2026-10-20T12:00:00Z", title: "Certidão estadual", daysRemaining: 10,
+    },
+    {
+      documentId: "document-today", notificationDate: "2026-10-20", documentVersion: 1,
+      expiresOn: "2026-10-20", updatedAt: "2026-10-20T12:00:00Z", title: "Certificado FGTS", daysRemaining: 0,
+    },
+    {
+      documentId: "document-expired", notificationDate: "2026-10-20", documentVersion: 2,
+      expiresOn: "2026-10-18", updatedAt: "2026-10-20T12:00:00Z", title: "Certidão municipal", daysRemaining: -2,
+    },
+  ];
+
+  const notifications = app.navigationNotifications();
+  assert.deepEqual(JSON.parse(JSON.stringify(notifications.map(({ title, description }) => [title, description]))), [
+    ["Certidão estadual", "Vence em 10 dias."],
+    ["Certificado FGTS", "Vence hoje."],
+    ["Certidão municipal", "Está vencida há 2 dias."],
+  ]);
+  assert.equal(notifications.every((notification) => notification.page === "organizationDocuments"), true);
+  assert.match(notifications[0].id, /document-near:2026-10-20:1:2026-10-30:2026-10-20T12:00:00Z/);
+});
+
 test("navigation writes readable URLs without discarding unrelated parameters", () => {
   const app = client();
   app.appState.authenticated = true;

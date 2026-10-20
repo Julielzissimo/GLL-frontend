@@ -19,6 +19,7 @@ const TARGETS = {
     suppliersEnabled: true,
     commercialProposalsEnabled: true,
     designSystemEnabled: true,
+    organizationDocumentsEnabled: true,
   },
   production: {
     outputDir: "prod",
@@ -35,6 +36,7 @@ const TARGETS = {
     suppliersEnabled: false,
     commercialProposalsEnabled: false,
     designSystemEnabled: false,
+    organizationDocumentsEnabled: true,
   },
   prod: null,
 };
@@ -89,6 +91,7 @@ const runtimeConfig = {
   suppliersEnabled: target.suppliersEnabled,
   commercialProposalsEnabled: target.commercialProposalsEnabled,
   designSystemEnabled: target.designSystemEnabled,
+  organizationDocumentsEnabled: target.organizationDocumentsEnabled,
 };
 
 await writeFile(
@@ -103,6 +106,7 @@ const assetVersion = createHash("sha256")
   .update(await readFile(resolve(sourceDir, "organization-chat.js")))
   .update(await readFile(resolve(sourceDir, "declarations.js")))
   .update(await readFile(resolve(sourceDir, "company-data.js")))
+  .update(await readFile(resolve(sourceDir, "organization-documents.js")))
   .update(await readFile(resolve(sourceDir, "commercial-proposals.js")))
   .update(await readFile(resolve(sourceDir, "styles.css")))
   .update(await readFile(resolve(sourceDir, "design-system", "tokens.css")))
@@ -123,6 +127,7 @@ await writeFile(
     .replace('./design-system/components.js', `./design-system/components.js?v=${assetVersion}`)
     .replace('./declarations.js', `./declarations.js?v=${assetVersion}`)
     .replace('./company-data.js', `./company-data.js?v=${assetVersion}`)
+    .replace('./organization-documents.js', `./organization-documents.js?v=${assetVersion}`)
     .replace('./commercial-proposals.js', `./commercial-proposals.js?v=${assetVersion}`)
     .replace('./organization-chat.js', `./organization-chat.js?v=${assetVersion}`)
     .replace('./app.js', `./app.js?v=${assetVersion}`)

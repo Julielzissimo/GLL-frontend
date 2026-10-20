@@ -243,6 +243,7 @@
             <span class="nav-section-label">DOCUMENTOS</span>
             <button id="navCommercialProposalsButton" class="nav-link" type="button" title="Propostas comerciais" data-navigation-page="commercialProposals"><span class="nav-icon" aria-hidden="true" data-gll-icon="fileText"></span><span class="nav-link-label">Propostas comerciais</span></button>
             <button id="navDeclarationsButton" class="nav-link" type="button" title="Declarações" data-navigation-page="declarations"><span class="nav-icon" aria-hidden="true" data-gll-icon="fileCheck2"></span><span class="nav-link-label">Declarações</span></button>
+            <button id="navOrganizationDocumentsButton" class="nav-link" type="button" title="Kit de Documentos" data-navigation-page="organizationDocuments"><span class="nav-icon" aria-hidden="true" data-gll-icon="fileCheck2"></span><span class="nav-link-label">Kit de Documentos</span></button>
           </div>
           <div class="nav-section">
             <span class="nav-section-label">ADMINISTRAÇÃO</span>
@@ -349,7 +350,7 @@
                   <div id="upcomingBidsList" class="timeline-list"></div>
                 </section>
                 <section class="section-band pending-panel">
-                  <div class="panel-heading"><div><h2>Pendências documentais</h2><p>Documentos ainda não disponíveis.</p></div></div>
+                  <div class="panel-heading"><div><h2>Pendências documentais</h2><p>Documentos de editais pendentes e documentos da organização próximos do vencimento.</p></div></div>
                   <div id="pendingDocumentsList" class="pending-list"></div>
                 </section>
               </div>
@@ -1593,6 +1594,11 @@
         <div id="designSystemCatalog"></div>
       </section>
 
+      <section id="organizationDocumentsPage" class="users-page organization-documents-page hidden" aria-labelledby="organizationDocumentsTitle">
+        <div id="organizationDocumentsRoot"></div>
+      </section>
+
+
       <section id="commercialProposalsPage" class="users-page commercial-proposals-page hidden" aria-labelledby="commercialProposalsTitle">
         <div id="commercialProposalsRoot"></div>
       </section>
@@ -1668,6 +1674,8 @@
     <script src="./file-storage.js"></script>
     <script src="./design-system/components.js"></script>
     <script type="module" src="./declarations.js"></script>
+    <script type="module" src="./organization-documents-api.js"></script>
+    <script type="module" src="./organization-documents.js"></script>
     <script type="module" src="./company-data.js"></script>
     <script type="module" src="./commercial-proposals.js"></script>
     <script src="./organization-chat.js"></script>
