@@ -46,9 +46,27 @@
         </div>
         <p id="loginError" class="form-error" role="status" aria-live="polite"></p>
         <button class="primary-action full-action" type="submit">Entrar</button>
+        <button id="resendSignupFromLoginButton" class="quiet-action full-action hidden" type="button">Reenviar confirmação de e-mail</button>
         <p id="loginHint" class="login-hint hidden">Modo local: demo@gll.local / gll-demo-local</p>
         <button id="showOrganizationSignupButton" class="quiet-action full-action" type="button">Criar conta</button>
       </form>
+    </main>
+
+    <main id="signupConfirmationView" class="login-view hidden">
+      <section class="login-brand" aria-label="Confirmação de e-mail da LiciGestão">
+        <span class="brand-mark">GLL</span>
+        <h1>Confirme seu e-mail</h1>
+        <p>Confirme o endereço para liberar o acesso à sua organização.</p>
+      </section>
+      <section class="login-panel login-form invitation-accept-panel" aria-labelledby="signupConfirmationTitle">
+        <span class="eyebrow">CADASTRO DE ORGANIZAÇÃO</span>
+        <h2 id="signupConfirmationTitle">Verifique sua caixa de entrada</h2>
+        <p>Se o cadastro ainda precisar de confirmação, enviaremos uma mensagem para <strong id="signupConfirmationEmail"></strong>. Abra o link recebido para ativar sua conta Administradora.</p>
+        <p id="signupConfirmationMessage" class="form-error" role="status" aria-live="polite"></p>
+        <button id="confirmSignupEmailButton" class="primary-action full-action" type="button">Confirmar e-mail</button>
+        <button id="resendSignupConfirmationButton" class="quiet-action full-action" type="button">Reenviar e-mail</button>
+        <button id="cancelSignupConfirmationButton" class="quiet-action full-action" type="button">Voltar ao login</button>
+      </section>
     </main>
 
     <main id="organizationSignupView" class="login-view hidden">

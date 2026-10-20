@@ -54,6 +54,7 @@ const DEFAULT_GLL_CONFIG = {
   appName: "GLL Web",
   supabaseUrl: "",
   supabaseAnonKey: "",
+  authRedirectUrl: "",
   sessionIdleTimeoutMinutes: 30,
   sessionMaxLifetimeHours: 8,
   suppliersEnabled: true,
@@ -156,6 +157,13 @@ const $ = (id) => document.getElementById(id);
 
 const refs = {
   loginView: $("loginView"),
+  signupConfirmationView: $("signupConfirmationView"),
+  signupConfirmationEmail: $("signupConfirmationEmail"),
+  signupConfirmationMessage: $("signupConfirmationMessage"),
+  confirmSignupEmailButton: $("confirmSignupEmailButton"),
+  resendSignupConfirmationButton: $("resendSignupConfirmationButton"),
+  cancelSignupConfirmationButton: $("cancelSignupConfirmationButton"),
+  resendSignupFromLoginButton: $("resendSignupFromLoginButton"),
   organizationSignupView: $("organizationSignupView"),
   showOrganizationSignupButton: $("showOrganizationSignupButton"),
   organizationSignupForm: $("organizationSignupForm"),
@@ -1257,6 +1265,9 @@ class SupabaseStore {
       email: normalizeEmail(email),
       password,
     });
+    if (error?.code === "email_not_confirmed") {
+      throw Object.assign(new Error("Confirme seu endereço de e-mail antes de entrar."), { code: "email_not_confirmed" });
+    }
     if (error || !data.user) return null;
     const profile = await this.getUser(data.user.email);
     if (profile) {
@@ -1366,6 +1377,7 @@ class SupabaseStore {
       email: normalizeEmail(email),
       password,
       options: {
+        emailRedirectTo: GLL_CONFIG.authRedirectUrl,
         data: {
           gll_signup: {
             version: "1",
@@ -1379,6 +1391,16 @@ class SupabaseStore {
     });
     assertSupabase(error);
     return data;
+  }
+
+  async resendSignupConfirmation(email) {
+    const client = await this.open();
+    const { error } = await client.auth.resend({
+      type: "signup",
+      email: normalizeEmail(email),
+      options: { emailRedirectTo: GLL_CONFIG.authRedirectUrl },
+    });
+    assertSupabase(error);
   }
 
   async addSignedAvatarUrls(users, { refreshPaths = [] } = {}) {
@@ -2178,7 +2200,38 @@ function setLoginMessage(message, tone = "error") {
   refs.loginError.classList.toggle("is-success", tone === "success");
 }
 
+let pendingSignupConfirmation = null;
+
+function showSignupConfirmationView(email, message = "") {
+  pendingSignupConfirmation = email ? { email: normalizeEmail(email) } : pendingSignupConfirmation;
+  refs.loginView.classList.add("hidden");
+  refs.organizationSignupView.classList.add("hidden");
+  refs.invitationAcceptView.classList.add("hidden");
+  refs.passwordResetView.classList.add("hidden");
+  refs.firstAccessView.classList.add("hidden");
+  refs.appView.classList.add("hidden");
+  refs.signupConfirmationView.classList.remove("hidden");
+  refs.signupConfirmationEmail.textContent = pendingSignupConfirmation?.email || "seu e-mail";
+  refs.signupConfirmationMessage.textContent = message;
+  refs.confirmSignupEmailButton.disabled = !pendingSignupConfirmation?.tokenHash;
+  refs.confirmSignupEmailButton.classList.toggle("hidden", !pendingSignupConfirmation?.tokenHash);
+  refs.signupConfirmationView.querySelector("h2").textContent = pendingSignupConfirmation?.tokenHash
+    ? "Confirme para ativar sua conta"
+    : "Verifique sua caixa de entrada";
+  (pendingSignupConfirmation?.tokenHash
+    ? refs.confirmSignupEmailButton
+    : refs.resendSignupConfirmationButton).focus();
+}
+
+function showSignupCheckEmail(email) {
+  pendingSignupConfirmation = { email: normalizeEmail(email) };
+  showSignupConfirmationView(email, "Confira também a pasta de spam ou lixo eletrônico.");
+}
+
 function showLoginView() {
+  refs.signupConfirmationView.classList.add("hidden");
+  pendingSignupConfirmation = null;
+  refs.resendSignupFromLoginButton.classList.add("hidden");
   refs.organizationSignupView.classList.add("hidden");
   refs.invitationAcceptView.classList.add("hidden");
   refs.passwordResetView.classList.add("hidden");
@@ -2256,8 +2309,7 @@ async function handleOrganizationSignupSubmit(event) {
 
     refs.organizationSignupForm.reset();
     refs.loginEmail.value = email;
-    showLoginView();
-    setLoginMessage("Conta criada. Sua organização foi cadastrada e esta conta é Administradora. Se a confirmação de e-mail estiver habilitada, confirme o endereço antes de entrar.", "success");
+    showSignupCheckEmail(email);
   } catch (error) {
     if (sessionStarted) {
       try {
@@ -2277,6 +2329,7 @@ async function handleOrganizationSignupSubmit(event) {
 
 function showOrganizationSignupView() {
   refs.loginView.classList.add("hidden");
+  refs.signupConfirmationView.classList.add("hidden");
   refs.invitationAcceptView.classList.add("hidden");
   refs.passwordResetView.classList.add("hidden");
   refs.firstAccessView.classList.add("hidden");
@@ -2311,8 +2364,9 @@ async function main() {
       }
     });
     try {
-      const hasPendingInvitation = await consumeInvitationCallback();
-      if (!hasPendingInvitation) await restoreSession();
+      const hasPendingSignupConfirmation = await consumeSignupConfirmationCallback();
+      const hasPendingInvitation = hasPendingSignupConfirmation ? false : await consumeInvitationCallback();
+      if (!hasPendingSignupConfirmation && !hasPendingInvitation) await restoreSession();
     } catch (error) {
       setLoginMessage("Não foi possível recuperar sua sessão. Verifique a conexão e tente novamente.");
     }
@@ -2346,6 +2400,7 @@ async function consumeInvitationCallback() {
 
 function showInvitationAcceptView(message = "") {
   refs.loginView.classList.add("hidden");
+  refs.signupConfirmationView.classList.add("hidden");
   refs.passwordResetView.classList.add("hidden");
   refs.firstAccessView.classList.add("hidden");
   refs.appView.classList.add("hidden");
@@ -2562,6 +2617,13 @@ function bindEvents() {
   bindAutoGrowTextareas(refs.supplierProductForm);
   document.getElementById("blockingLoadingModal").addEventListener("cancel", (event) => event.preventDefault());
   refs.loginForm.addEventListener("submit", withBlockingLoading(handleLogin, "Entrando no sistema…"));
+  refs.resendSignupFromLoginButton.addEventListener("click", withBlockingLoading(handleResendSignupFromLogin, "Enviando confirmação…"));
+  refs.confirmSignupEmailButton.addEventListener("click", withBlockingLoading(handleSignupConfirmation, "Confirmando e-mail…"));
+  refs.resendSignupConfirmationButton.addEventListener("click", withBlockingLoading(handleResendSignupConfirmation, "Enviando confirmação…"));
+  refs.cancelSignupConfirmationButton.addEventListener("click", () => {
+    pendingSignupConfirmation = null;
+    showLoginView();
+  });
   refs.showOrganizationSignupButton.addEventListener("click", showOrganizationSignupView);
   refs.cancelOrganizationSignupButton.addEventListener("click", returnToLoginFromOrganizationSignup);
   refs.organizationSignupForm.addEventListener("submit", withBlockingLoading(handleOrganizationSignupSubmit, "Criando sua conta…"));
@@ -2907,6 +2969,7 @@ function bindPasswordVisibility() {
 async function handleLogin(event) {
   event.preventDefault();
   setLoginMessage("");
+  refs.resendSignupFromLoginButton.classList.add("hidden");
   const email = refs.loginEmail.value.trim();
   const password = refs.loginPassword.value;
   try {
@@ -2924,6 +2987,93 @@ async function handleLogin(event) {
     showToast("Login realizado.");
   } catch (error) {
     setLoginMessage(error.message);
+    if (error?.code === "email_not_confirmed") refs.resendSignupFromLoginButton.classList.remove("hidden");
+  }
+}
+
+async function consumeSignupConfirmationCallback() {
+  const hash = window.location.hash.replace(/^#/, "");
+  if (!hash) return false;
+  const params = new URLSearchParams(hash);
+  if (params.get("type") !== "signup" || !params.has("gll_signup_confirm")) return false;
+
+  const tokenHash = params.get("gll_signup_confirm") || "";
+  window.history.replaceState({}, document.title, `${window.location.pathname}${window.location.search}`);
+  pendingSignupConfirmation = tokenHash ? { tokenHash } : null;
+  showSignupConfirmationView("", tokenHash
+    ? "Este link só será validado quando você confirmar abaixo."
+    : "Este link está incompleto ou expirou. Volte ao login para solicitar outra confirmação.");
+  return true;
+}
+
+async function handleSignupConfirmation(event) {
+  refs.signupConfirmationMessage.textContent = "";
+  if (!event?.isTrusted) {
+    refs.signupConfirmationMessage.textContent = "Clique em Confirmar e-mail para validar o link.";
+    return;
+  }
+  if (!(store instanceof SupabaseStore) || !pendingSignupConfirmation?.tokenHash) {
+    refs.signupConfirmationMessage.textContent = "Este link está incompleto ou expirou. Volte ao login e solicite outra confirmação.";
+    refs.confirmSignupEmailButton.disabled = true;
+    return;
+  }
+
+  try {
+    const { data, error } = await store.client.auth.verifyOtp({
+      token_hash: pendingSignupConfirmation.tokenHash,
+      type: "signup",
+    });
+    if (error) {
+      pendingSignupConfirmation = null;
+      refs.signupConfirmationMessage.textContent = "Este link expirou ou já foi usado. Volte ao login para solicitar outra confirmação.";
+      refs.confirmSignupEmailButton.classList.add("hidden");
+      return;
+    }
+
+    const email = normalizeEmail(data?.user?.email || "");
+    pendingSignupConfirmation = null;
+    refs.signupConfirmationView.classList.add("hidden");
+    if (email) refs.loginEmail.value = email;
+    await restoreSession();
+    if (!appState.authenticated) {
+      showLoginView();
+      setLoginMessage("E-mail confirmado. Entre com a senha criada no cadastro.", "success");
+    } else {
+      showToast("E-mail confirmado. Sua organização está pronta.");
+    }
+  } catch {
+    refs.signupConfirmationMessage.textContent = "Não foi possível confirmar o e-mail. Tente novamente.";
+  }
+}
+
+async function handleResendSignupFromLogin() {
+  const email = normalizeEmail(refs.loginEmail.value);
+  if (!email) {
+    setLoginMessage("Informe o e-mail cadastrado para reenviar a confirmação.");
+    refs.loginEmail.focus();
+    return;
+  }
+  try {
+    await store.resendSignupConfirmation(email);
+    showSignupCheckEmail(email);
+  } catch {
+    setLoginMessage("Não foi possível reenviar a confirmação. Aguarde um momento e tente novamente.");
+  }
+}
+
+async function handleResendSignupConfirmation() {
+  const email = pendingSignupConfirmation?.email || normalizeEmail(refs.loginEmail.value);
+  if (!email) {
+    refs.signupConfirmationMessage.textContent = "Volte ao login, informe o e-mail cadastrado e tente novamente.";
+    return;
+  }
+  try {
+    await store.resendSignupConfirmation(email);
+    pendingSignupConfirmation = { email };
+    refs.signupConfirmationEmail.textContent = email;
+    refs.signupConfirmationMessage.textContent = "Se o cadastro puder receber uma confirmação, enviaremos uma nova mensagem para este endereço.";
+  } catch {
+    refs.signupConfirmationMessage.textContent = "Não foi possível reenviar a confirmação. Aguarde um momento e tente novamente.";
   }
 }
 
@@ -3470,6 +3620,7 @@ async function handleUserAccessChange(event) {
 function showPasswordResetView(email) {
   resetAuthenticatedView();
   refs.invitationAcceptView.classList.add("hidden");
+  refs.signupConfirmationView.classList.add("hidden");
   refs.loginView.classList.add("hidden");
   refs.firstAccessView.classList.add("hidden");
   refs.passwordResetView.classList.remove("hidden");
@@ -3487,6 +3638,7 @@ function moveProfilePhotoEditor(target) {
 
 function showFirstAccessView(status) {
   refs.loginView.classList.add("hidden");
+  refs.signupConfirmationView.classList.add("hidden");
   refs.invitationAcceptView.classList.add("hidden");
   refs.passwordResetView.classList.add("hidden");
   refs.appView.classList.add("hidden");
@@ -3632,6 +3784,7 @@ async function enterAuthenticatedView(user, authUserCreatedAt = user.authUserCre
   appState.currentOrganizationId = user.organization_id || user.organization?.id || null;
   appState.currentOrganizationName = user.organization?.name || "LSMS Suprimentos";
   appState.currentOrganizationCnpj = user.organization?.cnpj || "";
+  refs.signupConfirmationView.classList.add("hidden");
   try {
     updateAccessInterface();
     await reloadData();
@@ -3670,6 +3823,7 @@ async function logout() {
 
 function resetAuthenticatedView() {
   pendingInvitationAcceptance = null;
+  pendingSignupConfirmation = null;
   organizationChat.close();
   sessionEpoch += 1;
   stopSessionPolicyMonitoring();
@@ -3687,6 +3841,7 @@ function resetAuthenticatedView() {
   appState.currentOrganizationCnpj = null;
   refs.appView.classList.add("hidden");
   refs.invitationAcceptView.classList.add("hidden");
+  refs.signupConfirmationView.classList.add("hidden");
   refs.passwordResetView.classList.add("hidden");
   refs.firstAccessView.classList.add("hidden");
   refs.loginView.classList.remove("hidden");
