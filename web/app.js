@@ -1462,16 +1462,24 @@ class SupabaseStore {
       throw Object.assign(new Error("Confirme seu endereço de e-mail antes de entrar."), { code: "email_not_confirmed" });
     }
     if (error || !data.user) return null;
-    if (await this.isPasswordResetRequired()) {
-      return { email: data.user.email, mustChangePassword: true };
-    }
     const profile = await this.getUser(data.user.email);
     if (
       profile?.auth_user_id === data.user.id
       && !profile.access_revoked_at
       && (!profile.auth_access_status || profile.auth_access_status === "active")
     ) {
+      if (profile.must_change_password) {
+        return {
+          ...profile,
+          mustChangePassword: true,
+          authUserCreatedAt: data.user.created_at,
+          verifiedAuthUserId: data.user.id,
+        };
+      }
       return { ...profile, authUserCreatedAt: data.user.created_at, verifiedAuthUserId: data.user.id };
+    }
+    if (await this.isPasswordResetRequired()) {
+      return { email: data.user.email, mustChangePassword: true };
     }
     await client.auth.signOut({ scope: "local" });
     return null;
@@ -4259,13 +4267,17 @@ async function restoreSessionInternal(attempt, sessionOverride = null) {
     const firstAccessPromise = store instanceof SupabaseStore
       ? store.getFirstAccessStatus().catch(() => null)
       : Promise.resolve(null);
-    const passwordResetPromise = store.isPasswordResetRequired();
     const currentProfilePromise = store.getUser(email);
-    [invitationStatus, mustChangePassword, user] = await Promise.all([
+    [invitationStatus, user] = await Promise.all([
       firstAccessPromise,
-      passwordResetPromise,
       currentProfilePromise,
     ]);
+    const profileIsActiveForSession = user?.auth_user_id === session.user.id
+      && !user.access_revoked_at
+      && (!user.auth_access_status || user.auth_access_status === "active");
+    mustChangePassword = profileIsActiveForSession
+      ? user.must_change_password === true
+      : await store.isPasswordResetRequired();
   } finally {
     recordAuthPerformance("access-validation", accessValidationStartedAt);
   }
@@ -5289,7 +5301,12 @@ async function reloadData({ background = false, initialAccessVerified = false } 
     store.getAll("failure_history"), store.getAll("quotations"), store.getAll("quotation_items"),
     store.getUsers(), store.getAll("suppliers"), store.getAll("supplier_products"), store.getAll("bid_status_history"), store.getBidActivity(),
     store.getDismissedNotificationIds(appState.currentUserAuthId),
-    store instanceof SupabaseStore && isCurrentUserAdmin() ? store.getUserInvitations() : Promise.resolve([]),
+    store instanceof SupabaseStore && isCurrentUserAdmin()
+      ? store.getUserInvitations().catch(() => {
+        console.warn("Não foi possível atualizar a lista de convites; a tentativa poderá ser repetida.");
+        return appState.userInvitations;
+      })
+      : Promise.resolve([]),
   ]);
   // Discard stale responses after logout, another login, or a newer refresh.
   if (epoch !== sessionEpoch || request !== dataRequest || !appState.authenticated) return;
