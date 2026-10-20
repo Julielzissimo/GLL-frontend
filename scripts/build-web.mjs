@@ -21,6 +21,7 @@ const TARGETS = {
     designSystemEnabled: true,
     radarEngineAdminEnabled: true,
     radarDetailsFallbackEnabled: false,
+    organizationDocumentsEnabled: true,
   },
   production: {
     outputDir: "prod",
@@ -39,6 +40,7 @@ const TARGETS = {
     designSystemEnabled: false,
     radarEngineAdminEnabled: false,
     radarDetailsFallbackEnabled: false,
+    organizationDocumentsEnabled: false,
   },
   prod: null,
 };
@@ -98,6 +100,7 @@ const runtimeConfig = {
   designSystemEnabled: target.designSystemEnabled,
   radarEngineAdminEnabled: target.radarEngineAdminEnabled,
   radarDetailsFallbackEnabled: fallbackSetting === "true",
+  organizationDocumentsEnabled: target.organizationDocumentsEnabled,
 };
 
 await writeFile(
@@ -112,6 +115,7 @@ const assetVersion = createHash("sha256")
   .update(await readFile(resolve(sourceDir, "organization-chat.js")))
   .update(await readFile(resolve(sourceDir, "declarations.js")))
   .update(await readFile(resolve(sourceDir, "company-data.js")))
+  .update(await readFile(resolve(sourceDir, "organization-documents.js")))
   .update(await readFile(resolve(sourceDir, "commercial-proposals.js")))
   .update(await readFile(resolve(sourceDir, "radar-details.js")))
   .update(await readFile(resolve(sourceDir, "radar-preprocessed.js")))
@@ -148,6 +152,7 @@ await writeFile(
     .replace('./design-system/components.js', `./design-system/components.js?v=${assetVersion}`)
     .replace('./declarations.js', `./declarations.js?v=${assetVersion}`)
     .replace('./company-data.js', `./company-data.js?v=${assetVersion}`)
+    .replace('./organization-documents.js', `./organization-documents.js?v=${assetVersion}`)
     .replace('./commercial-proposals.js', `./commercial-proposals.js?v=${assetVersion}`)
     .replace('./organization-chat.js', `./organization-chat.js?v=${assetVersion}`)
     .replace('./app.js', `./app.js?v=${assetVersion}`)
