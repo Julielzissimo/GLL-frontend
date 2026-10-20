@@ -532,12 +532,12 @@ test("login still checks password reset status when RLS hides the profile", asyn
   assert.equal(authenticatedUser.mustChangePassword, true);
 });
 
-test("restoring an active session does not depend on the password reset Edge Function", async () => {
+test("restoring an active session survives an unavailable invitation Edge Function", async () => {
   const app = client();
   const edgeCalls = [];
   app.store.client.functions.invoke = async (name) => {
     edgeCalls.push(name);
-    if (name === "password-reset-status") {
+    if (["password-reset-status", "user-invitations"].includes(name)) {
       throw new Error("Failed to send a request to the Edge Function");
     }
     return { data: { invitations: [] }, error: null };
@@ -548,6 +548,7 @@ test("restoring an active session does not depend on the password reset Edge Fun
 
   assert.equal(app.appState.authenticated, true);
   assert.equal(edgeCalls.includes("password-reset-status"), false);
+  assert.equal(edgeCalls.includes("user-invitations"), true);
 });
 
 test("empty remote database stays empty after authentication", async () => {
