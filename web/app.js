@@ -4348,7 +4348,12 @@ async function reloadData({ background = false } = {}) {
     store.getAll("failure_history"), store.getAll("quotations"), store.getAll("quotation_items"),
     store.getUsers(), store.getAll("suppliers"), store.getAll("supplier_products"), store.getAll("bid_status_history"), store.getBidActivity(),
     store.getDismissedNotificationIds(appState.currentUserAuthId),
-    store instanceof SupabaseStore && isCurrentUserAdmin() ? store.getUserInvitations() : Promise.resolve([]),
+    store instanceof SupabaseStore && isCurrentUserAdmin()
+      ? store.getUserInvitations().catch(() => {
+        console.warn("Não foi possível atualizar a lista de convites; a tentativa poderá ser repetida.");
+        return appState.userInvitations;
+      })
+      : Promise.resolve([]),
   ]);
   // Discard stale responses after logout, another login, or a newer refresh.
   if (epoch !== sessionEpoch || request !== dataRequest || !appState.authenticated) return;
