@@ -9180,6 +9180,11 @@ button.history-row:hover {
   min-width: 0;
   gap: var(--gll-space-6);
 }
+#organizationDocumentsRoot {
+  display: grid;
+  min-width: 0;
+  gap: var(--gll-space-6);
+}
 .organization-documents-heading {
   align-items: center;
   margin-bottom: 0;
@@ -9255,16 +9260,19 @@ button.history-row:hover {
   display: flex;
   min-width: 0;
   align-items: center;
-  gap: var(--gll-space-2);
+  flex-wrap: wrap;
+  gap: var(--gll-space-3);
 }
-.organization-documents-settings-prompt {
+.organization-documents-settings-days {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
   gap: var(--gll-space-2);
+  color: var(--gll-ink);
+  font-size: var(--gll-text-sm);
   line-height: var(--line-height-normal);
 }
-.organization-documents-settings-prompt input {
+.organization-documents-settings-days input {
   width: 6rem;
   min-height: var(--control-height-md);
 }
@@ -9289,7 +9297,7 @@ button.history-row:hover {
 }
 .organization-documents-filters input,
 .organization-documents-filters select,
-.organization-documents-settings-prompt input {
+.organization-documents-settings-days input {
   min-width: 0;
   border: var(--border-default);
   border-radius: var(--gll-radius-sm);
@@ -9380,7 +9388,12 @@ button.history-row:hover {
 }
 .organization-documents-table tbody th {
   width: 29%;
+  background: transparent;
+  color: var(--gll-ink);
+  font-size: var(--gll-text-sm);
   font-weight: 400;
+  letter-spacing: normal;
+  text-transform: none;
 }
 .organization-documents-table tbody th strong,
 .organization-documents-file-name {
@@ -9534,7 +9547,7 @@ button.history-row:hover {
 .organization-documents-dialog input:focus-visible,
 .organization-documents-filters input:focus-visible,
 .organization-documents-filters select:focus-visible,
-.organization-documents-settings-prompt input:focus-visible {
+.organization-documents-settings-days input:focus-visible {
   outline: 2px solid var(--gll-focus);
   outline-offset: 2px;
 }
