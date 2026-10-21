@@ -252,10 +252,12 @@ export function createOrganizationDocumentsFeature({
       + '<div><span class="eyebrow">PREFERÊNCIAS DA ORGANIZAÇÃO</span><h2 id="organizationDocumentsSettingsTitle">Alertas de vencimento</h2>'
       + '<p>Defina com quantos dias de antecedência os documentos entram na lista de atenção.</p></div>'
       + '<form data-form="alert-settings" class="organization-documents-settings-form">'
-      + '<label class="organization-documents-settings-prompt" for="organizationDocumentsAlertDays">Notificar sobre o vencimento com'
-      + '<input id="organizationDocumentsAlertDays" data-alert-days type="number" inputmode="numeric" step="1" value="' + escapeHtml(alertDays) + '"' + min + max + (disabled ? " disabled" : "") + ' aria-describedby="organizationDocumentsAlertHelp" /> dias de antecedência.</label>'
-      + '<div class="organization-documents-settings-control"><button class="quiet-action" type="submit"' + (disabled ? " disabled" : "") + (state.busy === "settings" ? ' aria-busy="true"' : "") + '>Salvar configuração</button></div>'
-      + '<small id="organizationDocumentsAlertHelp">' + (canManageSettings() ? "O valor salvo é aplicado à organização." : "Somente usuários autorizados podem alterar esta configuração.") + '</small>'
+      + '<label for="organizationDocumentsAlertDays">Antecedência do alerta</label>'
+      + '<div class="organization-documents-settings-control"><div class="organization-documents-settings-days">'
+      + '<input id="organizationDocumentsAlertDays" data-alert-days type="number" inputmode="numeric" step="1" value="' + escapeHtml(alertDays) + '"' + min + max + (disabled ? " disabled" : "") + ' aria-describedby="organizationDocumentsAlertHelp" />'
+      + '<span>dias antes do vencimento</span></div>'
+      + '<button class="quiet-action" type="submit"' + (disabled ? " disabled" : "") + (state.busy === "settings" ? ' aria-busy="true"' : "") + '>Salvar configuração</button></div>'
+      + '<small id="organizationDocumentsAlertHelp">' + (canManageSettings() ? "Esta configuração vale para toda a organização." : "Somente usuários autorizados podem alterar esta configuração.") + '</small>'
       + (state.settingsFeedback ? '<p class="organization-documents-feedback" role="status" data-tone="' + escapeHtml(state.settingsFeedbackTone) + '">' + escapeHtml(state.settingsFeedback) + '</p>' : "")
       + '</form></section>';
   }
@@ -310,6 +312,7 @@ export function createOrganizationDocumentsFeature({
       dataAttribute: "data-select-all",
       checked: selection.checked,
       disabled: state.busy === "bulk-download",
+      hideLabel: true,
     });
     return selectionActions + count + '<div class="table-wrap organization-documents-table-wrap"><table class="organization-documents-table">'
       + '<caption class="sr-only">Documentos cadastrados pela organização</caption><thead><tr>'
@@ -362,7 +365,7 @@ export function createOrganizationDocumentsFeature({
     const fileName = String(document.fileName || "Arquivo sem nome");
     const documentId = escapeHtml(document.id);
     const manageActions = canManageDocuments()
-      ? '<button class="quiet-action compact-action" type="button" data-action="replace" data-document-id="' + documentId + '" aria-label="Substituir documento ' + escapeHtml(title) + '">Substituir documento</button>'
+      ? '<button class="quiet-action compact-action" type="button" data-action="replace" data-document-id="' + documentId + '" aria-label="Substituir documento ' + escapeHtml(title) + '">Substituir</button>'
         + '<button class="quiet-action compact-action" type="button" data-action="edit-validity" data-document-id="' + documentId + '" aria-label="Editar validade de ' + escapeHtml(title) + '">Editar validade</button>'
       : "";
     const selected = state.selectedDocumentIds.has(String(document.id));
