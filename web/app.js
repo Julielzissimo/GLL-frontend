@@ -6312,9 +6312,7 @@ function renderBidAttachment(bid) {
     : "Salve o edital para anexar os arquivos selecionados.";
   const isUploading = Boolean(bidAttachmentUploadPromise);
   const uploadingFileCount = Array.from(refs.editalFile.files || []).length;
-  refs.editalAttachmentHelp.textContent = isUploading
-    ? "Salvando os arquivos automaticamente…"
-    : `${attachmentSummary} ${saveInstruction}`;
+  refs.editalAttachmentHelp.textContent = `${attachmentSummary} ${saveInstruction}`;
   refs.editalFile.disabled = isUploading || attachments.length >= MAX_EDITAL_FILES;
   const actionDisabled = isUploading ? " disabled" : "";
   const attachmentMarkup = attachments.length
@@ -6329,8 +6327,8 @@ function renderBidAttachment(bid) {
     : isUploading ? "" : `<div class="empty-state compact-empty">Nenhum arquivo anexado.</div>`;
   const uploadMarkup = isUploading
     ? `<div class="attachment-upload-status" role="status">
+        <span class="visually-hidden">Anexando ${uploadingFileCount === 1 ? "arquivo" : "arquivos"} à proposta</span>
         <span class="attachment-upload-spinner" aria-hidden="true"></span>
-        <span>Anexando ${uploadingFileCount === 1 ? "arquivo" : "arquivos"} à proposta…</span>
       </div>`
     : "";
   refs.editalAttachmentList.innerHTML = `${attachmentMarkup}${uploadMarkup}`;
