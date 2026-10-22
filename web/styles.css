@@ -9734,6 +9734,20 @@ button.history-row:hover {
 .organization-documents-current-title {
   overflow-wrap: anywhere;
 }
+.organization-documents-file-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--gll-space-2) var(--gll-space-3);
+}
+.organization-documents-file-row > span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.organization-documents-file-row > button {
+  flex: 0 0 auto;
+  margin-inline-start: auto;
+}
 .organization-documents-confirm-dialog {
   width: min(calc(100% - var(--gll-space-6)), 32rem);
 }
