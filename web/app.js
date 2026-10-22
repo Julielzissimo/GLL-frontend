@@ -5616,12 +5616,13 @@ function renderBidAttachment(bid) {
     ? "Novos arquivos são salvos automaticamente."
     : "Salve o edital para anexar os arquivos selecionados.";
   const isUploading = Boolean(bidAttachmentUploadPromise);
+  const uploadingFileCount = Array.from(refs.editalFile.files || []).length;
   refs.editalAttachmentHelp.textContent = isUploading
     ? "Salvando os arquivos automaticamente…"
     : `${attachmentSummary} ${saveInstruction}`;
   refs.editalFile.disabled = isUploading || attachments.length >= MAX_EDITAL_FILES;
   const actionDisabled = isUploading ? " disabled" : "";
-  refs.editalAttachmentList.innerHTML = attachments.length
+  const attachmentMarkup = attachments.length
     ? attachments.map((attachment, index) => `
       <div class="attachment-panel">
         <span><strong>${escapeHtml(attachment.name)}</strong><small>${formatFileSize(attachment.size)}</small></span>
@@ -5630,7 +5631,14 @@ function renderBidAttachment(bid) {
           <button class="danger-action compact-action" type="button" data-attachment-action="delete" data-attachment-index="${index}"${actionDisabled}>Remover</button>
         </span>
       </div>`).join("")
-    : `<div class="empty-state compact-empty">Nenhum arquivo anexado.</div>`;
+    : isUploading ? "" : `<div class="empty-state compact-empty">Nenhum arquivo anexado.</div>`;
+  const uploadMarkup = isUploading
+    ? `<div class="attachment-upload-status" role="status">
+        <span class="attachment-upload-spinner" aria-hidden="true"></span>
+        <span>Anexando ${uploadingFileCount === 1 ? "arquivo" : "arquivos"} à proposta…</span>
+      </div>`
+    : "";
+  refs.editalAttachmentList.innerHTML = `${attachmentMarkup}${uploadMarkup}`;
 }
 
 async function handleBidAttachmentSelection() {

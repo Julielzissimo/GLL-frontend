@@ -1637,6 +1637,30 @@ input[readonly] {
   gap: 8px;
 }
 
+.attachment-upload-status {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  color: var(--color-text-secondary);
+}
+
+.attachment-upload-spinner {
+  display: inline-block;
+  flex: 0 0 auto;
+  width: var(--space-lg);
+  height: var(--space-lg);
+  border: 2px solid var(--color-border-strong);
+  border-top-color: var(--color-primary);
+  border-radius: var(--radius-pill);
+  animation: attachment-upload-spin 800ms linear infinite;
+}
+
+@keyframes attachment-upload-spin { to { transform: rotate(360deg); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .attachment-upload-spinner { animation: none; }
+}
+
 .attachment-panel > span:first-child {
   display: grid;
   min-width: 0;
