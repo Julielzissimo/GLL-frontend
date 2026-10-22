@@ -1035,6 +1035,14 @@
         "0117466f7d8df292a228f77afe8dc0d60784779e"
       ],
       "migrations": []
+    },
+    {
+      "id": "FRONT-2.0-MODAL-CLOSE-001",
+      "backend_commits": [],
+      "frontend_commits": [
+        "046af039f49e09e32a716e5135d8def670d32d88"
+      ],
+      "migrations": []
     }
   ]
 }
