@@ -278,8 +278,9 @@ test("homologação anexa e baixa um arquivo de edital pela interface usando R2"
 
     await page.locator("#editalFile").setInputFiles({ name: fileName, mimeType: "image/png", buffer: fileBytes });
     await page.locator("#bidForm button[type='submit']").click();
-    await expect(page.locator("#editalAttachmentList .attachment-panel")).toHaveCount(1, { timeout: 45_000 });
-    await expect(page.locator("#editalAttachmentList strong")).toHaveText(fileName);
+    const savedAttachment = page.locator("#editalAttachmentList .attachment-panel:not(.attachment-panel-pending)");
+    await expect(savedAttachment).toHaveCount(1, { timeout: 45_000 });
+    await expect(savedAttachment.locator("span:first-child strong")).toHaveText(fileName);
 
     const [download] = await Promise.all([
       page.waitForEvent("download", { timeout: 30_000 }),
