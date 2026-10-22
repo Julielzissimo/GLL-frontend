@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "release_id": "2026-10-20-hotfix-organization-signup-authflow",
+  "release_id": "2026-10-21-promocao-botao-fechar-modal",
   "environment": "production",
   "target_branch": "main",
   "items": [
@@ -1025,6 +1025,14 @@
       ],
       "frontend_commits": [
         "0117466f7d8df292a228f77afe8dc0d60784779e"
+      ],
+      "migrations": []
+    },
+    {
+      "id": "FRONT-2.0-MODAL-CLOSE-001",
+      "backend_commits": [],
+      "frontend_commits": [
+        "046af039f49e09e32a716e5135d8def670d32d88"
       ],
       "migrations": []
     }
