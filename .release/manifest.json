@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "release_id": "2026-10-20-hotfix-organization-signup-authflow",
+  "release_id": "2026-10-21-email-inviter-details-issue-127",
   "environment": "production",
   "target_branch": "main",
   "items": [
@@ -979,6 +979,14 @@
       "backend_commits": [],
       "frontend_commits": [
         "a0b4cc57a73b7faa367722a6ebd2375ce1e52598"
+      ],
+      "migrations": []
+    },
+    {
+      "id": "ISSUE-127",
+      "backend_commits": [],
+      "frontend_commits": [
+        "736ecafb63fadf4c69dbddbf222f7e07addac753"
       ],
       "migrations": []
     },
