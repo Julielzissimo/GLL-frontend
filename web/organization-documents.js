@@ -1,6 +1,9 @@
 const DEFAULT_ALERT_DAYS = 30;
 const MIN_ALERT_DAYS = 0;
 const MAX_ALERT_DAYS = 120;
+const ALERT_DAYS_MARKS = Object.freeze([0, 7, 15, 30, 60, 90, 120]);
+const ALERT_DAYS_STEPS_PER_MARK = 100;
+const ALERT_DAYS_SLIDER_MAX = (ALERT_DAYS_MARKS.length - 1) * ALERT_DAYS_STEPS_PER_MARK;
 const BUSINESS_TIME_ZONE = "America/Sao_Paulo";
 const DOCUMENT_STATUS_FILTERS = Object.freeze([
   ["all", "Todas as situações"],
@@ -10,6 +13,40 @@ const DOCUMENT_STATUS_FILTERS = Object.freeze([
   ["expired", "Vencidos"],
   ["no-expiry", "Sem vencimento"],
 ]);
+
+export function alertDaysPositionToValue(position) {
+  const normalizedPosition = Number.isFinite(Number(position))
+    ? Math.min(ALERT_DAYS_SLIDER_MAX, Math.max(0, Number(position)))
+    : 0;
+  const segment = Math.min(
+    Math.floor(normalizedPosition / ALERT_DAYS_STEPS_PER_MARK),
+    ALERT_DAYS_MARKS.length - 2,
+  );
+  const segmentPosition = normalizedPosition - segment * ALERT_DAYS_STEPS_PER_MARK;
+  const progress = segmentPosition / ALERT_DAYS_STEPS_PER_MARK;
+  const start = ALERT_DAYS_MARKS[segment];
+  const end = ALERT_DAYS_MARKS[segment + 1];
+  return Math.round(start + (end - start) * progress);
+}
+
+export function alertDaysValueToPosition(days) {
+  const normalizedDays = Number.isFinite(Number(days))
+    ? Math.min(MAX_ALERT_DAYS, Math.max(MIN_ALERT_DAYS, Number(days)))
+    : MIN_ALERT_DAYS;
+  const segment = Math.max(0, ALERT_DAYS_MARKS.findIndex((mark, index) => (
+    index < ALERT_DAYS_MARKS.length - 1
+    && normalizedDays >= mark
+    && normalizedDays <= ALERT_DAYS_MARKS[index + 1]
+  )));
+  const start = ALERT_DAYS_MARKS[segment];
+  const end = ALERT_DAYS_MARKS[segment + 1];
+  const progress = (normalizedDays - start) / (end - start);
+  return Math.round((segment + progress) * ALERT_DAYS_STEPS_PER_MARK);
+}
+
+function alertDaysLabel(days) {
+  return days + (days === 1 ? " dia" : " dias");
+}
 
 function escapeHtml(value) {
   return String(value ?? "")
@@ -254,19 +291,25 @@ export function createOrganizationDocumentsFeature({
       : Math.min(MAX_ALERT_DAYS, Math.max(MIN_ALERT_DAYS, savedAlertDays));
     const savedValueOutsideRange = savedAlertDays < MIN_ALERT_DAYS || savedAlertDays > MAX_ALERT_DAYS;
     const requiresRangeAdjustment = savedValueOutsideRange && !hasDraft;
-    const progress = (alertDays / MAX_ALERT_DAYS) * 100;
+    const sliderPosition = alertDaysValueToPosition(alertDays);
+    const progress = (sliderPosition / ALERT_DAYS_SLIDER_MAX) * 100;
     const disabled = !canManageSettings() || state.busy === "settings";
     return '<section class="section-band organization-documents-settings" aria-labelledby="organizationDocumentsSettingsTitle">'
-      + '<div><span class="eyebrow">PREFERÊNCIAS DA ORGANIZAÇÃO</span><h2 id="organizationDocumentsSettingsTitle">Alertas de vencimento</h2>'
+      + '<div class="organization-documents-settings-intro"><span class="eyebrow">PREFERÊNCIAS DA ORGANIZAÇÃO</span><h2 id="organizationDocumentsSettingsTitle">Alertas de vencimento</h2>'
       + '<p>Defina com quantos dias de antecedência os documentos entram na lista de atenção.</p></div>'
       + '<form data-form="alert-settings" class="organization-documents-settings-form">'
-      + '<label for="organizationDocumentsAlertDays">Antecedência do alerta</label>'
+      + '<div class="organization-documents-alert-label"><label for="organizationDocumentsAlertDays">Antecedência do alerta</label>'
+      + '<span class="organization-documents-alert-info" title="Quando faltarem esses dias, o documento entra na lista de atenção." aria-label="Quando faltarem esses dias, o documento entra na lista de atenção." role="img" tabindex="0">i</span></div>'
       + '<div class="organization-documents-settings-control"><div class="organization-documents-settings-days">'
-      + '<output class="organization-documents-alert-value" for="organizationDocumentsAlertDays"><strong data-alert-days-value>' + escapeHtml(alertDays) + '</strong><span>dias antes do vencimento</span></output>'
-      + '<input id="organizationDocumentsAlertDays" data-alert-days type="range" min="' + MIN_ALERT_DAYS + '" max="' + MAX_ALERT_DAYS + '" step="1" value="' + escapeHtml(alertDays) + '" style="--alert-days-progress: ' + progress + '%" aria-valuetext="' + escapeHtml(alertDays + ' dias antes do vencimento') + '" aria-describedby="organizationDocumentsAlertHelp organizationDocumentsAlertScaleDescription"' + (disabled ? " disabled" : "") + ' />'
-      + '<div class="organization-documents-alert-scale" aria-hidden="true"><span class="is-start">0</span><span style="left: 5.8333%">7</span><span style="left: 12.5%">15</span><span style="left: 25%">30</span><span style="left: 50%">60</span><span style="left: 75%">90</span><span class="is-end">120</span></div>'
+      + '<output class="organization-documents-alert-value" for="organizationDocumentsAlertDays" aria-live="polite"><strong data-alert-days-value>' + escapeHtml(alertDays) + '</strong><span data-alert-days-unit>' + (alertDays === 1 ? "dia" : "dias") + '</span></output>'
+      + '<input id="organizationDocumentsAlertDays" data-alert-days type="range" min="0" max="' + ALERT_DAYS_SLIDER_MAX + '" step="1" value="' + sliderPosition + '" style="--alert-days-progress: ' + progress + '%" aria-valuetext="' + escapeHtml(alertDaysLabel(alertDays) + " antes do vencimento") + '" aria-describedby="organizationDocumentsAlertHelper organizationDocumentsAlertHelp organizationDocumentsAlertScaleDescription"' + (disabled ? " disabled" : "") + ' />'
+      + '<div class="organization-documents-alert-scale" aria-hidden="true">' + ALERT_DAYS_MARKS.map((mark, index) => (
+        '<span' + (index === 0 ? ' class="is-start' : index === ALERT_DAYS_MARKS.length - 1 ? ' class="is-end' : ' class="')
+        + (mark === alertDays ? ' is-selected' : '') + '" data-alert-days-mark="' + mark + '">' + mark + '</span>'
+      )).join("") + '</div>'
       + (requiresRangeAdjustment ? '<p class="organization-documents-alert-range-note" data-alert-days-range-note role="status">Valor salvo atual: ' + escapeHtml(savedAlertDays) + ' dias. Ajuste o slider para escolher uma nova antecedência de até 120 dias.</p>' : '')
-      + '</div><button class="quiet-action" data-alert-days-save type="submit"' + ((disabled || requiresRangeAdjustment) ? " disabled" : "") + (state.busy === "settings" ? ' aria-busy="true"' : "") + '>Salvar configuração</button></div>'
+      + '<p class="organization-documents-alert-helper" id="organizationDocumentsAlertHelper">dias antes do vencimento</p>'
+      + '</div><button class="primary-action" data-alert-days-save type="submit"' + ((disabled || requiresRangeAdjustment) ? " disabled" : "") + (state.busy === "settings" ? ' aria-busy="true"' : "") + '>Salvar configuração</button></div>'
       + '<small id="organizationDocumentsAlertHelp">Esta configuração vale para toda a organização.' + (canManageSettings() ? "" : " Somente usuários autorizados podem alterá-la.") + '</small>'
       + '<span id="organizationDocumentsAlertScaleDescription" class="sr-only">Referências da escala: 0, 7, 15, 30, 60, 90 e 120 dias.</span>'
       + (state.settingsFeedback ? '<p class="organization-documents-feedback" role="status" data-tone="' + escapeHtml(state.settingsFeedbackTone) + '">' + escapeHtml(state.settingsFeedback) + '</p>' : "")
@@ -791,8 +834,10 @@ export function createOrganizationDocumentsFeature({
   async function saveSettings(form) {
     if (!canManageSettings()) return;
     const input = form.querySelector("[data-alert-days]");
+    if (!input) return;
     const limits = { min: MIN_ALERT_DAYS, max: MAX_ALERT_DAYS };
-    const error = validateAlertDays(input?.value, limits);
+    const alertDays = alertDaysPositionToValue(input.value);
+    const error = validateAlertDays(alertDays, limits);
     if (error) {
       input?.setAttribute("aria-invalid", "true");
       state.settingsFeedback = error;
@@ -802,7 +847,6 @@ export function createOrganizationDocumentsFeature({
       else { render(); root.querySelector("[data-alert-days]")?.setAttribute("aria-invalid", "true"); }
       return;
     }
-    const alertDays = Number(input.value);
     state.busy = "settings";
     if (input) input.disabled = true;
     state.settingsFeedback = "";
@@ -900,17 +944,35 @@ export function createOrganizationDocumentsFeature({
   function bind() {
     if (!root || bound) return;
     bound = true;
+    root.addEventListener("keydown", (event) => {
+      if (!event.target.matches("[data-alert-days]")) return;
+      const adjustment = event.key === "ArrowRight" || event.key === "ArrowUp"
+        ? 1
+        : event.key === "ArrowLeft" || event.key === "ArrowDown" ? -1 : 0;
+      if (!adjustment) return;
+      event.preventDefault();
+      const currentDays = alertDaysPositionToValue(event.target.value);
+      const nextDays = Math.min(MAX_ALERT_DAYS, Math.max(MIN_ALERT_DAYS, currentDays + adjustment));
+      event.target.value = String(alertDaysValueToPosition(nextDays));
+      event.target.dispatchEvent(new Event("input", { bubbles: true }));
+    });
     root.addEventListener("input", (event) => {
       if (event.target.matches("[data-search]")) {
         state.query = event.target.value;
         updateList();
       } else if (event.target.matches("[data-alert-days]")) {
-        const alertDays = Number(event.target.value);
+        const sliderPosition = Number(event.target.value);
+        const alertDays = alertDaysPositionToValue(sliderPosition);
         state.alertDaysDraft = alertDays;
-        event.target.setAttribute("aria-valuetext", alertDays + " dias antes do vencimento");
-        event.target.style.setProperty("--alert-days-progress", (alertDays / MAX_ALERT_DAYS) * 100 + "%");
+        event.target.setAttribute("aria-valuetext", alertDaysLabel(alertDays) + " antes do vencimento");
+        event.target.style.setProperty("--alert-days-progress", (sliderPosition / ALERT_DAYS_SLIDER_MAX) * 100 + "%");
         const value = root.querySelector("[data-alert-days-value]");
         if (value) value.textContent = String(alertDays);
+        const unit = root.querySelector("[data-alert-days-unit]");
+        if (unit) unit.textContent = alertDays === 1 ? "dia" : "dias";
+        root.querySelectorAll("[data-alert-days-mark]").forEach((mark) => {
+          mark.classList.toggle("is-selected", Number(mark.dataset.alertDaysMark) === alertDays);
+        });
         root.querySelector("[data-alert-days-range-note]")?.remove();
         const saveButton = root.querySelector("[data-alert-days-save]");
         if (saveButton) saveButton.disabled = !canManageSettings() || state.busy === "settings";
