@@ -122,6 +122,11 @@
     return `<button class="${className}" type="button" aria-label="${escapeHtml(label)}"${disabled ? " disabled" : ""}>${iconMarkup(icon)}</button>`;
   }
 
+  function iconButton({ label = "Ação", icon = "settings", variant = "default", disabled = false } = {}) {
+    const className = variant === "danger" ? "icon-button modal-close-button" : "icon-button";
+    return `<button class="${className}" type="button" aria-label="${escapeHtml(label)}"${disabled ? " disabled" : ""}>${iconMarkup(icon)}</button>`;
+  }
+
   function badge({ label = "Status", tone = "neutral" } = {}) {
     return `<span class="ds-badge ds-badge-${escapeHtml(tone)}">${escapeHtml(label)}</span>`;
   }

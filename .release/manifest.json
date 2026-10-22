@@ -803,7 +803,8 @@
       "id": "FRONT-2.0-MODAL-CLOSE-001",
       "backend_commits": [],
       "frontend_commits": [
-        "dcdfaaf4bef483ec7974d24df4508b099d6ccf60"
+        "dcdfaaf4bef483ec7974d24df4508b099d6ccf60",
+        "046af039f49e09e32a716e5135d8def670d32d88"
       ],
       "migrations": []
     },
