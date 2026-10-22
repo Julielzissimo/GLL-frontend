@@ -117,19 +117,29 @@ test("selecionar arquivos em edital aberto salva os anexos automaticamente", asy
   app.element("editalFile").value = "C:\\fakepath\\edital.pdf";
 
   let saved;
-  app.store.saveBidAttachments = async (bidId, files) => {
+  let resolveUpload;
+  app.store.saveBidAttachments = (bidId, files) => {
     saved = { bidId, files: Array.from(files) };
-    return [{ path: "TEST-1/edital.pdf", name: files[0].name, type: files[0].type, size: files[0].size }];
+    return new Promise((resolve) => { resolveUpload = resolve; });
   };
 
   assert.match(source, /refs\.editalFile\.addEventListener\("change", handleBidAttachmentSelection\)/);
-  await vm.runInContext("handleBidAttachmentSelection()", app.context);
+  const upload = vm.runInContext("handleBidAttachmentSelection()", app.context);
+
+  assert.match(app.element("editalAttachmentList").innerHTML, /attachment-upload-spinner/);
+  assert.match(app.element("editalAttachmentList").innerHTML, /Anexando arquivo à proposta/);
+  assert.equal(app.element("editalAttachmentList").attributes["aria-busy"], "true");
+
+  resolveUpload([{ path: "TEST-1/edital.pdf", name: "edital.pdf", type: "application/pdf", size: 1024 }]);
+  await upload;
 
   assert.equal(saved.bidId, bid.id);
   assert.equal(saved.files[0].name, "edital.pdf");
   assert.equal(app.appState.bids[0].edital_files[0].path, "TEST-1/edital.pdf");
   assert.equal(app.element("editalFile").value, "");
   assert.match(app.element("editalAttachmentHelp").textContent, /salvos automaticamente/i);
+  assert.doesNotMatch(app.element("editalAttachmentList").innerHTML, /attachment-upload-spinner/);
+  assert.equal(app.element("editalAttachmentList").attributes["aria-busy"], "false");
 });
 
 test("pesquisa dinâmica localiza edital por órgão, modalidade, número e prazo de entrega", () => {

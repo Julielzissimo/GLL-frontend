@@ -1562,7 +1562,8 @@
       "id": "ISSUE-175",
       "backend_commits": [],
       "frontend_commits": [
-        "050863635ac86908636c3554cde5718a596dff46"
+        "050863635ac86908636c3554cde5718a596dff46",
+        "72f2c96fb649c30d162fdbadb1e211562d38e170"
       ],
       "migrations": []
     },
