@@ -1573,6 +1573,14 @@
         "6d34731caf0a8a0d65b29a82fc09388652eb9a0d"
       ],
       "migrations": []
+    },
+    {
+      "id": "ISSUE-176",
+      "backend_commits": [],
+      "frontend_commits": [
+        "92cd8b915dbf8a90d017d112d721cfff1ae6f565"
+      ],
+      "migrations": []
     }
   ]
 }
