@@ -256,7 +256,6 @@
               </button>
               <div id="settingsNavigationItems" class="nav-submenu" aria-hidden="true" inert>
                 <div class="nav-submenu-inner">
-                  <button id="navSettingsGeneralButton" class="nav-link nav-sublink" type="button" data-navigation-page="settings"><span class="nav-link-label">Geral</span></button>
                   <button id="navCompanyDataButton" class="nav-link nav-sublink" type="button" data-navigation-page="companyData"><span class="nav-link-label">Dados da Empresa</span></button>
                 </div>
               </div>
@@ -1507,30 +1506,6 @@
         <div id="declarationVariableSuggestions" class="declaration-variable-suggestions hidden" role="listbox"></div>
       </section>
 
-      <section id="settingsPage" class="users-page settings-page hidden">
-        <div class="page-heading">
-          <div><span class="eyebrow">SISTEMA</span><h1>Configurações</h1></div>
-        </div>
-        <div class="settings-grid">
-          <section class="section-band settings-access-card company-data-access-card">
-            <span class="company-data-icon" aria-hidden="true">▣</span>
-            <div>
-              <h2>Dados da Empresa</h2>
-              <p>Mantenha o CNPJ e os representantes legais da organização em um cadastro central.</p>
-            </div>
-            <button id="openCompanyDataButton" class="primary-action" type="button">Abrir cadastro</button>
-          </section>
-          <section id="designSystemAccessCard" class="section-band design-system-access-card hidden">
-            <span class="settings-icon" aria-hidden="true">◫</span>
-            <div>
-              <h2>Design System</h2>
-              <p>Consulte foundations, componentes reutilizáveis e padrões oficiais da interface.</p>
-            </div>
-            <button id="openDesignSystemButton" class="primary-action" type="button">Abrir catálogo</button>
-          </section>
-        </div>
-      </section>
-
       <section id="companyDataPage" class="users-page company-data-page hidden" aria-labelledby="companyDataTitle">
         <div class="page-heading">
           <div>
@@ -1538,7 +1513,7 @@
             <h1 id="companyDataTitle">Dados da Empresa</h1>
             <p>Informações institucionais compartilhadas pelos recursos do GLL.</p>
           </div>
-          <button id="backToSettingsFromCompanyDataButton" class="quiet-action" type="button">← Voltar para Configurações</button>
+          <button id="backToHomeFromCompanyDataButton" class="quiet-action" type="button">← Voltar para Visão geral</button>
         </div>
 
         <div id="companyDataLoading" class="section-band company-data-loading" role="status">Carregando dados da empresa…</div>
@@ -1589,7 +1564,7 @@
             <h1 id="designSystemTitle">Design System</h1>
             <p>Catálogo oficial da identidade visual e dos componentes reutilizáveis do GLL.</p>
           </div>
-          <button id="backToSettingsButton" class="quiet-action" type="button">← Voltar para Configurações</button>
+          <button id="backToHomeFromDesignSystemButton" class="quiet-action" type="button">← Voltar para Visão geral</button>
         </div>
         <div id="designSystemCatalog"></div>
       </section>

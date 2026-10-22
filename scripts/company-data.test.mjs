@@ -33,8 +33,9 @@ test("CNPJ numérico e alfanumérico e CPF exigem dígitos verificadores válido
   assert.equal(isValidCpf("111.111.111-11"), false);
 });
 
-test("Configurações oferece a subpágina Dados da Empresa", () => {
-  assert.match(html, /id="openCompanyDataButton"[\s\S]*?>Abrir cadastro</);
+test("Configurações mantém Dados da Empresa sem a página Geral", () => {
+  assert.match(html, /id="settingsNavigationGroup"[\s\S]*?id="navCompanyDataButton"[\s\S]*?data-navigation-page="companyData"/);
+  assert.doesNotMatch(html, /id="navSettingsGeneralButton"|id="settingsPage"|id="openCompanyDataButton"/);
   assert.match(html, /id="companyDataPage"[\s\S]*?Dados da Empresa/);
   assert.match(html, /id="legalRepresentativesList"/);
   assert.match(html, /<h2>Identidade visual<\/h2>[\s\S]*?incluídas automaticamente nas propostas e declarações/);
@@ -42,6 +43,7 @@ test("Configurações oferece a subpágina Dados da Empresa", () => {
   assert.match(html, /id="companyWatermark"/);
   assert.doesNotMatch(html, /id="declarationLogo"|id="declarationWatermark"/);
   assert.match(app, /companyData:\s*"configuracoes\/dados-da-empresa"/);
+  assert.doesNotMatch(app, /settings:\s*"configuracoes"|setPage\("settings"\)/);
   assert.match(app, /companyDataFeature\.showPage\(\)/);
 });
 
