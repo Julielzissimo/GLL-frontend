@@ -125,7 +125,6 @@
   width: min(420px, calc(100vw - 64px));
   padding: 10px 12px;
   border-radius: var(--gll-radius-md);
-  background: var(--gll-ink);
   box-shadow: 0 12px 32px rgb(10 30 24 / 22%);
   color: var(--gll-paper);
   content: attr(data-tooltip);
@@ -7107,7 +7106,6 @@ html.is-loading { overflow: hidden; }
   width: min(340px, calc(100vw - 64px));
   padding: 9px 11px;
   border-radius: var(--radius-sm);
-  background: var(--gll-ink);
   box-shadow: 0 12px 32px rgb(10 30 24 / 22%);
   color: var(--gll-paper);
   content: attr(data-tooltip);
