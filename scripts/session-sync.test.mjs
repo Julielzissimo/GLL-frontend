@@ -93,7 +93,9 @@ test("selecionar arquivos em edital aberto salva os anexos automaticamente", asy
   const upload = vm.runInContext("handleBidAttachmentSelection()", app.context);
 
   assert.match(app.element("editalAttachmentList").innerHTML, /attachment-upload-spinner/);
-  assert.match(app.element("editalAttachmentList").innerHTML, /Anexando arquivo à proposta/);
+  assert.match(app.element("editalAttachmentList").innerHTML, /class="visually-hidden">Anexando arquivo à proposta/);
+  assert.doesNotMatch(app.element("editalAttachmentList").innerHTML, /<span>Anexando arquivo à proposta/);
+  assert.doesNotMatch(app.element("editalAttachmentHelp").textContent, /Salvando os arquivos automaticamente/);
   assert.equal(app.element("editalAttachmentList").attributes["aria-busy"], "true");
 
   resolveUpload([{ path: "TEST-1/edital.pdf", name: "edital.pdf", type: "application/pdf", size: 1024 }]);
