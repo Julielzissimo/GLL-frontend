@@ -1585,6 +1585,16 @@
         "92cd8b915dbf8a90d017d112d721cfff1ae6f565"
       ],
       "migrations": []
+    },
+    {
+      "id": "ISSUE-183",
+      "backend_commits": [
+        "dcbfeb8450c56797172a0c9eae6c783ed1e22942"
+      ],
+      "frontend_commits": [],
+      "migrations": [
+        "supabase/migrations/20261022231416_bid_history_events.sql"
+      ]
     }
   ]
 }
