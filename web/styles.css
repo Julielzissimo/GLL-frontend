@@ -1638,10 +1638,53 @@ input[readonly] {
 }
 
 .attachment-upload-status {
+  display: grid;
+  gap: var(--space-md);
+  margin-bottom: var(--space-sm);
+  padding: var(--space-md);
+  border: var(--border-default);
+  border-color: var(--gll-success);
+  border-radius: var(--radius-md);
+  background: var(--gll-success-bg);
+  color: var(--color-text-secondary);
+}
+
+.attachment-upload-status-main {
   display: flex;
   align-items: center;
-  gap: var(--space-sm);
+  gap: var(--space-md);
+}
+
+.attachment-upload-copy {
+  display: grid;
+  min-width: 0;
+  gap: var(--space-xs);
+}
+
+.attachment-upload-copy strong {
+  color: var(--color-text-primary);
+  font-size: var(--font-size-sm);
+}
+
+.attachment-upload-copy small {
   color: var(--color-text-secondary);
+}
+
+.attachment-upload-progress {
+  height: var(--space-xs);
+  margin-left: calc(var(--space-lg) + var(--space-md));
+  overflow: hidden;
+  border-radius: var(--radius-pill);
+  background: var(--gll-line);
+}
+
+.attachment-upload-progress > span {
+  display: block;
+  width: 35%;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--gll-success-bg), var(--gll-success), var(--gll-success-bg));
+  animation: attachment-upload-progress-slide 1450ms ease-in-out infinite;
 }
 
 .attachment-upload-spinner {
@@ -1655,10 +1698,38 @@ input[readonly] {
   animation: attachment-upload-spin 800ms linear infinite;
 }
 
+.attachment-upload-spinner-small {
+  width: var(--space-md);
+  height: var(--space-md);
+}
+
+.attachment-panel-pending {
+  border-style: dashed;
+  border-color: var(--gll-success);
+  background: var(--gll-paper);
+}
+
+.attachment-pending-status {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: var(--space-xs);
+  color: var(--gll-success);
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
 @keyframes attachment-upload-spin { to { transform: rotate(360deg); } }
+@keyframes attachment-upload-progress-slide {
+  from { transform: translateX(-110%); }
+  to { transform: translateX(320%); }
+}
 
 @media (prefers-reduced-motion: reduce) {
-  .attachment-upload-spinner { animation: none; }
+  .attachment-upload-spinner,
+  .attachment-upload-progress > span { animation: none; }
+  .attachment-upload-progress > span { transform: translateX(90%); }
 }
 
 .attachment-panel > span:first-child {
@@ -1681,6 +1752,16 @@ input[readonly] {
   align-items: center;
   gap: 8px;
   flex: 0 0 auto;
+}
+
+@media (max-width: 620px) {
+  .attachment-upload-progress { margin-left: 0; }
+
+  .attachment-panel-pending {
+    flex-wrap: wrap;
+  }
+
+  .attachment-pending-status { margin-left: auto; }
 }
 
 .item-form-grid {

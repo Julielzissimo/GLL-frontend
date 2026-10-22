@@ -5616,8 +5616,12 @@ function renderBidAttachment(bid) {
     ? "Novos arquivos são salvos automaticamente."
     : "Salve o edital para anexar os arquivos selecionados.";
   const isUploading = Boolean(bidAttachmentUploadPromise);
-  const uploadingFileCount = Array.from(refs.editalFile.files || []).length;
-  refs.editalAttachmentHelp.textContent = `${attachmentSummary} ${saveInstruction}`;
+  const uploadingFiles = Array.from(refs.editalFile.files || []);
+  const uploadingFileCount = uploadingFiles.length;
+  const uploadingSummary = uploadingFileCount
+    ? `${attachments.length} ${attachments.length === 1 ? "arquivo anexado" : "arquivos anexados"} • ${uploadingFileCount} em salvamento • limite de ${MAX_EDITAL_FILES} arquivos.`
+    : attachmentSummary;
+  refs.editalAttachmentHelp.textContent = `${uploadingSummary} ${saveInstruction}`;
   refs.editalFile.disabled = isUploading || attachments.length >= MAX_EDITAL_FILES;
   const actionDisabled = isUploading ? " disabled" : "";
   const attachmentMarkup = attachments.length
@@ -5632,11 +5636,22 @@ function renderBidAttachment(bid) {
     : isUploading ? "" : `<div class="empty-state compact-empty">Nenhum arquivo anexado.</div>`;
   const uploadMarkup = isUploading
     ? `<div class="attachment-upload-status" role="status">
-        <span class="visually-hidden">Anexando ${uploadingFileCount === 1 ? "arquivo" : "arquivos"} à proposta</span>
-        <span class="attachment-upload-spinner" aria-hidden="true"></span>
-      </div>`
+        <div class="attachment-upload-status-main">
+          <span class="attachment-upload-spinner" aria-hidden="true"></span>
+          <span class="attachment-upload-copy">
+            <strong>${uploadingFileCount === 1 ? "Salvando arquivo..." : "Salvando arquivos..."}</strong>
+            <small>${uploadingFileCount === 1 ? "Aguarde a confirmação do envio." : `Aguarde a confirmação do envio de ${uploadingFileCount} arquivos.`}</small>
+          </span>
+        </div>
+        <div class="attachment-upload-progress" aria-hidden="true"><span></span></div>
+      </div>
+      ${uploadingFiles.map((file) => `
+        <div class="attachment-panel attachment-panel-pending" role="group" aria-label="${escapeHtml(file.name)}, em salvamento">
+          <span class="attachment-panel-details"><strong>${escapeHtml(file.name)}</strong><small>${formatFileSize(file.size)} • Salvamento em andamento</small></span>
+          <span class="attachment-pending-status"><span class="attachment-upload-spinner attachment-upload-spinner-small" aria-hidden="true"></span>Salvando...</span>
+        </div>`).join("")}`
     : "";
-  refs.editalAttachmentList.innerHTML = `${attachmentMarkup}${uploadMarkup}`;
+  refs.editalAttachmentList.innerHTML = `${uploadMarkup}${attachmentMarkup}`;
 }
 
 async function handleBidAttachmentSelection() {
