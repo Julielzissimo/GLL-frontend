@@ -280,30 +280,40 @@ jobs:
       - name: Instalar Chromium para Playwright
         run: npx playwright install --with-deps chromium
 
-      - name: Entrar no ambiente publicado e validar isolamento
-        id: login_test
+      - name: Entrar no ambiente publicado e validar isolamento em produção
+        id: login_prod
+        if: github.ref_name == 'main'
+        env:
+          GLL_E2E_BASE_URL: ${{ needs.deploy.outputs.target_url }}
+          GLL_E2E_EMAIL: ${{ secrets.GLL_E2E_EMAIL_PROD }}
+          GLL_E2E_PASSWORD: ${{ secrets.GLL_E2E_PASSWORD_PROD }}
+          GLL_E2E_EXPECTED_ENVIRONMENT: production
+        run: npm run test:e2e:login
+
+      - name: Entrar no ambiente publicado e validar isolamento em homologação
+        id: login_homolog
+        if: github.ref_name == 'homolog'
         env:
           GLL_E2E_BASE_URL: ${{ github.ref_name == 'homolog' && 'https://www.xn--licigesto-s2a.com.br/homolog/' || needs.deploy.outputs.target_url }}
           GLL_E2E_EMAIL: ${{ secrets.GLL_E2E_EMAIL }}
           GLL_E2E_PASSWORD: ${{ secrets.GLL_E2E_PASSWORD }}
-          GLL_E2E_EXPECTED_ENVIRONMENT: ${{ github.ref_name == 'main' && 'production' || 'homolog' }}
+          GLL_E2E_EXPECTED_ENVIRONMENT: homolog
         run: npm run test:e2e:login
 
       - name: Validar armazenamento R2 com arquivo sintético
         id: r2_test
-        if: always() && ((github.ref_name == 'homolog' && vars.GLL_STORAGE_PROVIDER_HOMOLOG == 'r2') || (github.ref_name == 'main' && vars.GLL_STORAGE_PROVIDER_PRODUCTION == 'r2'))
+        if: github.ref_name == 'homolog' && vars.GLL_STORAGE_PROVIDER_HOMOLOG == 'r2'
         env:
           GLL_E2E_BASE_URL: ${{ github.ref_name == 'homolog' && 'https://www.xn--licigesto-s2a.com.br/homolog/' || needs.deploy.outputs.target_url }}
           GLL_E2E_EMAIL: ${{ secrets.GLL_E2E_EMAIL }}
           GLL_E2E_PASSWORD: ${{ secrets.GLL_E2E_PASSWORD }}
-          GLL_E2E_EXPECTED_ENVIRONMENT: ${{ github.ref_name == 'main' && 'production' || 'homolog' }}
+          GLL_E2E_EXPECTED_ENVIRONMENT: homolog
         run: npm run test:e2e:r2
-
       - name: Registrar evidência da validação de login
         if: always()
         shell: bash
         env:
-          TEST_RESULT: ${{ steps.login_test.outcome }}
+          TEST_RESULT: ${{ github.ref_name == 'main' && steps.login_prod.outcome || steps.login_homolog.outcome }}
           R2_TEST_RESULT: ${{ steps.r2_test.outcome }}
           TARGET_URL: ${{ needs.deploy.outputs.target_url }}
         run: |
