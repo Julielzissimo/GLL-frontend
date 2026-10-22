@@ -9535,10 +9535,18 @@ button.history-row:hover {
 .organization-documents-no-expiry {
   display: inline-flex;
   align-items: center;
+  justify-self: start;
   gap: var(--gll-space-2);
+  cursor: pointer;
 }
 .organization-documents-no-expiry input {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 18px;
+  margin: 0;
+  padding: 0;
   accent-color: var(--gll-selection-control);
+  cursor: pointer;
 }
 .organization-documents-dialog input:disabled {
   background: var(--gll-paper-muted);
