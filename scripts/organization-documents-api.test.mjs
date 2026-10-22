@@ -69,6 +69,25 @@ test("loads current, expiring, expired, and notification rows from their scoped 
   assert.ok(fixture.calls.some((call) => call.name === "list_expired_organization_documents"));
 });
 
+test("saves the alert lead time through the organization settings RPC", async () => {
+  const fixture = createFixture({
+    rpcResult(name, args) {
+      if (name === "update_organization_document_settings") {
+        return { data: [{ alert_days: args.p_alert_days, time_zone: "America/Sao_Paulo" }], error: null };
+      }
+      return { data: [], error: null };
+    },
+  });
+  const api = createOrganizationDocumentsApi({ getClient: () => fixture.client });
+
+  assert.deepEqual(await api.saveAlertDays({ alertDays: 15 }), {
+    alertDays: 15, minAlertDays: 0, maxAlertDays: 365, timeZone: "America/Sao_Paulo",
+  });
+  assert.deepEqual(fixture.calls.find((call) => call.name === "update_organization_document_settings").args, {
+    p_alert_days: 15,
+  });
+});
+
 test("upload and replacement keep the document identity and update validity atomically", async () => {
   const fixture = createFixture({
     rpcResult(name, args) {

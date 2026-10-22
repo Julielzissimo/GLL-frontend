@@ -1,4 +1,6 @@
 const DEFAULT_ALERT_DAYS = 30;
+const MIN_ALERT_DAYS = 0;
+const MAX_ALERT_DAYS = 120;
 const BUSINESS_TIME_ZONE = "America/Sao_Paulo";
 const DOCUMENT_STATUS_FILTERS = Object.freeze([
   ["all", "Todas as situações"],
@@ -206,6 +208,7 @@ export function createOrganizationDocumentsFeature({
     documents: [],
     selectedDocumentIds: new Set(),
     settings: { alertDays: DEFAULT_ALERT_DAYS },
+    alertDaysDraft: null,
     settingsFeedback: "",
     settingsFeedbackTone: "",
     query: "",
@@ -244,9 +247,14 @@ export function createOrganizationDocumentsFeature({
 
   function renderSettings() {
     const settings = state.settings || { alertDays: DEFAULT_ALERT_DAYS };
-    const alertDays = settings.alertDays !== null && Number.isSafeInteger(Number(settings.alertDays)) ? Number(settings.alertDays) : DEFAULT_ALERT_DAYS;
-    const min = settings.minAlertDays !== null && settings.minAlertDays !== undefined && Number.isFinite(Number(settings.minAlertDays)) ? ' min="' + escapeHtml(settings.minAlertDays) + '"' : "";
-    const max = settings.maxAlertDays !== null && settings.maxAlertDays !== undefined && Number.isFinite(Number(settings.maxAlertDays)) ? ' max="' + escapeHtml(settings.maxAlertDays) + '"' : "";
+    const savedAlertDays = settings.alertDays !== null && Number.isSafeInteger(Number(settings.alertDays)) ? Number(settings.alertDays) : DEFAULT_ALERT_DAYS;
+    const hasDraft = Number.isSafeInteger(state.alertDaysDraft);
+    const alertDays = hasDraft
+      ? state.alertDaysDraft
+      : Math.min(MAX_ALERT_DAYS, Math.max(MIN_ALERT_DAYS, savedAlertDays));
+    const savedValueOutsideRange = savedAlertDays < MIN_ALERT_DAYS || savedAlertDays > MAX_ALERT_DAYS;
+    const requiresRangeAdjustment = savedValueOutsideRange && !hasDraft;
+    const progress = (alertDays / MAX_ALERT_DAYS) * 100;
     const disabled = !canManageSettings() || state.busy === "settings";
     return '<section class="section-band organization-documents-settings" aria-labelledby="organizationDocumentsSettingsTitle">'
       + '<div><span class="eyebrow">PREFERÊNCIAS DA ORGANIZAÇÃO</span><h2 id="organizationDocumentsSettingsTitle">Alertas de vencimento</h2>'
@@ -254,10 +262,13 @@ export function createOrganizationDocumentsFeature({
       + '<form data-form="alert-settings" class="organization-documents-settings-form">'
       + '<label for="organizationDocumentsAlertDays">Antecedência do alerta</label>'
       + '<div class="organization-documents-settings-control"><div class="organization-documents-settings-days">'
-      + '<input id="organizationDocumentsAlertDays" data-alert-days type="number" inputmode="numeric" step="1" value="' + escapeHtml(alertDays) + '"' + min + max + (disabled ? " disabled" : "") + ' aria-describedby="organizationDocumentsAlertHelp" />'
-      + '<span>dias antes do vencimento</span></div>'
-      + '<button class="quiet-action" type="submit"' + (disabled ? " disabled" : "") + (state.busy === "settings" ? ' aria-busy="true"' : "") + '>Salvar configuração</button></div>'
-      + '<small id="organizationDocumentsAlertHelp">' + (canManageSettings() ? "Esta configuração vale para toda a organização." : "Somente usuários autorizados podem alterar esta configuração.") + '</small>'
+      + '<output class="organization-documents-alert-value" for="organizationDocumentsAlertDays"><strong data-alert-days-value>' + escapeHtml(alertDays) + '</strong><span>dias antes do vencimento</span></output>'
+      + '<input id="organizationDocumentsAlertDays" data-alert-days type="range" min="' + MIN_ALERT_DAYS + '" max="' + MAX_ALERT_DAYS + '" step="1" value="' + escapeHtml(alertDays) + '" style="--alert-days-progress: ' + progress + '%" aria-valuetext="' + escapeHtml(alertDays + ' dias antes do vencimento') + '" aria-describedby="organizationDocumentsAlertHelp organizationDocumentsAlertScaleDescription"' + (disabled ? " disabled" : "") + ' />'
+      + '<div class="organization-documents-alert-scale" aria-hidden="true"><span class="is-start">0</span><span style="left: 5.8333%">7</span><span style="left: 12.5%">15</span><span style="left: 25%">30</span><span style="left: 50%">60</span><span style="left: 75%">90</span><span class="is-end">120</span></div>'
+      + (requiresRangeAdjustment ? '<p class="organization-documents-alert-range-note" data-alert-days-range-note role="status">Valor salvo atual: ' + escapeHtml(savedAlertDays) + ' dias. Ajuste o slider para escolher uma nova antecedência de até 120 dias.</p>' : '')
+      + '</div><button class="quiet-action" data-alert-days-save type="submit"' + ((disabled || requiresRangeAdjustment) ? " disabled" : "") + (state.busy === "settings" ? ' aria-busy="true"' : "") + '>Salvar configuração</button></div>'
+      + '<small id="organizationDocumentsAlertHelp">Esta configuração vale para toda a organização.' + (canManageSettings() ? "" : " Somente usuários autorizados podem alterá-la.") + '</small>'
+      + '<span id="organizationDocumentsAlertScaleDescription" class="sr-only">Referências da escala: 0, 7, 15, 30, 60, 90 e 120 dias.</span>'
       + (state.settingsFeedback ? '<p class="organization-documents-feedback" role="status" data-tone="' + escapeHtml(state.settingsFeedbackTone) + '">' + escapeHtml(state.settingsFeedback) + '</p>' : "")
       + '</form></section>';
   }
@@ -625,6 +636,7 @@ export function createOrganizationDocumentsFeature({
       state.documents = Array.isArray(documents) ? documents : [];
       state.selectedDocumentIds = reconcileDocumentSelection(state.selectedDocumentIds, state.documents);
       state.settings = { alertDays: DEFAULT_ALERT_DAYS, ...(settings || {}) };
+      state.alertDaysDraft = null;
       state.loaded = true;
       state.loading = false;
       render();
@@ -779,7 +791,7 @@ export function createOrganizationDocumentsFeature({
   async function saveSettings(form) {
     if (!canManageSettings()) return;
     const input = form.querySelector("[data-alert-days]");
-    const limits = { min: state.settings.minAlertDays, max: state.settings.maxAlertDays };
+    const limits = { min: MIN_ALERT_DAYS, max: MAX_ALERT_DAYS };
     const error = validateAlertDays(input?.value, limits);
     if (error) {
       input?.setAttribute("aria-invalid", "true");
@@ -792,12 +804,14 @@ export function createOrganizationDocumentsFeature({
     }
     const alertDays = Number(input.value);
     state.busy = "settings";
+    if (input) input.disabled = true;
     state.settingsFeedback = "";
     state.settingsFeedbackTone = "";
     const submit = form.querySelector('[type="submit"]');
     setButtonBusy(submit, "Salvando…", true);
     try {
       state.settings = { ...state.settings, ...(await api().saveAlertDays({ alertDays })) };
+      state.alertDaysDraft = null;
       state.settingsFeedback = "Configuração salva.";
       state.settingsFeedbackTone = "success";
       state.busy = "";
@@ -890,6 +904,16 @@ export function createOrganizationDocumentsFeature({
       if (event.target.matches("[data-search]")) {
         state.query = event.target.value;
         updateList();
+      } else if (event.target.matches("[data-alert-days]")) {
+        const alertDays = Number(event.target.value);
+        state.alertDaysDraft = alertDays;
+        event.target.setAttribute("aria-valuetext", alertDays + " dias antes do vencimento");
+        event.target.style.setProperty("--alert-days-progress", (alertDays / MAX_ALERT_DAYS) * 100 + "%");
+        const value = root.querySelector("[data-alert-days-value]");
+        if (value) value.textContent = String(alertDays);
+        root.querySelector("[data-alert-days-range-note]")?.remove();
+        const saveButton = root.querySelector("[data-alert-days-save]");
+        if (saveButton) saveButton.disabled = !canManageSettings() || state.busy === "settings";
       }
     });
     root.addEventListener("change", (event) => {
@@ -970,6 +994,7 @@ export function createOrganizationDocumentsFeature({
       state.documents = [];
       state.selectedDocumentIds.clear();
       state.settings = { alertDays: DEFAULT_ALERT_DAYS };
+      state.alertDaysDraft = null;
       state.settingsFeedback = "";
       state.settingsFeedbackTone = "";
       state.query = "";
