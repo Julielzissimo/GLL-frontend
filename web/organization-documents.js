@@ -179,9 +179,10 @@ export function reconcileDocumentSelection(selectedDocumentIds, documents) {
   return new Set(Array.from(selectedDocumentIds || [], String).filter((id) => eligibleIds.has(id)));
 }
 
-export function validateDocumentFields({ mode, title, file, expiresOn, noExpiration }) {
-  if (mode === "create" && !String(title || "").trim()) return "Informe o título do documento.";
-  if ((mode === "create" || mode === "replace") && (!file || !Number(file.size))) return "Selecione um arquivo.";
+export function validateDocumentFields({ mode, title, file, expiresOn, noExpiration, requiresFile = false }) {
+  if ((mode === "create" || mode === "update") && !String(title || "").trim()) return "Informe o título do documento.";
+  if ((mode === "create" || mode === "replace" || (mode === "update" && requiresFile))
+    && (!file || !Number(file.size))) return "Selecione um arquivo.";
   if (!noExpiration && parseDateOnly(expiresOn) === null) return "Informe uma data de validade ou marque “Sem vencimento”.";
   return "";
 }
@@ -252,7 +253,8 @@ export function createOrganizationDocumentsFeature({
     status: "all",
     sortDirection: "asc",
     activeDocument: null,
-    pendingReplacement: null,
+    pendingFileRemoval: false,
+    pendingDeletion: null,
     pendingFocusDocumentId: null,
     busy: "",
   };
@@ -279,7 +281,7 @@ export function createOrganizationDocumentsFeature({
     if (!row) return;
     state.pendingFocusDocumentId = null;
     row.scrollIntoView?.({ behavior: "smooth", block: "center" });
-    row.querySelector('[data-action="view"]')?.focus({ preventScroll: true });
+    (row.querySelector('[data-action="edit-document"]') || row.querySelector('[data-select-document]'))?.focus({ preventScroll: true });
   }
 
   function renderSettings() {
@@ -418,10 +420,14 @@ export function createOrganizationDocumentsFeature({
     const title = String(document.title || "Documento sem título");
     const fileName = String(document.fileName || "Arquivo sem nome");
     const documentId = escapeHtml(document.id);
-    const manageActions = canManageDocuments()
-      ? '<button class="quiet-action compact-action" type="button" data-action="replace" data-document-id="' + documentId + '" aria-label="Substituir documento ' + escapeHtml(title) + '">Substituir</button>'
-        + '<button class="quiet-action compact-action" type="button" data-action="edit-validity" data-document-id="' + documentId + '" aria-label="Editar validade de ' + escapeHtml(title) + '">Editar validade</button>'
-      : "";
+    const canEditDocument = canManageDocuments();
+    const canDeleteDocument = canEditDocument && isAdmin();
+    const manageActions = (canEditDocument
+      ? '<button class="quiet-action compact-action" type="button" data-action="edit-document" data-document-id="' + documentId + '" aria-label="Editar documento ' + escapeHtml(title) + '">Editar</button>'
+      : "")
+      + (canDeleteDocument
+        ? '<button class="danger-action compact-action" type="button" data-action="delete-document" data-document-id="' + documentId + '" aria-label="Excluir documento ' + escapeHtml(title) + '">Excluir</button>'
+        : "");
     const selected = state.selectedDocumentIds.has(String(document.id));
     const selectionCheckbox = renderSelectionCheckbox({
       id: "organizationDocumentSelect-" + documentId,
@@ -436,10 +442,7 @@ export function createOrganizationDocumentsFeature({
       + '<th scope="row"><strong>' + escapeHtml(title) + '</strong><span class="organization-documents-file-name">' + escapeHtml(fileName) + '</span></th>'
       + '<td>' + (document.expiresOn ? escapeHtml(formatDate(document.expiresOn)) : "—") + '</td>'
       + '<td>' + renderStatusBadge(status) + '</td>'
-      + '<td><div class="organization-documents-row-actions">'
-      + '<button class="quiet-action compact-action" type="button" data-action="view" data-document-id="' + documentId + '" aria-label="Visualizar documento ' + escapeHtml(title) + '">Visualizar</button>'
-      + '<button class="quiet-action compact-action" type="button" data-action="download" data-document-id="' + documentId + '" aria-label="Baixar documento ' + escapeHtml(title) + '">Baixar</button>'
-      + manageActions + '</div></td></tr>';
+      + '<td><div class="organization-documents-row-actions">' + manageActions + '</div></td></tr>';
   }
 
   function createActionButton(action, label, icon = "add") {
@@ -487,39 +490,25 @@ export function createOrganizationDocumentsFeature({
   }
 
   function renderDialogs() {
-    return '<dialog class="organization-documents-dialog" data-dialog="create" aria-labelledby="organizationDocumentCreateTitle" aria-describedby="organizationDocumentCreateDescription">'
-      + '<form data-form="create-document"><div class="organization-documents-dialog-heading"><h2 id="organizationDocumentCreateTitle">Cadastrar documento</h2>'
-      + '<button class="icon-button modal-close-button" type="button" data-action="close-dialog" aria-label="Fechar cadastro">×</button></div>'
-      + '<p id="organizationDocumentCreateDescription">Adicione o arquivo e informe sua validade.</p>'
+    return '<dialog class="organization-documents-dialog" data-dialog="document-form" aria-labelledby="organizationDocumentFormTitle" aria-describedby="organizationDocumentFormDescription">'
+      + '<form data-form="document"><div class="organization-documents-dialog-heading"><h2 id="organizationDocumentFormTitle" data-form-title>Cadastrar documento</h2>'
+      + '<button class="icon-button modal-close-button" type="button" data-action="close-dialog" aria-label="Fechar formulário">×</button></div>'
+      + '<p id="organizationDocumentFormDescription" data-form-description>Adicione o arquivo e informe sua validade.</p>'
       + '<label for="organizationDocumentTitle">Título do documento</label><input id="organizationDocumentTitle" data-field="title" required maxlength="160" autocomplete="off" />'
-      + '<label for="organizationDocumentFile">Arquivo</label><input id="organizationDocumentFile" data-field="file" type="file" required aria-describedby="organizationDocumentFileHelp" />'
+      + '<label for="organizationDocumentFile">Arquivo</label>'
+      + '<p class="organization-documents-current-title" data-current-file hidden>Arquivo atual: <strong data-current-file-name></strong> '
+      + '<button class="danger-action compact-action" type="button" data-action="remove-current-file">Excluir arquivo</button></p>'
+      + '<p id="organizationDocumentFileRemovalNote" class="organization-documents-form-error" data-file-removal-note role="status" hidden>Ao salvar, selecione o arquivo substituto; o documento não ficará sem arquivo.</p>'
+      + '<input id="organizationDocumentFile" data-field="file" type="file" required aria-describedby="organizationDocumentFileHelp organizationDocumentFileRemovalNote" />'
       + '<small id="organizationDocumentFileHelp">Os formatos e limites aceitos seguem a política de armazenamento da organização.</small>'
-      + renderExpirationFields("organizationDocumentCreate")
+      + renderExpirationFields("organizationDocumentForm")
       + '<p class="form-error organization-documents-form-error" data-form-error role="alert"></p>'
-      + '<div class="button-row end"><button class="quiet-action" type="button" data-action="close-dialog">Cancelar</button><button class="primary-action" type="submit">Cadastrar</button></div></form></dialog>'
-      + '<dialog class="organization-documents-dialog" data-dialog="replace" aria-labelledby="organizationDocumentReplaceTitle" aria-describedby="organizationDocumentReplaceDescription">'
-      + '<form data-form="replace-document"><div class="organization-documents-dialog-heading"><h2 id="organizationDocumentReplaceTitle">Substituir documento</h2>'
-      + '<button class="icon-button modal-close-button" type="button" data-action="close-dialog" aria-label="Fechar substituição">×</button></div>'
-      + '<p id="organizationDocumentReplaceDescription">O título e a identidade deste cadastro serão mantidos.</p>'
-      + '<p class="organization-documents-current-title"><strong data-replace-title></strong></p>'
-      + '<label for="organizationDocumentReplacementFile">Novo arquivo</label><input id="organizationDocumentReplacementFile" data-field="file" type="file" required aria-describedby="organizationDocumentReplacementFileHelp" />'
-      + '<small id="organizationDocumentReplacementFileHelp">O arquivo atual será substituído após sua confirmação.</small>'
-      + renderExpirationFields("organizationDocumentReplace")
+      + '<div class="button-row end"><button class="quiet-action" type="button" data-action="close-dialog">Cancelar</button><button class="primary-action" data-form-submit type="submit">Cadastrar</button></div></form></dialog>'
+      + '<dialog class="organization-documents-dialog organization-documents-confirm-dialog" data-dialog="delete-confirm" aria-labelledby="organizationDocumentDeleteTitle" aria-describedby="organizationDocumentDeleteDescription">'
+      + '<div><h2 id="organizationDocumentDeleteTitle" data-confirm-title>Excluir documento?</h2><p id="organizationDocumentDeleteDescription" data-confirm-description>O documento deixará de aparecer no Kit de Documentos.</p>'
+      + '<p class="organization-documents-current-title"><strong data-delete-document-title></strong></p>'
       + '<p class="form-error organization-documents-form-error" data-form-error role="alert"></p>'
-      + '<div class="button-row end"><button class="quiet-action" type="button" data-action="close-dialog">Cancelar</button><button class="primary-action" type="submit">Continuar</button></div></form></dialog>'
-      + '<dialog class="organization-documents-dialog" data-dialog="edit-validity" aria-labelledby="organizationDocumentEditTitle" aria-describedby="organizationDocumentEditDescription">'
-      + '<form data-form="edit-validity"><div class="organization-documents-dialog-heading"><h2 id="organizationDocumentEditTitle">Editar validade</h2>'
-      + '<button class="icon-button modal-close-button" type="button" data-action="close-dialog" aria-label="Fechar edição">×</button></div>'
-      + '<p id="organizationDocumentEditDescription">Atualize a data sem substituir o arquivo.</p>'
-      + '<p class="organization-documents-current-title"><strong data-edit-title></strong></p>'
-      + renderExpirationFields("organizationDocumentEdit")
-      + '<p class="form-error organization-documents-form-error" data-form-error role="alert"></p>'
-      + '<div class="button-row end"><button class="quiet-action" type="button" data-action="close-dialog">Cancelar</button><button class="primary-action" type="submit">Salvar validade</button></div></form></dialog>'
-      + '<dialog class="organization-documents-dialog organization-documents-confirm-dialog" data-dialog="replace-confirm" aria-labelledby="organizationDocumentConfirmTitle" aria-describedby="organizationDocumentConfirmDescription">'
-      + '<div><h2 id="organizationDocumentConfirmTitle">Confirmar substituição</h2><p id="organizationDocumentConfirmDescription">O arquivo atual será substituído no mesmo cadastro. O título será preservado.</p>'
-      + '<p><strong data-confirm-document-title></strong></p><p data-confirm-document-file></p><p data-confirm-document-expiry></p>'
-      + '<p class="form-error organization-documents-form-error" data-form-error role="alert"></p>'
-      + '<div class="button-row end"><button class="quiet-action" type="button" data-action="cancel-replacement">Cancelar</button><button class="primary-action" type="button" data-action="confirm-replacement">Confirmar substituição</button></div></div></dialog>';
+      + '<div class="button-row end"><button class="quiet-action" type="button" data-action="cancel-delete">Cancelar</button><button class="danger-action" type="button" data-action="confirm-delete" data-confirm-label>Excluir</button></div></div></dialog>';
   }
 
   function renderExpirationFields(prefix) {
@@ -570,6 +559,11 @@ export function createOrganizationDocumentsFeature({
   function closeDialog(name) {
     const dialog = root?.querySelector('[data-dialog="' + name + '"]');
     if (dialog?.open) dialog.close();
+    if (name === "document-form") {
+      state.activeDocument = null;
+      state.pendingFileRemoval = false;
+    }
+    if (name === "delete-confirm") state.pendingDeletion = null;
   }
 
   function setFormError(form, message) {
@@ -619,53 +613,106 @@ export function createOrganizationDocumentsFeature({
     if (toggle.checked) date.value = "";
   }
 
+  function syncDocumentFormMode(form) {
+    if (!form) return;
+    const editing = form.dataset.mode === "edit";
+    const document = editing ? state.activeDocument : null;
+    const fileInput = form.querySelector('[data-field="file"]');
+    const currentFile = form.querySelector("[data-current-file]");
+    const currentFileName = form.querySelector("[data-current-file-name]");
+    const fileRemovalNote = form.querySelector("[data-file-removal-note]");
+    const removeFileButton = form.querySelector('[data-action="remove-current-file"], [data-action="cancel-file-removal"]');
+    const submit = form.querySelector("[data-form-submit]");
+    form.querySelector("[data-form-title]").textContent = editing ? "Editar documento" : "Cadastrar documento";
+    form.querySelector("[data-form-description]").textContent = editing
+      ? "Atualize os dados do documento e, se necessário, substitua o arquivo."
+      : "Adicione o arquivo e informe sua validade.";
+    if (currentFileName) currentFileName.textContent = document?.fileName || "";
+    if (currentFile) currentFile.hidden = !editing || !document?.fileName;
+    if (fileRemovalNote) fileRemovalNote.hidden = !state.pendingFileRemoval;
+    if (removeFileButton) {
+      const removalRequested = state.pendingFileRemoval;
+      removeFileButton.textContent = removalRequested ? "Manter arquivo atual" : "Excluir arquivo";
+      removeFileButton.dataset.action = removalRequested ? "cancel-file-removal" : "remove-current-file";
+      removeFileButton.classList.toggle("danger-action", !removalRequested);
+      removeFileButton.classList.toggle("quiet-action", removalRequested);
+    }
+    if (fileInput) fileInput.required = !editing || !document?.fileName || state.pendingFileRemoval;
+    if (submit) submit.textContent = editing ? "Salvar alterações" : "Cadastrar";
+  }
+
   function openCreateDialog() {
-    const dialog = openDialog("create");
+    state.activeDocument = null;
+    state.pendingDeletion = null;
+    state.pendingFileRemoval = false;
+    const dialog = openDialog("document-form");
     const form = dialog?.querySelector("form");
     form?.reset();
     if (form) {
+      form.dataset.mode = "create";
       setFormError(form, "");
       syncExpirationFields(form);
+      syncDocumentFormMode(form);
     }
     dialog?.querySelector('[data-field="title"]')?.focus();
   }
 
-  function openReplaceDialog(documentId) {
+  function openEditDialog(documentId) {
     const document = state.documents.find((row) => String(row.id) === String(documentId));
-    if (!document) return;
+    if (!document || !canManageDocuments()) return;
     state.activeDocument = document;
-    const dialog = openDialog("replace");
+    state.pendingDeletion = null;
+    state.pendingFileRemoval = false;
+    const dialog = openDialog("document-form");
     const form = dialog?.querySelector("form");
     form?.reset();
     if (form) {
+      form.dataset.mode = "edit";
       setFormError(form, "");
-      form.querySelector("[data-replace-title]").textContent = document.title;
+      form.querySelector('[data-field="title"]').value = document.title || "";
       const expiry = form.querySelector('[data-field="expires-on"]');
       const noExpiration = form.querySelector('[data-field="no-expiration"]');
       if (expiry) expiry.value = document.expiresOn || "";
       if (noExpiration) noExpiration.checked = !document.expiresOn;
       syncExpirationFields(form);
+      syncDocumentFormMode(form);
     }
-    dialog?.querySelector('[data-field="file"]')?.focus();
+    dialog?.querySelector('[data-field="title"]')?.focus();
   }
 
-  function openEditValidityDialog(documentId) {
+  function openDeleteConfirmation(documentId) {
     const document = state.documents.find((row) => String(row.id) === String(documentId));
-    if (!document) return;
-    state.activeDocument = document;
-    const dialog = openDialog("edit-validity");
-    const form = dialog?.querySelector("form");
-    form?.reset();
-    if (form) {
-      setFormError(form, "");
-      form.querySelector("[data-edit-title]").textContent = document.title;
-      const expiry = form.querySelector('[data-field="expires-on"]');
-      const noExpiration = form.querySelector('[data-field="no-expiration"]');
-      if (expiry) expiry.value = document.expiresOn || "";
-      if (noExpiration) noExpiration.checked = !document.expiresOn;
-      syncExpirationFields(form);
-    }
-    dialog?.querySelector('[data-field="expires-on"]')?.focus();
+    if (!document || !isAdmin()) return;
+    state.activeDocument = null;
+    state.pendingFileRemoval = false;
+    state.pendingDeletion = { action: "document", document };
+    const dialog = openDialog("delete-confirm");
+    const heading = dialog?.querySelector("[data-confirm-title]");
+    const description = dialog?.querySelector("[data-confirm-description]");
+    const confirmButton = dialog?.querySelector("[data-confirm-label]");
+    if (heading) heading.textContent = "Excluir documento?";
+    if (description) description.textContent = "O documento deixará de aparecer no Kit de Documentos.";
+    const title = dialog?.querySelector("[data-delete-document-title]");
+    if (title) title.textContent = document.title || "Documento sem título";
+    if (confirmButton) confirmButton.textContent = "Excluir";
+    setFormError(dialog, "");
+    dialog?.querySelector('[data-action="cancel-delete"]')?.focus();
+  }
+
+  function openFileRemovalConfirmation() {
+    if (!state.activeDocument?.fileName) return;
+    state.pendingDeletion = { action: "file", document: state.activeDocument };
+    const dialog = openDialog("delete-confirm");
+    const heading = dialog?.querySelector("[data-confirm-title]");
+    const description = dialog?.querySelector("[data-confirm-description]");
+    const confirmButton = dialog?.querySelector("[data-confirm-label]");
+    if (heading) heading.textContent = "Excluir arquivo atual?";
+    if (description) description.textContent = "Selecione um novo arquivo e salve o cadastro para concluir a substituição.";
+    const title = dialog?.querySelector("[data-delete-document-title]");
+    if (title) title.textContent = state.activeDocument.fileName || "Arquivo atual";
+    if (confirmButton) confirmButton.textContent = "Excluir arquivo";
+    setFormError(dialog, "");
+    dialog?.querySelector('[data-action="cancel-delete"]')?.focus();
   }
 
   async function load() {
@@ -692,15 +739,20 @@ export function createOrganizationDocumentsFeature({
     }
   }
 
-  async function refreshListAfterMutation(documentId = null, action = "create") {
+  async function refreshListAfterMutation(documentId = null, action = "create", shouldFocus = true) {
     try {
       state.documents = await api().listDocuments();
       state.selectedDocumentIds = reconcileDocumentSelection(state.selectedDocumentIds, state.documents);
+      if (state.activeDocument) {
+        state.activeDocument = state.documents.find((row) => String(row.id) === String(state.activeDocument.id)) || state.activeDocument;
+      }
       updateList();
       notifyAlertsChanged();
-      focusAfterMutation(documentId, action);
+      if (shouldFocus) focusAfterMutation(documentId, action);
     } catch (error) {
-      toast("A alteração foi salva, mas não foi possível atualizar a lista. " + (error?.message || ""), "error");
+      toast(shouldFocus
+        ? "A alteração foi salva, mas não foi possível atualizar a lista. " + (error?.message || "")
+        : "Não foi possível atualizar a lista depois da falha. Recarregue a página para conferir o estado atual.", "error");
     }
   }
 
@@ -713,11 +765,11 @@ export function createOrganizationDocumentsFeature({
     root?.querySelector('[data-action="create"]')?.focus();
   }
 
-  function documentFormData(form, mode) {
+  function documentFormData(form, mode, requiresFile = false) {
     const title = form.querySelector('[data-field="title"]')?.value.trim() || "";
     const file = form.querySelector('[data-field="file"]')?.files?.[0] || null;
     const { noExpiration, expiresOn } = readExpirationFields(form);
-    const message = validateDocumentFields({ mode, title, file, expiresOn, noExpiration });
+    const message = validateDocumentFields({ mode, title, file, expiresOn, noExpiration, requiresFile });
     if (message) {
       reportDocumentValidationError(form, message);
       return null;
@@ -725,109 +777,90 @@ export function createOrganizationDocumentsFeature({
     return { title, file, expiresOn };
   }
 
-  async function submitCreate(form) {
-    const data = documentFormData(form, "create");
+  async function submitDocument(form) {
+    const editing = form.dataset.mode === "edit";
+    const current = editing ? state.activeDocument : null;
+    if (editing && !current) return;
+    const data = documentFormData(form, editing ? "update" : "create", editing && (!current.fileName || state.pendingFileRemoval));
     if (!data) return;
-    state.busy = "create";
+    state.busy = editing ? "edit" : "create";
     const submit = form.querySelector('[type="submit"]');
     setButtonBusy(submit, "Salvando…", true);
     setFormError(form, "");
     try {
-      const document = await api().createDocument(data);
-      state.documents = [document, ...state.documents.filter((row) => String(row.id) !== String(document.id))];
-      closeDialog("create");
+      let document;
+      if (!editing) {
+        document = await api().createDocument(data);
+      } else {
+        document = current;
+        if (data.title !== current.title) {
+          document = await api().updateDocument({ documentId: current.id, title: data.title });
+        }
+        if (data.file) {
+          document = await api().replaceDocument({
+            documentId: current.id,
+            expectedVersion: current.version,
+            file: data.file,
+            expiresOn: data.expiresOn,
+          });
+        } else if (data.expiresOn !== current.expiresOn) {
+          document = await api().updateValidity({ documentId: current.id, expiresOn: data.expiresOn });
+        }
+      }
+      if (editing && String(document?.id) !== String(current.id)) {
+        throw new Error("A atualização retornou uma identidade diferente do cadastro original.");
+      }
+      state.documents = editing
+        ? state.documents.map((row) => String(row.id) === String(current.id) ? document : row)
+        : [document, ...state.documents.filter((row) => String(row.id) !== String(document.id))];
       state.busy = "";
+      state.pendingFileRemoval = false;
+      closeDialog("document-form");
+      render();
+      focusAfterMutation(editing ? current.id : null, editing ? "edit-document" : "create");
+      toast(editing ? "Documento atualizado com sucesso." : "Documento cadastrado com sucesso.", "success");
+      void refreshListAfterMutation(editing ? current.id : null, editing ? "edit-document" : "create");
+    } catch (error) {
+      state.busy = "";
+      setButtonBusy(submit, "", false);
+      setFormError(form, error?.message || (editing ? "Não foi possível editar o documento." : "Não foi possível cadastrar o documento."));
+      if (editing) await refreshListAfterMutation(current.id, "edit-document", false);
+    }
+  }
+
+  async function confirmDeleteAction(button) {
+    const pending = state.pendingDeletion;
+    if (!pending) return;
+    if (pending.action === "file") {
+      state.pendingFileRemoval = true;
+      closeDialog("delete-confirm");
+      const form = root?.querySelector('[data-dialog="document-form"] form');
+      syncDocumentFormMode(form);
+      form?.querySelector('[data-field="file"]')?.focus();
+      return;
+    }
+    const current = pending.document;
+    if (!current || !isAdmin()) return;
+    state.busy = "delete";
+    setButtonBusy(button, "Excluindo…", true);
+    const dialog = button.closest("dialog");
+    setFormError(dialog, "");
+    try {
+      const archived = await api().archiveDocument({ documentId: current.id });
+      if (String(archived?.id) !== String(current.id)) throw new Error("A exclusão retornou uma identidade diferente do cadastro original.");
+      state.documents = state.documents.filter((row) => String(row.id) !== String(current.id));
+      state.selectedDocumentIds.delete(String(current.id));
+      state.busy = "";
+      state.pendingDeletion = null;
+      closeDialog("delete-confirm");
       render();
       focusAfterMutation(null, "create");
-      toast("Documento cadastrado com sucesso.", "success");
+      toast("Documento excluído com sucesso.", "success");
       void refreshListAfterMutation();
     } catch (error) {
       state.busy = "";
-      setButtonBusy(submit, "", false);
-      setFormError(form, error?.message || "Não foi possível cadastrar o documento.");
-    }
-  }
-
-  async function submitReplacement(form) {
-    const data = documentFormData(form, "replace");
-    if (!data || !state.activeDocument) return;
-    state.pendingReplacement = { ...data, documentId: state.activeDocument.id };
-    closeDialog("replace");
-    const confirmation = openDialog("replace-confirm");
-    confirmation.querySelector("[data-confirm-document-title]").textContent = state.activeDocument.title;
-    confirmation.querySelector("[data-confirm-document-file]").textContent = "Novo arquivo: " + data.file.name;
-    confirmation.querySelector("[data-confirm-document-expiry]").textContent = data.expiresOn
-      ? "Nova validade: " + formatDate(data.expiresOn)
-      : "Validade: sem vencimento";
-    setFormError(confirmation, "");
-  }
-
-  async function confirmReplacement(button) {
-    const replacement = state.pendingReplacement;
-    const current = state.documents.find((row) => String(row.id) === String(replacement?.documentId));
-    if (!replacement || !current) return;
-    state.busy = "replace";
-    button.disabled = true;
-    button.dataset.idleLabel = button.textContent;
-    button.textContent = "Substituindo…";
-    button.setAttribute("aria-busy", "true");
-    const confirmation = button.closest("dialog");
-    setFormError(confirmation, "");
-    try {
-      const saved = await api().replaceDocument({
-        documentId: current.id,
-        expectedVersion: current.version,
-        file: replacement.file,
-        expiresOn: replacement.expiresOn,
-      });
-      if (String(saved?.id) !== String(current.id)) throw new Error("A substituição retornou uma identidade diferente do cadastro original.");
-      state.documents = state.documents.map((row) => String(row.id) === String(current.id) ? saved : row);
-      state.pendingReplacement = null;
-      state.activeDocument = null;
-      state.busy = "";
-      closeDialog("replace-confirm");
-      render();
-      focusAfterMutation(current.id, "replace");
-      toast("Documento substituído com sucesso.", "success");
-      void refreshListAfterMutation(current.id, "replace");
-    } catch (error) {
-      state.busy = "";
       setButtonBusy(button, "", false);
-      setFormError(confirmation, error?.message || "Não foi possível substituir o documento.");
-    }
-  }
-
-  async function submitValidity(form) {
-    const { noExpiration, expiresOn } = readExpirationFields(form);
-    const message = validateDocumentFields({ mode: "edit", expiresOn, noExpiration });
-    if (message || !state.activeDocument) {
-      reportDocumentValidationError(form, message || "Selecione um documento para editar.");
-      return;
-    }
-    const submit = form.querySelector('[type="submit"]');
-    state.busy = "validity";
-    setButtonBusy(submit, "Salvando…", true);
-    setFormError(form, "");
-    try {
-      const current = state.activeDocument;
-      const saved = await api().updateValidity({
-        documentId: current.id,
-        expectedVersion: current.version,
-        expiresOn,
-      });
-      if (String(saved?.id) !== String(current.id)) throw new Error("A atualização retornou uma identidade diferente do cadastro original.");
-      state.documents = state.documents.map((row) => String(row.id) === String(current.id) ? saved : row);
-      state.activeDocument = null;
-      state.busy = "";
-      closeDialog("edit-validity");
-      render();
-      focusAfterMutation(current.id, "edit-validity");
-      toast("Validade atualizada com sucesso.", "success");
-      void refreshListAfterMutation(current.id, "edit-validity");
-    } catch (error) {
-      state.busy = "";
-      setButtonBusy(submit, "", false);
-      setFormError(form, error?.message || "Não foi possível atualizar a validade.");
+      setFormError(dialog, error?.message || "Não foi possível excluir o documento.");
     }
   }
 
@@ -870,34 +903,6 @@ export function createOrganizationDocumentsFeature({
       render();
       root.querySelector("[data-alert-days]")?.setAttribute("aria-invalid", "true");
       root.querySelector("[data-alert-days]")?.focus();
-    }
-  }
-
-  async function downloadDocument(record, view = false) {
-    const popup = view ? window.open("about:blank", "_blank") : null;
-    if (view && !popup) {
-      toast("Permita a abertura de novas guias para visualizar o arquivo.", "error");
-      return;
-    }
-    if (popup) popup.opener = null;
-    try {
-      const blob = await api().downloadDocument({ documentId: record.id });
-      const url = URL.createObjectURL(blob);
-      if (view) {
-        popup.location.replace(url);
-      } else {
-        const anchor = globalThis.document.createElement("a");
-        anchor.href = url;
-        anchor.download = record.fileName || "documento";
-        anchor.rel = "noopener";
-        globalThis.document.body.append(anchor);
-        anchor.click();
-        anchor.remove();
-      }
-      window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
-    } catch (error) {
-      popup?.close();
-      toast(error?.message || "Não foi possível abrir o arquivo.", "error");
     }
   }
 
@@ -1008,9 +1013,7 @@ export function createOrganizationDocumentsFeature({
       if (!form) return;
       event.preventDefault();
       if (form.dataset.form === "alert-settings") void saveSettings(form);
-      if (form.dataset.form === "create-document") void submitCreate(form);
-      if (form.dataset.form === "replace-document") void submitReplacement(form);
-      if (form.dataset.form === "edit-validity") void submitValidity(form);
+      if (form.dataset.form === "document") void submitDocument(form);
     });
     root.addEventListener("click", (event) => {
       const button = event.target.closest("[data-action]");
@@ -1019,11 +1022,17 @@ export function createOrganizationDocumentsFeature({
       switch (button.dataset.action) {
         case "create": if (canManageDocuments()) openCreateDialog(); break;
         case "retry": void load(); break;
-        case "close-dialog": button.closest("dialog")?.close(); break;
-        case "replace": if (documentRow && canManageDocuments()) openReplaceDialog(documentRow.id); break;
-        case "edit-validity": if (documentRow && canManageDocuments()) openEditValidityDialog(documentRow.id); break;
-        case "view": if (documentRow) void downloadDocument(documentRow, true); break;
-        case "download": if (documentRow) void downloadDocument(documentRow); break;
+        case "close-dialog": closeDialog(button.closest("dialog")?.dataset.dialog); break;
+        case "edit-document": if (documentRow && canManageDocuments()) openEditDialog(documentRow.id); break;
+        case "delete-document": if (documentRow && isAdmin()) openDeleteConfirmation(documentRow.id); break;
+        case "remove-current-file": openFileRemovalConfirmation(); break;
+        case "cancel-file-removal":
+          state.pendingFileRemoval = false;
+          if (button.closest("form")) button.closest("form").querySelector('[data-field="file"]').value = "";
+          syncDocumentFormMode(button.closest("form"));
+          break;
+        case "cancel-delete": closeDialog("delete-confirm"); break;
+        case "confirm-delete": void confirmDeleteAction(button); break;
         case "download-selected": void downloadSelectedDocuments(); break;
         case "clear-selection":
           if (state.busy !== "bulk-download") {
@@ -1031,11 +1040,6 @@ export function createOrganizationDocumentsFeature({
             updateList();
           }
           break;
-        case "cancel-replacement":
-          state.pendingReplacement = null;
-          closeDialog("replace-confirm");
-          break;
-        case "confirm-replacement": void confirmReplacement(button); break;
         default: break;
       }
     });
@@ -1063,7 +1067,8 @@ export function createOrganizationDocumentsFeature({
       state.status = "all";
       state.sortDirection = "asc";
       state.activeDocument = null;
-      state.pendingReplacement = null;
+      state.pendingFileRemoval = false;
+      state.pendingDeletion = null;
       state.pendingFocusDocumentId = null;
       state.busy = "";
       if (root) root.innerHTML = "";
