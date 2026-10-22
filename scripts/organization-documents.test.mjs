@@ -90,7 +90,23 @@ test("valida cadastro, substituição, edição de validade e antecedência dos 
   assert.equal(validateAlertDays("30", { min: 0, max: 365 }), "");
   assert.match(validateAlertDays("-1", { min: 0, max: 365 }), /pelo menos 0/);
   assert.match(validateAlertDays("366", { min: 0, max: 365 }), /no máximo 365/);
+  assert.equal(validateAlertDays("0", { min: 0, max: 120 }), "");
+  assert.equal(validateAlertDays("120", { min: 0, max: 120 }), "");
+  assert.match(validateAlertDays("121", { min: 0, max: 120 }), /no máximo 120/);
   assert.match(validateAlertDays("1.5"), /número inteiro/);
+});
+
+test("preferências de alertas usam slider acessível e mantêm o salvamento por organização", async () => {
+  const feature = await readFile(new URL("../web/organization-documents.js", import.meta.url), "utf8");
+
+  assert.match(feature, /const MIN_ALERT_DAYS = 0/);
+  assert.match(feature, /const MAX_ALERT_DAYS = 120/);
+  assert.match(feature, /type="range" min="' \+ MIN_ALERT_DAYS \+ '" max="' \+ MAX_ALERT_DAYS \+ '" step="1"/);
+  assert.match(feature, /aria-valuetext=/);
+  assert.match(feature, /<span class="is-start">0<\/span><span style="left: 5\.8333%">7<\/span><span style="left: 12\.5%">15<\/span><span style="left: 25%">30<\/span><span style="left: 50%">60<\/span><span style="left: 75%">90<\/span><span class="is-end">120<\/span>/);
+  assert.match(feature, /state\.alertDaysDraft = alertDays/);
+  assert.match(feature, /api\(\)\.saveAlertDays\(\{ alertDays \}\)/);
+  assert.match(feature, /Esta configuração vale para toda a organização/);
 });
 
 test("registra a página na seção Documentos e restringe a navegação do Kit à homologação", async () => {
