@@ -50,6 +50,17 @@ const navigation = (active = "bids") => `
     </aside>
   </div>`;
 
+const navigationWhileLoading = () => `
+  <div class="is-loading">
+    ${navigation().replace(' style="position: relative; width: 100%; height: 100%; min-height: 0; box-sizing: border-box;"', "")}
+    <div aria-hidden="true" style="position: fixed; inset: 0; z-index: var(--z-overlay); background: var(--color-overlay); backdrop-filter: blur(2px);"></div>
+    <div class="blocking-loading-modal" role="dialog" aria-modal="true" aria-labelledby="navigationLoadingTitle" style="position: fixed; inset: 0; z-index: var(--z-modal); margin: auto;">
+      <div class="blocking-loading-spinner" aria-hidden="true"></div>
+      <h2 id="navigationLoadingTitle">Salvando edital…</h2>
+      <p>Aguarde a conclusão da operação. Não feche nem atualize esta página.</p>
+    </div>
+  </div>`;
+
 export const LicitacoesAtivas = {
   name: "Licitações selecionada",
   render: () => navigation("bids"),
@@ -58,4 +69,9 @@ export const LicitacoesAtivas = {
 export const DocumentosAtivos = {
   name: "Declarações selecionada",
   render: () => navigation("declarations"),
+};
+
+export const OperacaoBloqueante = {
+  name: "Menu durante operação bloqueante",
+  render: navigationWhileLoading,
 };
