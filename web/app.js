@@ -163,6 +163,7 @@ const appState = {
   organizationDocumentNotifications: [],
   organizationDocumentPendencies: [],
 };
+let bidAttachmentUploadPromise = null;
 
 const $ = (id) => document.getElementById(id);
 
@@ -2855,6 +2856,7 @@ function bindEvents() {
     button.addEventListener("click", () => applyHomeStatusFilter(button.dataset.homeStatus));
   });
   refs.bidForm.addEventListener("submit", withBlockingLoading(saveBid, "Salvando edital…"));
+  refs.editalFile.addEventListener("change", handleBidAttachmentSelection);
   refs.bidTypeGroup.addEventListener("change", () => {
     refs.bidTypeHelp.textContent = "Selecione o tipo do edital.";
     refs.bidTypeGroup.querySelectorAll('input[name="bidType"]').forEach((input) => input.removeAttribute("aria-invalid"));
@@ -5572,6 +5574,7 @@ async function saveBid(event) {
   event.preventDefault();
   refs.bidFormError.textContent = "";
   try {
+    if (bidAttachmentUploadPromise) await bidAttachmentUploadPromise;
     const data = collectBidData();
     const previousBid = appState.bids.find((bid) => bid.id === appState.originalBidId);
     const files = Array.from(refs.editalFile.files || []);
@@ -5606,20 +5609,78 @@ function renderBidAttachment(bid) {
   const remainingMessage = remaining === 1
     ? "Você ainda pode anexar mais 1 arquivo."
     : `Você ainda pode anexar mais ${remaining} arquivos.`;
-  refs.editalAttachmentHelp.textContent = attachments.length
+  const attachmentSummary = attachments.length
     ? `${attachments.length} de ${MAX_EDITAL_FILES} arquivos anexados. ${remaining ? remainingMessage : "Limite atingido."}`
     : `Envie até ${MAX_EDITAL_FILES} arquivos, com no máximo 20 MB cada.`;
-  refs.editalFile.disabled = attachments.length >= MAX_EDITAL_FILES;
+  const saveInstruction = appState.originalBidId
+    ? "Novos arquivos são salvos automaticamente."
+    : "Salve o edital para anexar os arquivos selecionados.";
+  const isUploading = Boolean(bidAttachmentUploadPromise);
+  refs.editalAttachmentHelp.textContent = isUploading
+    ? "Salvando os arquivos automaticamente…"
+    : `${attachmentSummary} ${saveInstruction}`;
+  refs.editalFile.disabled = isUploading || attachments.length >= MAX_EDITAL_FILES;
+  const actionDisabled = isUploading ? " disabled" : "";
   refs.editalAttachmentList.innerHTML = attachments.length
     ? attachments.map((attachment, index) => `
       <div class="attachment-panel">
         <span><strong>${escapeHtml(attachment.name)}</strong><small>${formatFileSize(attachment.size)}</small></span>
         <span class="attachment-actions">
-          <button class="quiet-action compact-action" type="button" data-attachment-action="download" data-attachment-index="${index}">Baixar</button>
-          <button class="danger-action compact-action" type="button" data-attachment-action="delete" data-attachment-index="${index}">Remover</button>
+          <button class="quiet-action compact-action" type="button" data-attachment-action="download" data-attachment-index="${index}"${actionDisabled}>Baixar</button>
+          <button class="danger-action compact-action" type="button" data-attachment-action="delete" data-attachment-index="${index}"${actionDisabled}>Remover</button>
         </span>
       </div>`).join("")
     : `<div class="empty-state compact-empty">Nenhum arquivo anexado.</div>`;
+}
+
+async function handleBidAttachmentSelection() {
+  const files = Array.from(refs.editalFile.files || []);
+  if (!files.length) return;
+  refs.bidFormError.textContent = "";
+
+  const bid = appState.bids.find((row) => row.id === appState.originalBidId);
+  try {
+    validateEditalFiles(files, normalizeBidAttachments(bid).length);
+  } catch (error) {
+    refs.bidFormError.textContent = error.message;
+    refs.editalFile.value = "";
+    return;
+  }
+
+  if (!bid) {
+    refs.editalAttachmentHelp.textContent = "Salve o edital para que os arquivos selecionados sejam anexados.";
+    return;
+  }
+  if (guardCurrentBidReadOnly()) {
+    refs.editalFile.value = "";
+    return;
+  }
+  if (bidAttachmentUploadPromise) return;
+
+  const bidId = bid.id;
+  const uploadPromise = (async () => {
+    const attachments = await store.saveBidAttachments(bidId, files);
+    appState.bids = appState.bids.map((row) => row.id === bidId ? { ...row, edital_files: attachments } : row);
+    refs.editalFile.value = "";
+    if (appState.currentBidId === bidId) {
+      renderBidAttachment(appState.bids.find((row) => row.id === bidId));
+    }
+    showToast(files.length === 1 ? "Arquivo do edital salvo automaticamente." : "Arquivos do edital salvos automaticamente.");
+  })();
+  bidAttachmentUploadPromise = uploadPromise;
+  refs.editalAttachmentList.setAttribute("aria-busy", "true");
+  renderBidAttachment(currentBid());
+
+  try {
+    await uploadPromise;
+  } catch (error) {
+    refs.bidFormError.textContent = error.message || "Não foi possível salvar os arquivos do edital.";
+    refs.editalFile.value = "";
+  } finally {
+    if (bidAttachmentUploadPromise === uploadPromise) bidAttachmentUploadPromise = null;
+    refs.editalAttachmentList.setAttribute("aria-busy", "false");
+    renderBidAttachment(currentBid());
+  }
 }
 
 function renderPublicSessionLink() {
@@ -5647,6 +5708,7 @@ function removePublicSessionLink() {
 
 async function handleBidAttachmentAction(event) {
   refs.bidFormError.textContent = "";
+  if (bidAttachmentUploadPromise) return;
   const button = event.target.closest("[data-attachment-action]");
   if (!button) return;
   const bid = appState.bids.find((row) => row.id === appState.currentBidId);
@@ -5829,7 +5891,7 @@ function renderDetails() {
   refs.bidForm.querySelectorAll("input, select, textarea, button").forEach((el) => {
     const remainsAvailable = el.id === "clearBidButton" || el.dataset.attachmentAction === "download" || el.id === "bidStatus" || el.type === "submit";
     if (el === refs.editalFile) {
-      el.disabled = readOnly || normalizeBidAttachments(currentBid()).length >= MAX_EDITAL_FILES;
+      el.disabled = Boolean(bidAttachmentUploadPromise) || readOnly || normalizeBidAttachments(currentBid()).length >= MAX_EDITAL_FILES;
     } else if (!remainsAvailable) {
       el.disabled = readOnly;
     }
