@@ -2,6 +2,8 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 import {
+  alertDaysPositionToValue,
+  alertDaysValueToPosition,
   countDocumentStatuses,
   daysUntilExpiration,
   filterOrganizationDocuments,
@@ -96,17 +98,44 @@ test("valida cadastro, substituição, edição de validade e antecedência dos 
   assert.match(validateAlertDays("1.5"), /número inteiro/);
 });
 
+test("escala do slider interpola dias entre as marcas do protótipo e mantém seleção reversível", () => {
+  const marks = [0, 7, 15, 30, 60, 90, 120];
+  marks.forEach((days, index) => {
+    const position = index * 100;
+    assert.equal(alertDaysPositionToValue(position), days);
+    assert.equal(alertDaysValueToPosition(days), position);
+  });
+
+  assert.equal(alertDaysPositionToValue(150), 11);
+  assert.equal(alertDaysPositionToValue(250), 23);
+  assert.equal(alertDaysPositionToValue(-20), 0);
+  assert.equal(alertDaysPositionToValue(700), 120);
+  for (let days = 0; days <= 120; days += 1) {
+    assert.equal(alertDaysPositionToValue(alertDaysValueToPosition(days)), days);
+  }
+});
+
 test("preferências de alertas usam slider acessível e mantêm o salvamento por organização", async () => {
   const feature = await readFile(new URL("../web/organization-documents.js", import.meta.url), "utf8");
+  const styles = await readFile(new URL("../web/styles.css", import.meta.url), "utf8");
 
   assert.match(feature, /const MIN_ALERT_DAYS = 0/);
   assert.match(feature, /const MAX_ALERT_DAYS = 120/);
-  assert.match(feature, /type="range" min="' \+ MIN_ALERT_DAYS \+ '" max="' \+ MAX_ALERT_DAYS \+ '" step="1"/);
+  assert.match(feature, /const ALERT_DAYS_MARKS = Object\.freeze\(\[0, 7, 15, 30, 60, 90, 120\]\)/);
+  assert.match(feature, /type="range" min="0" max="' \+ ALERT_DAYS_SLIDER_MAX \+ '" step="1"/);
   assert.match(feature, /aria-valuetext=/);
-  assert.match(feature, /<span class="is-start">0<\/span><span style="left: 5\.8333%">7<\/span><span style="left: 12\.5%">15<\/span><span style="left: 25%">30<\/span><span style="left: 50%">60<\/span><span style="left: 75%">90<\/span><span class="is-end">120<\/span>/);
+  assert.match(feature, /aria-live="polite"/);
+  assert.match(feature, /data-alert-days-mark=/);
   assert.match(feature, /state\.alertDaysDraft = alertDays/);
+  assert.match(feature, /const alertDays = alertDaysPositionToValue\(input\.value\)/);
   assert.match(feature, /api\(\)\.saveAlertDays\(\{ alertDays \}\)/);
   assert.match(feature, /Esta configuração vale para toda a organização/);
+  assert.match(feature, /dias antes do vencimento/);
+  assert.match(feature, /Salvar configuração/);
+  assert.match(feature, /event\.key === "ArrowRight"[\s\S]*?nextDays/);
+  assert.match(styles, /\.organization-documents-settings-intro\s*\{[^}]*border-right: 1px solid var\(--gll-line\)/);
+  assert.match(styles, /\.organization-documents-alert-scale\s*\{[^}]*display: flex/);
+  assert.match(styles, /\.organization-documents-alert-scale \.is-selected/);
 });
 
 test("registra a página na seção Documentos e restringe a navegação do Kit à homologação", async () => {
