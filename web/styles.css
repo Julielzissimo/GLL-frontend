@@ -1053,33 +1053,6 @@ th.numeric {
   color: var(--primary);
 }
 
-.settings-icon {
-  width: 18px;
-  height: 18px;
-  display: block;
-  border: 2px solid currentColor;
-  border-radius: 999px;
-  box-shadow:
-    0 -6px 0 -4px currentColor,
-    0 6px 0 -4px currentColor,
-    6px 0 0 -4px currentColor,
-    -6px 0 0 -4px currentColor,
-    4px 4px 0 -4px currentColor,
-    -4px 4px 0 -4px currentColor,
-    4px -4px 0 -4px currentColor,
-    -4px -4px 0 -4px currentColor;
-}
-
-.settings-icon::before {
-  content: "";
-  display: block;
-  width: 6px;
-  height: 6px;
-  margin: 4px;
-  border-radius: 999px;
-  background: currentColor;
-}
-
 .home-hero-copy {
   width: min(720px, 100%);
   align-self: end;
@@ -3851,41 +3824,6 @@ tr.item-won td {
   line-height: 1.6;
 }
 
-.settings-grid {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  gap: 20px;
-}
-
-.settings-access-card {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 18px;
-}
-
-.settings-access-card h2,
-.settings-access-card p {
-  margin: 0;
-}
-
-.settings-access-card p {
-  margin-top: 5px;
-  color: var(--muted);
-  line-height: 1.5;
-}
-
-.company-data-icon {
-  width: 44px;
-  height: 44px;
-  display: grid;
-  place-items: center;
-  border-radius: var(--gll-radius-lg);
-  background: var(--info-bg);
-  color: var(--primary);
-  font-size: 23px;
-}
-
 .company-data-form,
 .company-data-section,
 .legal-representatives-list {
@@ -5563,10 +5501,6 @@ tr.item-won td {
     padding: 24px;
   }
 
-  .settings-grid {
-    grid-template-columns: 1fr;
-  }
-
   .company-data-organization-grid,
   .legal-representative-grid {
     grid-template-columns: 1fr;
@@ -5693,21 +5627,12 @@ tr.item-won td {
   .home-status-grid,
   .dashboard-grid,
   .form-grid,
-  .metrics-row,
-  .settings-grid {
+  .metrics-row {
     grid-template-columns: 1fr;
   }
 
   #bidCatalogPage .filter-form {
     grid-template-columns: minmax(0, 1fr);
-  }
-
-  .settings-access-card {
-    grid-template-columns: auto minmax(0, 1fr);
-  }
-
-  .settings-access-card > button {
-    grid-column: 1 / -1;
   }
 
   .company-data-section-heading,

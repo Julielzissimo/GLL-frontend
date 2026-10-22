@@ -412,6 +412,10 @@ test("navigation writes readable URLs without discarding unrelated parameters", 
   assert.equal(route.page, "documents");
   assert.equal(route.bidId, "PE 12/2026");
   assert.equal(route.quotationId, null);
+  app.location.search = "?page=configuracoes";
+  const removedSettingsRoute = app.readNavigationRoute();
+  assert.equal(removedSettingsRoute.page, "home");
+  assert.equal(removedSettingsRoute.isKnownPage, false);
 });
 
 test("design system route is available to administrators and blocked for analysts", () => {
@@ -419,7 +423,7 @@ test("design system route is available to administrators and blocked for analyst
   app.appState.currentUserRole = "Administrador";
   assert.equal(app.resolveAuthorizedPage("designSystem"), "designSystem");
   app.appState.currentUserRole = "Analista";
-  assert.equal(app.resolveAuthorizedPage("designSystem"), "settings");
+  assert.equal(app.resolveAuthorizedPage("designSystem"), "home");
 });
 
 test("production blocks the Design System route for every profile", () => {

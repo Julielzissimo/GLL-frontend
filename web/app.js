@@ -131,7 +131,6 @@ const PAGE_ROUTE_NAMES = {
   declarationHistory: "declaracoes/historico",
   users: "usuarios",
   userProfile: "perfil",
-  settings: "configuracoes",
   companyData: "configuracoes/dados-da-empresa",
   designSystem: "configuracoes/design-system",
   radarEngineAdmin: "administracao/radar-engine",
@@ -374,12 +373,10 @@ const refs = {
   userAccessSubmitButton: $("submitUserAccessButton"),
   closeUserAccessDialogButton: $("closeUserAccessDialogButton"),
   cancelUserAccessButton: $("cancelUserAccessButton"),
-  settingsPage: $("settingsPage"),
   companyDataPage: $("companyDataPage"),
   organizationDocumentsPage: $("organizationDocumentsPage"),
   designSystemPage: $("designSystemPage"),
   radarEngineAdminPage: $("radarEngineAdminPage"),
-  designSystemAccessCard: $("designSystemAccessCard"),
   designSystemCatalog: $("designSystemCatalog"),
   suppliersPage: $("suppliersPage"),
   declarationsPage: $("declarationsPage"),
@@ -3336,10 +3333,8 @@ function bindEvents() {
     button.addEventListener("click", () => setPage(button.dataset.navigationPage));
   });
   refs.navSettingsButton.addEventListener("click", toggleSettingsNavigation);
-  $("openDesignSystemButton").addEventListener("click", () => setPage("designSystem"));
-  $("openCompanyDataButton").addEventListener("click", () => setPage("companyData"));
-  $("backToSettingsButton").addEventListener("click", () => setPage("settings"));
-  $("backToSettingsFromCompanyDataButton").addEventListener("click", () => setPage("settings"));
+  $("backToHomeFromDesignSystemButton").addEventListener("click", () => setPage("home"));
+  $("backToHomeFromCompanyDataButton").addEventListener("click", () => setPage("home"));
   document.querySelectorAll("[data-open-new]").forEach((button) => {
     button.addEventListener("click", () => clearBidForm({ openEditor: true }));
   });
@@ -4609,7 +4604,7 @@ function closeMobileNavigation() {
 
 function toggleSettingsNavigation() {
   if (window.matchMedia("(min-width: 621px) and (max-width: 820px)").matches) {
-    setPage("settings");
+    setPage("companyData");
     return;
   }
   appState.settingsNavigationExpanded = !appState.settingsNavigationExpanded;
@@ -4787,7 +4782,7 @@ function resolveAuthorizedPage(page) {
   if (page === "radarEngineAdmin" && !isCurrentUserAdmin()) return "home";
   if (page === "users" && !isCurrentUserAdmin()) return "home";
   if (page === "userProfile" && refs.userCreateForm.dataset.mode === "create" && !isCurrentUserAdmin()) return "home";
-  if (page === "designSystem" && !isCurrentUserAdmin()) return "settings";
+  if (page === "designSystem" && !isCurrentUserAdmin()) return "home";
   return page;
 }
 
@@ -4852,8 +4847,8 @@ function breadcrumbItems(page) {
     ];
   }
   if (page === "companyData") {
-    if (compact) return [{ label: "Configurações", page: "settings" }, { label: pageLabels[page] }];
-    return [home, { label: "Configurações", page: "settings" }, { label: pageLabels[page] }];
+    if (compact) return [{ label: "Configurações" }, { label: pageLabels[page] }];
+    return [home, { label: "Configurações" }, { label: pageLabels[page] }];
   }
   const topLevelLabels = {
     home: "Visão geral",
@@ -4863,7 +4858,6 @@ function breadcrumbItems(page) {
     commercialProposals: "Propostas comerciais",
     suppliers: "Fornecedores",
     users: "Usuários",
-    settings: "Configurações",
     designSystem: "Design System",
     radarEngineAdmin: "Processamento do Radar",
     organizationDocuments: "Kit de Documentos",
@@ -4949,8 +4943,6 @@ function updateAccessInterface() {
   refs.navRadarEngineAdminButton.disabled = !showRadarEngineAdmin;
   refs.navRadarEngineAdminButton.setAttribute("aria-hidden", String(!showRadarEngineAdmin));
   refs.navRadarEngineAdminButton.setAttribute("aria-disabled", String(!showRadarEngineAdmin));
-  refs.designSystemAccessCard.classList.toggle("hidden", !showDesignSystemAccess);
-  refs.designSystemAccessCard.setAttribute("aria-hidden", String(!showDesignSystemAccess));
   updateWorkspaceSummary();
 }
 
@@ -5511,9 +5503,12 @@ async function reloadData({ background = false, initialAccessVerified = false } 
 
 function readNavigationRoute() {
   const params = new URLSearchParams(window.location.search);
-  const page = ROUTE_PAGE_NAMES[params.get("page")] || "home";
+  const pageName = params.get("page");
+  const isKnownPage = pageName === null || Object.prototype.hasOwnProperty.call(ROUTE_PAGE_NAMES, pageName);
+  const page = ROUTE_PAGE_NAMES[pageName] || "home";
   return {
     page,
+    isKnownPage,
     bidId: params.get("licitacao"),
     quotationId: params.get("orcamento"),
     profileUserId: params.get("usuario"),
@@ -5558,7 +5553,7 @@ function writeNavigationRoute(page, mode = "push") {
 function applyNavigationRoute(options = {}) {
   const route = readNavigationRoute();
   let routePage = route.page;
-  let routeIsValid = true;
+  let routeIsValid = route.isKnownPage;
   if (["items", "documents", "billing", "failures"].includes(route.page)) {
     const bid = appState.bids.find((row) => row.id === route.bidId);
     if (!bid) routeIsValid = false;
@@ -5611,13 +5606,12 @@ function setPage(page, options = {}) {
     return;
   }
   appState.activePage = page;
-  if (["settings", "companyData", "designSystem"].includes(page)) {
+  if (page === "companyData") {
     appState.settingsNavigationExpanded = true;
   }
   placeQuotationEditor(page);
   const showUsers = page === "users";
   const showUserProfile = page === "userProfile";
-  const showSettings = page === "settings";
   const showCompanyData = page === "companyData";
   const showOrganizationDocuments = page === "organizationDocuments";
   const showDesignSystem = page === "designSystem";
@@ -5634,11 +5628,10 @@ function setPage(page, options = {}) {
   const showCatalog = page === "bids";
   const showEditor = page === "edit";
   const showDetail = detailPages.includes(page);
-  refs.bidsPage.classList.toggle("hidden", showUsers || showUserProfile || showSettings || showCompanyData || showOrganizationDocuments || showDesignSystem || showRadarEngineAdmin || showQuotations || showSuppliers || showDeclarations || showCommercialProposals || showRadarSearch);
+  refs.bidsPage.classList.toggle("hidden", showUsers || showUserProfile || showCompanyData || showOrganizationDocuments || showDesignSystem || showRadarEngineAdmin || showQuotations || showSuppliers || showDeclarations || showCommercialProposals || showRadarSearch);
   refs.radarSearchPage.classList.toggle("hidden", !showRadarSearch);
   refs.usersPage.classList.toggle("hidden", !showUsers);
   refs.userProfilePage.classList.toggle("hidden", !showUserProfile);
-  refs.settingsPage.classList.toggle("hidden", !showSettings);
   refs.companyDataPage.classList.toggle("hidden", !showCompanyData);
   refs.organizationDocumentsPage.classList.toggle("hidden", !showOrganizationDocuments);
   refs.designSystemPage.classList.toggle("hidden", !showDesignSystem);
@@ -5654,15 +5647,15 @@ function setPage(page, options = {}) {
   refs.documentsPanel.classList.toggle("hidden", page !== "documents");
   refs.billingPanel.classList.toggle("hidden", page !== "billing");
   refs.failuresPanel.classList.toggle("hidden", page !== "failures");
-  refs.appView.classList.toggle("users-active", showUsers || showUserProfile || showSettings || showCompanyData || showOrganizationDocuments || showDesignSystem || showRadarEngineAdmin || showQuotations || showSuppliers || showDeclarations || showCommercialProposals || showRadarSearch);
+  refs.appView.classList.toggle("users-active", showUsers || showUserProfile || showCompanyData || showOrganizationDocuments || showDesignSystem || showRadarEngineAdmin || showQuotations || showSuppliers || showDeclarations || showCommercialProposals || showRadarSearch);
   refs.itemsTabButton.classList.toggle("active", page === "items");
   refs.documentsTabButton.classList.toggle("active", page === "documents");
   refs.billingTabButton.classList.toggle("active", page === "billing");
   refs.billingTabButton.classList.toggle("hidden", !shouldShowBilling());
   refs.failuresTabButton.classList.toggle("active", page === "failures");
   refs.failuresTabButton.classList.toggle("hidden", !shouldShowFailureHistory());
-  const primaryPage = showOrganizationDocuments ? "organizationDocuments" : showRadarEngineAdmin ? "radarEngineAdmin" : showRadarSearch ? "radarSearch" : showCommercialProposals ? "commercialProposals" : showDeclarations ? "declarations" : showSuppliers ? "suppliers" : showUsers || (showUserProfile && isCurrentUserAdmin()) ? "users" : showSettings || showCompanyData || showDesignSystem ? "settings" : showQuotations ? "quotations" : showHome || showUserProfile ? "home" : "bids";
-  const activeNavigationPage = ["settings", "companyData", "designSystem", "radarEngineAdmin"].includes(page) ? page : primaryPage;
+  const primaryPage = showOrganizationDocuments ? "organizationDocuments" : showRadarEngineAdmin ? "radarEngineAdmin" : showRadarSearch ? "radarSearch" : showCommercialProposals ? "commercialProposals" : showDeclarations ? "declarations" : showSuppliers ? "suppliers" : showUsers || (showUserProfile && isCurrentUserAdmin()) ? "users" : showQuotations ? "quotations" : showHome || showUserProfile ? "home" : "bids";
+  const activeNavigationPage = ["companyData", "designSystem", "radarEngineAdmin"].includes(page) ? page : primaryPage;
   renderBreadcrumb(page);
   document.querySelectorAll("[data-navigation-page]").forEach((button) => {
     button.classList.toggle("active", button.dataset.navigationPage === activeNavigationPage);

@@ -7,22 +7,6 @@
   margin-bottom: var(--space-lg);
 }
 
-.design-system-access-card {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  align-items: center;
-  gap: var(--space-lg);
-}
-
-.design-system-access-card .settings-icon {
-  margin: 0;
-}
-
-.design-system-access-card p {
-  margin: var(--space-xs) 0 0;
-  color: var(--muted);
-}
-
 .ds-catalog-layout {
   display: grid;
   grid-template-columns: 220px minmax(0, 1fr);
@@ -524,16 +508,9 @@
     padding: var(--space-lg);
   }
 
-  .design-system-access-card,
   .ds-form-showcase {
     grid-template-columns: 1fr;
   }
-
-  .design-system-access-card .settings-icon {
-    display: none;
-  }
-
-  .design-system-access-card button,
   .ds-preview-row,
   .ds-preview-row > button {
     width: 100%;
