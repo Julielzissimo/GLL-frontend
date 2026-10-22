@@ -107,6 +107,31 @@ test("cada arquivo do edital mantém o limite individual de 20 MB", () => {
   );
 });
 
+test("selecionar arquivos em edital aberto salva os anexos automaticamente", async () => {
+  const app = client();
+  const bid = { id: "TEST-1", status: "Em Cadastro", edital_files: [] };
+  app.appState.bids = [bid];
+  app.appState.currentBidId = bid.id;
+  app.appState.originalBidId = bid.id;
+  app.element("editalFile").files = [{ name: "edital.pdf", size: 1024, type: "application/pdf" }];
+  app.element("editalFile").value = "C:\\fakepath\\edital.pdf";
+
+  let saved;
+  app.store.saveBidAttachments = async (bidId, files) => {
+    saved = { bidId, files: Array.from(files) };
+    return [{ path: "TEST-1/edital.pdf", name: files[0].name, type: files[0].type, size: files[0].size }];
+  };
+
+  assert.match(source, /refs\.editalFile\.addEventListener\("change", handleBidAttachmentSelection\)/);
+  await vm.runInContext("handleBidAttachmentSelection()", app.context);
+
+  assert.equal(saved.bidId, bid.id);
+  assert.equal(saved.files[0].name, "edital.pdf");
+  assert.equal(app.appState.bids[0].edital_files[0].path, "TEST-1/edital.pdf");
+  assert.equal(app.element("editalFile").value, "");
+  assert.match(app.element("editalAttachmentHelp").textContent, /salvos automaticamente/i);
+});
+
 test("pesquisa dinâmica localiza edital por órgão, modalidade, número e prazo de entrega", () => {
   const app = client();
   const bid = app.normalizeBidRecord({
