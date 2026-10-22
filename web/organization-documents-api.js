@@ -155,6 +155,23 @@ export function createOrganizationDocumentsApi({
       }));
     },
 
+    async updateDocument({ documentId, title }) {
+      const row = firstRow(await rpc("update_organization_document", {
+        p_document_id: documentId,
+        p_title: title,
+      }));
+      if (!row) throw new Error("O servidor não confirmou a edição do documento.");
+      return documentFromRow(row);
+    },
+
+    async archiveDocument({ documentId }) {
+      const row = firstRow(await rpc("archive_organization_document", {
+        p_document_id: documentId,
+      }));
+      if (!row) throw new Error("O servidor não confirmou a exclusão do documento.");
+      return documentFromRow(row);
+    },
+
     async replaceDocument({ documentId, expectedVersion, file, expiresOn }) {
       const upload = await uploadFile(documentId, file);
       try {
@@ -187,16 +204,6 @@ export function createOrganizationDocumentsApi({
       return settingsFromRow(firstRow(await rpc("update_organization_document_settings", {
         p_alert_days: alertDays,
       })));
-    },
-
-    async downloadDocument({ documentId }) {
-      const document = firstRow(await rpc("get_organization_document", { p_document_id: documentId }));
-      if (!document?.file_storage_object_id) throw new Error("Documento não encontrado.");
-      const signed = await invokeStorage("download-url", { objectId: document.file_storage_object_id });
-      if (signed?.legacy || !signed?.url) throw new Error("O arquivo do documento não está disponível.");
-      const response = await fetchImpl(signed.url);
-      if (!response.ok) throw new Error("Não foi possível abrir o arquivo do documento.");
-      return response.blob();
     },
 
     async downloadDocumentsZip({ documentIds } = {}) {
