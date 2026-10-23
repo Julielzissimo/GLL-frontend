@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "release_id": "2026-10-23-pacote-de-melhorias-2-homolog-sync",
+  "release_id": "2026-10-23-pacote-de-melhorias-2-history-decoupled-homolog",
   "environment": "homolog",
   "target_branch": "homolog",
   "items": [
@@ -1612,13 +1612,15 @@
         "8e3df7fe13d1921b90eafafa897f085b5f318d52",
         "e24d1d98be46d07550b627ba0d4d67475f1ee7ea",
         "0723d8ab2d1d54f2ce148f34b6cf40dedec9ac5e",
-        "748d7f90059633b79c87537967bfbc0c3c952a9f"
+        "748d7f90059633b79c87537967bfbc0c3c952a9f",
+        "e51aef6974c362b0546eb759f58806880330eade"
       ],
       "frontend_commits": [],
       "migrations": [
         "supabase/migrations/20261022231416_bid_history_events.sql",
         "supabase/migrations/20261022235858_audit_radar_import_links.sql",
-        "supabase/migrations/20261023000405_audit_bid_history_service_role_lockdown.sql"
+        "supabase/migrations/20261023000405_audit_bid_history_service_role_lockdown.sql",
+        "supabase/migrations/20261023224500_install_bid_history_without_optional_modules.sql"
       ]
     },
     {
