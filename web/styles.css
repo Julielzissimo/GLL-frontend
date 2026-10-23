@@ -2988,7 +2988,8 @@ textarea[aria-invalid="true"]:focus {
 }
 
 .home-status-card {
-  display: block;
+  display: grid;
+  align-content: space-between;
   min-height: 132px;
   padding: 18px;
   border: 1px solid var(--border);
@@ -3007,6 +3008,11 @@ textarea[aria-invalid="true"]:focus {
   background: var(--gll-selection-bg);
   transform: translateY(-2px);
   box-shadow: var(--shadow);
+  z-index: var(--z-tooltip, 1100);
+}
+
+.home-status-card:focus-visible {
+  z-index: var(--z-tooltip, 1100);
 }
 
 .home-status-card.warning { border-top-color: var(--warning); }
@@ -3021,6 +3027,64 @@ textarea[aria-invalid="true"]:focus {
   display: block;
   color: var(--muted);
   font-size: 13px;
+}
+
+.home-status-card .home-status-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--gll-space-2);
+}
+
+.home-status-info {
+  position: relative;
+  display: inline-grid !important;
+  width: 20px;
+  height: 20px;
+  flex: 0 0 20px;
+  place-items: center;
+  border-radius: 50%;
+  color: var(--gll-info);
+  cursor: help;
+}
+
+.home-status-info [data-gll-icon],
+.home-status-info svg {
+  display: block;
+  width: 16px;
+  height: 16px;
+}
+
+.home-status-info::after {
+  position: absolute;
+  z-index: var(--z-tooltip, 1100);
+  top: calc(100% - 2px);
+  right: 0;
+  width: max-content;
+  max-width: min(240px, calc(100vw - 32px));
+  padding: 10px 11px 9px;
+  border-radius: var(--gll-radius-md);
+  box-shadow: var(--gll-shadow-md);
+  color: var(--gll-paper);
+  content: attr(data-tooltip);
+  font-size: var(--font-size-xs);
+  font-weight: 400;
+  line-height: 1.45;
+  text-align: left;
+  text-transform: none;
+  white-space: normal;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-2px);
+  transition: opacity 140ms ease, transform 140ms ease, visibility 140ms ease;
+  pointer-events: auto;
+}
+
+.home-status-info:hover::after,
+.home-status-card:focus-visible .home-status-info::after {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
 }
 
 .home-status-card strong {
