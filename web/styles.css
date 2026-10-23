@@ -8858,6 +8858,11 @@ button.history-row:hover {
   height: 100dvh;
 }
 
+/* The fixed sidebar leaves the grid flow; keep the page in its original column. */
+.is-loading .app-main {
+  grid-column: 2;
+}
+
 @media (max-width: 820px) {
   .is-loading .app-sidebar { width: 76px; }
 }
