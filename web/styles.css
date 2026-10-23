@@ -10033,6 +10033,9 @@ button.history-row:hover {
 }
 
 .lg-history__page-size {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--gll-space-3);
   padding: 10px 14px;
   border: 1px solid var(--gll-line-strong);
   border-radius: var(--gll-radius-md);
@@ -10040,6 +10043,16 @@ button.history-row:hover {
   background: var(--gll-paper);
   font-weight: 700;
   white-space: nowrap;
+}
+
+.lg-history__page-size::after {
+  width: 7px;
+  height: 7px;
+  margin-top: -3px;
+  transform: rotate(45deg);
+  border-right: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+  content: "";
 }
 
 .lg-history__pagination { display: flex; align-items: center; gap: var(--gll-space-2); }
