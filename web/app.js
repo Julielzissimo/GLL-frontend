@@ -5840,7 +5840,7 @@ function renderHomeRecentActivities() {
         const descriptionId = `homeActivityDescription-${firstEntryIndex + index}`;
         return `<button class="home-activity-entry" type="button" aria-expanded="false" aria-controls="${descriptionId}" data-recent-activity-bid="${escapeHtml(entry.bid_id)}">
           <span class="home-activity-avatar" aria-hidden="true">${avatar}</span>
-          <span class="home-activity-copy"><span><strong>${escapeHtml(actor)}</strong> ${escapeHtml(action)}</span><time datetime="${escapeHtml(entry.created_at)}">${escapeHtml(formatDateTime(entry.created_at))}</time></span>
+          <span class="home-activity-copy"><span class="home-activity-description" id="${descriptionId}"><strong>${escapeHtml(actor)}</strong> ${escapeHtml(action)}</span><time datetime="${escapeHtml(entry.created_at)}">${escapeHtml(formatDateTime(entry.created_at))}</time></span>
         </button>`;
       }).join("")
     : `<div class="empty-state compact-empty">Ainda não há atualizações de editais disponíveis.</div>`;
@@ -5872,7 +5872,27 @@ function renderHomeRecentActivities() {
   });
 
   refs.homeRecentActivitiesList.querySelectorAll("[data-recent-activity-bid]").forEach((button) => {
-    button.addEventListener("click", () => loadBid(button.dataset.recentActivityBid));
+    button.addEventListener("click", (event) => {
+      const description = button.querySelector(".home-activity-description");
+      const isExpanded = button.getAttribute("aria-expanded") === "true";
+      const clickedDescription = event.target.closest(".home-activity-description") === description;
+      const activatedByKeyboard = event.detail === 0;
+      const descriptionOverflows = description.scrollWidth > description.clientWidth;
+
+      if ((clickedDescription || activatedByKeyboard) && (isExpanded || descriptionOverflows)) {
+        if (isExpanded && activatedByKeyboard) {
+          loadBid(button.dataset.recentActivityBid);
+          return;
+        }
+
+        const nextExpandedState = !isExpanded;
+        button.classList.toggle("is-expanded", nextExpandedState);
+        button.setAttribute("aria-expanded", String(nextExpandedState));
+        return;
+      }
+
+      loadBid(button.dataset.recentActivityBid);
+    });
   });
 }
 
