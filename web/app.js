@@ -5088,8 +5088,11 @@ function shouldCalculateWonItemsTotal(status) {
 }
 
 function applyHomeStatusFilter(status) {
+  refs.filterSearch.value = "";
+  refs.filterDate.value = "";
   setFilterStatuses(status && status !== "Todos" ? [normalizeBidStatus(status)] : []);
   refs.filterStatus.open = false;
+  refs.filterGuaranteeDeposit.checked = false;
   setPage("bids");
   renderBids();
 }
