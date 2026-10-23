@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "release_id": "2026-10-21-email-inviter-details-issue-127",
+  "release_id": "2026-10-23-user-invitations-cors-issue-171",
   "environment": "production",
   "target_branch": "main",
   "items": [
@@ -1042,6 +1042,14 @@
       "frontend_commits": [
         "046af039f49e09e32a716e5135d8def670d32d88"
       ],
+      "migrations": []
+    },
+    {
+      "id": "ISSUE-171",
+      "backend_commits": [
+        "d3cf5bdf90fd8c9c17ee3630d9b33c246eeda070"
+      ],
+      "frontend_commits": [],
       "migrations": []
     }
   ]
