@@ -1091,9 +1091,11 @@
         "df56343214abfa9a6dda809c2bc00cca8ae63298"
       ],
       "backend_commits": [
-        "8e6897c05e8fcafe3843964cab2fb55126ec8624"
+        "8e6897c05e8fcafe3843964cab2fb55126ec8624",
+        "957c48e62d9aa084a6d87ab451e06974cd726fa1"
       ],
       "migrations": [
+        "supabase/migrations/20261020201959_enable_pg_cron_for_document_notifications.sql",
         "supabase/migrations/20261020202019_organization_document_expiry_notifications.sql",
         "supabase/migrations/20261020204111_fix_organization_document_settings_upsert_conflict.sql",
         "supabase/migrations/20261020204205_fix_organization_document_settings_read_conflict.sql"
