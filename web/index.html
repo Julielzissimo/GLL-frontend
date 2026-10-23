@@ -594,12 +594,13 @@
 
           <section id="detailsArea" class="details-area">
             <div class="tabs" role="tablist" aria-label="Detalhes do edital">
-              <button id="itemsTabButton" class="tab active" type="button">Orçamento</button>
-              <button id="documentsTabButton" class="tab" type="button">Documentações</button>
-              <button id="failuresTabButton" class="tab hidden" type="button">Histórico de Falhas</button>
+              <button id="itemsTabButton" class="tab active" type="button" role="tab" aria-selected="true" aria-controls="itemsPanel">Orçamento</button>
+              <button id="documentsTabButton" class="tab" type="button" role="tab" aria-selected="false" aria-controls="documentsPanel">Documentações</button>
+              <button id="bidHistoryTabButton" class="tab" type="button" role="tab" aria-selected="false" aria-controls="bidHistoryPanel">Histórico</button>
+              <button id="failuresTabButton" class="tab hidden" type="button" role="tab" aria-selected="false" aria-controls="failuresPanel">Histórico de Falhas</button>
             </div>
 
-            <div id="itemsPanel" class="tab-panel">
+            <div id="itemsPanel" class="tab-panel" role="tabpanel" aria-labelledby="itemsTabButton">
               <section id="bidQuotationEmptyState" class="section-band bid-quotation-empty-state hidden" aria-live="polite">
                 <span class="bid-quotation-empty-icon" aria-hidden="true">
                   <svg viewBox="0 0 48 48" focusable="false">
@@ -755,7 +756,7 @@
               </div>
             </div>
 
-            <div id="documentsPanel" class="tab-panel hidden">
+            <div id="documentsPanel" class="tab-panel hidden" role="tabpanel" aria-labelledby="documentsTabButton">
               <form id="documentForm" class="section-band compact-band">
                 <div class="section-title">
                   <h2>Checklist de Documentações</h2>
@@ -797,7 +798,31 @@
               </div>
             </div>
 
-            <div id="failuresPanel" class="tab-panel hidden">
+            <div id="bidHistoryPanel" class="tab-panel hidden" role="tabpanel" aria-labelledby="bidHistoryTabButton">
+              <section class="lg-history__card" aria-labelledby="bidHistoryTitle">
+                <header class="lg-history__header">
+                  <div class="lg-history__heading">
+                    <h2 id="bidHistoryTitle" class="lg-history__title">Histórico do edital</h2>
+                    <p class="lg-history__description">Acompanhe todas as interações, edições e ações realizadas neste edital.</p>
+                  </div>
+                  <button id="bidHistoryExportButton" class="quiet-action lg-history__export" type="button">
+                    <span id="bidHistoryExportIcon" aria-hidden="true"></span>
+                    <span>Exportar histórico</span>
+                    <span class="lg-history__export-chevron" aria-hidden="true"></span>
+                  </button>
+                </header>
+                <div id="bidHistoryList" class="lg-history__list" aria-live="polite" aria-busy="false"></div>
+                <footer id="bidHistoryFooter" class="lg-history__footer hidden">
+                  <span id="bidHistorySummary" class="lg-history__summary-count"></span>
+                  <div class="lg-history__footer-controls">
+                    <span class="lg-history__page-size">30 por página</span>
+                    <nav id="bidHistoryPagination" class="lg-history__pagination" aria-label="Paginação do histórico"></nav>
+                  </div>
+                </footer>
+              </section>
+            </div>
+
+            <div id="failuresPanel" class="tab-panel hidden" role="tabpanel" aria-labelledby="failuresTabButton">
               <form id="failureForm" class="section-band compact-band">
                 <div class="section-title">
                   <h2>Histórico de Falhas</h2>

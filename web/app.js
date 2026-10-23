@@ -30,6 +30,7 @@ const MAX_EDITAL_FILE_SIZE = 20 * 1024 * 1024;
 const MAX_EDITAL_FILES = 4;
 const HOME_RECENT_ACTIVITY_PAGE_SIZE = 15;
 const SUPABASE_CLIENT_VERSION = "2.57.4";
+const BID_HISTORY_PAGE_SIZE = 30;
 const BUSINESS_TIME_ZONE = "America/Sao_Paulo";
 const MONEY_FRACTION_DIGITS = 2;
 const QUANTITY_FRACTION_DIGITS = 4;
@@ -38,6 +39,8 @@ const USER_ROLES = { ADMIN: "Administrador", ANALYST: "Analista" };
 const USER_INVITATION_RESEND_COOLDOWN_MS = 15_000;
 let userInvitationResendCooldownTimer = null;
 let homeRecentActivityPage = 1;
+let bidHistoryState = { page: 1, totalCount: 0, events: [], status: "idle", error: "" };
+let bidHistoryRequest = 0;
 const DEFAULT_ADMIN = {
   email: "demo@gll.local",
   name: "Usuário local",
@@ -96,6 +99,7 @@ const PAGE_ROUTE_NAMES = {
   edit: "nova-licitacao",
   items: "itens",
   documents: "documentos",
+  history: "historico",
   failures: "falhas",
   quotations: "orcamentos",
   commercialProposals: "propostas-comerciais",
@@ -417,6 +421,7 @@ const refs = {
   metricTotalProfitMargin: $("metricTotalProfitMargin"),
   itemsTabButton: $("itemsTabButton"),
   documentsTabButton: $("documentsTabButton"),
+  bidHistoryTabButton: $("bidHistoryTabButton"),
   failuresTabButton: $("failuresTabButton"),
   itemsPanel: $("itemsPanel"),
   bidQuotationEmptyState: $("bidQuotationEmptyState"),
@@ -428,6 +433,13 @@ const refs = {
   changeBidQuotationButton: $("changeBidQuotationButton"),
   bidQuotationEditorHost: $("bidQuotationEditorHost"),
   documentsPanel: $("documentsPanel"),
+  bidHistoryPanel: $("bidHistoryPanel"),
+  bidHistoryExportButton: $("bidHistoryExportButton"),
+  bidHistoryExportIcon: $("bidHistoryExportIcon"),
+  bidHistoryList: $("bidHistoryList"),
+  bidHistoryFooter: $("bidHistoryFooter"),
+  bidHistorySummary: $("bidHistorySummary"),
+  bidHistoryPagination: $("bidHistoryPagination"),
   failuresPanel: $("failuresPanel"),
   itemForm: $("itemForm"),
   itemNumber: $("itemNumber"),
@@ -764,6 +776,9 @@ class IndexedDbStore {
 
   async getBidActivity() { return []; }
   async getBidActivityForBid() { return []; }
+  async getBidHistoryPage(_bidId, page = 1) {
+    return { page, page_size: BID_HISTORY_PAGE_SIZE, total_count: 0, events: [] };
+  }
 
   async getDismissedNotificationIds(userId) {
     const key = notificationDismissalStorageKey(userId);
@@ -1347,6 +1362,16 @@ class SupabaseStore {
       .eq("bid_id", bidId).order("created_at", { ascending: false }).order("id", { ascending: false }).limit(30);
     assertSupabase(error);
     return data || [];
+  }
+
+  async getBidHistoryPage(bidId, page = 1) {
+    const client = await this.open();
+    const { data, error } = await client.rpc("get_bid_history_page", {
+      target_bid_id: bidId,
+      page_number: page,
+    });
+    assertSupabase(error);
+    return data || { page, page_size: BID_HISTORY_PAGE_SIZE, total_count: 0, events: [] };
   }
 
   async getDismissedNotificationIds(userId) {
@@ -2998,7 +3023,19 @@ function bindEvents() {
   refs.userRoleFilter.addEventListener("change", renderUsers);
   refs.itemsTabButton.addEventListener("click", () => setPage("items"));
   refs.documentsTabButton.addEventListener("click", () => setPage("documents"));
+  refs.bidHistoryTabButton.addEventListener("click", () => setPage("history"));
   refs.failuresTabButton.addEventListener("click", () => setPage("failures"));
+  refs.bidHistoryExportIcon.innerHTML = GLLDesignSystem.iconMarkup("download");
+  refs.bidHistoryExportButton.addEventListener("click", exportBidHistoryCsv);
+  refs.bidHistoryPagination.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-bid-history-page]");
+    if (!button || button.disabled) return;
+    const page = Number(button.dataset.bidHistoryPage);
+    if (Number.isInteger(page)) void loadBidHistoryPage(page);
+  });
+  refs.bidHistoryList.addEventListener("click", (event) => {
+    if (event.target.closest("[data-bid-history-retry]")) void loadBidHistoryPage(bidHistoryState.page);
+  });
   for (const input of [refs.estimatedValue, refs.supplierCost, refs.maxValue, refs.minimumBid]) {
     input.addEventListener("blur", () => {
       if (input.value.trim()) input.value = money(parseDecimal(input.value, "valor", false));
@@ -4873,7 +4910,7 @@ function writeNavigationRoute(page, mode = "push") {
   if (mode === "none" || !appState.authenticated) return;
   const params = new URLSearchParams(window.location.search);
   params.set("page", PAGE_ROUTE_NAMES[page] || PAGE_ROUTE_NAMES.home);
-  if (["items", "documents", "failures"].includes(page) && appState.currentBidId) {
+  if (["items", "documents", "history", "failures"].includes(page) && appState.currentBidId) {
     params.set("licitacao", appState.currentBidId);
   } else {
     params.delete("licitacao");
@@ -4906,7 +4943,7 @@ function writeNavigationRoute(page, mode = "push") {
 function applyNavigationRoute(options = {}) {
   const route = readNavigationRoute();
   let routeIsValid = route.isKnownPage;
-  if (["items", "documents", "failures"].includes(route.page)) {
+  if (["items", "documents", "history", "failures"].includes(route.page)) {
     const bid = appState.bids.find((row) => row.id === route.bidId);
     if (bid) loadBid(bid.id, { history: "none" });
     else routeIsValid = false;
@@ -4931,7 +4968,7 @@ function applyNavigationRoute(options = {}) {
 }
 
 function setPage(page, options = {}) {
-  const detailPages = ["items", "documents", "failures"];
+  const detailPages = ["items", "documents", "history", "failures"];
   const declarationPages = ["declarations", "declarationLibrary", "declarationSettings", "declarationHistory"];
   page = resolveAuthorizedPage(page);
   if (detailPages.includes(page) && !appState.currentBidId) {
@@ -4987,11 +5024,17 @@ function setPage(page, options = {}) {
   refs.detailsArea.classList.toggle("hidden", !showDetail);
   refs.itemsPanel.classList.toggle("hidden", page !== "items");
   refs.documentsPanel.classList.toggle("hidden", page !== "documents");
+  refs.bidHistoryPanel.classList.toggle("hidden", page !== "history");
   refs.failuresPanel.classList.toggle("hidden", page !== "failures");
   refs.appView.classList.toggle("users-active", showUsers || showUserProfile || showCompanyData || showOrganizationDocuments || showDesignSystem || showQuotations || showSuppliers || showDeclarations || showCommercialProposals);
   refs.itemsTabButton.classList.toggle("active", page === "items");
   refs.documentsTabButton.classList.toggle("active", page === "documents");
+  refs.bidHistoryTabButton.classList.toggle("active", page === "history");
+  refs.itemsTabButton.setAttribute("aria-selected", String(page === "items"));
+  refs.documentsTabButton.setAttribute("aria-selected", String(page === "documents"));
+  refs.bidHistoryTabButton.setAttribute("aria-selected", String(page === "history"));
   refs.failuresTabButton.classList.toggle("active", page === "failures");
+  refs.failuresTabButton.setAttribute("aria-selected", String(page === "failures"));
   refs.failuresTabButton.classList.toggle("hidden", !shouldShowFailureHistory());
   const primaryPage = showOrganizationDocuments ? "organizationDocuments" : showCommercialProposals ? "commercialProposals" : showDeclarations ? "declarations" : showSuppliers ? "suppliers" : showUsers || (showUserProfile && isCurrentUserAdmin()) ? "users" : showCompanyData || showDesignSystem ? "settings" : showQuotations ? "quotations" : showHome || showUserProfile ? "home" : "bids";
   const activeNavigationPage = ["companyData", "designSystem"].includes(page) ? page : primaryPage;
@@ -5014,7 +5057,294 @@ function setPage(page, options = {}) {
   if (showOrganizationDocuments) void organizationDocumentsFeature.showPage();
   if (showDesignSystem) window.GLLDesignSystem?.mountCatalog(refs.designSystemCatalog);
   writeNavigationRoute(page, options.history || "push");
+  if (page === "history") void loadBidHistoryPage(bidHistoryState.page);
   if (liveChannel || chatBroadcastChannel) scheduleLiveRefresh();
+}
+
+const BID_HISTORY_FIELD_LABELS = Object.freeze({
+  bid_object: "Objeto",
+  session_datetime: "Data e hora da sessão",
+  proposal_deadline: "Prazo para envio de propostas",
+  delivery_place: "Local de entrega",
+  public_session_link: "Link da sessão pública",
+  bid_type: "Modalidade",
+  has_guarantee_deposit: "Garantia de proposta",
+  quotation_id: "Orçamento vinculado",
+});
+
+function bidHistoryFieldValue(change) {
+  if (!change || typeof change !== "object" || change.redacted) return "";
+  return change.new ?? change.old ?? "";
+}
+
+function bidHistoryItemNumber(event) {
+  const fields = event.changed_fields && typeof event.changed_fields === "object" ? event.changed_fields : {};
+  return String(bidHistoryFieldValue(fields.item_number) || event.detail || "").trim();
+}
+
+function bidHistoryItemDetail(event) {
+  const fields = event.changed_fields && typeof event.changed_fields === "object" ? event.changed_fields : {};
+  const number = bidHistoryItemNumber(event);
+  let name = String(bidHistoryFieldValue(fields.name) || "").trim();
+  if (!name && number) {
+    const numericNumber = Number(number);
+    const item = appState.items.find((candidate) => candidate.bid_id === appState.currentBidId
+      && (String(candidate.item_number) === number || (Number.isFinite(numericNumber) && Number(candidate.item_number) === numericNumber)));
+    name = String(item?.name || "").trim();
+  }
+  const label = number ? `Item: ${number}` : "";
+  return [label, name].filter(Boolean).join(" — ");
+}
+
+function bidHistoryChangedFields(event) {
+  const fields = event.changed_fields && typeof event.changed_fields === "object" ? event.changed_fields : {};
+  const labels = Object.keys(fields)
+    .filter((field) => field !== "status")
+    .map((field) => BID_HISTORY_FIELD_LABELS[field])
+    .filter(Boolean);
+  return labels.length ? `Campos alterados: ${[...new Set(labels)].join(", ")}` : "";
+}
+
+function bidHistoryPresentation(event) {
+  const entity = String(event.entity_type || "");
+  const itemDetail = ["items", "quotation_items"].includes(entity) ? bidHistoryItemDetail(event) : "";
+  switch (event.event_type) {
+    case "bid_created":
+      return { kind: "create", icon: "document", summary: "criou o edital.", detail: "" };
+    case "bid_updated":
+      return { kind: "edit", icon: "pencil", summary: "editou as informações do edital.", detail: bidHistoryChangedFields(event) };
+    case "bid_deleted":
+      return { kind: "neutral", icon: "document", summary: "removeu o edital.", detail: "" };
+    case "status_changed":
+      return {
+        kind: "status",
+        icon: "arrowsLeftRight",
+        summary: `alterou o status do edital de ${BID_STATUS_LABELS[event.previous_value] || event.previous_value || "—"} para ${BID_STATUS_LABELS[event.next_value] || event.next_value || "—"}.`,
+        detail: "",
+      };
+    case "item_won":
+      return { kind: "item", icon: "package", summary: `marcou ${bidHistoryItemNumber(event) ? `o item ${bidHistoryItemNumber(event)}` : "um item"} como vencido.`, detail: itemDetail };
+    case "item_unwon":
+      return { kind: "item", icon: "package", summary: `removeu a marcação de vencido ${bidHistoryItemNumber(event) ? `do item ${bidHistoryItemNumber(event)}` : "de um item"}.`, detail: itemDetail };
+    case "file_added":
+      return { kind: "document", icon: "fileText", summary: "anexou um novo documento.", detail: "" };
+    case "file_removed":
+      return { kind: "document", icon: "fileText", summary: "removeu um documento.", detail: "" };
+    case "file_updated":
+      return { kind: "document", icon: "fileText", summary: "atualizou um documento.", detail: "" };
+    case "quotation_item_added":
+      return { kind: "new-item", icon: "add", summary: "cadastrou um novo item do orçamento.", detail: itemDetail };
+    case "quotation_item_updated":
+      return { kind: "edit", icon: "pencil", summary: "editou as informações de um item do orçamento.", detail: itemDetail };
+    case "quotation_item_removed":
+      return { kind: "item", icon: "package", summary: "removeu um item do orçamento.", detail: itemDetail };
+    case "entity_created":
+      if (entity === "items") return { kind: "new-item", icon: "add", summary: "cadastrou um novo item.", detail: itemDetail };
+      if (entity === "documents") return { kind: "document", icon: "fileText", summary: "cadastrou uma documentação.", detail: "" };
+      return { kind: "create", icon: "document", summary: "registrou uma nova atividade relacionada ao edital.", detail: "" };
+    case "entity_updated":
+      if (entity === "items") return { kind: "edit", icon: "pencil", summary: "editou as informações de um item.", detail: itemDetail };
+      if (entity === "bids") return { kind: "edit", icon: "pencil", summary: "editou as informações do edital.", detail: bidHistoryChangedFields(event) };
+      if (entity === "documents") return { kind: "document", icon: "fileText", summary: "editou uma documentação.", detail: "" };
+      return { kind: "edit", icon: "pencil", summary: "editou informações relacionadas ao edital.", detail: "" };
+    case "entity_deleted":
+      if (entity === "items") return { kind: "item", icon: "package", summary: "removeu um item.", detail: itemDetail };
+      if (entity === "documents") return { kind: "document", icon: "fileText", summary: "removeu uma documentação.", detail: "" };
+      return { kind: "neutral", icon: "document", summary: "removeu informações relacionadas ao edital.", detail: "" };
+    default:
+      return { kind: "neutral", icon: "document", summary: "registrou uma atividade relacionada ao edital.", detail: "" };
+  }
+}
+
+function bidHistoryActor(event) {
+  const actorName = String(event.actor_name || (event.actor_kind === "system" ? "Sistema" : "Usuário")).trim();
+  const user = event.actor_id ? appState.users.find((profile) => profile.auth_user_id === event.actor_id) : null;
+  const initials = actorName.split(/\s+/).filter(Boolean).map((part) => part[0]).filter(Boolean);
+  return {
+    name: actorName || "Usuário",
+    avatarUrl: user?.avatar_signed_url || "",
+    initials: (initials.length > 1 ? `${initials[0]}${initials.at(-1)}` : initials[0] || "?").toLocaleUpperCase("pt-BR"),
+  };
+}
+
+function bidHistoryTimestamp(value) {
+  const label = formatDateTime(value);
+  return label.includes(" ") ? label.replace(" ", ", ") : label;
+}
+
+function renderBidHistoryRow(event) {
+  const actor = bidHistoryActor(event);
+  const presentation = bidHistoryPresentation(event);
+  const avatar = actor.avatarUrl
+    ? `<img src="${escapeHtml(actor.avatarUrl)}" alt="" width="42" height="42" loading="lazy" decoding="async" />`
+    : `<span class="lg-history__avatar-fallback">${escapeHtml(actor.initials)}</span>`;
+  const detail = presentation.detail
+    ? `<p class="lg-history__detail">${escapeHtml(presentation.detail)}</p>`
+    : "";
+  const timestamp = bidHistoryTimestamp(event.created_at);
+  return `<li class="lg-history__row">
+    <span class="lg-history__event-icon" data-kind="${escapeHtml(presentation.kind)}" aria-hidden="true">${GLLDesignSystem.iconMarkup(presentation.icon)}</span>
+    <span class="lg-history__avatar" aria-hidden="true">${avatar}</span>
+    <span class="lg-history__copy"><span class="lg-history__event-summary"><strong class="lg-history__actor">${escapeHtml(actor.name)}</strong> ${escapeHtml(presentation.summary)}</span>${detail}</span>
+    <time class="lg-history__timestamp" datetime="${escapeHtml(event.created_at || "")}">${escapeHtml(timestamp || "")}</time>
+  </li>`;
+}
+
+function bidHistoryPageItems(totalPages, currentPage) {
+  if (totalPages <= 7) return Array.from({ length: totalPages }, (_, index) => index + 1);
+  const pages = [...new Set([1, currentPage - 1, currentPage, currentPage + 1, totalPages])]
+    .filter((page) => page >= 1 && page <= totalPages)
+    .sort((left, right) => left - right);
+  return pages.flatMap((page, index) => index && page - pages[index - 1] > 1 ? ["…", page] : [page]);
+}
+
+function renderBidHistoryFooter() {
+  const count = bidHistoryState.totalCount;
+  const page = bidHistoryState.page;
+  const totalPages = Math.ceil(count / BID_HISTORY_PAGE_SIZE);
+  const first = count ? (page - 1) * BID_HISTORY_PAGE_SIZE + 1 : 0;
+  const last = Math.min(page * BID_HISTORY_PAGE_SIZE, count);
+  refs.bidHistorySummary.textContent = `Exibindo ${first}–${last} de ${count} registros`;
+  const previous = Math.max(1, page - 1);
+  const next = Math.min(totalPages || 1, page + 1);
+  const pageItems = bidHistoryPageItems(totalPages, page).map((item) => item === "…"
+    ? `<span class="lg-history__ellipsis" aria-hidden="true">…</span>`
+    : `<button class="lg-history__page" type="button" data-bid-history-page="${item}" aria-label="Página ${item}"${item === page ? ' aria-current="page"' : ""}>${item}</button>`).join("");
+  refs.bidHistoryPagination.innerHTML = `<button class="lg-history__page" type="button" data-bid-history-page="${previous}" aria-label="Página anterior"${page <= 1 || !totalPages ? " disabled" : ""}>${GLLDesignSystem.iconMarkup("back")}</button>${pageItems}<button class="lg-history__page" type="button" data-bid-history-page="${next}" aria-label="Próxima página"${page >= totalPages || !totalPages ? " disabled" : ""}>${GLLDesignSystem.iconMarkup("forward")}</button>`;
+  refs.bidHistoryFooter.classList.remove("hidden");
+}
+
+function renderBidHistory() {
+  refs.bidHistoryList.setAttribute("aria-busy", String(bidHistoryState.status === "loading"));
+  if (bidHistoryState.status === "loading") {
+    refs.bidHistoryList.innerHTML = `<div class="lg-history__message" role="status">Carregando histórico…</div>`;
+    refs.bidHistoryFooter.classList.add("hidden");
+    return;
+  }
+  if (bidHistoryState.status === "error") {
+    refs.bidHistoryList.innerHTML = `<div class="lg-history__message lg-history__message--error" role="alert"><span>Não foi possível carregar o histórico.</span><button class="quiet-action" type="button" data-bid-history-retry>Tentar novamente</button></div>`;
+    refs.bidHistoryFooter.classList.add("hidden");
+    return;
+  }
+  if (!bidHistoryState.events.length) {
+    refs.bidHistoryList.innerHTML = `<div class="lg-history__message">Nenhuma atividade registrada para este edital.</div>`;
+  } else {
+    refs.bidHistoryList.innerHTML = `<ol class="lg-history__rows">${bidHistoryState.events.map(renderBidHistoryRow).join("")}</ol>`;
+    refs.bidHistoryList.querySelectorAll(".lg-history__avatar img").forEach((image) => {
+      image.addEventListener("error", () => {
+        const fallback = document.createElement("span");
+        fallback.className = "lg-history__avatar-fallback";
+        const actorName = image.closest(".lg-history__row")?.querySelector(".lg-history__actor")?.textContent || "Usuário";
+        const initials = actorName.split(/\s+/).filter(Boolean).map((part) => part[0]).filter(Boolean);
+        fallback.textContent = (initials.length > 1 ? `${initials[0]}${initials.at(-1)}` : initials[0] || "?").toLocaleUpperCase("pt-BR");
+        image.replaceWith(fallback);
+      }, { once: true });
+    });
+  }
+  renderBidHistoryFooter();
+}
+
+async function loadBidHistoryPage(page) {
+  const bidId = appState.currentBidId;
+  if (!bidId || !Number.isInteger(page) || page < 1) return;
+  const request = ++bidHistoryRequest;
+  bidHistoryState = { ...bidHistoryState, page, status: "loading", error: "" };
+  renderBidHistory();
+  try {
+    const response = await store.getBidHistoryPage(bidId, page);
+    if (request !== bidHistoryRequest || appState.currentBidId !== bidId || appState.activePage !== "history") return;
+    if (Number(response?.page_size) !== BID_HISTORY_PAGE_SIZE) throw new Error("O servidor retornou um tamanho de página inválido.");
+    const totalCount = Math.max(0, Number(response?.total_count) || 0);
+    const totalPages = Math.ceil(totalCount / BID_HISTORY_PAGE_SIZE);
+    const resolvedPage = totalPages ? Math.min(page, totalPages) : 1;
+    if (resolvedPage !== page) {
+      void loadBidHistoryPage(resolvedPage);
+      return;
+    }
+    bidHistoryState = {
+      page: resolvedPage,
+      totalCount,
+      events: Array.isArray(response?.events) ? response.events : [],
+      status: "ready",
+      error: "",
+    };
+    renderBidHistory();
+  } catch (error) {
+    if (request !== bidHistoryRequest || appState.currentBidId !== bidId || appState.activePage !== "history") return;
+    console.error("Falha ao consultar histórico paginado do edital.", error);
+    bidHistoryState = { ...bidHistoryState, status: "error", error: "Não foi possível carregar o histórico." };
+    renderBidHistory();
+  }
+}
+
+function csvField(value) {
+  let text = String(value ?? "");
+  if (/^[\t\r\n ]*[=+\-@]/.test(text)) text = `'${text}`;
+  return `"${text.replaceAll('"', '""')}"`;
+}
+
+async function exportBidHistoryCsv() {
+  const bidId = appState.currentBidId;
+  if (!bidId || !(store instanceof SupabaseStore)) {
+    showToast("A exportação do histórico está disponível quando o edital está conectado ao servidor.", "error");
+    return;
+  }
+  refs.bidHistoryExportButton.disabled = true;
+  refs.bidHistoryExportButton.setAttribute("aria-busy", "true");
+  try {
+    let events = [];
+    let stableSnapshot = false;
+    for (let attempt = 0; attempt < 3 && !stableSnapshot; attempt += 1) {
+      const firstPage = await store.getBidHistoryPage(bidId, 1);
+      if (appState.currentBidId !== bidId) return;
+      if (Number(firstPage?.page_size) !== BID_HISTORY_PAGE_SIZE) throw new Error("O servidor retornou um tamanho de página inválido.");
+      const totalCount = Math.max(0, Number(firstPage?.total_count) || 0);
+      const totalPages = Math.ceil(totalCount / BID_HISTORY_PAGE_SIZE);
+      const collected = Array.isArray(firstPage?.events) ? [...firstPage.events] : [];
+      let changedDuringExport = false;
+      for (let page = 2; page <= totalPages; page += 1) {
+        const response = await store.getBidHistoryPage(bidId, page);
+        if (appState.currentBidId !== bidId) return;
+        if (Number(response?.page_size) !== BID_HISTORY_PAGE_SIZE) throw new Error("O servidor retornou um tamanho de página inválido.");
+        if (Number(response?.total_count) !== totalCount) {
+          changedDuringExport = true;
+          break;
+        }
+        if (Array.isArray(response?.events)) collected.push(...response.events);
+      }
+      if (!changedDuringExport) {
+        const lastCountCheck = await store.getBidHistoryPage(bidId, 1);
+        if (appState.currentBidId !== bidId) return;
+        stableSnapshot = Number(lastCountCheck?.total_count) === totalCount;
+        if (stableSnapshot) events = collected;
+      }
+    }
+    if (!stableSnapshot) throw new Error("O histórico mudou durante a exportação. Tente novamente.");
+    const rows = [
+      ["Data e hora", "Responsável", "Ação", "Informações adicionais"],
+      ...events.map((event) => {
+        const presentation = bidHistoryPresentation(event);
+        const actor = bidHistoryActor(event);
+        return [bidHistoryTimestamp(event.created_at), actor.name, presentation.summary, presentation.detail];
+      }),
+    ];
+    const csv = `\uFEFF${rows.map((row) => row.map(csvField).join(",")).join("\r\n")}`;
+    const objectUrl = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
+    const link = document.createElement("a");
+    link.href = objectUrl;
+    link.download = "historico-edital.csv";
+    document.body.append(link);
+    link.click();
+    link.remove();
+    window.setTimeout(() => URL.revokeObjectURL(objectUrl), 0);
+    showToast("Exportação do histórico iniciada.");
+  } catch (error) {
+    console.error("Falha ao exportar histórico do edital.", error);
+    showToast(error.message || "Não foi possível exportar o histórico.", "error");
+  } finally {
+    refs.bidHistoryExportButton.disabled = false;
+    refs.bidHistoryExportButton.removeAttribute("aria-busy");
+  }
 }
 
 function updateBidWorkspaceHeader() {

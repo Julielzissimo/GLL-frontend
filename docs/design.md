@@ -43,6 +43,7 @@ Este documento é a referência oficial de UI/UX do frontend GLL. O Design Syste
 | `--gll-warning` / `--gll-warning-bg` | `#895a1a` / `#f6ebd5` | Atenção e pendência |
 | `--gll-danger` / `--gll-danger-bg` | `#9c4c42` / `#f7e9e5` | Erro e ação destrutiva |
 | `--gll-info` / `--gll-info-bg` | `#35647c` / `#e6eef1` | Informação |
+| `--gll-history-status` / `--gll-history-status-bg` | `#8655e6` / `#f1eafd` | Mudanças de status na linha do tempo do edital |
 | `--gll-selection-bg` | `#e8eee4` | Navegação e opções selecionadas |
 | `--gll-focus` | `#ad7237` | Foco de teclado |
 
