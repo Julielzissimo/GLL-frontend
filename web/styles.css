@@ -9664,6 +9664,7 @@ button.history-row:hover {
   white-space: nowrap;
 }
 .organization-documents-selection-checkbox {
+  position: relative;
   min-height: 0;
   margin: 0;
   gap: var(--gll-space-2);
