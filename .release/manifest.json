@@ -1613,14 +1613,17 @@
         "e24d1d98be46d07550b627ba0d4d67475f1ee7ea",
         "0723d8ab2d1d54f2ce148f34b6cf40dedec9ac5e",
         "748d7f90059633b79c87537967bfbc0c3c952a9f",
-        "e51aef6974c362b0546eb759f58806880330eade"
+        "e51aef6974c362b0546eb759f58806880330eade",
+        "53b44bc4768cb6e954403a00b6936865a3bcff6b",
+        "f57b59b9645ebce7ad75d0248542adfa40a7af26"
       ],
       "frontend_commits": [],
       "migrations": [
         "supabase/migrations/20261022231416_bid_history_events.sql",
         "supabase/migrations/20261022235858_audit_radar_import_links.sql",
         "supabase/migrations/20261023000405_audit_bid_history_service_role_lockdown.sql",
-        "supabase/migrations/20261023224500_install_bid_history_without_optional_modules.sql"
+        "supabase/migrations/20261023224500_install_bid_history_without_optional_modules.sql",
+        "supabase/migrations/20261023224459_prepare_bid_history_backfill.sql"
       ]
     },
     {
