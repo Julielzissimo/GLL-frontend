@@ -1618,6 +1618,14 @@
         "supabase/migrations/20261022235858_audit_radar_import_links.sql",
         "supabase/migrations/20261023000405_audit_bid_history_service_role_lockdown.sql"
       ]
+    },
+    {
+      "id": "ISSUE-189",
+      "backend_commits": [],
+      "frontend_commits": [
+        "c531436f6a3e4cc05c3fe191a4ce284baa8b3896"
+      ],
+      "migrations": []
     }
   ]
 }

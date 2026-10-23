@@ -35,6 +35,9 @@
     error: icon('<circle cx="12" cy="12" r="9"/><path d="m9 9 6 6m0-6-6 6"/>'),
     info: icon('<circle cx="12" cy="12" r="9"/><path d="M12 11v5m0-8h.01"/>'),
     document: icon('<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M8 13h8M8 17h8"/>'),
+    arrowsLeftRight: icon('<path d="M4 8h15l-3-3m3 3-3 3M20 16H5l3 3m-3-3 3-3"/>'),
+    pencil: icon('<path d="m15 5 4 4M4 20l4.5-1 10-10a2.12 2.12 0 0 0-3-3l-10 10L4 20Z"/>'),
+    download: icon('<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4m4-5 5 5 5-5m-5 5V3"/>'),
     empty: icon('<path d="M4 5h16v14H4zM8 9h8M8 13h5"/>'),
   });
 
@@ -81,6 +84,8 @@
       ["line-strong", "--gll-line-strong", "Contornos de controles"],
       ["success", "--gll-success", "Confirmações e estados positivos"],
       ["success-bg", "--gll-success-bg", "Superfície de sucesso"],
+      ["history-status", "--gll-history-status", "Mudanças de status no histórico do edital"],
+      ["history-status-bg", "--gll-history-status-bg", "Superfície de status no histórico do edital"],
       ["warning", "--gll-warning", "Atenção e pendências"],
       ["warning-bg", "--gll-warning-bg", "Superfície de aviso"],
       ["danger", "--gll-danger", "Erros e ações destrutivas"],
