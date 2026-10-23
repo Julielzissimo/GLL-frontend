@@ -5831,8 +5831,11 @@ tr.item-won td {
   }
 }
 
-/* Native modal top layer also blocks forms inside other open dialogs. */
-html.is-loading { overflow: hidden; }
+/* Keep the viewport width stable while the blocking dialog locks page scrolling. */
+html.is-loading {
+  overflow: hidden;
+  scrollbar-gutter: stable;
+}
 .blocking-loading-modal {
   width: min(var(--dialog-width-sm), calc(100vw - 32px));
   max-height: calc(100dvh - 32px);
