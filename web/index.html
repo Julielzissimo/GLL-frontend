@@ -332,15 +332,26 @@
               </div>
 
               <div class="home-status-grid" aria-label="Atalhos por status">
-                <button class="home-status-card" type="button" data-home-status="Todos"><span>Total de licitações</span><strong id="homeTotalBids">0</strong><small>Carteira cadastrada</small></button>
-                <button class="home-status-card warning" type="button" data-home-status="Em Analise"><span>Em Cadastro</span><strong id="homeRegistrationBids">0</strong><small>Dados do edital em preparação</small></button>
-                <button class="home-status-card info" type="button" data-home-status="Aguard. Disputa"><span>Aguard. Disputa</span><strong id="homeReadyToDisputeBids">0</strong><small>Orçamento e edital concluídos</small></button>
-                <button class="home-status-card discarded" type="button" data-home-status="Descartada"><span>Descartadas</span><strong id="homeDiscardedBids">0</strong><small>Nenhum item ganho</small></button>
-                <button class="home-status-card success" type="button" data-home-status="Aprovada"><span>Aprovadas</span><strong id="homeApprovedBids">0</strong><small>Aguardando nota de empenho</small></button>
-                <button class="home-status-card info" type="button" data-home-status="Em Fornecimento"><span>Em Fornecimento</span><strong id="homeSupplyingBids">0</strong><small>Fornecimento de produtos em andamento</small></button>
-                <button class="home-status-card billed" type="button" data-home-status="Faturado"><span>Faturadas</span><strong id="homeBilledBids">0</strong><small>Processo concluído</small></button>
-                <button class="home-status-card info" type="button" data-home-status="Disputada"><span>Disputadas</span><strong id="homeDisputedBids">0</strong><small>Aguardando formalização</small></button>
-                <button class="home-status-card danger" type="button" data-home-status="Desclassificado"><span>Desclassificadas</span><strong id="homeDisqualifiedBids">0</strong><small>Plano de ação</small></button>
+                <button class="home-status-card" type="button" data-home-status="Todos" aria-describedby="homeStatusDescriptionTotal"><span class="home-status-heading">Total de licitações<span class="home-status-info" data-tooltip="Carteira cadastrada" aria-hidden="true"><span data-gll-icon="info"></span></span></span><strong id="homeTotalBids">0</strong></button>
+                <button class="home-status-card warning" type="button" data-home-status="Em Analise" aria-describedby="homeStatusDescriptionRegistration"><span class="home-status-heading">Em Cadastro<span class="home-status-info" data-tooltip="Dados do edital em preparação" aria-hidden="true"><span data-gll-icon="info"></span></span></span><strong id="homeRegistrationBids">0</strong></button>
+                <button class="home-status-card info" type="button" data-home-status="Aguard. Disputa" aria-describedby="homeStatusDescriptionReadyToDispute"><span class="home-status-heading">Aguard. Disputa<span class="home-status-info" data-tooltip="Orçamento e edital concluídos" aria-hidden="true"><span data-gll-icon="info"></span></span></span><strong id="homeReadyToDisputeBids">0</strong></button>
+                <button class="home-status-card discarded" type="button" data-home-status="Descartada" aria-describedby="homeStatusDescriptionDiscarded"><span class="home-status-heading">Descartadas<span class="home-status-info" data-tooltip="Nenhum item ganho" aria-hidden="true"><span data-gll-icon="info"></span></span></span><strong id="homeDiscardedBids">0</strong></button>
+                <button class="home-status-card success" type="button" data-home-status="Aprovada" aria-describedby="homeStatusDescriptionApproved"><span class="home-status-heading">Aprovadas<span class="home-status-info" data-tooltip="Aguardando nota de empenho" aria-hidden="true"><span data-gll-icon="info"></span></span></span><strong id="homeApprovedBids">0</strong></button>
+                <button class="home-status-card info" type="button" data-home-status="Em Fornecimento" aria-describedby="homeStatusDescriptionSupplying"><span class="home-status-heading">Em Fornecimento<span class="home-status-info" data-tooltip="Fornecimento de produtos em andamento" aria-hidden="true"><span data-gll-icon="info"></span></span></span><strong id="homeSupplyingBids">0</strong></button>
+                <button class="home-status-card billed" type="button" data-home-status="Faturado" aria-describedby="homeStatusDescriptionBilled"><span class="home-status-heading">Faturadas<span class="home-status-info" data-tooltip="Processo concluído" aria-hidden="true"><span data-gll-icon="info"></span></span></span><strong id="homeBilledBids">0</strong></button>
+                <button class="home-status-card info" type="button" data-home-status="Disputada" aria-describedby="homeStatusDescriptionDisputed"><span class="home-status-heading">Disputadas<span class="home-status-info" data-tooltip="Aguardando formalização" aria-hidden="true"><span data-gll-icon="info"></span></span></span><strong id="homeDisputedBids">0</strong></button>
+                <button class="home-status-card danger" type="button" data-home-status="Desclassificado" aria-describedby="homeStatusDescriptionDisqualified"><span class="home-status-heading">Desclassificadas<span class="home-status-info" data-tooltip="Plano de ação" aria-hidden="true"><span data-gll-icon="info"></span></span></span><strong id="homeDisqualifiedBids">0</strong></button>
+              </div>
+              <div class="visually-hidden" aria-hidden="false">
+                <span id="homeStatusDescriptionTotal">Carteira cadastrada</span>
+                <span id="homeStatusDescriptionRegistration">Dados do edital em preparação</span>
+                <span id="homeStatusDescriptionReadyToDispute">Orçamento e edital concluídos</span>
+                <span id="homeStatusDescriptionDiscarded">Nenhum item ganho</span>
+                <span id="homeStatusDescriptionApproved">Aguardando nota de empenho</span>
+                <span id="homeStatusDescriptionSupplying">Fornecimento de produtos em andamento</span>
+                <span id="homeStatusDescriptionBilled">Processo concluído</span>
+                <span id="homeStatusDescriptionDisputed">Aguardando formalização</span>
+                <span id="homeStatusDescriptionDisqualified">Plano de ação</span>
               </div>
 
               <div class="dashboard-grid">
