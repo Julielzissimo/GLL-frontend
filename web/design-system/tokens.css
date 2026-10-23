@@ -52,6 +52,7 @@
   --gll-ink-soft: #4c5d55;
   --gll-forest: #183d35;
   --gll-forest-hover: #28564a;
+  --gll-tooltip-background: linear-gradient(135deg, #103B30 0%, #194B3F 55%, #123E33 100%);
   --gll-accent: #b57b43;
   --gll-canvas: #f5f3ed;
   --gll-paper: #fffefa;

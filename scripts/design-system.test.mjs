@@ -67,11 +67,12 @@ test("foundation samples comply with the app content security policy", () => {
 });
 
 test("the internal catalog is wired to the administrator-only route", () => {
-  assert.match(html, /id="designSystemAccessCard"[^>]*hidden/);
+  assert.doesNotMatch(html, /id="designSystemAccessCard"|id="openDesignSystemButton"/);
+  assert.match(html, /id="navDesignSystemButton"[^>]*data-navigation-page="designSystem"/);
   assert.match(html, /id="designSystemPage"[^>]*hidden/);
   assert.match(app, /designSystem:\s*"configuracoes\/design-system"/);
-  assert.match(app, /page === "designSystem" && !isCurrentUserAdmin\(\)\) return "settings"/);
-  assert.match(app, /designSystemAccessCard\.classList\.toggle\("hidden", !showDesignSystemAccess\)/);
+  assert.match(app, /page === "designSystem" && !isCurrentUserAdmin\(\)\) return "home"/);
+  assert.doesNotMatch(app, /designSystemAccessCard/);
 });
 
 test("production hides and blocks the internal Design System while homologation keeps it enabled", () => {

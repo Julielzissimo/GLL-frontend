@@ -41,7 +41,6 @@ const navigation = (active = "bids") => `
           <button class="nav-link ${active === "users" ? "active" : ""}" type="button"><span class="nav-icon" aria-hidden="true">${icon("lucideUsers")}</span><span class="nav-link-label">Usuários</span></button>
           <button class="nav-link" type="button" aria-expanded="true"><span class="nav-icon" aria-hidden="true">${icon("settings2")}</span><span class="nav-link-label">Configurações</span><span class="nav-group-chevron" aria-hidden="true">${icon("chevronDown")}</span></button>
           <div class="nav-submenu is-expanded"><div class="nav-submenu-inner">
-            <button class="nav-link nav-sublink ${active === "settings" ? "active" : ""}" type="button"><span class="nav-link-label">Geral</span></button>
             <button class="nav-link nav-sublink ${active === "companyData" ? "active" : ""}" type="button"><span class="nav-link-label">Dados da Empresa</span></button>
           </div></div>
           <button class="nav-link ${active === "designSystem" ? "active" : ""}" type="button"><span class="nav-icon" aria-hidden="true">${icon("bookOpen")}</span><span class="nav-link-label">Design System</span></button>
@@ -49,6 +48,17 @@ const navigation = (active = "bids") => `
       </nav>
       <div class="sidebar-footer"><div class="sidebar-environment"><span class="environment-dot" aria-hidden="true"></span><div><strong class="environment-badge">Homologação</strong><small>Ambiente de validação</small></div></div></div>
     </aside>
+  </div>`;
+
+const navigationWhileLoading = () => `
+  <div class="is-loading">
+    ${navigation().replace(' style="position: relative; width: 100%; height: 100%; min-height: 0; box-sizing: border-box;"', "")}
+    <div aria-hidden="true" style="position: fixed; inset: 0; z-index: var(--z-overlay); background: var(--color-overlay); backdrop-filter: blur(2px);"></div>
+    <div class="blocking-loading-modal" role="dialog" aria-modal="true" aria-labelledby="navigationLoadingTitle" style="position: fixed; inset: 0; z-index: var(--z-modal); margin: auto;">
+      <div class="blocking-loading-spinner" aria-hidden="true"></div>
+      <h2 id="navigationLoadingTitle">Salvando edital…</h2>
+      <p>Aguarde a conclusão da operação. Não feche nem atualize esta página.</p>
+    </div>
   </div>`;
 
 export const LicitacoesAtivas = {
@@ -59,4 +69,9 @@ export const LicitacoesAtivas = {
 export const DocumentosAtivos = {
   name: "Declarações selecionada",
   render: () => navigation("declarations"),
+};
+
+export const OperacaoBloqueante = {
+  name: "Menu durante operação bloqueante",
+  render: navigationWhileLoading,
 };

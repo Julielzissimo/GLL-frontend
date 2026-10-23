@@ -1,5 +1,5 @@
 (function initializeGllDesignSystem(global) {
-  const icon = (content) => `<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">${content}</svg>`;
+  const icon = (content) => `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">${content}</svg>`;
   const ICONS = Object.freeze({
     layoutDashboard: icon('<rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/>'),
     briefcaseBusiness: icon('<path d="M12 12h.01"/><path d="M16 6V4a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/><path d="M22 13a18.15 18.15 0 0 1-20 0"/><rect width="20" height="14" x="2" y="6" rx="2"/>'),
@@ -114,7 +114,7 @@
 
   function button({ label = "Ação", variant = "primary", disabled = false, loading = false, icon = "" } = {}) {
     const className = variant === "danger" ? "danger-action" : variant === "secondary" ? "quiet-action" : variant === "ghost" ? "text-action" : "primary-action";
-    return `<button class="${className}" type="button"${disabled || loading ? " disabled" : ""}${loading ? ' aria-busy="true"' : ""}>${loading ? '<span class="ds-spinner" aria-hidden="true"></span>' : icon ? iconMarkup(icon) : ""}${escapeHtml(loading ? "Carregando…" : label)}</button>`;
+    return `<button class="${className}" type="button"${disabled || loading ? " disabled" : ""}${loading ? ' aria-busy="true"' : ""}>${loading ? '<span class="ds-spinner" aria-hidden="true"></span>' : icon ? iconMarkup(icon) + " " : ""}${escapeHtml(loading ? "Carregando…" : label)}</button>`;
   }
 
   function iconButton({ label = "Ação", icon = "settings", variant = "default", disabled = false } = {}) {

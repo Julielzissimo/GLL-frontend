@@ -9,7 +9,7 @@ Levantamento inicial do frontend estático em `web/index.html`, `web/app.js` e `
 - Autenticação Supabase nos ambientes publicados e IndexedDB no modo local.
 - Papéis centralizados em `Administrador` e `Analista`.
 - Gerenciamento de usuários já restrito a Administrador; a mesma função `isCurrentUserAdmin()` foi reutilizada no Design System.
-- Configurações composta por cards `section-band` em `settings-grid`.
+- Configurações funciona como grupo de navegação; em homologação oferece Dados da Empresa, sem página Geral nem cards de atalhos.
 - GitHub Pages publica somente o conteúdo gerado de `web/`.
 
 ## Padrões existentes

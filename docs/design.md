@@ -107,7 +107,7 @@ Diálogos usam `--dialog-width-sm`, `--dialog-width-md`, `--dialog-width-lg` e `
 
 As factories em `components.js` usam as classes reais da aplicação (`primary-action`, `quiet-action`, `danger-action`, `section-band`, `page-heading`, `tabs`, `table-wrap` etc.). Não mantenha uma cópia visual separada nas stories.
 
-Tooltip, Dropdown, Pagination e filtros compostos continuam como padrões candidatos. Breadcrumb já aparece na navegação de documentos e configurações; mantenha sua apresentação curta e ligada ao caminho da página. Esses padrões devem ser consolidados quando houver uso recorrente, sem criar componentes apenas para preencher o catálogo.
+Os tooltips customizados usam o token `--gll-tooltip-background` de `tokens.css`, aplicado globalmente às superfícies `[data-tooltip]::after` no tema compatível. A story `Tooltip.stories.js` documenta o padrão atual. Dicas pelo atributo nativo `title` continuam com apresentação e posicionamento controlados pelo navegador. Dropdown, Pagination e filtros compostos continuam como padrões candidatos. Breadcrumb já aparece na navegação de documentos e configurações; mantenha sua apresentação curta e ligada ao caminho da página. Esses padrões devem ser consolidados quando houver uso recorrente, sem criar componentes apenas para preencher o catálogo.
 
 ## Navegação principal
 
@@ -115,7 +115,7 @@ A navegação principal usa fundo verde floresta (`--gll-forest`) e texto claro.
 
 A marca no cabeçalho da sidebar usa o SVG `web/assets/gll-selo-integridade.svg`, com as cores de navegação já definidas em `tokens.css`. Quando a sidebar se reduz a ícones em tablets, use `web/assets/gll-selo-integridade-marca.svg`; ambos mantêm a ação do botão de voltar à visão geral e não substituem os ícones de navegação do registro central.
 
-As áreas são agrupadas em **Área de trabalho** (Visão geral, Licitações e Orçamentos), **Documentos** (Propostas comerciais e Declarações) e **Administração** (Fornecedores, Usuários, Configurações e Design System). Usuários e Design System seguem a regra atual de acesso de Administrador. Configurações mantém o submenu de Geral e Dados da Empresa.
+As áreas são agrupadas em **Área de trabalho** (Visão geral, Licitações e Orçamentos), **Documentos** (Propostas comerciais e Declarações) e **Administração** (Fornecedores, Usuários, Configurações e Design System). Usuários e Design System seguem a regra atual de acesso de Administrador. Em homologação, Configurações mantém somente o submenu Dados da Empresa; a página Geral e os atalhos duplicados foram removidos. O Design System continua no item próprio da navegação.
 
 A marca da barra lateral usa o lockup vetorial `web/assets/gll-brand.svg` e, na navegação compacta, o emblema `web/assets/gll-mark.svg`. A aba do navegador usa o mesmo selo de integridade em `web/assets/favicon.svg`, com PNG e ICO como alternativas para navegadores compatíveis.
 
@@ -183,7 +183,7 @@ A saída `storybook-static/` é ignorada pelo Git e não é publicada pelo workf
 
 ## Acesso dentro do GLL
 
-Em homologação, Administradores acessam **Configurações → Design System**. A rota canônica usa `?page=configuracoes%2Fdesign-system`, compatível com o roteamento existente por query string. Analistas não veem o card e são redirecionados para Configurações ao tentar abrir a rota diretamente. Em produção, `designSystemEnabled: false` oculta o atalho e o card e redireciona tentativas de abrir a rota para a página inicial.
+Em homologação, Administradores acessam **Design System** pelo item próprio da navegação. A rota canônica usa `?page=configuracoes%2Fdesign-system`, compatível com o roteamento existente por query string. Analistas são redirecionados para a Visão geral ao tentar abrir a rota diretamente. Em produção, `designSystemEnabled: false` oculta o item e redireciona tentativas de abrir a rota para a página inicial.
 
 O catálogo interno e o Storybook usam o mesmo `tokens.css`, `styles.css`, `design-system.css` e `components.js`.
 

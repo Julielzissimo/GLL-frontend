@@ -243,6 +243,7 @@
             <span class="nav-section-label">DOCUMENTOS</span>
             <button id="navCommercialProposalsButton" class="nav-link" type="button" title="Propostas comerciais" data-navigation-page="commercialProposals"><span class="nav-icon" aria-hidden="true" data-gll-icon="fileText"></span><span class="nav-link-label">Propostas comerciais</span></button>
             <button id="navDeclarationsButton" class="nav-link" type="button" title="Declarações" data-navigation-page="declarations"><span class="nav-icon" aria-hidden="true" data-gll-icon="fileCheck2"></span><span class="nav-link-label">Declarações</span></button>
+            <button id="navOrganizationDocumentsButton" class="nav-link" type="button" title="Kit de Documentos" data-navigation-page="organizationDocuments"><span class="nav-icon" aria-hidden="true" data-gll-icon="fileCheck2"></span><span class="nav-link-label">Kit de Documentos</span></button>
           </div>
           <div class="nav-section">
             <span class="nav-section-label">ADMINISTRAÇÃO</span>
@@ -255,7 +256,6 @@
               </button>
               <div id="settingsNavigationItems" class="nav-submenu" aria-hidden="true" inert>
                 <div class="nav-submenu-inner">
-                  <button id="navSettingsGeneralButton" class="nav-link nav-sublink" type="button" data-navigation-page="settings"><span class="nav-link-label">Geral</span></button>
                   <button id="navCompanyDataButton" class="nav-link nav-sublink" type="button" data-navigation-page="companyData"><span class="nav-link-label">Dados da Empresa</span></button>
                 </div>
               </div>
@@ -332,15 +332,26 @@
               </div>
 
               <div class="home-status-grid" aria-label="Atalhos por status">
-                <button class="home-status-card" type="button" data-home-status="Todos"><span>Total de licitações</span><strong id="homeTotalBids">0</strong><small>Carteira cadastrada</small></button>
-                <button class="home-status-card warning" type="button" data-home-status="Em Analise"><span>Em Cadastro</span><strong id="homeRegistrationBids">0</strong><small>Dados do edital em preparação</small></button>
-                <button class="home-status-card info" type="button" data-home-status="Aguard. Disputa"><span>Aguard. Disputa</span><strong id="homeReadyToDisputeBids">0</strong><small>Orçamento e edital concluídos</small></button>
-                <button class="home-status-card discarded" type="button" data-home-status="Descartada"><span>Descartadas</span><strong id="homeDiscardedBids">0</strong><small>Nenhum item ganho</small></button>
-                <button class="home-status-card success" type="button" data-home-status="Aprovada"><span>Aprovadas</span><strong id="homeApprovedBids">0</strong><small>Aguardando nota de empenho</small></button>
-                <button class="home-status-card info" type="button" data-home-status="Em Fornecimento"><span>Em Fornecimento</span><strong id="homeSupplyingBids">0</strong><small>Fornecimento de produtos em andamento</small></button>
-                <button class="home-status-card billed" type="button" data-home-status="Faturado"><span>Faturadas</span><strong id="homeBilledBids">0</strong><small>Processo concluído</small></button>
-                <button class="home-status-card info" type="button" data-home-status="Disputada"><span>Disputadas</span><strong id="homeDisputedBids">0</strong><small>Aguardando formalização</small></button>
-                <button class="home-status-card danger" type="button" data-home-status="Desclassificado"><span>Desclassificadas</span><strong id="homeDisqualifiedBids">0</strong><small>Plano de ação</small></button>
+                <button class="home-status-card" type="button" data-home-status="Todos" aria-describedby="homeStatusDescriptionTotal"><span class="home-status-heading">Total de licitações<span class="home-status-info" data-tooltip="Carteira cadastrada" aria-hidden="true"><span data-gll-icon="info"></span></span></span><strong id="homeTotalBids">0</strong></button>
+                <button class="home-status-card warning" type="button" data-home-status="Em Analise" aria-describedby="homeStatusDescriptionRegistration"><span class="home-status-heading">Em Cadastro<span class="home-status-info" data-tooltip="Dados do edital em preparação" aria-hidden="true"><span data-gll-icon="info"></span></span></span><strong id="homeRegistrationBids">0</strong></button>
+                <button class="home-status-card info" type="button" data-home-status="Aguard. Disputa" aria-describedby="homeStatusDescriptionReadyToDispute"><span class="home-status-heading">Aguard. Disputa<span class="home-status-info" data-tooltip="Orçamento e edital concluídos" aria-hidden="true"><span data-gll-icon="info"></span></span></span><strong id="homeReadyToDisputeBids">0</strong></button>
+                <button class="home-status-card discarded" type="button" data-home-status="Descartada" aria-describedby="homeStatusDescriptionDiscarded"><span class="home-status-heading">Descartadas<span class="home-status-info" data-tooltip="Nenhum item ganho" aria-hidden="true"><span data-gll-icon="info"></span></span></span><strong id="homeDiscardedBids">0</strong></button>
+                <button class="home-status-card success" type="button" data-home-status="Aprovada" aria-describedby="homeStatusDescriptionApproved"><span class="home-status-heading">Aprovadas<span class="home-status-info" data-tooltip="Aguardando nota de empenho" aria-hidden="true"><span data-gll-icon="info"></span></span></span><strong id="homeApprovedBids">0</strong></button>
+                <button class="home-status-card info" type="button" data-home-status="Em Fornecimento" aria-describedby="homeStatusDescriptionSupplying"><span class="home-status-heading">Em Fornecimento<span class="home-status-info" data-tooltip="Fornecimento de produtos em andamento" aria-hidden="true"><span data-gll-icon="info"></span></span></span><strong id="homeSupplyingBids">0</strong></button>
+                <button class="home-status-card billed" type="button" data-home-status="Faturado" aria-describedby="homeStatusDescriptionBilled"><span class="home-status-heading">Faturadas<span class="home-status-info" data-tooltip="Processo concluído" aria-hidden="true"><span data-gll-icon="info"></span></span></span><strong id="homeBilledBids">0</strong></button>
+                <button class="home-status-card info" type="button" data-home-status="Disputada" aria-describedby="homeStatusDescriptionDisputed"><span class="home-status-heading">Disputadas<span class="home-status-info" data-tooltip="Aguardando formalização" aria-hidden="true"><span data-gll-icon="info"></span></span></span><strong id="homeDisputedBids">0</strong></button>
+                <button class="home-status-card danger" type="button" data-home-status="Desclassificado" aria-describedby="homeStatusDescriptionDisqualified"><span class="home-status-heading">Desclassificadas<span class="home-status-info" data-tooltip="Plano de ação" aria-hidden="true"><span data-gll-icon="info"></span></span></span><strong id="homeDisqualifiedBids">0</strong></button>
+              </div>
+              <div class="visually-hidden" aria-hidden="false">
+                <span id="homeStatusDescriptionTotal">Carteira cadastrada</span>
+                <span id="homeStatusDescriptionRegistration">Dados do edital em preparação</span>
+                <span id="homeStatusDescriptionReadyToDispute">Orçamento e edital concluídos</span>
+                <span id="homeStatusDescriptionDiscarded">Nenhum item ganho</span>
+                <span id="homeStatusDescriptionApproved">Aguardando nota de empenho</span>
+                <span id="homeStatusDescriptionSupplying">Fornecimento de produtos em andamento</span>
+                <span id="homeStatusDescriptionBilled">Processo concluído</span>
+                <span id="homeStatusDescriptionDisputed">Aguardando formalização</span>
+                <span id="homeStatusDescriptionDisqualified">Plano de ação</span>
               </div>
 
               <div class="dashboard-grid">
@@ -349,7 +360,7 @@
                   <div id="upcomingBidsList" class="timeline-list"></div>
                 </section>
                 <section class="section-band pending-panel">
-                  <div class="panel-heading"><div><h2>Pendências documentais</h2><p>Documentos ainda não disponíveis.</p></div></div>
+                  <div class="panel-heading"><div><h2>Pendências documentais</h2><p>Documentos de editais pendentes e documentos da organização próximos do vencimento.</p></div></div>
                   <div id="pendingDocumentsList" class="pending-list"></div>
                 </section>
               </div>
@@ -360,6 +371,7 @@
                   <button id="viewRecentBidsButton" class="text-action" type="button">Abrir licitações →</button>
                 </div>
                 <div id="homeRecentActivitiesList" class="home-activity-feed" aria-live="polite"></div>
+                <nav id="homeRecentActivitiesPagination" class="home-activity-pagination" aria-label="Paginação das atualizações dos editais" hidden></nav>
               </section>
             </section>
 
@@ -502,8 +514,8 @@
               <div class="bid-attachment-field">
                 <label for="editalFile">Arquivos do Edital</label>
                 <input id="editalFile" type="file" multiple />
-                <small id="editalAttachmentHelp">Envie até 4 arquivos, com no máximo 20 MB cada.</small>
-                <div id="editalAttachmentList" class="attachment-list" aria-live="polite"></div>
+                <small id="editalAttachmentHelp" role="status" aria-live="polite">Envie até 4 arquivos, com no máximo 20 MB cada.</small>
+                <div id="editalAttachmentList" class="attachment-list" aria-live="polite" aria-busy="false"></div>
               </div>
             </div>
 
@@ -1505,30 +1517,6 @@
         <div id="declarationVariableSuggestions" class="declaration-variable-suggestions hidden" role="listbox"></div>
       </section>
 
-      <section id="settingsPage" class="users-page settings-page hidden">
-        <div class="page-heading">
-          <div><span class="eyebrow">SISTEMA</span><h1>Configurações</h1></div>
-        </div>
-        <div class="settings-grid">
-          <section class="section-band settings-access-card company-data-access-card">
-            <span class="company-data-icon" aria-hidden="true">▣</span>
-            <div>
-              <h2>Dados da Empresa</h2>
-              <p>Mantenha o CNPJ e os representantes legais da organização em um cadastro central.</p>
-            </div>
-            <button id="openCompanyDataButton" class="primary-action" type="button">Abrir cadastro</button>
-          </section>
-          <section id="designSystemAccessCard" class="section-band design-system-access-card hidden">
-            <span class="settings-icon" aria-hidden="true">◫</span>
-            <div>
-              <h2>Design System</h2>
-              <p>Consulte foundations, componentes reutilizáveis e padrões oficiais da interface.</p>
-            </div>
-            <button id="openDesignSystemButton" class="primary-action" type="button">Abrir catálogo</button>
-          </section>
-        </div>
-      </section>
-
       <section id="companyDataPage" class="users-page company-data-page hidden" aria-labelledby="companyDataTitle">
         <div class="page-heading">
           <div>
@@ -1536,7 +1524,7 @@
             <h1 id="companyDataTitle">Dados da Empresa</h1>
             <p>Informações institucionais compartilhadas pelos recursos do GLL.</p>
           </div>
-          <button id="backToSettingsFromCompanyDataButton" class="quiet-action" type="button">← Voltar para Configurações</button>
+          <button id="backToHomeFromCompanyDataButton" class="quiet-action" type="button">← Voltar para Visão geral</button>
         </div>
 
         <div id="companyDataLoading" class="section-band company-data-loading" role="status">Carregando dados da empresa…</div>
@@ -1587,10 +1575,15 @@
             <h1 id="designSystemTitle">Design System</h1>
             <p>Catálogo oficial da identidade visual e dos componentes reutilizáveis do GLL.</p>
           </div>
-          <button id="backToSettingsButton" class="quiet-action" type="button">← Voltar para Configurações</button>
+          <button id="backToHomeFromDesignSystemButton" class="quiet-action" type="button">← Voltar para Visão geral</button>
         </div>
         <div id="designSystemCatalog"></div>
       </section>
+
+      <section id="organizationDocumentsPage" class="users-page organization-documents-page hidden" aria-labelledby="organizationDocumentsTitle">
+        <div id="organizationDocumentsRoot"></div>
+      </section>
+
 
       <section id="commercialProposalsPage" class="users-page commercial-proposals-page hidden" aria-labelledby="commercialProposalsTitle">
         <div id="commercialProposalsRoot"></div>
@@ -1667,6 +1660,8 @@
     <script src="./file-storage.js"></script>
     <script src="./design-system/components.js"></script>
     <script type="module" src="./declarations.js"></script>
+    <script type="module" src="./organization-documents-api.js"></script>
+    <script type="module" src="./organization-documents.js"></script>
     <script type="module" src="./company-data.js"></script>
     <script type="module" src="./commercial-proposals.js"></script>
     <script src="./organization-chat.js"></script>

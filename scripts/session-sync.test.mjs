@@ -73,6 +73,47 @@ test("cada arquivo do edital mantém o limite individual de 20 MB", () => {
   );
 });
 
+test("selecionar arquivos em edital aberto salva os anexos automaticamente", async () => {
+  const app = client();
+  const bid = { id: "TEST-1", status: "Em Cadastro", edital_files: [] };
+  app.appState.bids = [bid];
+  app.appState.currentBidId = bid.id;
+  app.appState.originalBidId = bid.id;
+  app.element("editalFile").files = [{ name: "edital.pdf", size: 1024, type: "application/pdf" }];
+  app.element("editalFile").value = "C:\\fakepath\\edital.pdf";
+
+  let saved;
+  let resolveUpload;
+  app.store.saveBidAttachments = (bidId, files) => {
+    saved = { bidId, files: Array.from(files) };
+    return new Promise((resolve) => { resolveUpload = resolve; });
+  };
+
+  assert.match(source, /refs\.editalFile\.addEventListener\("change", handleBidAttachmentSelection\)/);
+  const upload = vm.runInContext("handleBidAttachmentSelection()", app.context);
+
+  assert.match(app.element("editalAttachmentList").innerHTML, /attachment-upload-spinner/);
+  assert.match(app.element("editalAttachmentList").innerHTML, /attachment-upload-progress/);
+  assert.match(app.element("editalAttachmentList").innerHTML, /attachment-panel-pending/);
+  assert.match(app.element("editalAttachmentList").innerHTML, /edital\.pdf/);
+  assert.match(app.element("editalAttachmentList").innerHTML, /Salvamento em andamento/);
+  assert.match(app.element("editalAttachmentList").innerHTML, /class="attachment-upload-status" role="status"/);
+  assert.match(app.element("editalAttachmentList").innerHTML, /Salvando arquivo\.\.\./);
+  assert.doesNotMatch(app.element("editalAttachmentHelp").textContent, /Salvando os arquivos automaticamente/);
+  assert.equal(app.element("editalAttachmentList").attributes["aria-busy"], "true");
+
+  resolveUpload([{ path: "TEST-1/edital.pdf", name: "edital.pdf", type: "application/pdf", size: 1024 }]);
+  await upload;
+
+  assert.equal(saved.bidId, bid.id);
+  assert.equal(saved.files[0].name, "edital.pdf");
+  assert.equal(app.appState.bids[0].edital_files[0].path, "TEST-1/edital.pdf");
+  assert.equal(app.element("editalFile").value, "");
+  assert.match(app.element("editalAttachmentHelp").textContent, /salvos automaticamente/i);
+  assert.doesNotMatch(app.element("editalAttachmentList").innerHTML, /attachment-upload-spinner/);
+  assert.equal(app.element("editalAttachmentList").attributes["aria-busy"], "false");
+});
+
 test("pesquisa dinâmica localiza edital por órgão, modalidade, número e prazo de entrega", () => {
   const app = client();
   const bid = app.normalizeBidRecord({
@@ -194,13 +235,13 @@ function client(db = backend(), auth = { session: { user } }, config = {}) {
     if (!elements.has(id)) {
       const classes = new Set();
       elements.set(id, {
-        id, value: "", textContent: "", dataset: {}, classList: {
+        id, value: "", textContent: "", dataset: {}, attributes: {}, classList: {
           add: (...values) => values.forEach((v) => classes.add(v)),
           remove: (...values) => values.forEach((v) => classes.delete(v)),
           contains: (v) => classes.has(v),
           toggle: (v, on = !classes.has(v)) => on ? classes.add(v) : classes.delete(v),
         },
-        querySelector: () => null, querySelectorAll: () => [], setAttribute() {}, insertAdjacentHTML() {}, prepend() {}, reset() {}, close() {},
+        querySelector: () => null, querySelectorAll: () => [], setAttribute(name, value) { this.attributes[name] = String(value); }, insertAdjacentHTML() {}, prepend() {}, reset() {}, close() {},
       });
     }
     return elements.get(id);
@@ -298,14 +339,14 @@ test("sets the Realtime JWT before subscribing to the private organization chann
   assert.equal(calls[0], "set-auth");
   const privateChannel = calls.find((call) => typeof call === "object" && call.topic === "organization:org-1");
   assert.deepEqual(JSON.parse(JSON.stringify(privateChannel.options)), { config: { private: true, broadcast: { self: false } } });
-  assert.deepEqual(app.intervalDelays, []);
+  assert.deepEqual(app.intervalDelays, [5 * 60 * 1000]);
   app.stopLiveUpdates();
 });
 
-test("removes the 15-second full-data polling interval", async () => {
+test("refreshes document alerts every five minutes without restoring full-data polling", async () => {
   const app = client();
   await app.restoreSession();
-  assert.deepEqual(app.intervalDelays, [60_000]);
+  assert.deepEqual(app.intervalDelays, [60_000, 5 * 60 * 1000]);
   await app.logout();
 });
 
@@ -324,6 +365,34 @@ test("limpar notificações persiste os avisos dispensados somente para o perfil
   assert.equal(app.navigationNotifications().length, 1);
   assert.match(source, /data-clear-notifications[\s\S]*Limpar notificações/);
 });
+
+test("notificações do Kit informam urgência, prazo e versão atual do documento", () => {
+  const app = client();
+  app.appState.organizationDocumentNotifications = [
+    {
+      documentId: "document-near", notificationDate: "2026-10-20", documentVersion: 1,
+      expiresOn: "2026-10-30", updatedAt: "2026-10-20T12:00:00Z", title: "Certidão estadual", daysRemaining: 10,
+    },
+    {
+      documentId: "document-today", notificationDate: "2026-10-20", documentVersion: 1,
+      expiresOn: "2026-10-20", updatedAt: "2026-10-20T12:00:00Z", title: "Certificado FGTS", daysRemaining: 0,
+    },
+    {
+      documentId: "document-expired", notificationDate: "2026-10-20", documentVersion: 2,
+      expiresOn: "2026-10-18", updatedAt: "2026-10-20T12:00:00Z", title: "Certidão municipal", daysRemaining: -2,
+    },
+  ];
+
+  const notifications = app.navigationNotifications();
+  assert.deepEqual(JSON.parse(JSON.stringify(notifications.map(({ title, description }) => [title, description]))), [
+    ["Certidão estadual", "Vence em 10 dias."],
+    ["Certificado FGTS", "Vence hoje."],
+    ["Certidão municipal", "Está vencida há 2 dias."],
+  ]);
+  assert.equal(notifications.every((notification) => notification.page === "organizationDocuments"), true);
+  assert.match(notifications[0].id, /document-near:2026-10-20:1:2026-10-30:2026-10-20T12:00:00Z/);
+});
+
 test("navigation writes readable URLs without discarding unrelated parameters", () => {
   const app = client();
   app.appState.authenticated = true;
@@ -335,6 +404,10 @@ test("navigation writes readable URLs without discarding unrelated parameters", 
   assert.equal(route.page, "documents");
   assert.equal(route.bidId, "PE 12/2026");
   assert.equal(route.quotationId, null);
+  app.location.search = "?page=configuracoes";
+  const removedSettingsRoute = app.readNavigationRoute();
+  assert.equal(removedSettingsRoute.page, "home");
+  assert.equal(removedSettingsRoute.isKnownPage, false);
 });
 
 test("design system route is available to administrators and blocked for analysts", () => {
@@ -342,7 +415,7 @@ test("design system route is available to administrators and blocked for analyst
   app.appState.currentUserRole = "Administrador";
   assert.equal(app.resolveAuthorizedPage("designSystem"), "designSystem");
   app.appState.currentUserRole = "Analista";
-  assert.equal(app.resolveAuthorizedPage("designSystem"), "settings");
+  assert.equal(app.resolveAuthorizedPage("designSystem"), "home");
 });
 
 test("production blocks the Design System route for every profile", () => {

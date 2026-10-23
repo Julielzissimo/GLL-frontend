@@ -507,6 +507,10 @@ table tbody tr:hover,
 }
 
 /* Feedback, dropdowns, tooltips and dialogs use the same semantic states. */
+[data-tooltip]::after {
+  background: var(--gll-tooltip-background);
+}
+
 .ds-alert-info,
 .gll-alert--info,
 .declaration-info,

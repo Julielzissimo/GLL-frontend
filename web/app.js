@@ -28,6 +28,7 @@ const SALES_UNIT_OPTIONS = ["Unidade", "Pacote", "Caixa", "Kilo", "Metro", "Litr
 const BID_EDITAL_BUCKET = "bid-edital-files";
 const MAX_EDITAL_FILE_SIZE = 20 * 1024 * 1024;
 const MAX_EDITAL_FILES = 4;
+const HOME_RECENT_ACTIVITY_PAGE_SIZE = 15;
 const SUPABASE_CLIENT_VERSION = "2.57.4";
 const BUSINESS_TIME_ZONE = "America/Sao_Paulo";
 const MONEY_FRACTION_DIGITS = 2;
@@ -36,6 +37,7 @@ const MARGIN_FRACTION_DIGITS = 4;
 const USER_ROLES = { ADMIN: "Administrador", ANALYST: "Analista" };
 const USER_INVITATION_RESEND_COOLDOWN_MS = 15_000;
 let userInvitationResendCooldownTimer = null;
+let homeRecentActivityPage = 1;
 const DEFAULT_ADMIN = {
   email: "demo@gll.local",
   name: "Usuário local",
@@ -60,6 +62,7 @@ const DEFAULT_GLL_CONFIG = {
   suppliersEnabled: true,
   commercialProposalsEnabled: true,
   designSystemEnabled: true,
+  organizationDocumentsEnabled: true,
 };
 const GLL_CONFIG = {
   ...DEFAULT_GLL_CONFIG,
@@ -72,6 +75,12 @@ const createDeclarationsFeature = window.GLLDeclarations?.createDeclarationsFeat
 }));
 const createCompanyDataFeature = window.GLLCompanyData?.createCompanyDataFeature || (() => ({
   showPage: async () => undefined,
+  reset: () => undefined,
+  refresh: async () => undefined,
+}));
+const createOrganizationDocumentsFeature = window.GLLOrganizationDocuments?.createOrganizationDocumentsFeature || (() => ({
+  showPage: async () => undefined,
+  focusDocument: () => undefined,
   reset: () => undefined,
   refresh: async () => undefined,
 }));
@@ -92,12 +101,12 @@ const PAGE_ROUTE_NAMES = {
   commercialProposals: "propostas-comerciais",
   suppliers: "fornecedores",
   declarations: "declaracoes",
+  organizationDocuments: "kit-de-documentos",
   declarationLibrary: "declaracoes/biblioteca",
   declarationSettings: "declaracoes/configuracoes",
   declarationHistory: "declaracoes/historico",
   users: "usuarios",
   userProfile: "perfil",
-  settings: "configuracoes",
   companyData: "configuracoes/dados-da-empresa",
   designSystem: "configuracoes/design-system",
 };
@@ -151,7 +160,10 @@ const appState = {
   suppliers: [],
   supplierProducts: [],
   dismissedNotificationIds: [],
+  organizationDocumentNotifications: [],
+  organizationDocumentPendencies: [],
 };
+let bidAttachmentUploadPromise = null;
 
 const $ = (id) => document.getElementById(id);
 
@@ -221,6 +233,7 @@ const refs = {
   navCommercialProposalsButton: $("navCommercialProposalsButton"),
   navSuppliersButton: $("navSuppliersButton"),
   navDeclarationsButton: $("navDeclarationsButton"),
+  navOrganizationDocumentsButton: $("navOrganizationDocumentsButton"),
   navUsersButton: $("navUsersButton"),
   navSettingsButton: $("navSettingsButton"),
   settingsNavigationItems: $("settingsNavigationItems"),
@@ -249,6 +262,7 @@ const refs = {
   upcomingBidsList: $("upcomingBidsList"),
   pendingDocumentsList: $("pendingDocumentsList"),
   homeRecentActivitiesList: $("homeRecentActivitiesList"),
+  homeRecentActivitiesPagination: $("homeRecentActivitiesPagination"),
   viewAllBidsButton: $("viewAllBidsButton"),
   viewRecentBidsButton: $("viewRecentBidsButton"),
   homeTotalBids: $("homeTotalBids"),
@@ -313,10 +327,9 @@ const refs = {
   userAccessSubmitButton: $("submitUserAccessButton"),
   closeUserAccessDialogButton: $("closeUserAccessDialogButton"),
   cancelUserAccessButton: $("cancelUserAccessButton"),
-  settingsPage: $("settingsPage"),
   companyDataPage: $("companyDataPage"),
+  organizationDocumentsPage: $("organizationDocumentsPage"),
   designSystemPage: $("designSystemPage"),
-  designSystemAccessCard: $("designSystemAccessCard"),
   designSystemCatalog: $("designSystemCatalog"),
   suppliersPage: $("suppliersPage"),
   declarationsPage: $("declarationsPage"),
@@ -2054,6 +2067,60 @@ const companyDataFeature = createCompanyDataFeature({
   toast: (message, tone) => showToast(message, tone),
   runBusy: (operation, message) => withBlockingLoading(operation, message)(),
 });
+const organizationDocumentsFeature = createOrganizationDocumentsFeature({
+  getApi: () => window.GLLOrganizationDocumentsApi?.createOrganizationDocumentsApi?.({
+    getClient: () => (store.requiresAuthenticationBeforeData ? store.client : null),
+    getUserRole: () => appState.currentUserRole,
+    getSupabaseUrl: () => GLL_CONFIG.supabaseUrl,
+    getSupabaseAnonKey: () => GLL_CONFIG.supabaseAnonKey,
+  }) || null,
+  isAdmin: () => isCurrentUserAdmin(),
+  canManageDocuments: () => appState.authenticated
+    && [USER_ROLES.ADMIN, USER_ROLES.ANALYST].includes(appState.currentUserRole),
+  onAlertsChanged: () => refreshOrganizationDocumentAlerts(),
+  toast: (message, tone) => showToast(message, tone),
+});
+
+let organizationDocumentAlertsRequest = 0;
+let organizationDocumentAlertsTimer = null;
+
+async function refreshOrganizationDocumentAlerts() {
+  const request = ++organizationDocumentAlertsRequest;
+  if (!appState.authenticated || !store.requiresAuthenticationBeforeData || GLL_CONFIG.organizationDocumentsEnabled !== true) {
+    appState.organizationDocumentNotifications = [];
+    appState.organizationDocumentPendencies = [];
+    updateNotificationsIndicator();
+    return;
+  }
+
+  const api = window.GLLOrganizationDocumentsApi?.createOrganizationDocumentsApi?.({
+    getClient: () => store.client,
+  });
+  if (!api) return;
+  const epoch = sessionEpoch;
+  const organizationId = appState.currentOrganizationId;
+  try {
+    const [notifications, pendencies] = await Promise.all([
+      api.listNotifications(),
+      api.listExpiringDocuments(),
+    ]);
+    if (
+      request !== organizationDocumentAlertsRequest
+      || epoch !== sessionEpoch
+      || !appState.authenticated
+      || organizationId !== appState.currentOrganizationId
+    ) return;
+    appState.organizationDocumentNotifications = Array.isArray(notifications) ? notifications : [];
+    appState.organizationDocumentPendencies = Array.isArray(pendencies) ? pendencies : [];
+    updateNotificationsIndicator();
+    if (appState.activePage === "home") renderHomeSummary();
+    if (!refs.notificationsMenu.classList.contains("hidden")) setNotificationsMenuOpen(true);
+  } catch {
+    if (request === organizationDocumentAlertsRequest && epoch === sessionEpoch) {
+      console.warn("Não foi possível atualizar as notificações e pendências de vencimento do Kit de Documentos.");
+    }
+  }
+}
 const commercialProposalsFeature = createCommercialProposalsFeature({
   getClient: () => (store.requiresAuthenticationBeforeData ? store.client : null),
   getContext: () => ({
@@ -2482,6 +2549,10 @@ function applyEnvironmentConfig() {
   refs.navCommercialProposalsButton.classList.toggle("nav-link-disabled", !commercialProposalsEnabled);
   refs.navCommercialProposalsButton.setAttribute("aria-disabled", String(!commercialProposalsEnabled));
   refs.navCommercialProposalsButton.title = commercialProposalsEnabled ? "" : "Proposta Comercial temporariamente indisponível";
+  const organizationDocumentsEnabled = GLL_CONFIG.organizationDocumentsEnabled === true;
+  refs.navOrganizationDocumentsButton.classList.toggle("hidden", !organizationDocumentsEnabled);
+  refs.navOrganizationDocumentsButton.disabled = !organizationDocumentsEnabled;
+  refs.navOrganizationDocumentsButton.setAttribute("aria-disabled", String(!organizationDocumentsEnabled));
 }
 
 function populateOptions() {
@@ -2713,10 +2784,8 @@ function bindEvents() {
     button.addEventListener("click", () => setPage(button.dataset.navigationPage));
   });
   refs.navSettingsButton.addEventListener("click", toggleSettingsNavigation);
-  $("openDesignSystemButton").addEventListener("click", () => setPage("designSystem"));
-  $("openCompanyDataButton").addEventListener("click", () => setPage("companyData"));
-  $("backToSettingsButton").addEventListener("click", () => setPage("settings"));
-  $("backToSettingsFromCompanyDataButton").addEventListener("click", () => setPage("settings"));
+  $("backToHomeFromDesignSystemButton").addEventListener("click", () => setPage("home"));
+  $("backToHomeFromCompanyDataButton").addEventListener("click", () => setPage("home"));
   document.querySelectorAll("[data-open-new]").forEach((button) => {
     button.addEventListener("click", () => clearBidForm({ openEditor: true }));
   });
@@ -2730,7 +2799,9 @@ function bindEvents() {
     requestAnimationFrame(() => refs.filterSearch.focus());
   });
   refs.notificationsButton.addEventListener("click", () => {
-    setNotificationsMenuOpen(refs.notificationsMenu.classList.contains("hidden"));
+    const open = refs.notificationsMenu.classList.contains("hidden");
+    setNotificationsMenuOpen(open);
+    if (open) void refreshOrganizationDocumentAlerts();
   });
   refs.notificationsContainer.addEventListener("keydown", handleNotificationsKeydown);
   refs.notificationsMenu.addEventListener("click", handleNotificationClick);
@@ -2784,6 +2855,7 @@ function bindEvents() {
     button.addEventListener("click", () => applyHomeStatusFilter(button.dataset.homeStatus));
   });
   refs.bidForm.addEventListener("submit", withBlockingLoading(saveBid, "Salvando edital…"));
+  refs.editalFile.addEventListener("change", handleBidAttachmentSelection);
   refs.bidTypeGroup.addEventListener("change", () => {
     refs.bidTypeHelp.textContent = "Selecione o tipo do edital.";
     refs.bidTypeGroup.querySelectorAll('input[name="bidType"]').forEach((input) => input.removeAttribute("aria-invalid"));
@@ -3835,6 +3907,9 @@ function resetAuthenticatedView() {
   appState.currentUserAuthId = null;
   appState.currentUserCreatedAt = null;
   appState.dismissedNotificationIds = [];
+  appState.organizationDocumentNotifications = [];
+  appState.organizationDocumentPendencies = [];
+  organizationDocumentAlertsRequest += 1;
   appState.currentUserRole = null;
   appState.currentUserName = null;
   appState.currentOrganizationId = null;
@@ -3857,9 +3932,11 @@ function resetAuthenticatedView() {
   declarationsFeature.reset();
   commercialProposalsFeature.reset();
   companyDataFeature.reset();
+  organizationDocumentsFeature.reset();
   refs.appView.classList.remove("mobile-nav-open");
   updateMainNavigationState();
   for (const key of DATA_KEYS) appState[key] = [];
+  updateNotificationsIndicator();
   userAvatarUrlCache.clear();
   resetProfilePhotoEditor();
   setOwnPasswordEditorOpen(false);
@@ -3926,7 +4003,7 @@ function closeMobileNavigation() {
 
 function toggleSettingsNavigation() {
   if (window.matchMedia("(min-width: 621px) and (max-width: 820px)").matches) {
-    setPage("settings");
+    setPage("companyData");
     return;
   }
   appState.settingsNavigationExpanded = !appState.settingsNavigationExpanded;
@@ -3966,8 +4043,28 @@ function navigationNotifications() {
     })
     .sort((a, b) => parseStoredDateTime(a.session_datetime) - parseStoredDateTime(b.session_datetime))
     .slice(0, 3);
+  const organizationDocumentNotifications = appState.organizationDocumentNotifications.map((notification) => {
+    const daysRemaining = Number(notification.daysRemaining);
+    const daysLate = Math.abs(daysRemaining);
+    const description = daysRemaining < 0
+      ? `Está vencida há ${daysLate} ${daysLate === 1 ? "dia" : "dias"}.`
+      : daysRemaining === 0
+        ? "Vence hoje."
+        : daysRemaining === 1
+          ? "Vence amanhã."
+          : `Vence em ${daysRemaining} dias.`;
+    return {
+      id: `organization-document:${notification.documentId}:${notification.notificationDate}:${notification.documentVersion}:${notification.expiresOn}:${notification.updatedAt}`,
+      page: "organizationDocuments",
+      documentId: notification.documentId,
+      icon: "fileText",
+      title: notification.title,
+      description,
+    };
+  });
 
   return [
+    ...organizationDocumentNotifications,
     ...pendingDocuments.map(({ document, bid }) => ({
       id: `document:${document.id}`,
       bidId: bid.id,
@@ -3998,7 +4095,9 @@ function setNotificationsMenuOpen(open) {
     const notifications = navigationNotifications();
     refs.notificationsMenu.innerHTML = notifications.length
       ? `<div class="notification-menu-heading">Notificações</div>${notifications.map((notification) => `
-          <button class="notification-menu-item" type="button" data-notification-bid="${escapeHtml(notification.bidId)}" data-notification-page="${escapeHtml(notification.page)}">
+          <button class="notification-menu-item" type="button" ${notification.documentId
+            ? `data-notification-document="${escapeHtml(notification.documentId)}"`
+            : `data-notification-bid="${escapeHtml(notification.bidId)}"`} data-notification-page="${escapeHtml(notification.page)}">
             <span class="notification-menu-icon" aria-hidden="true">${GLLDesignSystem.iconMarkup(notification.icon)}</span>
             <span><strong>${escapeHtml(notification.title)}</strong><small>${escapeHtml(notification.description)}</small></span>
           </button>`).join("")}`
@@ -4014,8 +4113,15 @@ function handleNotificationClick(event) {
     void clearAllNotifications();
     return;
   }
-  const button = event.target.closest("[data-notification-bid]");
+  const button = event.target.closest("[data-notification-bid], [data-notification-document]");
   if (!button) return;
+  const documentId = button.dataset.notificationDocument;
+  if (documentId) {
+    setNotificationsMenuOpen(false);
+    setPage("organizationDocuments");
+    organizationDocumentsFeature.focusDocument(documentId);
+    return;
+  }
   const bidId = button.dataset.notificationBid;
   const page = button.dataset.notificationPage;
   setNotificationsMenuOpen(false);
@@ -4066,12 +4172,13 @@ function isCurrentUserAdmin() {
 }
 
 function resolveAuthorizedPage(page) {
+  if (page === "organizationDocuments" && GLL_CONFIG.organizationDocumentsEnabled !== true) return "home";
   if (page === "suppliers" && GLL_CONFIG.suppliersEnabled === false) return "home";
   if (page === "commercialProposals" && GLL_CONFIG.commercialProposalsEnabled === false) return "home";
   if (page === "designSystem" && GLL_CONFIG.designSystemEnabled === false) return "home";
   if (page === "users" && !isCurrentUserAdmin()) return "home";
   if (page === "userProfile" && refs.userCreateForm.dataset.mode === "create" && !isCurrentUserAdmin()) return "home";
-  if (page === "designSystem" && !isCurrentUserAdmin()) return "settings";
+  if (page === "designSystem" && !isCurrentUserAdmin()) return "home";
   return page;
 }
 
@@ -4086,6 +4193,7 @@ function breadcrumbItems(page) {
     declarationSettings: "Configurações",
     declarationHistory: "Histórico",
     companyData: "Dados da Empresa",
+    organizationDocuments: "Kit de Documentos",
     designSystem: "Design System",
   };
 
@@ -4128,8 +4236,8 @@ function breadcrumbItems(page) {
     ];
   }
   if (page === "companyData") {
-    if (compact) return [{ label: "Configurações", page: "settings" }, { label: pageLabels[page] }];
-    return [home, { label: "Configurações", page: "settings" }, { label: pageLabels[page] }];
+    if (compact) return [{ label: "Configurações" }, { label: pageLabels[page] }];
+    return [home, { label: "Configurações" }, { label: pageLabels[page] }];
   }
   const topLevelLabels = {
     home: "Visão geral",
@@ -4138,8 +4246,8 @@ function breadcrumbItems(page) {
     commercialProposals: "Propostas comerciais",
     suppliers: "Fornecedores",
     users: "Usuários",
-    settings: "Configurações",
     designSystem: "Design System",
+    organizationDocuments: "Kit de Documentos",
   };
   if (compact || page === "home") return [{ label: topLevelLabels[page] || topLevelLabels.home }];
   return [home, { label: topLevelLabels[page] || topLevelLabels.home }];
@@ -4217,8 +4325,6 @@ function updateAccessInterface() {
   refs.navDesignSystemButton.disabled = !showDesignSystemAccess;
   refs.navDesignSystemButton.setAttribute("aria-hidden", String(!showDesignSystemAccess));
   refs.navDesignSystemButton.setAttribute("aria-disabled", String(!showDesignSystemAccess));
-  refs.designSystemAccessCard.classList.toggle("hidden", !showDesignSystemAccess);
-  refs.designSystemAccessCard.setAttribute("aria-hidden", String(!showDesignSystemAccess));
   updateWorkspaceSummary();
 }
 
@@ -4600,6 +4706,9 @@ async function startLiveUpdates() {
     || !appState.authenticated
     || organizationId !== appState.currentOrganizationId
   ) return;
+  organizationDocumentAlertsTimer = setInterval(() => {
+    if (!document.hidden) void refreshOrganizationDocumentAlerts();
+  }, 5 * 60 * 1000);
   // Postgres Changes remains dedicated to chat; application data uses the private org Broadcast below.
   liveChannel = client.channel("gll-data-updates", { config: { broadcast: { self: false } } })
     .on("postgres_changes", {
@@ -4646,6 +4755,8 @@ function stopLiveUpdates() {
   backgroundRefreshActive = false;
   if (liveChannel) void store.client.removeChannel(liveChannel);
   liveChannel = null;
+  if (organizationDocumentAlertsTimer) clearInterval(organizationDocumentAlertsTimer);
+  organizationDocumentAlertsTimer = null;
   if (chatBroadcastChannel) void store.client.removeChannel(chatBroadcastChannel);
   chatBroadcastChannel = null;
   organizationChat.stopUnreadTracking();
@@ -4657,6 +4768,7 @@ function stopLiveUpdates() {
 async function reloadData({ background = false } = {}) {
   const epoch = sessionEpoch;
   const request = ++dataRequest;
+  void refreshOrganizationDocumentAlerts();
   const rows = await Promise.all([
     store.getAll("bids"), store.getAll("items"), store.getAll("documents"),
     store.getAll("failure_history"), store.getAll("quotations"), store.getAll("quotation_items"),
@@ -4744,9 +4856,12 @@ async function reloadData({ background = false } = {}) {
 
 function readNavigationRoute() {
   const params = new URLSearchParams(window.location.search);
-  const page = ROUTE_PAGE_NAMES[params.get("page")] || "home";
+  const pageName = params.get("page");
+  const isKnownPage = pageName === null || Object.prototype.hasOwnProperty.call(ROUTE_PAGE_NAMES, pageName);
+  const page = ROUTE_PAGE_NAMES[pageName] || "home";
   return {
     page,
+    isKnownPage,
     bidId: params.get("licitacao"),
     quotationId: params.get("orcamento"),
     profileUserId: params.get("usuario"),
@@ -4790,7 +4905,7 @@ function writeNavigationRoute(page, mode = "push") {
 
 function applyNavigationRoute(options = {}) {
   const route = readNavigationRoute();
-  let routeIsValid = true;
+  let routeIsValid = route.isKnownPage;
   if (["items", "documents", "failures"].includes(route.page)) {
     const bid = appState.bids.find((row) => row.id === route.bidId);
     if (bid) loadBid(bid.id, { history: "none" });
@@ -4837,14 +4952,14 @@ function setPage(page, options = {}) {
     return;
   }
   appState.activePage = page;
-  if (["settings", "companyData", "designSystem"].includes(page)) {
+  if (page === "companyData") {
     appState.settingsNavigationExpanded = true;
   }
   placeQuotationEditor(page);
   const showUsers = page === "users";
   const showUserProfile = page === "userProfile";
-  const showSettings = page === "settings";
   const showCompanyData = page === "companyData";
+  const showOrganizationDocuments = page === "organizationDocuments";
   const showDesignSystem = page === "designSystem";
   const showSuppliers = page === "suppliers";
   const showDeclarations = declarationPages.includes(page);
@@ -4857,11 +4972,11 @@ function setPage(page, options = {}) {
   const showCatalog = page === "bids";
   const showEditor = page === "edit";
   const showDetail = detailPages.includes(page);
-  refs.bidsPage.classList.toggle("hidden", showUsers || showUserProfile || showSettings || showCompanyData || showDesignSystem || showQuotations || showSuppliers || showDeclarations || showCommercialProposals);
+  refs.bidsPage.classList.toggle("hidden", showUsers || showUserProfile || showCompanyData || showOrganizationDocuments || showDesignSystem || showQuotations || showSuppliers || showDeclarations || showCommercialProposals);
   refs.usersPage.classList.toggle("hidden", !showUsers);
   refs.userProfilePage.classList.toggle("hidden", !showUserProfile);
-  refs.settingsPage.classList.toggle("hidden", !showSettings);
   refs.companyDataPage.classList.toggle("hidden", !showCompanyData);
+  refs.organizationDocumentsPage.classList.toggle("hidden", !showOrganizationDocuments);
   refs.designSystemPage.classList.toggle("hidden", !showDesignSystem);
   refs.quotationsPage.classList.toggle("hidden", !showQuotations);
   refs.homePage.classList.toggle("hidden", !showHome);
@@ -4873,13 +4988,13 @@ function setPage(page, options = {}) {
   refs.itemsPanel.classList.toggle("hidden", page !== "items");
   refs.documentsPanel.classList.toggle("hidden", page !== "documents");
   refs.failuresPanel.classList.toggle("hidden", page !== "failures");
-  refs.appView.classList.toggle("users-active", showUsers || showUserProfile || showSettings || showCompanyData || showDesignSystem || showQuotations || showSuppliers || showDeclarations || showCommercialProposals);
+  refs.appView.classList.toggle("users-active", showUsers || showUserProfile || showCompanyData || showOrganizationDocuments || showDesignSystem || showQuotations || showSuppliers || showDeclarations || showCommercialProposals);
   refs.itemsTabButton.classList.toggle("active", page === "items");
   refs.documentsTabButton.classList.toggle("active", page === "documents");
   refs.failuresTabButton.classList.toggle("active", page === "failures");
   refs.failuresTabButton.classList.toggle("hidden", !shouldShowFailureHistory());
-  const primaryPage = showCommercialProposals ? "commercialProposals" : showDeclarations ? "declarations" : showSuppliers ? "suppliers" : showUsers || (showUserProfile && isCurrentUserAdmin()) ? "users" : showSettings || showCompanyData || showDesignSystem ? "settings" : showQuotations ? "quotations" : showHome || showUserProfile ? "home" : "bids";
-  const activeNavigationPage = ["settings", "companyData", "designSystem"].includes(page) ? page : primaryPage;
+  const primaryPage = showOrganizationDocuments ? "organizationDocuments" : showCommercialProposals ? "commercialProposals" : showDeclarations ? "declarations" : showSuppliers ? "suppliers" : showUsers || (showUserProfile && isCurrentUserAdmin()) ? "users" : showCompanyData || showDesignSystem ? "settings" : showQuotations ? "quotations" : showHome || showUserProfile ? "home" : "bids";
+  const activeNavigationPage = ["companyData", "designSystem"].includes(page) ? page : primaryPage;
   renderBreadcrumb(page);
   document.querySelectorAll("[data-navigation-page]").forEach((button) => {
     button.classList.toggle("active", button.dataset.navigationPage === activeNavigationPage);
@@ -4896,6 +5011,7 @@ function setPage(page, options = {}) {
   if (showDeclarations) void declarationsFeature.showPage(page).catch((error) => showToast(error.message, "error"));
   if (showCommercialProposals) void commercialProposalsFeature.showPage().catch((error) => showToast(error.message, "error"));
   if (showCompanyData) void companyDataFeature.showPage().catch((error) => showToast(error.message, "error"));
+  if (showOrganizationDocuments) void organizationDocumentsFeature.showPage();
   if (showDesignSystem) window.GLLDesignSystem?.mountCatalog(refs.designSystemCatalog);
   writeNavigationRoute(page, options.history || "push");
   if (liveChannel || chatBroadcastChannel) scheduleLiveRefresh();
@@ -4969,8 +5085,11 @@ function shouldCalculateWonItemsTotal(status) {
 }
 
 function applyHomeStatusFilter(status) {
+  refs.filterSearch.value = "";
+  refs.filterDate.value = "";
   setFilterStatuses(status && status !== "Todos" ? [normalizeBidStatus(status)] : []);
   refs.filterStatus.open = false;
+  refs.filterGuaranteeDeposit.checked = false;
   setPage("bids");
   renderBids();
 }
@@ -5324,11 +5443,34 @@ function renderHomeSummary() {
     button.addEventListener("click", () => loadBid(button.dataset.upcomingBid));
   });
 
-  const pending = appState.documents
+  const organizationDocumentPendencies = [...appState.organizationDocumentPendencies]
+    .filter((document) => document.expiresOn && Number.isFinite(Number(document.daysRemaining)))
+    .sort((left, right) => Number(left.daysRemaining) - Number(right.daysRemaining));
+  const pendingBidDocuments = appState.documents
     .filter((document) => !document.has_document)
     .slice(0, 5);
+  const pending = [
+    ...organizationDocumentPendencies.map((document) => ({ type: "organization", document })),
+    ...pendingBidDocuments.map((document) => ({ type: "bid", document })),
+  ];
   refs.pendingDocumentsList.innerHTML = pending.length
-    ? pending.map((document) => {
+    ? pending.map(({ type, document }) => {
+        if (type === "organization") {
+          const daysRemaining = Number(document.daysRemaining);
+          const daysLate = Math.abs(daysRemaining);
+          const tone = daysRemaining <= 0 ? "critical" : "attention";
+          const status = daysRemaining < 0
+            ? `Vencido há ${daysLate} ${daysLate === 1 ? "dia" : "dias"}`
+            : daysRemaining === 0
+              ? "Vence hoje"
+              : daysRemaining === 1
+                ? "Falta 1 dia para vencer"
+                : `Faltam ${daysRemaining} dias para vencer`;
+          return `<button class="pending-item pending-organization-document" type="button" data-pending-organization-document="${escapeHtml(document.id)}">
+            <span class="pending-icon ${tone}" aria-hidden="true">!</span>
+            <span class="pending-document-copy"><strong>${escapeHtml(document.title || "Documento")}</strong><small class="pending-expiry-message ${tone}">${escapeHtml(status)}</small></span>
+          </button>`;
+        }
         const bid = appState.bids.find((row) => row.id === document.bid_id);
         return `<button class="pending-item" type="button" data-pending-bid="${escapeHtml(document.bid_id)}"><span class="pending-icon">!</span><span><strong>${escapeHtml(document.document_type || "Documento")}</strong><small>${escapeHtml(bidDisplayNumber(bid) || document.bid_id || "")}</small></span></button>`;
       }).join("")
@@ -5339,9 +5481,25 @@ function renderHomeSummary() {
       setPage("documents");
     });
   });
+  refs.pendingDocumentsList.querySelectorAll("[data-pending-organization-document]").forEach((button) => {
+    button.addEventListener("click", () => {
+      setPage("organizationDocuments");
+      organizationDocumentsFeature.focusDocument(button.dataset.pendingOrganizationDocument);
+    });
+  });
 
-  refs.homeRecentActivitiesList.innerHTML = appState.bidActivity.length
-    ? appState.bidActivity.map((entry) => {
+  renderHomeRecentActivities();
+}
+
+function renderHomeRecentActivities() {
+  const totalEntries = appState.bidActivity.length;
+  const totalPages = Math.ceil(totalEntries / HOME_RECENT_ACTIVITY_PAGE_SIZE);
+  homeRecentActivityPage = Math.min(Math.max(homeRecentActivityPage, 1), totalPages || 1);
+  const firstEntryIndex = (homeRecentActivityPage - 1) * HOME_RECENT_ACTIVITY_PAGE_SIZE;
+  const visibleEntries = appState.bidActivity.slice(firstEntryIndex, firstEntryIndex + HOME_RECENT_ACTIVITY_PAGE_SIZE);
+
+  refs.homeRecentActivitiesList.innerHTML = visibleEntries.length
+    ? visibleEntries.map((entry, index) => {
         const actor = entry.actor_name || "Usuário";
         const initials = actor.trim().split(/\s+/).filter(Boolean).map((part) => part[0]).filter(Boolean);
         const user = appState.users.find((profile) => profile.auth_user_id === entry.actor_id);
@@ -5349,12 +5507,40 @@ function renderHomeSummary() {
           ? `<img src="${escapeHtml(user.avatar_signed_url)}" alt="" loading="lazy" decoding="async" />`
           : escapeHtml((initials.length > 1 ? `${initials[0]}${initials.at(-1)}` : initials[0] || "?").toLocaleUpperCase("pt-BR"));
         const action = bidActivityDescription(entry);
-        return `<button class="home-activity-entry" type="button" data-recent-activity-bid="${escapeHtml(entry.bid_id)}">
+        const descriptionId = `homeActivityDescription-${firstEntryIndex + index}`;
+        return `<button class="home-activity-entry" type="button" aria-expanded="false" aria-controls="${descriptionId}" data-recent-activity-bid="${escapeHtml(entry.bid_id)}">
           <span class="home-activity-avatar" aria-hidden="true">${avatar}</span>
           <span class="home-activity-copy"><span><strong>${escapeHtml(actor)}</strong> ${escapeHtml(action)}</span><time datetime="${escapeHtml(entry.created_at)}">${escapeHtml(formatDateTime(entry.created_at))}</time></span>
         </button>`;
       }).join("")
     : `<div class="empty-state compact-empty">Ainda não há atualizações de editais disponíveis.</div>`;
+
+  const pagination = refs.homeRecentActivitiesPagination;
+  pagination.hidden = totalPages <= 1;
+  pagination.innerHTML = totalPages > 1
+    ? `<span class="home-activity-pagination-summary">Exibindo ${firstEntryIndex + 1}–${Math.min(firstEntryIndex + HOME_RECENT_ACTIVITY_PAGE_SIZE, totalEntries)} de ${totalEntries} alterações</span>
+      <div class="home-activity-pagination-actions">
+        <button class="quiet-action" type="button" data-home-activity-page="${homeRecentActivityPage - 1}" aria-label="Página anterior"${homeRecentActivityPage === 1 ? " disabled" : ""}>Anterior</button>
+        <div class="home-activity-page-numbers" role="group" aria-label="Número da página">
+          ${Array.from({ length: totalPages }, (_, index) => {
+            const pageNumber = index + 1;
+            return `<button class="quiet-action home-activity-page-number" type="button" data-home-activity-page="${pageNumber}" aria-label="Página ${pageNumber}"${pageNumber === homeRecentActivityPage ? ' aria-current="page"' : ""}>${pageNumber}</button>`;
+          }).join("")}
+        </div>
+        <button class="quiet-action" type="button" data-home-activity-page="${homeRecentActivityPage + 1}" aria-label="Próxima página"${homeRecentActivityPage === totalPages ? " disabled" : ""}>Próxima</button>
+      </div>`
+    : "";
+
+  pagination.querySelectorAll("[data-home-activity-page]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const nextPage = Number(button.dataset.homeActivityPage);
+      if (!Number.isInteger(nextPage) || nextPage < 1 || nextPage > totalPages || nextPage === homeRecentActivityPage) return;
+      homeRecentActivityPage = nextPage;
+      renderHomeRecentActivities();
+      refs.homeRecentActivitiesPagination.querySelector('[aria-current="page"]')?.focus();
+    });
+  });
+
   refs.homeRecentActivitiesList.querySelectorAll("[data-recent-activity-bid]").forEach((button) => {
     button.addEventListener("click", () => loadBid(button.dataset.recentActivityBid));
   });
@@ -5388,6 +5574,7 @@ async function saveBid(event) {
   event.preventDefault();
   refs.bidFormError.textContent = "";
   try {
+    if (bidAttachmentUploadPromise) await bidAttachmentUploadPromise;
     const data = collectBidData();
     const previousBid = appState.bids.find((bid) => bid.id === appState.originalBidId);
     const files = Array.from(refs.editalFile.files || []);
@@ -5422,20 +5609,99 @@ function renderBidAttachment(bid) {
   const remainingMessage = remaining === 1
     ? "Você ainda pode anexar mais 1 arquivo."
     : `Você ainda pode anexar mais ${remaining} arquivos.`;
-  refs.editalAttachmentHelp.textContent = attachments.length
+  const attachmentSummary = attachments.length
     ? `${attachments.length} de ${MAX_EDITAL_FILES} arquivos anexados. ${remaining ? remainingMessage : "Limite atingido."}`
     : `Envie até ${MAX_EDITAL_FILES} arquivos, com no máximo 20 MB cada.`;
-  refs.editalFile.disabled = attachments.length >= MAX_EDITAL_FILES;
-  refs.editalAttachmentList.innerHTML = attachments.length
+  const saveInstruction = appState.originalBidId
+    ? "Novos arquivos são salvos automaticamente."
+    : "Salve o edital para anexar os arquivos selecionados.";
+  const isUploading = Boolean(bidAttachmentUploadPromise);
+  const uploadingFiles = Array.from(refs.editalFile.files || []);
+  const uploadingFileCount = uploadingFiles.length;
+  const uploadingSummary = uploadingFileCount
+    ? `${attachments.length} ${attachments.length === 1 ? "arquivo anexado" : "arquivos anexados"} • ${uploadingFileCount} em salvamento • limite de ${MAX_EDITAL_FILES} arquivos.`
+    : attachmentSummary;
+  refs.editalAttachmentHelp.textContent = `${uploadingSummary} ${saveInstruction}`;
+  refs.editalFile.disabled = isUploading || attachments.length >= MAX_EDITAL_FILES;
+  const actionDisabled = isUploading ? " disabled" : "";
+  const attachmentMarkup = attachments.length
     ? attachments.map((attachment, index) => `
       <div class="attachment-panel">
         <span><strong>${escapeHtml(attachment.name)}</strong><small>${formatFileSize(attachment.size)}</small></span>
         <span class="attachment-actions">
-          <button class="quiet-action compact-action" type="button" data-attachment-action="download" data-attachment-index="${index}">Baixar</button>
-          <button class="danger-action compact-action" type="button" data-attachment-action="delete" data-attachment-index="${index}">Remover</button>
+          <button class="quiet-action compact-action" type="button" data-attachment-action="download" data-attachment-index="${index}"${actionDisabled}>Baixar</button>
+          <button class="danger-action compact-action" type="button" data-attachment-action="delete" data-attachment-index="${index}"${actionDisabled}>Remover</button>
         </span>
       </div>`).join("")
-    : `<div class="empty-state compact-empty">Nenhum arquivo anexado.</div>`;
+    : isUploading ? "" : `<div class="empty-state compact-empty">Nenhum arquivo anexado.</div>`;
+  const uploadMarkup = isUploading
+    ? `<div class="attachment-upload-status" role="status">
+        <div class="attachment-upload-status-main">
+          <span class="attachment-upload-spinner" aria-hidden="true"></span>
+          <span class="attachment-upload-copy">
+            <strong>${uploadingFileCount === 1 ? "Salvando arquivo..." : "Salvando arquivos..."}</strong>
+            <small>${uploadingFileCount === 1 ? "Aguarde a confirmação do envio." : `Aguarde a confirmação do envio de ${uploadingFileCount} arquivos.`}</small>
+          </span>
+        </div>
+        <div class="attachment-upload-progress" aria-hidden="true"><span></span></div>
+      </div>
+      ${uploadingFiles.map((file) => `
+        <div class="attachment-panel attachment-panel-pending" role="group" aria-label="${escapeHtml(file.name)}, em salvamento">
+          <span class="attachment-panel-details"><strong>${escapeHtml(file.name)}</strong><small>${formatFileSize(file.size)} • Salvamento em andamento</small></span>
+          <span class="attachment-pending-status"><span class="attachment-upload-spinner attachment-upload-spinner-small" aria-hidden="true"></span>Salvando...</span>
+        </div>`).join("")}`
+    : "";
+  refs.editalAttachmentList.innerHTML = `${uploadMarkup}${attachmentMarkup}`;
+}
+
+async function handleBidAttachmentSelection() {
+  const files = Array.from(refs.editalFile.files || []);
+  if (!files.length) return;
+  refs.bidFormError.textContent = "";
+
+  const bid = appState.bids.find((row) => row.id === appState.originalBidId);
+  try {
+    validateEditalFiles(files, normalizeBidAttachments(bid).length);
+  } catch (error) {
+    refs.bidFormError.textContent = error.message;
+    refs.editalFile.value = "";
+    return;
+  }
+
+  if (!bid) {
+    refs.editalAttachmentHelp.textContent = "Salve o edital para que os arquivos selecionados sejam anexados.";
+    return;
+  }
+  if (guardCurrentBidReadOnly()) {
+    refs.editalFile.value = "";
+    return;
+  }
+  if (bidAttachmentUploadPromise) return;
+
+  const bidId = bid.id;
+  const uploadPromise = (async () => {
+    const attachments = await store.saveBidAttachments(bidId, files);
+    appState.bids = appState.bids.map((row) => row.id === bidId ? { ...row, edital_files: attachments } : row);
+    refs.editalFile.value = "";
+    if (appState.currentBidId === bidId) {
+      renderBidAttachment(appState.bids.find((row) => row.id === bidId));
+    }
+    showToast(files.length === 1 ? "Arquivo do edital salvo automaticamente." : "Arquivos do edital salvos automaticamente.");
+  })();
+  bidAttachmentUploadPromise = uploadPromise;
+  refs.editalAttachmentList.setAttribute("aria-busy", "true");
+  renderBidAttachment(currentBid());
+
+  try {
+    await uploadPromise;
+  } catch (error) {
+    refs.bidFormError.textContent = error.message || "Não foi possível salvar os arquivos do edital.";
+    refs.editalFile.value = "";
+  } finally {
+    if (bidAttachmentUploadPromise === uploadPromise) bidAttachmentUploadPromise = null;
+    refs.editalAttachmentList.setAttribute("aria-busy", "false");
+    renderBidAttachment(currentBid());
+  }
 }
 
 function renderPublicSessionLink() {
@@ -5463,6 +5729,7 @@ function removePublicSessionLink() {
 
 async function handleBidAttachmentAction(event) {
   refs.bidFormError.textContent = "";
+  if (bidAttachmentUploadPromise) return;
   const button = event.target.closest("[data-attachment-action]");
   if (!button) return;
   const bid = appState.bids.find((row) => row.id === appState.currentBidId);
@@ -5645,7 +5912,7 @@ function renderDetails() {
   refs.bidForm.querySelectorAll("input, select, textarea, button").forEach((el) => {
     const remainsAvailable = el.id === "clearBidButton" || el.dataset.attachmentAction === "download" || el.id === "bidStatus" || el.type === "submit";
     if (el === refs.editalFile) {
-      el.disabled = readOnly || normalizeBidAttachments(currentBid()).length >= MAX_EDITAL_FILES;
+      el.disabled = Boolean(bidAttachmentUploadPromise) || readOnly || normalizeBidAttachments(currentBid()).length >= MAX_EDITAL_FILES;
     } else if (!remainsAvailable) {
       el.disabled = readOnly;
     }
