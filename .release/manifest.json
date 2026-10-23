@@ -1595,12 +1595,14 @@
         "1ccef85dc8fed454487dd3bf8be2c93d6d5c3ed3",
         "834cc58d9de6efc754c6398b4005c9e4699fd02c",
         "0e32124426e513817520e642e50855fbf1ad89b7",
-        "39b9dad0f566c2dec327dd0331bec24a2074847b"
+        "39b9dad0f566c2dec327dd0331bec24a2074847b",
+        "43f5f76f0008bc51cf548f9fb3160869fe760ff0"
       ],
       "frontend_commits": [],
       "migrations": [
         "supabase/migrations/20261022231416_bid_history_events.sql",
-        "supabase/migrations/20261022235858_audit_radar_import_links.sql"
+        "supabase/migrations/20261022235858_audit_radar_import_links.sql",
+        "supabase/migrations/20261023000405_audit_bid_history_service_role_lockdown.sql"
       ]
     }
   ]
