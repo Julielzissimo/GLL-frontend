@@ -5,6 +5,7 @@ import test from "node:test";
 
 const source = await readFile(new URL("../web/app.js", import.meta.url), "utf8");
 const html = await readFile(new URL("../web/index.html", import.meta.url), "utf8");
+const styles = await readFile(new URL("../web/styles.css", import.meta.url), "utf8");
 const classicSource = source.replace(
   /^import \{ formatCnpj, isValidCnpj \} from "\.\/company-data\.js";\r?\n/m,
   "",
@@ -21,6 +22,58 @@ test("feed descreve alterações específicas do edital e do orçamento", () => 
   assert.equal(bidActivityDescription({ ...event, event_type: "file_removed" }), "excluiu o arquivo “3” do edital 10/2026 de Prefeitura");
   assert.equal(bidActivityDescription({ ...event, event_type: "status_changed" }), "alterou o status do edital 10/2026 de Prefeitura de Em Cadastro para Aprovada");
   assert.equal(bidActivityDescription({ ...event, event_type: "item_won" }), "marcou o item 3 como vencido no edital 10/2026 de Prefeitura");
+});
+
+test("feed da home abrevia descrições longas e permite expandir, recolher ou abrir o edital", () => {
+  const app = client();
+  app.appState.bidActivity = [{
+    bid_id: "bid-1",
+    created_at: "2026-10-23T12:00:00Z",
+    event_type: "bid_updated",
+    actor_name: "Ana",
+    edital_number: "10/2026",
+    buyer_agency: "Prefeitura",
+  }];
+
+  const feed = app.element("homeRecentActivitiesList");
+  const description = { scrollWidth: 240, clientWidth: 120 };
+  const classes = new Set();
+  const attributes = { "aria-expanded": "false" };
+  let clickHandler;
+  const button = {
+    dataset: { recentActivityBid: "bid-1" },
+    classList: { toggle: (name, on) => on ? classes.add(name) : classes.delete(name) },
+    addEventListener: (name, handler) => { if (name === "click") clickHandler = handler; },
+    getAttribute: (name) => attributes[name] ?? null,
+    setAttribute: (name, value) => { attributes[name] = String(value); },
+    querySelector: () => description,
+  };
+  feed.querySelectorAll = (selector) => selector === "[data-recent-activity-bid]" ? [button] : [];
+  app.context.openedBids = [];
+  vm.runInContext("loadBid = (bidId) => openedBids.push(bidId)", app.context);
+  vm.runInContext("renderHomeRecentActivities()", app.context);
+
+  assert.match(feed.innerHTML, /class="home-activity-description" id="homeActivityDescription-0"/);
+  assert.match(feed.innerHTML, /aria-controls="homeActivityDescription-0"/);
+  assert.match(styles, /\.home-activity-description\s*\{[^}]*text-overflow:\s*ellipsis;[^}]*white-space:\s*nowrap;/s);
+  assert.match(styles, /\.home-activity-entry\.is-expanded \.home-activity-description/);
+
+  const clickDescription = (detail = 1) => clickHandler({ detail, target: { closest: () => description } });
+  clickDescription();
+  assert.equal(attributes["aria-expanded"], "true");
+  assert.equal(classes.has("is-expanded"), true);
+  clickDescription();
+  assert.equal(attributes["aria-expanded"], "false");
+  assert.equal(classes.has("is-expanded"), false);
+
+  clickHandler({ detail: 0, target: { closest: () => null } });
+  assert.equal(attributes["aria-expanded"], "true");
+  clickHandler({ detail: 0, target: { closest: () => null } });
+  assert.deepEqual(JSON.parse(JSON.stringify(app.context.openedBids)), ["bid-1"]);
+
+  attributes["aria-expanded"] = "false";
+  clickHandler({ detail: 1, target: { closest: () => null } });
+  assert.deepEqual(JSON.parse(JSON.stringify(app.context.openedBids)), ["bid-1", "bid-1"]);
 });
 
 test("número do edital é separado do identificador interno e aceita repetição", () => {
