@@ -138,7 +138,7 @@ test("preferências de alertas usam slider acessível e mantêm o salvamento por
   assert.match(styles, /\.organization-documents-alert-scale \.is-selected/);
 });
 
-test("registra a página na seção Documentos e restringe a navegação do Kit à homologação", async () => {
+test("registra a página na seção Documentos e habilita o Kit nos dois ambientes", async () => {
   const html = await readFile(new URL("../web/index.html", import.meta.url), "utf8");
   const app = await readFile(new URL("../web/app.js", import.meta.url), "utf8");
   const build = await readFile(new URL("../scripts/build-web.mjs", import.meta.url), "utf8");
@@ -148,7 +148,7 @@ test("registra a página na seção Documentos e restringe a navegação do Kit 
   assert.match(app, /organizationDocuments: "kit-de-documentos"/);
   assert.match(app, /page === "organizationDocuments" && GLL_CONFIG\.organizationDocumentsEnabled !== true/);
   assert.match(build, /environment: "homolog"[\s\S]*?organizationDocumentsEnabled: true/);
-  assert.match(build, /environment: "production"[\s\S]*?organizationDocumentsEnabled: false/);
+  assert.match(build, /environment: "production"[\s\S]*?organizationDocumentsEnabled: true/);
 });
 
 test("reutiliza componentes do Design System e mantém uma gateway de dados tipada", async () => {
