@@ -40,7 +40,7 @@ const TARGETS = {
     designSystemEnabled: false,
     radarEngineAdminEnabled: false,
     radarDetailsFallbackEnabled: false,
-    organizationDocumentsEnabled: false,
+    organizationDocumentsEnabled: true,
   },
   prod: null,
 };

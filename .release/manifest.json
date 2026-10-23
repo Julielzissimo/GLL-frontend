@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "release_id": "2026-10-12-status-edital-cadastro-disputa",
+  "release_id": "2026-10-23-pacote-de-melhorias-2-homolog-sync",
   "environment": "homolog",
   "target_branch": "homolog",
   "items": [
@@ -1532,9 +1532,11 @@
         "21e735f00cabc35da3a0688312e3c33392c07db6"
       ],
       "backend_commits": [
-        "f1d78081916808f04c88a3c5b817754ad36d58e2"
+        "f1d78081916808f04c88a3c5b817754ad36d58e2",
+        "957c48e62d9aa084a6d87ab451e06974cd726fa1"
       ],
       "migrations": [
+        "supabase/migrations/20261020201959_enable_pg_cron_for_document_notifications.sql",
         "supabase/migrations/20261020202019_organization_document_expiry_notifications.sql",
         "supabase/migrations/20261020204111_fix_organization_document_settings_upsert_conflict.sql",
         "supabase/migrations/20261020204205_fix_organization_document_settings_read_conflict.sql"
