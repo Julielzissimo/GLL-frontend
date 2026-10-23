@@ -330,7 +330,6 @@ const refs = {
   companyDataPage: $("companyDataPage"),
   organizationDocumentsPage: $("organizationDocumentsPage"),
   designSystemPage: $("designSystemPage"),
-  designSystemAccessCard: $("designSystemAccessCard"),
   designSystemCatalog: $("designSystemCatalog"),
   suppliersPage: $("suppliersPage"),
   declarationsPage: $("declarationsPage"),
@@ -4326,8 +4325,6 @@ function updateAccessInterface() {
   refs.navDesignSystemButton.disabled = !showDesignSystemAccess;
   refs.navDesignSystemButton.setAttribute("aria-hidden", String(!showDesignSystemAccess));
   refs.navDesignSystemButton.setAttribute("aria-disabled", String(!showDesignSystemAccess));
-  refs.designSystemAccessCard.classList.toggle("hidden", !showDesignSystemAccess);
-  refs.designSystemAccessCard.setAttribute("aria-hidden", String(!showDesignSystemAccess));
   updateWorkspaceSummary();
 }
 

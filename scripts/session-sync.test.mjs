@@ -235,13 +235,13 @@ function client(db = backend(), auth = { session: { user } }, config = {}) {
     if (!elements.has(id)) {
       const classes = new Set();
       elements.set(id, {
-        id, value: "", textContent: "", dataset: {}, classList: {
+        id, value: "", textContent: "", dataset: {}, attributes: {}, classList: {
           add: (...values) => values.forEach((v) => classes.add(v)),
           remove: (...values) => values.forEach((v) => classes.delete(v)),
           contains: (v) => classes.has(v),
           toggle: (v, on = !classes.has(v)) => on ? classes.add(v) : classes.delete(v),
         },
-        querySelector: () => null, querySelectorAll: () => [], setAttribute() {}, insertAdjacentHTML() {}, prepend() {}, reset() {}, close() {},
+        querySelector: () => null, querySelectorAll: () => [], setAttribute(name, value) { this.attributes[name] = String(value); }, insertAdjacentHTML() {}, prepend() {}, reset() {}, close() {},
       });
     }
     return elements.get(id);
