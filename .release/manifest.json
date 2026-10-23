@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "release_id": "2026-10-23-user-invitations-cors-issue-171",
+  "release_id": "2026-10-23-pacote-de-melhorias-2-parcial",
   "environment": "production",
   "target_branch": "main",
   "items": [
@@ -1050,6 +1050,124 @@
         "d3cf5bdf90fd8c9c17ee3630d9b33c246eeda070"
       ],
       "frontend_commits": [],
+      "migrations": []
+    },
+    {
+      "id": "ISSUE-150",
+      "backend_commits": [],
+      "frontend_commits": [
+        "a993960d72a3a3681f3924f2f8fcacfbbea59076"
+      ],
+      "migrations": []
+    },
+    {
+      "frontend_commits": [],
+      "backend_commits": [
+        "8e6897c05e8fcafe3843964cab2fb55126ec8624"
+      ],
+      "migrations": [
+        "supabase/migrations/20261020195255_kit_documentos_backend.sql"
+      ],
+      "id": "ISSUE-152"
+    },
+    {
+      "frontend_commits": [
+        "df56343214abfa9a6dda809c2bc00cca8ae63298",
+        "f62a304c4639646357b63259ab00c5177b21b3b2",
+        "b6abf3ed913dc819e17e54a866cd805176d07d6d",
+        "07ceae9e519d321e4b2ecff72e81708d3c28d969",
+        "22a58826bf06ef62cc1122451cd69bd357679778",
+        "9cbeae66dcd8212f89451252805a34667e7f1fbb",
+        "77d5c4529218616c408753396af5facaea47ce75",
+        "3664403627648fdcd5c9ee002f9131640c308350",
+        "e69bfc8da52d33c43974aafc7d5c0fec2d1d64f1"
+      ],
+      "backend_commits": [],
+      "migrations": [],
+      "id": "ISSUE-153"
+    },
+    {
+      "frontend_commits": [
+        "df56343214abfa9a6dda809c2bc00cca8ae63298"
+      ],
+      "backend_commits": [
+        "8e6897c05e8fcafe3843964cab2fb55126ec8624"
+      ],
+      "migrations": [
+        "supabase/migrations/20261020202019_organization_document_expiry_notifications.sql",
+        "supabase/migrations/20261020204111_fix_organization_document_settings_upsert_conflict.sql",
+        "supabase/migrations/20261020204205_fix_organization_document_settings_read_conflict.sql"
+      ],
+      "id": "ISSUE-154"
+    },
+    {
+      "id": "ISSUE-156",
+      "backend_commits": [
+        "2f92ec433d551adf0a578cd53f17dea614c05c14"
+      ],
+      "frontend_commits": [
+        "62be46a9c649be98e74a3e5065a5babfad191829"
+      ],
+      "migrations": []
+    },
+    {
+      "id": "ISSUE-173",
+      "backend_commits": [],
+      "frontend_commits": [
+        "3b2008f381c6e185f8b3cb2f684abd81d3624384"
+      ],
+      "migrations": []
+    },
+    {
+      "id": "ISSUE-175",
+      "backend_commits": [],
+      "frontend_commits": [
+        "350bd2b09d1754ddd410f26c6a06bcda38193964",
+        "9c97198d5180f724a7690505a1611fc48d0bbdab",
+        "129f129e2a412712cfee656f28047821489aabea",
+        "dd973f29b865e4e8eacc054111f5837019205a78",
+        "8b65fc14de78bc93723a851214c049e7123be9a0"
+      ],
+      "migrations": []
+    },
+    {
+      "id": "ISSUE-177",
+      "backend_commits": [],
+      "frontend_commits": [
+        "8a6714579b0c8f6a3f028cd48cd9ddb7fa112402"
+      ],
+      "migrations": []
+    },
+    {
+      "id": "ISSUE-176",
+      "backend_commits": [],
+      "frontend_commits": [
+        "6a32b4f78d9e0d75ff6c3d67ed58e7c8da9983e9"
+      ],
+      "migrations": []
+    },
+    {
+      "id": "ISSUE-187",
+      "backend_commits": [],
+      "frontend_commits": [
+        "57dc0fb7b949978ae9089ab6ec89caf20f487097"
+      ],
+      "migrations": []
+    },
+    {
+      "id": "ISSUE-140",
+      "backend_commits": [],
+      "frontend_commits": [
+        "f8520d8c5dbe1ce447443d3b334b340372799a4b"
+      ],
+      "migrations": []
+    },
+    {
+      "id": "ISSUE-192",
+      "backend_commits": [],
+      "frontend_commits": [
+        "e8effc9c676e4f69ace750aace3ec61825e37f2c"
+      ],
       "migrations": []
     }
   ]
