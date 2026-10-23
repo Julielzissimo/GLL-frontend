@@ -3111,6 +3111,10 @@ textarea[aria-invalid="true"]:focus {
   outline-offset: -3px;
 }
 
+.home-activity-entry.is-expanded {
+  align-items: flex-start;
+}
+
 .home-activity-avatar {
   display: grid;
   width: 40px;
@@ -3135,6 +3139,21 @@ textarea[aria-invalid="true"]:focus {
   min-width: 0;
   flex: 1 1 auto;
   gap: var(--space-xs);
+}
+
+.home-activity-description {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.home-activity-entry.is-expanded .home-activity-description {
+  overflow: visible;
+  overflow-wrap: anywhere;
+  text-overflow: clip;
+  white-space: normal;
 }
 
 .home-activity-copy time {
