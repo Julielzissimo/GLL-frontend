@@ -245,6 +245,7 @@
           <div class="nav-section">
             <span class="nav-section-label">ÁREA DE TRABALHO</span>
             <button id="navHomeButton" class="nav-link active" type="button" title="Visão geral" data-navigation-page="home"><span class="nav-icon" aria-hidden="true" data-gll-icon="layoutDashboard"></span><span class="nav-link-label">Visão geral</span></button>
+            <button id="navDashboardButton" class="nav-link" type="button" title="Dashboard" data-navigation-page="dashboard"><span class="nav-icon" aria-hidden="true" data-gll-icon="quotation"></span><span class="nav-link-label">Dashboard</span></button>
             <button id="navBidsButton" class="nav-link" type="button" title="Licitações" data-navigation-page="bids"><span class="nav-icon" aria-hidden="true" data-gll-icon="briefcaseBusiness"></span><span class="nav-link-label">Licitações</span></button>
             <button id="navRadarSearchButton" class="nav-link" type="button" title="Radar de Licitações" data-navigation-page="radarSearch"><span class="nav-icon" aria-hidden="true" data-gll-icon="search"></span><span class="nav-link-label">Radar de Licitações</span></button>
             <button id="navQuotationsButton" class="nav-link" type="button" title="Orçamentos" data-navigation-page="quotations"><span class="nav-icon" aria-hidden="true" data-gll-icon="clipboardList"></span><span class="nav-link-label">Orçamentos</span></button>
@@ -401,6 +402,11 @@
                 <div id="homeRecentActivitiesList" class="home-activity-feed" aria-live="polite"></div>
                 <nav id="homeRecentActivitiesPagination" class="home-activity-pagination" aria-label="Paginação das atualizações dos editais" hidden></nav>
               </section>
+            </section>
+
+            <section id="dashboardPage" class="content-page hidden" aria-labelledby="dashboardTitle">
+              <div class="page-heading dashboard-heading"><div><span class="eyebrow">ÁREA DE TRABALHO</span><h1 id="dashboardTitle">Dashboard</h1><p>Potencial e rentabilidade dos itens vencidos na carteira que você pode consultar.</p></div></div>
+              <div id="dashboardRoot"></div>
             </section>
 
             <section id="bidCatalogPage" class="content-page hidden">
@@ -1941,6 +1947,7 @@
     <script type="module" src="./company-data.js"></script>
     <script type="module" src="./commercial-proposals.js"></script>
     <script type="module" src="./billing.js"></script>
+    <script type="module" src="./dashboard.js"></script>
     <script type="module" src="./radar-catalogs.js"></script>
     <script type="module" src="./radar-import.js"></script>
     <script type="module" src="./radar-details.js"></script>
