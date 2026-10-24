@@ -1700,6 +1700,18 @@
         "ccf2d1b6de1ea49db5b122ac9d69d13839c8f33e"
       ],
       "migrations": []
+    },
+    {
+      "id": "ISSUE-217",
+      "backend_commits": [
+        "fa5e43a12dbdcbace5fabb9ea2e9005d7a4aa2fe"
+      ],
+      "frontend_commits": [
+        "ae1413c15b837f034d749e89205ec3fc1a872920"
+      ],
+      "migrations": [
+        "supabase/migrations/20261024154734_bid_process_messages.sql"
+      ]
     }
   ]
 }
