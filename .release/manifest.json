@@ -1711,7 +1711,8 @@
         "4f9d245285d6bfe9bac45c2ecbe41d866b6284b1",
         "5b6b6908c00ecb271b262af7bc2edc830df11e53",
         "d63f0bda67fa41265bfb89cb1e5116f2d534e116",
-        "73eb188faa823b611ff36eb8f8170a9d40546f4b"
+        "73eb188faa823b611ff36eb8f8170a9d40546f4b",
+        "a49bde66936b92e1dc558fd5616263bee8ecd487"
       ],
       "migrations": [
         "supabase/migrations/20261024154734_bid_process_messages.sql"
