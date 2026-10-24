@@ -1708,7 +1708,9 @@
       ],
       "frontend_commits": [
         "ae1413c15b837f034d749e89205ec3fc1a872920",
-        "4f9d245285d6bfe9bac45c2ecbe41d866b6284b1"
+        "4f9d245285d6bfe9bac45c2ecbe41d866b6284b1",
+        "5b6b6908c00ecb271b262af7bc2edc830df11e53",
+        "d63f0bda67fa41265bfb89cb1e5116f2d534e116"
       ],
       "migrations": [
         "supabase/migrations/20261024154734_bid_process_messages.sql"
