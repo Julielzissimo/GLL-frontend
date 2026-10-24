@@ -114,9 +114,13 @@ const createBillingFeature = window.GLLBilling?.createBillingFeature || (() => (
   hide: () => undefined,
   reset: () => undefined,
 }));
+const createDashboardFeature = window.GLLDashboard?.createDashboardFeature || (() => ({
+  showPage: () => undefined, refresh: () => undefined, hide: () => undefined, reset: () => undefined,
+}));
 
 const PAGE_ROUTE_NAMES = {
   home: "visao-geral",
+  dashboard: "dashboard",
   bids: "licitacoes",
   radarSearch: "radar-de-licitacoes",
   edit: "nova-licitacao",
@@ -309,6 +313,7 @@ const refs = {
   bidsPage: $("bidsPage"),
   radarSearchPage: $("radarSearchPage"),
   homePage: $("homePage"),
+  dashboardPage: $("dashboardPage"),
   bidCatalogPage: $("bidCatalogPage"),
   upcomingBidsList: $("upcomingBidsList"),
   pendingDocumentsList: $("pendingDocumentsList"),
@@ -2320,6 +2325,27 @@ class SupabaseStore {
 }
 
 const store = createStore();
+const dashboardFeature = createDashboardFeature({
+  root: $("dashboardRoot"),
+  getData: () => ({
+    bids: appState.bids.map((bid) => ({ ...bid, session_datetime: toDateInputValue(bid.session_datetime) })),
+    items: appState.items, quotationItems: appState.quotationItems,
+  }),
+  getInvoices: async () => {
+    const visibleBidIds = new Set(appState.bids.map((bid) => String(bid.id)));
+    const [invoices, fulfillments] = await Promise.all([
+      store.getAll("bid_item_invoices"), store.getAll("bid_item_fulfillments"),
+    ]);
+    const itemIdByFulfillment = new Map(fulfillments.map((row) => [String(row.id), row.quotation_item_id]));
+    return invoices.filter((invoice) => visibleBidIds.has(String(invoice.bid_id)))
+      .map((invoice) => ({ ...invoice, quotation_item_id: itemIdByFulfillment.get(String(invoice.fulfillment_id)) }));
+  },
+  openBid: (bidId) => {
+    if (!bidId) { setPage("bids"); return; }
+    loadBid(bidId);
+    setPage("items");
+  },
+});
 const billingFeature = createBillingFeature({
   getBid: currentBid,
   getQuotation: () => appState.quotations.find((row) => Number(row.id) === Number(currentBid()?.quotation_id)) || null,
@@ -4570,6 +4596,7 @@ function resetAuthenticatedView({ showLogin = true } = {}) {
   companyDataFeature.reset();
   organizationDocumentsFeature.reset();
   billingFeature.reset();
+  dashboardFeature.reset();
   radarSearchFeature.reset();
   refs.appView.classList.remove("mobile-nav-open");
   updateMainNavigationState();
@@ -4892,6 +4919,7 @@ function breadcrumbItems(page) {
   }
   const topLevelLabels = {
     home: "Visão geral",
+    dashboard: "Dashboard",
     bids: "Licitações",
     radarSearch: "Radar de Licitações",
     quotations: "Orçamentos",
@@ -5027,7 +5055,7 @@ const LIVE_RESOURCE_TABLES = new Set([
   "bid_item_deliveries", "bid_item_invoices",
 ]);
 const BID_DETAIL_PAGES = new Set(["items", "documents", "billing", "failures", "edit"]);
-const BID_LIST_PAGES = new Set(["home", "bids"]);
+const BID_LIST_PAGES = new Set(["home", "bids", "dashboard"]);
 let sessionEpoch = 0;
 let dataRequest = 0;
 let liveSubscriptionRequest = 0;
@@ -5082,6 +5110,9 @@ function visibleRealtimeResources() {
   } else if (BID_LIST_PAGES.has(appState.activePage)) {
     ["bids", "items", "documents", "quotations", "quotation_items"]
       .forEach((resource) => resources.add(resource));
+    if (appState.activePage === "dashboard") {
+      ["bid_item_fulfillments", "bid_item_invoices"].forEach((resource) => resources.add(resource));
+    }
   } else if (appState.activePage === "quotations") {
     ["quotations", "quotation_items"].forEach((resource) => resources.add(resource));
   } else if (appState.activePage === "suppliers") {
@@ -5252,6 +5283,7 @@ async function fetchLiveResource(resource) {
     case "bid_item_commitments":
     case "bid_item_deliveries":
     case "bid_item_invoices":
+      if (page === "dashboard") return { dashboardRefresh: true };
       return page === "billing" && appState.currentBidId ? { billingRefresh: true } : null;
     default:
       return null;
@@ -5269,6 +5301,7 @@ function renderLiveUpdates(resources) {
   if (appState.activePage === "billing" && ["bids", "items", "quotations", "quotationItems"].some((key) => keys.has(key))) {
     void billingFeature.refresh().catch((error) => showToast(error.message, "error"));
   }
+  if (appState.activePage === "dashboard" && ["bids", "items", "quotations", "quotationItems", "bid_item_invoices"].some((key) => keys.has(key))) dashboardFeature.refresh();
   if (keys.has("users") || keys.has("userInvitations")) {
     updateCurrentUserProfile();
     if (appState.activePage === "userProfile") updateUserProfileAccessActions();
@@ -5304,6 +5337,7 @@ async function refreshInBackground({ resources = null, reconcile = false } = {})
     const previousSelection = selectedDataSignature(appState);
     const changedKeys = new Set();
     let billingRefreshRequested = false;
+    let dashboardRefreshRequested = false;
     for (const update of updates) {
       if (update.profile) {
         const profile = update.profile;
@@ -5323,6 +5357,8 @@ async function refreshInBackground({ resources = null, reconcile = false } = {})
         appState.dismissedNotificationIds = update.notificationIds;
       } else if (update.billingRefresh) {
         billingRefreshRequested = true;
+      } else if (update.dashboardRefresh) {
+        dashboardRefreshRequested = true;
       } else {
         const previousRows = appState[update.key] || [];
         const nextRows = mergeLiveRows(previousRows, update.rows, update.scopeField, update.scopeValue);
@@ -5347,6 +5383,7 @@ async function refreshInBackground({ resources = null, reconcile = false } = {})
     if (billingRefreshRequested && epoch === sessionEpoch && appState.authenticated && appState.activePage === "billing") {
       await billingFeature.refresh();
     }
+    if (dashboardRefreshRequested && epoch === sessionEpoch && appState.authenticated && appState.activePage === "dashboard") dashboardFeature.refresh();
   } catch (error) {
     // A temporary connectivity failure keeps the current data and form drafts in place.
     console.warn("Não foi possível atualizar os dados em tempo real. A conexão tentará novamente.");
@@ -5536,6 +5573,7 @@ async function reloadData({ background = false, initialAccessVerified = false } 
   if (appState.activePage === "billing") {
     void billingFeature.refresh().catch((error) => showToast(error.message, "error"));
   }
+  if (appState.activePage === "dashboard") dashboardFeature.refresh();
   if (!background && changed && liveChannel) {
     void liveChannel.send({ type: "broadcast", event: "data-changed", payload: {} }).catch(() => {});
   }
@@ -5665,6 +5703,7 @@ function setPage(page, options = {}) {
   refs.commercialProposalsPage.classList.toggle("hidden", !showCommercialProposals);
   const showQuotations = page === "quotations";
   const showHome = page === "home";
+  const showDashboard = page === "dashboard";
   const showCatalog = page === "bids";
   const showEditor = page === "edit";
   const showDetail = detailPages.includes(page);
@@ -5678,6 +5717,7 @@ function setPage(page, options = {}) {
   refs.radarEngineAdminPage.classList.toggle("hidden", !showRadarEngineAdmin);
   refs.quotationsPage.classList.toggle("hidden", !showQuotations);
   refs.homePage.classList.toggle("hidden", !showHome);
+  refs.dashboardPage.classList.toggle("hidden", !showDashboard);
   refs.bidCatalogPage.classList.toggle("hidden", !showCatalog);
   refs.bidForm.classList.toggle("hidden", !showEditor && !showDetail);
   refs.bidWorkspaceHeader.classList.toggle("hidden", !showEditor && !showDetail);
@@ -5701,7 +5741,7 @@ function setPage(page, options = {}) {
   refs.failuresTabButton.classList.toggle("active", page === "failures");
   refs.failuresTabButton.setAttribute("aria-selected", String(page === "failures"));
   refs.failuresTabButton.classList.toggle("hidden", !shouldShowFailureHistory());
-  const primaryPage = showOrganizationDocuments ? "organizationDocuments" : showRadarEngineAdmin ? "radarEngineAdmin" : showRadarSearch ? "radarSearch" : showCommercialProposals ? "commercialProposals" : showDeclarations ? "declarations" : showSuppliers ? "suppliers" : showUsers || (showUserProfile && isCurrentUserAdmin()) ? "users" : showQuotations ? "quotations" : showHome || showUserProfile ? "home" : "bids";
+  const primaryPage = showOrganizationDocuments ? "organizationDocuments" : showRadarEngineAdmin ? "radarEngineAdmin" : showRadarSearch ? "radarSearch" : showCommercialProposals ? "commercialProposals" : showDeclarations ? "declarations" : showSuppliers ? "suppliers" : showUsers || (showUserProfile && isCurrentUserAdmin()) ? "users" : showQuotations ? "quotations" : showDashboard ? "dashboard" : showHome || showUserProfile ? "home" : "bids";
   const activeNavigationPage = ["companyData", "designSystem", "radarEngineAdmin"].includes(page) ? page : primaryPage;
   renderBreadcrumb(page);
   document.querySelectorAll("[data-navigation-page]").forEach((button) => {
@@ -5717,6 +5757,8 @@ function setPage(page, options = {}) {
   if (page === "items") renderBidQuotationWorkspace();
   if (page !== "billing") billingFeature.hide();
   if (page === "billing") void billingFeature.showPage().catch((error) => showToast(error.message, "error"));
+  if (page !== "dashboard") dashboardFeature.hide();
+  if (page === "dashboard") dashboardFeature.showPage();
   if (showSuppliers) renderSuppliers();
   if (showDeclarations) void declarationsFeature.showPage(page).catch((error) => showToast(error.message, "error"));
   if (showCommercialProposals) void commercialProposalsFeature.showPage().catch((error) => showToast(error.message, "error"));
