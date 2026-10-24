@@ -211,7 +211,7 @@ export function createCommercialProposalsFeature({ getClient, getContext, toast,
       && (!query || normalizeSearch([proposal.edital_number || proposal.bid_id, proposal.agency, statusLabel(proposal.status)].join(" ")).includes(query));
     root.innerHTML = `
       <div class="page-heading commercial-list-heading commercial-proposal-list-title">
-        <div><span class="eyebrow">DOCUMENTOS COMERCIAIS</span><h1 id="commercialProposalsTitle">Proposta Comercial</h1>
+        <div><h1 id="commercialProposalsTitle">Proposta Comercial</h1>
           <p>Prepare, confira e gere propostas para seus editais.</p></div>
         <button class="primary-action" type="button" data-proposal-action="new">＋ Nova proposta</button>
       </div>

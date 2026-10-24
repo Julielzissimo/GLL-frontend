@@ -520,7 +520,7 @@ export function createOrganizationDocumentsFeature({
 
   function render() {
     if (!root) return;
-    const heading = '<div class="page-heading organization-documents-heading"><div><span class="eyebrow">DOCUMENTOS</span>'
+    const heading = '<div class="page-heading organization-documents-heading"><div>'
       + '<h1 id="organizationDocumentsTitle">Kit de Documentos</h1>'
       + '<p>Cadastre, consulte e acompanhe a validade dos documentos da empresa.</p></div>'
       + (canManageDocuments() ? createActionButton("create", "Cadastrar documento") : "")
