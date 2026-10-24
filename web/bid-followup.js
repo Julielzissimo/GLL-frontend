@@ -288,6 +288,7 @@ export function createBidFollowupFeature({
     active = true;
     activeBidId = bid.id;
     highlightedMessageId = messageId;
+    if (messageId) messagesHost.replaceChildren();
     byId("bidFollowupSubtitle").textContent = `${formatBidLabel(bid)} · ${bid.buyer_agency || "Órgão não informado"}`;
     setError("");
     void refreshMessages({ scrollToBottom: !messageId }).catch((error) => setError(error.message || "Não foi possível carregar as atualizações deste edital."));
@@ -307,6 +308,8 @@ export function createBidFollowupFeature({
     if (dialog.open) dialog.close();
     activeBidId = null;
     highlightedMessageId = null;
+    messages = [];
+    messageMentions = [];
     suggestions.hidden = true;
     input.setAttribute("aria-expanded", "false");
     mentionContext = null;
@@ -314,6 +317,7 @@ export function createBidFollowupFeature({
     mentionRanges = [];
     draftBeforeEdit = "";
     resizeComposer();
+    renderMessages();
   }
 
   async function submit(event) {
@@ -401,10 +405,13 @@ export function createBidFollowupFeature({
       timer = null;
       activeBidId = null;
       highlightedMessageId = null;
+      messages = [];
+      messageMentions = [];
       input.value = "";
       mentionRanges = [];
       draftBeforeEdit = "";
       resizeComposer();
+      renderMessages();
     });
     dialog.addEventListener("click", (event) => {
       if (event.target === dialog) close();
