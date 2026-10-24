@@ -606,6 +606,10 @@
               </div>
               <p id="currentBidAgency"></p>
             </div>
+            <button id="bidFollowupButton" class="quiet-action bid-followup-open-button hidden" type="button" aria-haspopup="dialog" aria-controls="bidFollowupDrawer">
+              <span aria-hidden="true" data-gll-icon="messageCircle"></span>
+              Acompanhamento
+            </button>
           </section>
 
           <section id="metricsSection" class="metrics-row" aria-label="Indicadores">
@@ -1872,6 +1876,33 @@
       </div>
     </main>
 
+    <dialog id="bidFollowupDrawer" class="bid-followup-dialog" aria-labelledby="bidFollowupTitle" aria-modal="true">
+      <section class="bid-followup-shell">
+        <header class="bid-followup-header">
+          <div>
+            <span class="eyebrow">ACOMPANHAMENTO DO EDITAL</span>
+            <h2 id="bidFollowupTitle">Atualizações</h2>
+            <p id="bidFollowupSubtitle"></p>
+          </div>
+          <button id="closeBidFollowupButton" class="icon-button modal-close-button" type="button" aria-label="Fechar acompanhamento"><span aria-hidden="true" data-gll-icon="close"></span></button>
+        </header>
+        <div id="bidFollowupMessages" class="bid-followup-messages" role="log" aria-label="Mensagens do edital" aria-live="polite" aria-relevant="additions text">
+          <p id="bidFollowupEmpty" class="bid-followup-empty">Ainda não há atualizações neste edital.</p>
+        </div>
+        <p id="bidFollowupError" class="form-error bid-followup-error hidden" role="alert"></p>
+        <form id="bidFollowupForm" class="bid-followup-form">
+          <label for="bidFollowupInput">Nova atualização</label>
+          <div class="bid-followup-compose">
+            <div class="bid-followup-composer-field">
+              <div id="bidFollowupSuggestions" class="bid-followup-suggestions" role="listbox" aria-label="Pessoas para mencionar" hidden></div>
+              <textarea id="bidFollowupInput" rows="2" maxlength="2000" placeholder="Escreva uma atualização…" aria-autocomplete="list" aria-controls="bidFollowupSuggestions" aria-expanded="false" required></textarea>
+            </div>
+            <button id="bidFollowupSendButton" class="primary-action" type="submit"><span id="bidFollowupSubmitLabel">Enviar</span></button>
+          </div>
+        </form>
+      </section>
+    </dialog>
+
     <dialog id="organizationChatDialog" class="organization-chat-dialog" aria-labelledby="organizationChatTitle">
       <div class="organization-chat-shell">
         <header class="organization-chat-header"><div><span class="eyebrow">CONVERSA EM GRUPO</span><h2 id="organizationChatTitle">Mensagens da organização</h2><p id="organizationChatSubtitle"></p></div><button id="closeOrganizationChatButton" class="icon-button modal-close-button" type="button" aria-label="Fechar mensagens"><span aria-hidden="true" data-gll-icon="close"></span></button></header>
@@ -1952,6 +1983,7 @@
     <script type="module" src="./radar-details.js"></script>
     <script type="module" src="./radar-search.js"></script>
     <script src="./organization-chat.js"></script>
+    <script type="module" src="./bid-followup.js"></script>
     <script type="module" src="./app.js"></script>
   </body>
 </html>
