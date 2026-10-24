@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "release_id": "2026-10-23-pacote-de-melhorias-2-history-decoupled-homolog",
+  "release_id": "2026-10-23-pacote-de-melhorias-3-remove-page-eyebrows-homolog",
   "environment": "homolog",
   "target_branch": "homolog",
   "items": [
@@ -1664,6 +1664,14 @@
       "backend_commits": [],
       "frontend_commits": [
         "bcd801f36894f13b54c464729426e562a173537d"
+      ],
+      "migrations": []
+    },
+    {
+      "id": "ISSUE-208",
+      "backend_commits": [],
+      "frontend_commits": [
+        "e7e895d9bd4706a4aa23b6efde2f8bbcecd88672"
       ],
       "migrations": []
     }
