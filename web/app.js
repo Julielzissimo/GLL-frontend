@@ -1,4 +1,5 @@
-﻿const STATUS_OPTIONS = ["Em Analise", "Aguard. Disputa", "Descartada", "Aprovada", "Em Fornecimento", "Faturado", "Desclassificado", "Disputada"];
+﻿import { createBidFollowupFeature } from "./bid-followup.js";
+const STATUS_OPTIONS = ["Em Analise", "Aguard. Disputa", "Descartada", "Aprovada", "Em Fornecimento", "Faturado", "Desclassificado", "Disputada"];
 import { formatCnpj, isValidCnpj } from "./company-data.js";
 
 const storageBucket = globalThis.window?.GLLFileStorage?.storageBucket || ((client, bucket) => client.storage.from(bucket));
@@ -173,6 +174,7 @@ const appState = {
   dismissedNotificationIds: [],
   organizationDocumentNotifications: [],
   organizationDocumentPendencies: [],
+  bidMessageNotifications: [],
 };
 let bidAttachmentUploadPromise = null;
 
@@ -2245,6 +2247,23 @@ const organizationChat = (window.GLLOrganizationChat?.createOrganizationChat || 
   getUserId: () => appState.currentUserAuthId,
   getUserCreatedAt: () => appState.currentUserCreatedAt,
 });
+const bidFollowupFeature = createBidFollowupFeature({
+  getClient: () => (store.requiresAuthenticationBeforeData ? store.client : null),
+  getBid: currentBid,
+  getUsers: () => appState.users,
+  getUserId: () => appState.currentUserAuthId,
+  formatBidLabel: bidDisplayNumber,
+  onNotificationsChanged: (notifications) => {
+    appState.bidMessageNotifications = Array.isArray(notifications) ? notifications : [];
+    updateNotificationsIndicator();
+    if (!refs.notificationsMenu.classList.contains("hidden")) setNotificationsMenuOpen(true);
+  },
+  onMessageCreated: () => {
+    if (chatBroadcastChannel) {
+      void chatBroadcastChannel.send({ type: "broadcast", event: "organization-data-changed", payload: {} }).catch(() => {});
+    }
+  },
+});
 const declarationsFeature = createDeclarationsFeature({
   getClient: () => (store.requiresAuthenticationBeforeData ? store.client : null),
   getContext: () => ({
@@ -2296,19 +2315,35 @@ let organizationDocumentAlertsTimer = null;
 
 async function refreshOrganizationDocumentAlerts() {
   const request = ++organizationDocumentAlertsRequest;
-  if (!appState.authenticated || !store.requiresAuthenticationBeforeData || GLL_CONFIG.organizationDocumentsEnabled !== true) {
+  if (!appState.authenticated || !store.requiresAuthenticationBeforeData) {
     appState.organizationDocumentNotifications = [];
     appState.organizationDocumentPendencies = [];
+    appState.bidMessageNotifications = [];
     updateNotificationsIndicator();
+    return;
+  }
+
+  const epoch = sessionEpoch;
+  const organizationId = appState.currentOrganizationId;
+  const mentionRefresh = bidFollowupFeature.refreshNotifications().catch(() => {
+    console.warn("Não foi possível atualizar as notificações de menção no acompanhamento dos editais.");
+  });
+  if (GLL_CONFIG.organizationDocumentsEnabled !== true) {
+    appState.organizationDocumentNotifications = [];
+    appState.organizationDocumentPendencies = [];
+    await mentionRefresh;
+    if (request === organizationDocumentAlertsRequest && epoch === sessionEpoch) updateNotificationsIndicator();
     return;
   }
 
   const api = window.GLLOrganizationDocumentsApi?.createOrganizationDocumentsApi?.({
     getClient: () => store.client,
   });
-  if (!api) return;
-  const epoch = sessionEpoch;
-  const organizationId = appState.currentOrganizationId;
+  if (!api) {
+    await mentionRefresh;
+    if (request === organizationDocumentAlertsRequest && epoch === sessionEpoch) updateNotificationsIndicator();
+    return;
+  }
   try {
     const [notifications, pendencies] = await Promise.all([
       api.listNotifications(),
@@ -2330,6 +2365,8 @@ async function refreshOrganizationDocumentAlerts() {
       console.warn("Não foi possível atualizar as notificações e pendências de vencimento do Kit de Documentos.");
     }
   }
+  await mentionRefresh;
+  if (request === organizationDocumentAlertsRequest && epoch === sessionEpoch) updateNotificationsIndicator();
 }
 const commercialProposalsFeature = createCommercialProposalsFeature({
   getClient: () => (store.requiresAuthenticationBeforeData ? store.client : null),
@@ -2861,6 +2898,7 @@ function withBlockingLoading(operation, message) {
 
 function bindEvents() {
   organizationChat.bind();
+  bidFollowupFeature.bind();
   bindPasswordVisibility();
   refs.toastDismissButton.innerHTML = GLLDesignSystem.ICONS.close;
   refs.toastDismissButton.addEventListener("click", () => {
@@ -4121,6 +4159,7 @@ function resetAuthenticatedView() {
   pendingInvitationAcceptance = null;
   pendingSignupConfirmation = null;
   organizationChat.close();
+  bidFollowupFeature.reset();
   sessionEpoch += 1;
   stopSessionPolicyMonitoring();
   window.localStorage.removeItem(sessionPolicyStorageKey);
@@ -4132,6 +4171,7 @@ function resetAuthenticatedView() {
   appState.dismissedNotificationIds = [];
   appState.organizationDocumentNotifications = [];
   appState.organizationDocumentPendencies = [];
+  appState.bidMessageNotifications = [];
   organizationDocumentAlertsRequest += 1;
   appState.currentUserRole = null;
   appState.currentUserName = null;
@@ -4286,8 +4326,25 @@ function navigationNotifications() {
       description,
     };
   });
+  const bidMessageNotifications = appState.bidMessageNotifications.map((notification) => {
+    const bid = appState.bids.find((row) => row.id === notification.bid_id);
+    if (!bid || !notification.message) return null;
+    const author = appState.users.find((user) => user.auth_user_id === notification.message.author_id);
+    const authorName = author?.display_name || author?.full_name || author?.name || notification.message.author_name || "Um membro da equipe";
+    const excerpt = String(notification.message.body || "").replace(/\s+/g, " ").slice(0, 90);
+    return {
+      id: `bid-message:${notification.message_id}`,
+      page: "items",
+      bidId: bid.id,
+      messageId: notification.message_id,
+      icon: "messageCircle",
+      title: `Menção no acompanhamento · ${bidDisplayNumber(bid)}`,
+      description: `${authorName}: ${excerpt}`,
+    };
+  }).filter(Boolean);
 
   return [
+    ...bidMessageNotifications,
     ...organizationDocumentNotifications,
     ...pendingDocuments.map(({ document, bid }) => ({
       id: `document:${document.id}`,
@@ -4321,7 +4378,7 @@ function setNotificationsMenuOpen(open) {
       ? `<div class="notification-menu-heading">Notificações</div>${notifications.map((notification) => `
           <button class="notification-menu-item" type="button" ${notification.documentId
             ? `data-notification-document="${escapeHtml(notification.documentId)}"`
-            : `data-notification-bid="${escapeHtml(notification.bidId)}"`} data-notification-page="${escapeHtml(notification.page)}">
+            : `data-notification-bid="${escapeHtml(notification.bidId)}"`} data-notification-page="${escapeHtml(notification.page)}"${notification.messageId ? ` data-notification-message="${escapeHtml(notification.messageId)}"` : ""}>
             <span class="notification-menu-icon" aria-hidden="true">${GLLDesignSystem.iconMarkup(notification.icon)}</span>
             <span><strong>${escapeHtml(notification.title)}</strong><small>${escapeHtml(notification.description)}</small></span>
           </button>`).join("")}`
@@ -4348,9 +4405,13 @@ function handleNotificationClick(event) {
   }
   const bidId = button.dataset.notificationBid;
   const page = button.dataset.notificationPage;
+  const messageId = button.dataset.notificationMessage;
   setNotificationsMenuOpen(false);
   loadBid(bidId);
-  if (page === "documents") setPage("documents");
+  if (messageId) {
+    setPage("items");
+    bidFollowupFeature.open(messageId);
+  } else if (page === "documents") setPage("documents");
 }
 
 async function clearAllNotifications() {
@@ -5087,6 +5148,9 @@ async function reloadData({ background = false } = {}) {
     setSyncNotice("O registro aberto foi alterado ou excluído em outra sessão. Seu formulário foi preservado. Reabra o registro pela lista para conferir a versão atual antes de salvar.");
   }
   Object.assign(appState, next);
+  void bidFollowupFeature.refreshNotifications().catch(() => {
+    console.warn("Não foi possível atualizar as notificações de menção no acompanhamento dos editais.");
+  });
   updateNotificationsIndicator();
   if (!refs.notificationsMenu.classList.contains("hidden")) setNotificationsMenuOpen(true);
   updateCurrentUserProfile();
@@ -5576,6 +5640,10 @@ function updateBidWorkspaceHeader() {
   refs.currentBidCreatorTag.innerHTML = bid ? creatorTagMarkup(bid) : "";
   refs.currentBidCreatorTag.classList.toggle("hidden", !bid);
   refs.currentBidAgency.textContent = bid?.buyer_agency || "Preencha os dados para cadastrar um novo edital.";
+  bidFollowupFeature.updateAvailability(Boolean(
+    bid && appState.authenticated && store.requiresAuthenticationBeforeData
+      && ["items", "documents", "history", "billing", "failures"].includes(appState.activePage),
+  ));
 }
 
 function handleBidStatusChange() {
@@ -5908,6 +5976,7 @@ async function linkQuotationToCurrentBid(quotationId) {
 function loadBid(bidId, options = {}) {
   const bid = appState.bids.find((row) => row.id === bidId);
   if (!bid) return;
+  if (appState.currentBidId && appState.currentBidId !== bid.id) bidFollowupFeature.close();
   setSyncNotice("");
   appState.currentBidId = bid.id;
   appState.originalBidId = bid.id;
