@@ -624,6 +624,7 @@ const radarEngineAdminFeature = createRadarEngineAdminFeature({ container: refs.
 
 const userAvatarUrlCache = new Map();
 const currentUserAvatarRefreshAttempts = new Set();
+const homeActivityAvatarRefreshPromises = new Map();
 let userProfileReturnPage = "home";
 let userProfileReturnFocusTarget = null;
 let pendingSessionRestore = null;
@@ -6508,10 +6509,11 @@ function renderHomeRecentActivities() {
     ? visibleEntries.map((entry, index) => {
         const actor = entry.actor_name || "Usuário";
         const initials = actor.trim().split(/\s+/).filter(Boolean).map((part) => part[0]).filter(Boolean);
+        const fallbackInitials = (initials.length > 1 ? `${initials[0]}${initials.at(-1)}` : initials[0] || "?").toLocaleUpperCase("pt-BR");
         const user = appState.users.find((profile) => profile.auth_user_id === entry.actor_id);
-        const avatar = user?.avatar_signed_url
-          ? `<img src="${escapeHtml(user.avatar_signed_url)}" alt="" loading="lazy" decoding="async" />`
-          : escapeHtml((initials.length > 1 ? `${initials[0]}${initials.at(-1)}` : initials[0] || "?").toLocaleUpperCase("pt-BR"));
+        const avatar = user?.avatar_path && user.avatar_signed_url
+          ? `<img data-home-activity-avatar="true" data-avatar-user-id="${escapeHtml(user.auth_user_id || "")}" data-avatar-path="${escapeHtml(user.avatar_path)}" data-avatar-fallback="${escapeHtml(fallbackInitials)}" src="${escapeHtml(user.avatar_signed_url)}" alt="" loading="lazy" decoding="async" />`
+          : escapeHtml(fallbackInitials);
         const action = bidActivityDescription(entry);
         const descriptionId = `homeActivityDescription-${firstEntryIndex + index}`;
         return `<button class="home-activity-entry" type="button" aria-expanded="false" aria-controls="${descriptionId}" data-recent-activity-bid="${escapeHtml(entry.bid_id)}">
@@ -6520,6 +6522,12 @@ function renderHomeRecentActivities() {
         </button>`;
       }).join("")
     : `<div class="empty-state compact-empty">Ainda não há atualizações de editais disponíveis.</div>`;
+
+  refs.homeRecentActivitiesList.querySelectorAll("[data-home-activity-avatar]").forEach((image) => {
+    image.addEventListener("error", () => {
+      void handleHomeRecentActivityAvatarError(image);
+    });
+  });
 
   const pagination = refs.homeRecentActivitiesPagination;
   pagination.hidden = totalPages <= 1;
@@ -6570,6 +6578,90 @@ function renderHomeRecentActivities() {
       loadBid(button.dataset.recentActivityBid);
     });
   });
+}
+
+async function handleHomeRecentActivityAvatarError(image) {
+  const avatar = image.closest(".home-activity-avatar");
+  if (!avatar?.isConnected) return;
+
+  const fallbackInitials = image.dataset.avatarFallback || "?";
+  if (image.dataset.avatarRefreshAttempted === "true") {
+    avatar.textContent = fallbackInitials;
+    return;
+  }
+
+  image.dataset.avatarRefreshAttempted = "true";
+  avatar.textContent = fallbackInitials;
+
+  const userId = image.dataset.avatarUserId || "";
+  const avatarPath = image.dataset.avatarPath || "";
+  if (!(store instanceof SupabaseStore) || !userId || !avatarPath) return;
+
+  try {
+    const failedUrl = image.src || "";
+    const refreshedUrl = await refreshHomeActivityAvatarUrl(userId, avatarPath, failedUrl);
+    const currentProfile = appState.users.find((profile) => profile.auth_user_id === userId);
+    if (
+      !refreshedUrl ||
+      refreshedUrl === failedUrl ||
+      !avatar.isConnected ||
+      image.dataset.avatarPath !== avatarPath ||
+      currentProfile?.avatar_path !== avatarPath
+    ) return;
+
+    image.addEventListener("load", () => {
+      const latestProfile = appState.users.find((profile) => profile.auth_user_id === userId);
+      if (
+        !avatar.isConnected ||
+        image.dataset.avatarPath !== avatarPath ||
+        latestProfile?.avatar_path !== avatarPath
+      ) return;
+      avatar.replaceChildren(image);
+    }, { once: true });
+    image.src = refreshedUrl;
+  } catch {
+    // Keep the initials visible when the signed URL cannot be refreshed.
+  }
+}
+
+function refreshHomeActivityAvatarUrl(userId, avatarPath, failedUrl) {
+  const profileIndex = appState.users.findIndex((profile) => (
+    profile.auth_user_id === userId && profile.avatar_path === avatarPath
+  ));
+  if (profileIndex < 0) return Promise.resolve("");
+
+  const profile = appState.users[profileIndex];
+  if (profile.avatar_signed_url && profile.avatar_signed_url !== failedUrl) {
+    return Promise.resolve(profile.avatar_signed_url);
+  }
+
+  const refreshKey = JSON.stringify([userId, avatarPath]);
+  const pendingRefresh = homeActivityAvatarRefreshPromises.get(refreshKey);
+  if (pendingRefresh) return pendingRefresh;
+
+  const refreshPromise = Promise.resolve()
+    .then(async () => {
+      const [refreshedProfile] = await store.addSignedAvatarUrls([profile], { refreshPaths: [avatarPath] });
+      const refreshedUrl = refreshedProfile?.avatar_signed_url || "";
+      const currentIndex = appState.users.findIndex((current) => (
+        current.auth_user_id === userId && current.avatar_path === avatarPath
+      ));
+      if (!refreshedUrl || refreshedUrl === failedUrl || currentIndex < 0) return "";
+
+      appState.users[currentIndex] = {
+        ...appState.users[currentIndex],
+        avatar_signed_url: refreshedUrl,
+      };
+      return refreshedUrl;
+    })
+    .finally(() => {
+      if (homeActivityAvatarRefreshPromises.get(refreshKey) === refreshPromise) {
+        homeActivityAvatarRefreshPromises.delete(refreshKey);
+      }
+    });
+
+  homeActivityAvatarRefreshPromises.set(refreshKey, refreshPromise);
+  return refreshPromise;
 }
 
 function clearBidForm(options = {}) {

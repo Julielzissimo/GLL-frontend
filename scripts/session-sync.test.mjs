@@ -110,6 +110,115 @@ test("feed da home abrevia descrições longas e permite expandir, recolher ou a
   assert.deepEqual(JSON.parse(JSON.stringify(app.context.openedBids)), ["bid-1", "bid-1"]);
 });
 
+test("avatar do feed renova o link assinado uma vez e mantém as iniciais se a nova imagem falhar", async () => {
+  const app = client();
+  const profile = {
+    auth_user_id: "auth-user-1",
+    avatar_path: "auth-user-1/foto.webp",
+    avatar_signed_url: "https://storage.example.test/foto.webp?token=expired",
+  };
+  app.appState.users = [profile];
+  app.appState.bidActivity = [{
+    bid_id: "bid-1",
+    actor_id: profile.auth_user_id,
+    actor_name: "Juliel Mendonça",
+    created_at: "2026-10-23T12:00:00Z",
+    event_type: "bid_updated",
+  }];
+
+  const feed = app.element("homeRecentActivitiesList");
+  vm.runInContext("renderHomeRecentActivities()", app.context);
+  assert.match(feed.innerHTML, /data-home-activity-avatar="true"/);
+  assert.match(feed.innerHTML, /data-avatar-fallback="JM"/);
+
+  let refreshCalls = 0;
+  let refreshPaths = [];
+  app.store.addSignedAvatarUrls = async (users, options) => {
+    refreshCalls += 1;
+    refreshPaths = options.refreshPaths;
+    return [{ ...users[0], avatar_signed_url: "https://storage.example.test/foto.webp?token=fresh" }];
+  };
+
+  const avatar = { isConnected: true, image: null, _textContent: "" };
+  Object.defineProperty(avatar, "textContent", {
+    get() { return this._textContent; },
+    set(value) { this._textContent = String(value); this.image = null; },
+  });
+  avatar.replaceChildren = (image) => { avatar._textContent = ""; avatar.image = image; };
+  const image = {
+    dataset: {
+      avatarUserId: profile.auth_user_id,
+      avatarPath: profile.avatar_path,
+      avatarFallback: "JM",
+    },
+    src: profile.avatar_signed_url,
+    closest: () => avatar,
+    addEventListener(type, listener) {
+      if (type === "load") this.loadListener = listener;
+    },
+  };
+  app.context.failedHomeActivityAvatar = image;
+
+  await vm.runInContext("handleHomeRecentActivityAvatarError(failedHomeActivityAvatar)", app.context);
+  assert.equal(refreshCalls, 1);
+  assert.deepEqual(JSON.parse(JSON.stringify(refreshPaths)), [profile.avatar_path]);
+  assert.equal(avatar.textContent, "JM");
+  assert.equal(avatar.image, null);
+  assert.equal(image.src, "https://storage.example.test/foto.webp?token=fresh");
+  assert.equal(app.appState.users[0].avatar_signed_url, image.src);
+  image.loadListener();
+  assert.equal(avatar.image, image);
+
+  await vm.runInContext("handleHomeRecentActivityAvatarError(failedHomeActivityAvatar)", app.context);
+  assert.equal(refreshCalls, 1);
+  assert.equal(avatar.textContent, "JM");
+  assert.equal(avatar.image, null);
+});
+
+test("avatar do feed ignora uma URL renovada depois que o perfil já trocou de foto", async () => {
+  const app = client();
+  const profile = {
+    auth_user_id: "auth-user-1",
+    avatar_path: "auth-user-1/foto-antiga.webp",
+    avatar_signed_url: "https://storage.example.test/foto-antiga.webp?token=expired",
+  };
+  app.appState.users = [profile];
+
+  let resolveRefresh;
+  app.store.addSignedAvatarUrls = () => new Promise((resolve) => { resolveRefresh = resolve; });
+  const avatar = { isConnected: true, image: null, _textContent: "" };
+  Object.defineProperty(avatar, "textContent", {
+    get() { return this._textContent; },
+    set(value) { this._textContent = String(value); this.image = null; },
+  });
+  avatar.replaceChildren = (image) => { avatar._textContent = ""; avatar.image = image; };
+  const image = {
+    dataset: {
+      avatarUserId: profile.auth_user_id,
+      avatarPath: profile.avatar_path,
+      avatarFallback: "JM",
+    },
+    src: profile.avatar_signed_url,
+    closest: () => avatar,
+  };
+  app.context.failedHomeActivityAvatar = image;
+
+  const pendingError = vm.runInContext("handleHomeRecentActivityAvatarError(failedHomeActivityAvatar)", app.context);
+  await new Promise((resolve) => setImmediate(resolve));
+  app.appState.users[0] = {
+    ...profile,
+    avatar_path: "auth-user-1/foto-nova.webp",
+    avatar_signed_url: "https://storage.example.test/foto-nova.webp?token=current",
+  };
+  resolveRefresh([{ ...profile, avatar_signed_url: "https://storage.example.test/foto-antiga.webp?token=fresh" }]);
+  await pendingError;
+
+  assert.equal(avatar.textContent, "JM");
+  assert.equal(avatar.image, null);
+  assert.equal(app.appState.users[0].avatar_path, "auth-user-1/foto-nova.webp");
+  assert.equal(app.appState.users[0].avatar_signed_url, "https://storage.example.test/foto-nova.webp?token=current");
+});
+
 test("número do edital é separado do identificador interno e aceita repetição", () => {
   const app = client();
   const first = app.normalizeBidRecord({ id: "internal-1", edital_number: "10/2026" });
