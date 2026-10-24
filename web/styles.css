@@ -6448,6 +6448,7 @@ html.is-loading { overflow: hidden; }
   .bid-header-actions-group { width: 100%; flex-wrap: wrap; justify-content: space-between; row-gap: var(--space-sm); }
   .bid-header-actions-group #currentBidCreatorTag,
   #bidFollowupButton { width: 100%; }
+  .bid-header-actions-group #currentBidCreatorTag { max-width: none; }
   .bid-header-group-divider { display: none; }
   #bidFollowupButton { justify-content: center; margin-left: 0; }
   .bid-followup-dialog { width: 100vw; }
