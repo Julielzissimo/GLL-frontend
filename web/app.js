@@ -288,7 +288,6 @@ const refs = {
   homeDisqualifiedBids: $("homeDisqualifiedBids"),
   homeDisputedBids: $("homeDisputedBids"),
   bidWorkspaceHeader: $("bidWorkspaceHeader"),
-  currentBidTitle: $("currentBidTitle"),
   currentBidCreatorTag: $("currentBidCreatorTag"),
   currentBidAgency: $("currentBidAgency"),
   usersPage: $("usersPage"),
@@ -5636,7 +5635,6 @@ async function exportBidHistoryCsv() {
 
 function updateBidWorkspaceHeader() {
   const bid = currentBid();
-  refs.currentBidTitle.textContent = bidDisplayNumber(bid) || "Novo edital";
   refs.currentBidCreatorTag.innerHTML = bid ? creatorTagMarkup(bid) : "";
   refs.currentBidCreatorTag.classList.toggle("hidden", !bid);
   refs.currentBidAgency.textContent = bid?.buyer_agency || "Preencha os dados para cadastrar um novo edital.";
