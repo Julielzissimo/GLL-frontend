@@ -627,7 +627,26 @@ const refs = {
   toastDismissButton: $("toastDismissButton"),
 };
 
-const radarEngineAdminFeature = createRadarEngineAdminFeature({ container: refs.radarEngineAdminPage });
+const radarEngineAdminFeature = createRadarEngineAdminFeature({
+  container: refs.radarEngineAdminPage,
+  metricsProvider: {
+    async load() {
+      if (!store.requiresAuthenticationBeforeData) {
+        throw new Error("A integração administrativa do Radar exige uma sessão GLL.");
+      }
+      const client = await store.open();
+      const payload = await invokeSupabaseFunction(client, "radar-engine-admin-v1", {
+        schemaVersion: "1.0",
+        operation: "metrics.read",
+      });
+      return {
+        metrics: payload.metrics,
+        live: payload.health?.live,
+        ready: payload.health?.ready,
+      };
+    },
+  },
+});
 
 const userAvatarUrlCache = new Map();
 const currentUserAvatarRefreshAttempts = new Set();
