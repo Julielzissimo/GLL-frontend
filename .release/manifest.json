@@ -1704,7 +1704,9 @@
     {
       "id": "ISSUE-217",
       "backend_commits": [
-        "fa5e43a12dbdcbace5fabb9ea2e9005d7a4aa2fe"
+        "fa5e43a12dbdcbace5fabb9ea2e9005d7a4aa2fe",
+        "4a5c062210cf6ea8bcace1acba32163ecd6826fc",
+        "d51a1471d888c341bfcd89321596cb421a39ebd2"
       ],
       "frontend_commits": [
         "ae1413c15b837f034d749e89205ec3fc1a872920",
@@ -1712,10 +1714,12 @@
         "5b6b6908c00ecb271b262af7bc2edc830df11e53",
         "d63f0bda67fa41265bfb89cb1e5116f2d534e116",
         "73eb188faa823b611ff36eb8f8170a9d40546f4b",
-        "a49bde66936b92e1dc558fd5616263bee8ecd487"
+        "a49bde66936b92e1dc558fd5616263bee8ecd487",
+        "9b4a887c0b7b5eb95c020d18a402680f9f19e5da"
       ],
       "migrations": [
-        "supabase/migrations/20261024154734_bid_process_messages.sql"
+        "supabase/migrations/20261024154734_bid_process_messages.sql",
+        "supabase/migrations/20261025003517_add_bid_process_message_reads.sql"
       ]
     }
   ]
