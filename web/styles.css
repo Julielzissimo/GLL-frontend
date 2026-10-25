@@ -6387,12 +6387,19 @@ html.is-loading { overflow: hidden; }
 .bid-header-actions-group #currentBidCreatorTag { width: auto; min-width: 0; max-width: min(210px, 100%); padding: 4px var(--space-sm) 4px var(--space-xs); border: 0; border-radius: 0; background: transparent; box-shadow: none; }
 .bid-header-actions-group #currentBidCreatorTag .creator-avatar { width: 38px; height: 38px; flex-basis: 38px; }
 .bid-header-group-divider { width: 1px; height: 42px; flex: 0 0 1px; margin: 0 var(--space-md); background: var(--gll-line); }
-.bid-followup-open-button { display: inline-flex; flex: 0 0 auto; align-items: center; gap: var(--space-sm); white-space: nowrap; }
+.bid-followup-open-button { position: relative; display: inline-flex; flex: 0 0 auto; align-items: center; gap: var(--space-sm); white-space: nowrap; }
 #bidFollowupButton { border-color: var(--gll-line-strong); background: var(--gll-paper); color: var(--gll-forest); font-weight: var(--font-weight-semibold); transition: background-color 180ms ease, border-color 180ms ease; }
 #bidFollowupButton:hover { border-color: var(--gll-line-strong); background: var(--gll-paper-muted); }
 .bid-followup-open-button[hidden], .bid-followup-open-button.hidden { display: none; }
 .bid-followup-open-button [data-gll-icon] { display: inline-flex; width: 18px; height: 18px; }
 .bid-followup-open-button svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.bid-followup-unread-indicator { position: absolute; top: 5px; right: 5px; width: 9px; height: 9px; border: 2px solid var(--gll-paper); border-radius: 50%; background: var(--gll-danger); pointer-events: none; }
+.bid-followup-unread-indicator[hidden] { display: none; }
+#bidFollowupButton.has-unread .bid-followup-unread-indicator::after { position: absolute; inset: -4px; border: 1px solid var(--gll-danger); border-radius: inherit; content: ""; animation: bid-followup-unread-pulse 1.8s ease-out infinite; }
+@keyframes bid-followup-unread-pulse {
+  0% { transform: scale(.65); opacity: .8; }
+  100% { transform: scale(1.75); opacity: 0; }
+}
 
 .bid-followup-dialog {
   position: fixed;
@@ -6675,6 +6682,7 @@ html.is-loading { overflow: hidden; }
 }
 @keyframes blocking-loading-spin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) {
+  #bidFollowupButton.has-unread .bid-followup-unread-indicator::after { animation: none; }
   .blocking-loading-spinner { animation: none; }
   .organization-chat-button.has-unread::before,
   .organization-chat-button.has-unread::after,
