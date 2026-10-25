@@ -333,6 +333,7 @@ const refs = {
   homeDisqualifiedBids: $("homeDisqualifiedBids"),
   homeDisputedBids: $("homeDisputedBids"),
   bidWorkspaceHeader: $("bidWorkspaceHeader"),
+  currentBidTitle: $("currentBidTitle"),
   currentBidCreatorTag: $("currentBidCreatorTag"),
   currentBidAgency: $("currentBidAgency"),
   usersPage: $("usersPage"),
@@ -466,7 +467,6 @@ const refs = {
   bidQuotationFilterId: $("bidQuotationFilterId"),
   bidQuotationFilterAgency: $("bidQuotationFilterAgency"),
   bidQuotationResultsBody: $("bidQuotationResultsBody"),
-  selectedBidLabel: $("selectedBidLabel"),
   bidFormError: $("bidFormError"),
   deleteBidButton: $("deleteBidButton"),
   clearBidButton: $("clearBidButton"),
@@ -6123,6 +6123,7 @@ async function exportBidHistoryCsv() {
 
 function updateBidWorkspaceHeader() {
   const bid = currentBid();
+  refs.currentBidTitle.textContent = bidDisplayNumber(bid) || "Novo edital";
   refs.currentBidCreatorTag.innerHTML = bid ? creatorTagMarkup(bid) : "";
   refs.currentBidCreatorTag.classList.toggle("hidden", !bid);
   refs.currentBidAgency.textContent = bid?.buyer_agency || "Preencha os dados para cadastrar um novo edital.";
@@ -6488,7 +6489,6 @@ function loadBid(bidId, options = {}) {
   refs.editalFile.value = "";
   renderBidAttachment(bid);
   renderPublicSessionLink();
-  refs.selectedBidLabel.textContent = bidDisplayNumber(bid);
   refs.bidFormError.textContent = "";
   clearItemForm();
   clearDocumentForm();
@@ -6790,7 +6790,6 @@ function clearBidForm(options = {}) {
   refs.bidStatus.value = STATUS_OPTIONS[0];
   refs.bidStatusReason.value = "";
   updateBidStatusControls();
-  refs.selectedBidLabel.textContent = "Novo edital";
   refs.bidFormError.textContent = "";
   clearItemForm();
   clearDocumentForm();
