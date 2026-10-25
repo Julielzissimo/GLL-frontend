@@ -17,6 +17,8 @@ export function createBidFollowupFeature({
   const errorNode = byId("bidFollowupError");
   const emptyNode = byId("bidFollowupEmpty");
   const submitLabel = byId("bidFollowupSubmitLabel");
+  const button = byId("bidFollowupButton");
+  const unreadIndicator = byId("bidFollowupUnreadIndicator");
 
   let active = false;
   let timer = null;
@@ -30,6 +32,108 @@ export function createBidFollowupFeature({
   let selectedSuggestionIndex = 0;
   let messageRequest = 0;
   let notificationRequest = 0;
+  let unreadRequest = 0;
+  let unreadTimer = null;
+  let trackedBidId = null;
+
+  function setUnread(visible) {
+    const hasUnread = Boolean(visible);
+    const label = hasUnread ? "Acompanhamento, mensagens não lidas" : "Acompanhamento";
+    button.classList.toggle("has-unread", hasUnread);
+    button.setAttribute("aria-label", label);
+    button.title = label;
+    if (unreadIndicator) unreadIndicator.hidden = !hasUnread;
+  }
+
+  async function refreshUnreadState() {
+    const client = getClient();
+    const bid = getBid();
+    const userId = getUserId();
+    if (!client || !bid?.id || !userId || trackedBidId !== bid.id) return;
+    const request = ++unreadRequest;
+    try {
+      const { data, error } = await client.from("bid_process_messages")
+        .select("id,author_id")
+        .eq("bid_id", bid.id)
+        .order("created_at", { ascending: false })
+        .order("id", { ascending: false })
+        .limit(250);
+      if (error) throw error;
+      if (request !== unreadRequest || trackedBidId !== bid.id || bid.id !== getBid()?.id || userId !== getUserId()) return;
+      const incoming = (data || []).filter((message) => message.author_id && message.author_id !== userId);
+      if (!incoming.length) {
+        setUnread(false);
+        return;
+      }
+      const receiptResult = await client.from("bid_process_message_reads")
+        .select("message_id")
+        .eq("bid_id", bid.id)
+        .eq("reader_id", userId)
+        .in("message_id", incoming.map((message) => message.id));
+      if (receiptResult.error) throw receiptResult.error;
+      if (request !== unreadRequest || trackedBidId !== bid.id || bid.id !== getBid()?.id || userId !== getUserId()) return;
+      const readIds = new Set((receiptResult.data || []).map((receipt) => receipt.message_id));
+      setUnread(incoming.some((message) => !readIds.has(message.id)));
+    } catch (error) {
+      console.warn(error.message || "Não foi possível atualizar as mensagens não lidas deste edital.");
+    }
+  }
+
+  async function markMessagesAsRead(rows, bidId) {
+    const client = getClient();
+    const userId = getUserId();
+    if (!rows.length) {
+      setUnread(false);
+      return;
+    }
+    if (!client || !userId) return;
+    const incoming = rows.filter((message) => message.author_id && message.author_id !== userId);
+    if (!incoming.length) {
+      setUnread(false);
+      return;
+    }
+    const receipts = incoming.map((message) => ({
+      message_id: message.id,
+      bid_id: bidId,
+      organization_id: message.organization_id,
+      reader_id: userId,
+    }));
+    const { error } = await client.from("bid_process_message_reads").upsert(receipts, {
+      onConflict: "message_id,reader_id",
+      ignoreDuplicates: true,
+    });
+    if (error) throw error;
+    if (active && activeBidId === bidId && bidId === getBid()?.id && userId === getUserId()) setUnread(false);
+  }
+
+  function stopUnreadTracking() {
+    unreadRequest += 1;
+    clearInterval(unreadTimer);
+    unreadTimer = null;
+    trackedBidId = null;
+    setUnread(false);
+  }
+
+  function startUnreadTracking(bidId) {
+    if (trackedBidId !== bidId) {
+      unreadRequest += 1;
+      trackedBidId = bidId;
+      setUnread(false);
+      void refreshUnreadState();
+    }
+    if (!unreadTimer) {
+      unreadTimer = setInterval(() => {
+        if (document.hidden || (active && activeBidId === trackedBidId)) return;
+        void refreshUnreadState();
+      }, 20_000);
+    }
+  }
+
+  function handleVisibilityChange() {
+    if (document.hidden) return;
+    if (active) void refreshMessages().catch(() => {});
+    else if (trackedBidId) void refreshUnreadState();
+  }
 
   const displayName = (user) => String(user?.display_name || user?.full_name || user?.name || user?.email || "Integrante").trim();
   const escapeSelectorValue = (value) => globalThis.CSS?.escape ? CSS.escape(String(value)) : String(value).replace(/[^a-zA-Z0-9_-]/g, "\\$&");
@@ -226,7 +330,7 @@ export function createBidFollowupFeature({
     if (!client || !bid?.id) return;
     const request = ++messageRequest;
     const { data, error } = await client.from("bid_process_messages")
-      .select("id,bid_id,author_id,author_name,body,created_at")
+      .select("id,bid_id,organization_id,author_id,author_name,body,created_at")
       .eq("bid_id", bid.id)
       .order("created_at", { ascending: false })
       .limit(250);
@@ -245,6 +349,13 @@ export function createBidFollowupFeature({
     messages = rows;
     messageMentions = mentions;
     renderMessages({ scrollToBottom });
+    try {
+      await markMessagesAsRead(rows, bid.id);
+      if (request === messageRequest && active && activeBidId === bid.id) setUnread(false);
+    } catch (readError) {
+      console.warn(readError.message || "Não foi possível registrar a leitura das atualizações deste edital.");
+      void refreshUnreadState();
+    }
   }
 
   async function refreshNotifications() {
@@ -416,15 +527,20 @@ export function createBidFollowupFeature({
     dialog.addEventListener("click", (event) => {
       if (event.target === dialog) close();
     });
+    document.addEventListener("visibilitychange", handleVisibilityChange);
   }
 
   function updateAvailability(visible) {
-    byId("bidFollowupButton").classList.toggle("hidden", !visible);
+    button.classList.toggle("hidden", !visible);
+    const bid = getBid();
+    if (visible && bid?.id) startUnreadTracking(bid.id);
+    else if (trackedBidId || unreadTimer) stopUnreadTracking();
     if (!visible && dialog.open) close();
   }
 
   function reset() {
     close();
+    stopUnreadTracking();
     notificationRequest += 1;
     messages = [];
     messageMentions = [];
