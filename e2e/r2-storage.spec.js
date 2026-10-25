@@ -273,7 +273,8 @@ test("homologação anexa e baixa um arquivo de edital pela interface usando R2"
     await page.locator("#buyerAgency").fill("QA automatizado — dados sintéticos");
     await page.locator("#sessionDatetime").fill(futureSession);
     await page.locator("#bidForm button[type='submit']").click();
-    await expect(page.locator("#selectedBidLabel")).toHaveText(bidNumber, { timeout: 35_000 });
+    await expect(page.locator("#currentBidTitle")).toHaveText(bidNumber, { timeout: 35_000 });
+    await expect(page.locator("#selectedBidLabel")).toHaveCount(0);
     createdBid = true;
 
     await page.locator("#editalFile").setInputFiles({ name: fileName, mimeType: "image/png", buffer: fileBytes });
