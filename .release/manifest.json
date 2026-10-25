@@ -1721,6 +1721,14 @@
         "supabase/migrations/20261024154734_bid_process_messages.sql",
         "supabase/migrations/20261025003517_add_bid_process_message_reads.sql"
       ]
+    },
+    {
+      "id": "ISSUE-223",
+      "backend_commits": [],
+      "frontend_commits": [
+        "5e1cd9d2c998797a1d4fd35445e8120fdb9cb93a"
+      ],
+      "migrations": []
     }
   ]
 }
