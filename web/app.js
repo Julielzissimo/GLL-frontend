@@ -2378,14 +2378,27 @@ const bidFollowupFeature = createBidFollowupFeature({
   getUsers: () => appState.users,
   getUserId: () => appState.currentUserAuthId,
   formatBidLabel: bidDisplayNumber,
-  onNotificationsChanged: (notifications) => {
+  onNotificationsChanged: (notifications, { notifyMessageIds = [] } = {}) => {
+    const previousMessageIds = new Set(appState.bidMessageNotifications.map((notification) => String(notification.message_id)));
     appState.bidMessageNotifications = Array.isArray(notifications) ? notifications : [];
     updateNotificationsIndicator();
     if (!refs.notificationsMenu.classList.contains("hidden")) setNotificationsMenuOpen(true);
+    const requestedMessageIds = new Set(notifyMessageIds.map(String));
+    for (const notification of appState.bidMessageNotifications) {
+      if (!requestedMessageIds.has(String(notification.message_id))
+        || previousMessageIds.has(String(notification.message_id))
+        || notification.message?.author_id === appState.currentUserAuthId) continue;
+      const bid = appState.bids.find((row) => row.id === notification.bid_id);
+      if (bid) showToast(`Você foi mencionado no chat do edital ${bidDisplayNumber(bid)}`, "info", "top-right");
+    }
   },
-  onMessageCreated: () => {
+  onMessageCreated: ({ bidId, messageId } = {}) => {
     if (chatBroadcastChannel) {
-      void chatBroadcastChannel.send({ type: "broadcast", event: "organization-data-changed", payload: {} }).catch(() => {});
+      void chatBroadcastChannel.send({
+        type: "broadcast",
+        event: "organization-data-changed",
+        payload: { resource: "bid_process_messages", bidId, messageId },
+      }).catch(() => {});
     }
   },
 });
@@ -2451,7 +2464,7 @@ async function refreshOrganizationDocumentAlerts() {
   const epoch = sessionEpoch;
   const organizationId = appState.currentOrganizationId;
   const mentionRefresh = bidFollowupFeature.refreshNotifications().catch(() => {
-    console.warn("Não foi possível atualizar as notificações de menção no acompanhamento dos editais.");
+    console.warn("Não foi possível atualizar as notificações de menção no chat dos editais.");
   });
   if (GLL_CONFIG.organizationDocumentsEnabled !== true) {
     appState.organizationDocumentNotifications = [];
@@ -4781,7 +4794,7 @@ function navigationNotifications() {
       bidId: bid.id,
       messageId: notification.message_id,
       icon: "messageCircle",
-      title: `Menção no acompanhamento · ${bidDisplayNumber(bid)}`,
+      title: `Você foi mencionado no chat do edital ${bidDisplayNumber(bid)}`,
       description: `${authorName}: ${excerpt}`,
     };
   }).filter(Boolean);
@@ -5208,6 +5221,21 @@ function scheduleLiveRefresh(event = null) {
   queueLiveRefresh();
 }
 
+function handleOrganizationDataChanged(event = null) {
+  scheduleLiveRefresh(event);
+  const payload = event?.payload || {};
+  const resource = payload.resource || event?.resource;
+  const bidId = payload.bidId || event?.bidId;
+  const messageId = payload.messageId || event?.messageId;
+  if (resource !== "bid_process_messages") return;
+  if (bidId) bidFollowupFeature.handleIncomingMessage({ bidId });
+  if (messageId) {
+    void bidFollowupFeature.refreshNotifications({ notifyMessageId: messageId }).catch(() => {
+      console.warn("Não foi possível atualizar as notificações de menção no chat do edital.");
+    });
+  }
+}
+
 function mergeLiveRows(existing, incoming, scopeField = null, scopeValue = null) {
   if (!scopeField) return incoming;
   const retained = existing.filter((row) => String(row?.[scopeField]) !== String(scopeValue));
@@ -5502,7 +5530,7 @@ async function startLiveUpdates() {
     chatBroadcastChannel = client.channel(`organization:${organizationId}`, {
       config: { private: true, broadcast: { self: false } },
     })
-      .on("broadcast", { event: "organization-data-changed" }, scheduleLiveRefresh)
+      .on("broadcast", { event: "organization-data-changed" }, handleOrganizationDataChanged)
       .on("broadcast", { event: "organization-message-inserted" }, organizationChat.handleIncomingMessage)
       .subscribe((status, error) => {
         if (status === "SUBSCRIBED") {
@@ -5622,7 +5650,7 @@ async function reloadData({ background = false, initialAccessVerified = false } 
   }
   Object.assign(appState, next);
   void bidFollowupFeature.refreshNotifications().catch(() => {
-    console.warn("Não foi possível atualizar as notificações de menção no acompanhamento dos editais.");
+    console.warn("Não foi possível atualizar as notificações de menção no chat dos editais.");
   });
   updateNotificationsIndicator();
   if (!refs.notificationsMenu.classList.contains("hidden")) setNotificationsMenuOpen(true);
@@ -9866,12 +9894,14 @@ function inferredToastTone(message) {
   return "success";
 }
 
-function showToast(message, tone = inferredToastTone(message)) {
+function showToast(message, tone = inferredToastTone(message), placement = "bottom-right") {
   const safeTone = ["success", "warning", "error", "info"].includes(tone) ? tone : "info";
+  const safePlacement = ["bottom-right", "top-right"].includes(placement) ? placement : "bottom-right";
   const iconName = safeTone === "error" ? "error" : safeTone;
   refs.toastIcon.innerHTML = GLLDesignSystem.ICONS[iconName];
   refs.toastMessage.textContent = String(message ?? "");
   refs.toast.dataset.tone = safeTone;
+  refs.toast.dataset.placement = safePlacement;
   refs.toast.setAttribute("role", safeTone === "error" ? "alert" : "status");
   refs.toast.setAttribute("aria-live", safeTone === "error" ? "assertive" : "polite");
   refs.toast.classList.add("show");
