@@ -8918,6 +8918,11 @@ button.history-row:hover {
   transition: width 160ms ease;
 }
 
+.billing-progress[data-tone="success"] span { background: var(--gll-success); }
+.billing-progress[data-tone="warning"] span { background: var(--gll-warning); }
+.billing-progress[data-tone="info"] span { background: var(--gll-info); }
+.billing-progress[data-tone="neutral"] span { background: var(--gll-ink-soft); }
+
 .billing-drawer {
   position: fixed;
   inset: 0 0 0 auto;
