@@ -257,10 +257,13 @@ function createBillingFeature({ getBid, getQuotation, getBudgetItems, store, toa
     const item = budgetItems().find((row) => Number(row.id) === Number(itemId));
     if (!item) return;
     const row = summaryFor(item);
+    const fulfillment = row.fulfillment || {};
+    const productLink = fulfillment.purchase_link || (Array.isArray(item.supplier_links) ? item.supplier_links[0] : "") || "";
     const progress = row.planned > 0 ? Math.min(100, Math.round((row.supplied / row.planned) * 100)) : 0;
     const supplyTone = badgeTone(row.supplyStatus);
     drawerContent.innerHTML = `<div class="billing-drawer-item-summary"><div><span class="eyebrow">ITEM DO ORÇAMENTO</span><h3>Item ${billingEscape(item.item_number)} · ${billingEscape(item.description || "Sem descrição")}</h3><p>${billingEscape([item.manufacturer, item.model].filter(Boolean).join(" · ") || item.unit || "")}</p></div><div class="billing-drawer-item-value"><span>Previsto</span><strong>${billingQuantity(row.planned)} un.</strong><small>${billingMoney(billingNumber(item.final_bid) * row.planned)}</small></div></div>
       <section class="billing-drawer-section" aria-labelledby="billingSupplySummaryTitle"><div class="billing-section-heading"><div><h3 id="billingSupplySummaryTitle">Acompanhamento</h3><p>Fornecimento e faturamento são acompanhados separadamente.</p></div></div><div class="billing-detail-stats"><div><span>Fornecido</span><strong>${billingQuantity(row.supplied)} / ${billingQuantity(row.planned)}</strong><div class="billing-progress" data-tone="${supplyTone}" role="progressbar" aria-label="Progresso de fornecimento" aria-valuemin="0" aria-valuemax="${billingEscape(row.planned)}" aria-valuenow="${billingEscape(row.supplied)}"><span style="width:${progress}%"></span></div></div><div><span>Pendente</span><strong>${billingQuantity(row.pending)}</strong></div><div><span>Faturado</span><strong>${billingQuantity(row.billed)} / ${billingQuantity(row.planned)}</strong></div></div><div class="billing-status-pair">${billingBadge(row.supplyStatus, supplyTone)}${billingBadge(row.invoiceStatus, badgeTone(row.invoiceStatus))}</div></section>
+      <section class="billing-drawer-section" aria-labelledby="billingPurchaseTitle"><div class="billing-section-heading"><div><h3 id="billingPurchaseTitle">Fornecedor e compra</h3><p>Informe o fornecedor como texto livre.</p></div></div><form id="billingPurchaseForm" class="billing-entry-form" data-billing-form="purchase"><div class="billing-form-grid">${fieldMarkup({ id: "billingSupplierName", name: "supplier_name", label: "Fornecedor", value: fulfillment.supplier_name || "", wide: true })}${fieldMarkup({ id: "billingPurchaseOrder", name: "purchase_order_number", label: "Número do pedido", value: fulfillment.purchase_order_number || "" })}${fieldMarkup({ id: "billingPurchaseDate", name: "purchase_date", label: "Data da compra", type: "date", value: fulfillment.purchase_date || "" })}${fieldMarkup({ id: "billingPurchaseLink", name: "purchase_link", label: "Link do produto ou pedido", type: "url", value: productLink, wide: true, placeholder: "https://" })}</div><p class="billing-form-error" data-billing-error="purchase" role="alert"></p><div class="button-row end"><button class="primary-action" type="submit">Salvar dados da compra</button></div></form></section>
       <section class="billing-drawer-section" aria-labelledby="billingCommitmentsTitle"><div class="billing-section-heading"><div><h3 id="billingCommitmentsTitle">Notas de empenho</h3><p>${row.commitments.length} ${row.commitments.length === 1 ? "empenho registrado" : "empenhos registrados"} · ${billingQuantity(row.committed)} un.</p></div></div>${renderRecordForm("commitment", itemId)}${renderEntryList("commitment", itemId)}</section>
       <section class="billing-drawer-section" aria-labelledby="billingDeliveriesTitle"><div class="billing-section-heading"><div><h3 id="billingDeliveriesTitle">Entregas</h3><p>Registre entregas parciais ou a entrega total.</p></div></div>${renderRecordForm("delivery", itemId)}${renderEntryList("delivery", itemId)}</section>
       <section class="billing-drawer-section" aria-labelledby="billingInvoicesTitle"><div class="billing-section-heading"><div><h3 id="billingInvoicesTitle">Notas fiscais</h3><p>Registre faturamentos parciais ou totais, independentes das entregas.</p></div></div>${renderRecordForm("invoice", itemId)}${renderEntryList("invoice", itemId)}</section>`;
@@ -311,6 +314,25 @@ function createBillingFeature({ getBid, getQuotation, getBudgetItems, store, toa
   function reportFormError(form, error) {
     const message = error?.message || "Não foi possível salvar os dados.";
     form.querySelector("[data-billing-error]").textContent = message;
+  }
+
+  async function handlePurchaseSave(form) {
+    const values = new FormData(form);
+    const purchaseLink = String(values.get("purchase_link") || "").trim();
+    if (purchaseLink) {
+      let url;
+      try { url = new URL(purchaseLink); } catch { throw new Error("Informe um link válido do produto ou pedido."); }
+      if (!["http:", "https:"].includes(url.protocol)) throw new Error("O link precisa começar com http:// ou https://.");
+    }
+    await runBusy(() => store.saveBillingFulfillment(state.bidId, state.selectedItemId, {
+      supplier_name: String(values.get("supplier_name") || "").trim(),
+      purchase_link: purchaseLink,
+      purchase_order_number: String(values.get("purchase_order_number") || "").trim(),
+      purchase_date: values.get("purchase_date") || null,
+    }), "Salvando dados da compra…");
+    onSaved?.();
+    await refreshData();
+    toast("Dados do fornecedor e da compra salvos.");
   }
 
   async function handleRecordSave(kind, form) {
@@ -390,7 +412,7 @@ function createBillingFeature({ getBid, getQuotation, getBudgetItems, store, toa
       event.preventDefault();
       clearError(form);
       const kind = form.dataset.billingForm;
-      void handleRecordSave(kind, form)
+      void (kind === "purchase" ? handlePurchaseSave(form) : handleRecordSave(kind, form))
         .then(() => renderDrawer())
         .catch((error) => reportFormError(form, error));
     });
