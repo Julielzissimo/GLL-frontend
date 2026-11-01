@@ -521,6 +521,11 @@ export function createBidFollowupFeature({
         input.setAttribute("aria-expanded", "false");
       }
     }
+
+    if (event.key === "Enter" && !event.shiftKey && !event.isComposing) {
+      event.preventDefault();
+      if (!sendButton.disabled) form.requestSubmit(sendButton);
+    }
   }
 
   function bind() {
