@@ -411,6 +411,7 @@ function client(db = backend(), auth = { session: { user } }, config = {}) {
   const listeners = new Map();
   const timers = new Map();
   const authCallbacks = [];
+  const bidFollowupCalls = { incomingMessages: [], notificationRefreshes: [] };
   const intervalDelays = [];
   let nextTimer = 0;
   const location = { pathname: "/homolog/", search: "", hash: "" };
@@ -457,7 +458,12 @@ function client(db = backend(), auth = { session: { user } }, config = {}) {
   const context = vm.createContext({
     console, URL, URLSearchParams, Intl, Date,
     createRadarEngineAdminFeature: () => ({ showPage() {}, hide() {}, reset() {} }),
-    createBidFollowupFeature: () => ({ bind() {}, close() {}, open() {}, refreshNotifications: async () => [], reset() {}, updateAvailability() {} }),
+    bidFollowupCalls,
+    createBidFollowupFeature: () => ({
+      bind() {}, close() {}, handleIncomingMessage: (payload) => bidFollowupCalls.incomingMessages.push(payload), open() {},
+      refreshNotifications: async (options = {}) => { bidFollowupCalls.notificationRefreshes.push(options); return []; },
+      reset() {}, updateAvailability() {},
+    }),
     window: { GLL_CONFIG: { supabaseUrl: "https://test.invalid", supabaseAnonKey: "test", sessionIdleTimeoutMinutes: 30, sessionMaxLifetimeHours: 8, ...config }, location, history, localStorage, ...events },
     document: { hidden: false, getElementById: element, querySelectorAll: () => [], createElement: () => element("syncNotice"), ...events },
     setTimeout: (fn) => { timers.set(++nextTimer, fn); return nextTimer; },
@@ -467,7 +473,7 @@ function client(db = backend(), auth = { session: { user } }, config = {}) {
   });
   vm.runInContext(application, context);
   element("notificationsMenu").classList.add("hidden");
-  const api = vm.runInContext(`({ store, appState, authState, AUTH_STATUS, main, initializeAuthStateListener, showAuthBootstrap, showAuthBootstrapError, showLoginView, showAppDataBootstrap, showAppDataBootstrapError, retryAppDataBootstrap, restoreSession, logout, reloadData, refreshInBackground, startLiveUpdates, stopLiveUpdates, resetAuthenticatedView, scheduleLiveRefresh, verifyCurrentUserAccess, calculateBidSummary, calculateLineTotal, calculateItemProfit, calculateProfitMargin, calculateValueWithMargin, parseDecimal, parseProfitMargin, money, formatDateTime, toDateTimeInputValue, fromDateTimeInputValue, readNavigationRoute, writeNavigationRoute, resolveAuthorizedPage, normalizeBidRecord, normalizeBidAttachments, validateEditalFiles, bidDisplayNumber, bidMatchesSearch, bidActivityDescription, creatorName, creatorInitials, creatorTagMarkup, normalizeQuotationRecord, normalizeQuotationItemRecord, quotationItemToBidItem, bidItemToQuotationItem, normalizeTechnicalSpecifications, quotationSaveError, sessionPolicyStorageKey, enforceSessionPolicy, availableBidQuotations, navigationNotifications, clearAllNotifications, updateCurrentUserProfile, waitForAppData: () => pendingAppDataBootstrap, waitForSessionRestore: () => pendingSessionRestore?.promise || Promise.resolve() })`, context);
+  const api = vm.runInContext(`({ store, appState, authState, AUTH_STATUS, bidFollowupCalls, main, initializeAuthStateListener, showAuthBootstrap, showAuthBootstrapError, showLoginView, showAppDataBootstrap, showAppDataBootstrapError, retryAppDataBootstrap, restoreSession, logout, reloadData, refreshInBackground, startLiveUpdates, stopLiveUpdates, resetAuthenticatedView, scheduleLiveRefresh, handleOrganizationDataChanged, verifyCurrentUserAccess, calculateBidSummary, calculateLineTotal, calculateItemProfit, calculateProfitMargin, calculateValueWithMargin, parseDecimal, parseProfitMargin, money, formatDateTime, toDateTimeInputValue, fromDateTimeInputValue, readNavigationRoute, writeNavigationRoute, resolveAuthorizedPage, normalizeBidRecord, normalizeBidAttachments, validateEditalFiles, bidDisplayNumber, bidMatchesSearch, bidActivityDescription, creatorName, creatorInitials, creatorTagMarkup, normalizeQuotationRecord, normalizeQuotationItemRecord, quotationItemToBidItem, bidItemToQuotationItem, normalizeTechnicalSpecifications, quotationSaveError, sessionPolicyStorageKey, enforceSessionPolicy, availableBidQuotations, navigationNotifications, clearAllNotifications, updateCurrentUserProfile, waitForAppData: () => pendingAppDataBootstrap, waitForSessionRestore: () => pendingSessionRestore?.promise || Promise.resolve() })`, context);
   vm.runInContext(`
     renderSuppliers = renderBids = renderDetails = renderQuotations = renderUsers = () => {};
     clearBidForm = clearQuotationForm = setPage = updateMainNavigationState = () => {};
@@ -1048,6 +1054,24 @@ test("two independent sessions apply only resources announced by the organizatio
   db.broadcast("organization:org-1", "organization-data-changed", { resource: "bids" });
   await b.flush();
   assert.equal(b.appState.bids.length, 0);
+});
+
+test("an incoming edital chat event immediately refreshes unread state and mention notifications", async () => {
+  const app = client();
+  await app.restoreSession();
+  const incomingBefore = app.bidFollowupCalls.incomingMessages.length;
+  const notificationsBefore = app.bidFollowupCalls.notificationRefreshes.length;
+
+  app.handleOrganizationDataChanged({ payload: {
+    resource: "bid_process_messages",
+    bidId: "TEST-1",
+    messageId: "message-229",
+  } });
+
+  assert.equal(app.bidFollowupCalls.incomingMessages.length, incomingBefore + 1);
+  assert.equal(app.bidFollowupCalls.incomingMessages.at(-1).bidId, "TEST-1");
+  assert.equal(app.bidFollowupCalls.notificationRefreshes.length, notificationsBefore + 1);
+  assert.equal(app.bidFollowupCalls.notificationRefreshes.at(-1).notifyMessageId, "message-229");
 });
 
 test("technical specifications are normalized and incomplete values are preserved", () => {

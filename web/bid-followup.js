@@ -32,6 +32,7 @@ export function createBidFollowupFeature({
   let selectedSuggestionIndex = 0;
   let messageRequest = 0;
   let notificationRequest = 0;
+  const pendingNotificationMessageIds = new Set();
   let unreadRequest = 0;
   let unreadTimer = null;
   let trackedBidId = null;
@@ -133,6 +134,18 @@ export function createBidFollowupFeature({
     if (document.hidden) return;
     if (active) void refreshMessages().catch(() => {});
     else if (trackedBidId) void refreshUnreadState();
+  }
+
+  function handleIncomingMessage({ bidId } = {}) {
+    const bid = getBid();
+    if (!bid?.id || String(bidId) !== String(bid.id) || trackedBidId !== bid.id) return;
+    if (active && activeBidId === bid.id && !document.hidden) {
+      void refreshMessages().catch((error) => {
+        console.warn(error.message || "Não foi possível atualizar as mensagens deste edital.");
+      });
+      return;
+    }
+    void refreshUnreadState();
   }
 
   const displayName = (user) => String(user?.display_name || user?.full_name || user?.name || user?.email || "Integrante").trim();
@@ -358,12 +371,14 @@ export function createBidFollowupFeature({
     }
   }
 
-  async function refreshNotifications() {
+  async function refreshNotifications({ notifyMessageId = null } = {}) {
     const client = getClient();
     const recipientId = getUserId();
     const request = ++notificationRequest;
+    if (notifyMessageId) pendingNotificationMessageIds.add(String(notifyMessageId));
     if (!client || !recipientId) {
-      onNotificationsChanged([]);
+      pendingNotificationMessageIds.clear();
+      onNotificationsChanged([], { notifyMessageIds: [] });
       return [];
     }
     const mentionsResult = await client.from("bid_message_mentions")
@@ -374,7 +389,10 @@ export function createBidFollowupFeature({
     if (mentionsResult.error) throw mentionsResult.error;
     const mentions = mentionsResult.data || [];
     if (!mentions.length) {
-      if (request === notificationRequest) onNotificationsChanged([]);
+      if (request === notificationRequest) {
+        pendingNotificationMessageIds.clear();
+        onNotificationsChanged([], { notifyMessageIds: [] });
+      }
       return [];
     }
     const messageResult = await client.from("bid_process_messages")
@@ -384,7 +402,13 @@ export function createBidFollowupFeature({
     const byId = new Map((messageResult.data || []).map((message) => [message.id, message]));
     const notifications = mentions.map((mention) => ({ ...mention, message: byId.get(mention.message_id) }))
       .filter((mention) => mention.message && mention.message.bid_id === mention.bid_id);
-    if (request === notificationRequest) onNotificationsChanged(notifications);
+    if (request === notificationRequest) {
+      const availableMessageIds = new Set(notifications.map((notification) => String(notification.message_id)));
+      const notifyMessageIds = [...pendingNotificationMessageIds]
+        .filter((messageId) => availableMessageIds.has(messageId));
+      pendingNotificationMessageIds.clear();
+      onNotificationsChanged(notifications, { notifyMessageIds });
+    }
     return notifications;
   }
 
@@ -448,7 +472,7 @@ export function createBidFollowupFeature({
     setError("");
     setComposerEnabled(false);
     try {
-      const { error } = await client.rpc("create_bid_process_message", {
+      const { data: messageId, error } = await client.rpc("create_bid_process_message", {
         p_bid_id: bid.id,
         p_body: body,
         p_mentions: normalizedMentions,
@@ -459,7 +483,7 @@ export function createBidFollowupFeature({
       draftBeforeEdit = "";
       resizeComposer();
       await refreshMessages({ scrollToBottom: true });
-      onMessageCreated();
+      onMessageCreated({ bidId: bid.id, messageId });
     } catch (error) {
       setError(error.message || "Não foi possível enviar a atualização. Tente novamente.");
     } finally {
@@ -542,10 +566,11 @@ export function createBidFollowupFeature({
     close();
     stopUnreadTracking();
     notificationRequest += 1;
+    pendingNotificationMessageIds.clear();
     messages = [];
     messageMentions = [];
     onNotificationsChanged([]);
   }
 
-  return { bind, close, open, refreshNotifications, reset, updateAvailability };
+  return { bind, close, handleIncomingMessage, open, refreshNotifications, reset, updateAvailability };
 }
