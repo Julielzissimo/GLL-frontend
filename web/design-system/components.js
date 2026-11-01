@@ -48,6 +48,7 @@
     { tone: "success", messages: ["Item marcado como vencido.", "Marcação de item vencido removida."] },
     { tone: "warning", messages: ["Link removido. Salve o edital para confirmar.", "Selecione um edital para baixar os itens.", "Selecione um orçamento para baixar os itens.", "Selecione um edital.", "Selecione um item.", "Selecione um documento.", "Selecione uma falha.", "Este edital está faturado e disponível apenas para visualização.", "No modo local, gere novamente o PDF para baixá-lo."] },
     { tone: "danger", messages: ["Analista não encontrado na organização.", "Não foi possível concluir a operação. Tente novamente.", "{error.message}"] },
+    { tone: "info", messages: ["Você foi mencionado no chat do edital {número do edital}."] },
   ]);
 
   const DIALOG_CATALOG = Object.freeze([

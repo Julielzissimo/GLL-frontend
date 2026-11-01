@@ -5434,6 +5434,7 @@ tr.item-won td {
 .toast[data-tone="warning"] { border-left-color: var(--color-warning); }
 .toast[data-tone="error"] { border-left-color: var(--color-danger); }
 .toast[data-tone="info"] { border-left-color: var(--color-info); }
+.toast[data-placement="top-right"] { top: 28px; bottom: auto; }
 .toast-icon svg { display: block; width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 .toast[data-tone="success"] .toast-icon { color: var(--color-success); }
 .toast[data-tone="warning"] .toast-icon { color: var(--color-warning); }
@@ -5456,6 +5457,7 @@ tr.item-won td {
 
 @media (max-width: 620px) {
   .toast { right: 16px; bottom: 16px; }
+  .toast[data-placement="top-right"] { top: 16px; bottom: auto; }
 }
 
 @media (max-width: 1180px) {
