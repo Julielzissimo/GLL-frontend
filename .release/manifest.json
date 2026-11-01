@@ -1751,12 +1751,17 @@
     },
     {
       "id": "ISSUE-229",
-      "backend_commits": [],
+      "backend_commits": [
+        "b17d0d368a2aeeea8b191d1994881ac350e9093c"
+      ],
       "frontend_commits": [
         "2f1c7d0c13315349f2df79a831dce487b9249326",
-        "203c4e983f990a9cfdc641d353d9f3701c299018"
+        "203c4e983f990a9cfdc641d353d9f3701c299018",
+        "4bc621e845f1a67ac42162764fc023815b11bd1c"
       ],
-      "migrations": []
+      "migrations": [
+        "supabase/migrations/20261101000000_broadcast_bid_process_messages.sql"
+      ]
     }
   ]
 }
