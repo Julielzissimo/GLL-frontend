@@ -373,7 +373,8 @@ function client(db = backend(), auth = { session: { user } }, config = {}) {
   const elements = new Map();
   const listeners = new Map();
   const timers = new Map();
-  const bidFollowupCalls = { incomingMessages: [], notificationRefreshes: [] };
+  const bidFollowupCalls = { incomingMessages: [], notificationRefreshes: [], notificationRows: [], onNotificationsChanged: null };
+  const toastCalls = [];
   const intervalDelays = [];
   const body = { append: (child) => { child.parentElement = body; } };
   let activeModal = null;
@@ -424,12 +425,21 @@ function client(db = backend(), auth = { session: { user } }, config = {}) {
   const context = vm.createContext({
     console, URL, URLSearchParams, Intl, Date,
     GLLDesignSystem: { ICONS: { close: "close", success: "success", warning: "warning", error: "error", info: "info" } },
-    bidFollowupCalls,
-    createBidFollowupFeature: () => ({
-      bind() {}, close() {}, handleIncomingMessage: (payload) => bidFollowupCalls.incomingMessages.push(payload), open() {},
-      refreshNotifications: async (options = {}) => { bidFollowupCalls.notificationRefreshes.push(options); return []; },
-      reset() {}, updateAvailability() {},
-    }),
+    bidFollowupCalls, toastCalls,
+    createBidFollowupFeature: (options = {}) => {
+      bidFollowupCalls.onNotificationsChanged = options.onNotificationsChanged;
+      return {
+        bind() {}, close() {}, handleIncomingMessage: (payload) => bidFollowupCalls.incomingMessages.push(payload), open() {},
+        refreshNotifications: async (refreshOptions = {}) => {
+          bidFollowupCalls.notificationRefreshes.push(refreshOptions);
+          const notificationRows = bidFollowupCalls.notificationRows;
+          const notifyMessageIds = refreshOptions.notifyMessageId ? [refreshOptions.notifyMessageId] : [];
+          bidFollowupCalls.onNotificationsChanged?.(notificationRows, { notifyMessageIds });
+          return notificationRows;
+        },
+        reset() {}, updateAvailability() {},
+      };
+    },
     window: { GLL_CONFIG: { supabaseUrl: "https://test.invalid", supabaseAnonKey: "test", sessionIdleTimeoutMinutes: 30, sessionMaxLifetimeHours: 8, ...config }, location, history, localStorage, ...events },
     document: { hidden: false, body, getElementById: element, querySelector: (selector) => selector === "dialog:modal" ? activeModal : null, querySelectorAll: () => [], createElement: () => element("syncNotice"), ...events },
     setTimeout: (fn) => { timers.set(++nextTimer, fn); return nextTimer; },
@@ -449,7 +459,7 @@ function client(db = backend(), auth = { session: { user } }, config = {}) {
   vm.runInContext(`
     renderSuppliers = renderBids = renderDetails = renderQuotations = renderUsers = () => {};
     clearBidForm = clearQuotationForm = setPage = updateMainNavigationState = () => {};
-    showToast = () => {};
+    showToast = (...args) => toastCalls.push(args);
   `, context);
   api.store.getAll = async (table) => structuredClone(db.tables[table]);
   api.store.getBidActivity = async () => structuredClone(db.tables.bid_activity || []);
@@ -496,7 +506,7 @@ function client(db = backend(), auth = { session: { user } }, config = {}) {
     },
     removeChannel: async (channel) => db.channels.delete(channel),
   };
-  return { ...api, db, auth, context, elements, element, timers, listeners, location, history,
+  return { ...api, db, auth, context, elements, element, timers, listeners, location, history, toastCalls,
     intervalDelays,
     flush: async () => {
       const pending = [...timers.values()]; timers.clear();
@@ -895,22 +905,32 @@ test("two independent sessions apply only resources announced by the organizatio
   assert.equal(b.appState.bids.length, 0);
 });
 
-test("an incoming edital chat event immediately refreshes unread state and mention notifications", async () => {
+test("a realtime edital chat event refreshes unread state and shows the mention toast", async () => {
   const app = client();
   await app.restoreSession();
+  app.appState.bids = [{ id: "TEST-1", edital_number: "10/2026" }];
+  app.bidFollowupCalls.notificationRows = [{
+    message_id: "message-229",
+    bid_id: "TEST-1",
+    message: { author_id: "another-user" },
+  }];
   const incomingBefore = app.bidFollowupCalls.incomingMessages.length;
   const notificationsBefore = app.bidFollowupCalls.notificationRefreshes.length;
 
-  app.handleOrganizationDataChanged({ payload: {
+  app.db.broadcast("organization:org-1", "organization-data-changed", {
     resource: "bid_process_messages",
     bidId: "TEST-1",
     messageId: "message-229",
-  } });
+  });
 
   assert.equal(app.bidFollowupCalls.incomingMessages.length, incomingBefore + 1);
   assert.equal(app.bidFollowupCalls.incomingMessages.at(-1).bidId, "TEST-1");
   assert.equal(app.bidFollowupCalls.notificationRefreshes.length, notificationsBefore + 1);
   assert.equal(app.bidFollowupCalls.notificationRefreshes.at(-1).notifyMessageId, "message-229");
+  assert.deepEqual(
+    JSON.parse(JSON.stringify(app.toastCalls)),
+    [["Você foi mencionado no chat do edital 10/2026", "info", "top-right"]],
+  );
 });
 
 test("toast de menção fica acima do modal do chat e retorna ao fechar o modal", () => {

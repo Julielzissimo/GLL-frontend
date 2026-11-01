@@ -5,7 +5,6 @@ export function createBidFollowupFeature({
   getUserId,
   formatBidLabel = (bid) => bid?.edital_number || `Edital ${bid?.id || ""}`,
   onNotificationsChanged = () => {},
-  onMessageCreated = () => {},
 }) {
   const byId = (id) => document.getElementById(id);
   const dialog = byId("bidFollowupDrawer");
@@ -472,7 +471,7 @@ export function createBidFollowupFeature({
     setError("");
     setComposerEnabled(false);
     try {
-      const { data: messageId, error } = await client.rpc("create_bid_process_message", {
+      const { error } = await client.rpc("create_bid_process_message", {
         p_bid_id: bid.id,
         p_body: body,
         p_mentions: normalizedMentions,
@@ -483,7 +482,6 @@ export function createBidFollowupFeature({
       draftBeforeEdit = "";
       resizeComposer();
       await refreshMessages({ scrollToBottom: true });
-      onMessageCreated({ bidId: bid.id, messageId });
     } catch (error) {
       setError(error.message || "Não foi possível enviar a atualização. Tente novamente.");
     } finally {

@@ -2266,15 +2266,6 @@ const bidFollowupFeature = createBidFollowupFeature({
       if (bid) showToast(`Você foi mencionado no chat do edital ${bidDisplayNumber(bid)}`, "info", "top-right");
     }
   },
-  onMessageCreated: ({ bidId, messageId } = {}) => {
-    if (chatBroadcastChannel) {
-      void chatBroadcastChannel.send({
-        type: "broadcast",
-        event: "organization-data-changed",
-        payload: { resource: "bid_process_messages", bidId, messageId },
-      }).catch(() => {});
-    }
-  },
 });
 const declarationsFeature = createDeclarationsFeature({
   getClient: () => (store.requiresAuthenticationBeforeData ? store.client : null),
@@ -4758,12 +4749,14 @@ function scheduleLiveRefresh(event = null) {
 }
 
 function handleOrganizationDataChanged(event = null) {
-  scheduleLiveRefresh(event);
   const payload = event?.payload || {};
   const resource = payload.resource || event?.resource;
   const bidId = payload.bidId || event?.bidId;
   const messageId = payload.messageId || event?.messageId;
-  if (resource !== "bid_process_messages") return;
+  if (resource !== "bid_process_messages") {
+    scheduleLiveRefresh(event);
+    return;
+  }
   if (bidId) bidFollowupFeature.handleIncomingMessage({ bidId });
   if (messageId) {
     void bidFollowupFeature.refreshNotifications({ notifyMessageId: messageId }).catch(() => {
