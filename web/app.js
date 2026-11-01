@@ -2915,7 +2915,7 @@ function bindEvents() {
   refs.toastDismissButton.innerHTML = GLLDesignSystem.ICONS.close;
   refs.toastDismissButton.addEventListener("click", () => {
     clearTimeout(toastTimer);
-    refs.toast.classList.remove("show");
+    hideToast();
   });
   $("supplierForm").addEventListener("submit", withBlockingLoading(saveSupplier, "Salvando fornecedor…"));
   $("newSupplierButton").addEventListener("click", () => openSupplierModal());
@@ -9401,15 +9401,37 @@ function showToast(message, tone = inferredToastTone(message), placement = "bott
   const safeTone = ["success", "warning", "error", "info"].includes(tone) ? tone : "info";
   const safePlacement = ["bottom-right", "top-right"].includes(placement) ? placement : "bottom-right";
   const iconName = safeTone === "error" ? "error" : safeTone;
+  moveToastIntoActiveModal();
   refs.toastIcon.innerHTML = GLLDesignSystem.ICONS[iconName];
   refs.toastMessage.textContent = String(message ?? "");
   refs.toast.dataset.tone = safeTone;
   refs.toast.dataset.placement = safePlacement;
   refs.toast.setAttribute("role", safeTone === "error" ? "alert" : "status");
   refs.toast.setAttribute("aria-live", safeTone === "error" ? "assertive" : "polite");
+  if (typeof refs.toast.showPopover === "function" && !refs.toast.matches(":popover-open")) refs.toast.showPopover();
   refs.toast.classList.add("show");
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => refs.toast.classList.remove("show"), 3600);
+  toastTimer = setTimeout(hideToast, 3600);
+}
+
+function moveToastIntoActiveModal() {
+  let modal = null;
+  try {
+    modal = document.querySelector("dialog:modal");
+  } catch {
+    return;
+  }
+  if (!modal || refs.toast.parentElement === modal) return;
+  modal.append(refs.toast);
+  modal.addEventListener("close", () => {
+    if (refs.toast.parentElement === modal) document.body.append(refs.toast);
+  }, { once: true });
+}
+
+function hideToast() {
+  refs.toast.classList.remove("show");
+  if (typeof refs.toast.hidePopover === "function" && refs.toast.matches(":popover-open")) refs.toast.hidePopover();
+  if (refs.toast.parentElement !== document.body) document.body.append(refs.toast);
 }
 
 withBlockingLoading(main, "Verificando sessão…")().catch((error) => {

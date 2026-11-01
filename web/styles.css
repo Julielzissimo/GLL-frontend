@@ -2024,6 +2024,9 @@ tr.warning-row {
   transition: opacity 160ms ease, transform 160ms ease;
 }
 
+.toast[popover] { inset: auto; margin: 0; }
+.toast[popover]:not(:popover-open) { display: none; }
+
 .toast.show {
   transform: translateY(0);
   opacity: 1;
