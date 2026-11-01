@@ -413,6 +413,8 @@ function client(db = backend(), auth = { session: { user } }, config = {}) {
   const authCallbacks = [];
   const bidFollowupCalls = { incomingMessages: [], notificationRefreshes: [] };
   const intervalDelays = [];
+  const body = { append: (child) => { child.parentElement = body; } };
+  let activeModal = null;
   let nextTimer = 0;
   const location = { pathname: "/homolog/", search: "", hash: "" };
   const updateLocation = (url) => {
@@ -436,13 +438,15 @@ function client(db = backend(), auth = { session: { user } }, config = {}) {
     if (!elements.has(id)) {
       const classes = new Set();
       elements.set(id, {
-        id, value: "", textContent: "", dataset: {}, attributes: {}, _innerHTML: "", innerHTMLWrites: 0, classList: {
+        id, value: "", textContent: "", dataset: {}, attributes: {}, parentElement: body, popoverOpen: false, _innerHTML: "", innerHTMLWrites: 0, classList: {
           add: (...values) => values.forEach((v) => classes.add(v)),
           remove: (...values) => values.forEach((v) => classes.delete(v)),
           contains: (v) => classes.has(v),
           toggle: (v, on = !classes.has(v)) => on ? classes.add(v) : classes.delete(v),
         },
-        querySelector: () => null, querySelectorAll: () => [], setAttribute(name, value) { this.attributes[name] = String(value); }, addEventListener() {}, removeEventListener() {}, insertAdjacentHTML() {}, prepend() {}, reset() {}, close() {},
+        querySelector: () => null, querySelectorAll: () => [], matches(selector) { return selector === ":popover-open" && this.popoverOpen; },
+        showPopover() { this.popoverOpen = true; }, hidePopover() { this.popoverOpen = false; },
+        setAttribute(name, value) { this.attributes[name] = String(value); }, addEventListener() {}, removeEventListener() {}, insertAdjacentHTML() {}, prepend() {}, reset() {}, close() {},
       });
       Object.defineProperty(elements.get(id), "innerHTML", {
         get() { return this._innerHTML; },
@@ -457,6 +461,7 @@ function client(db = backend(), auth = { session: { user } }, config = {}) {
   };
   const context = vm.createContext({
     console, URL, URLSearchParams, Intl, Date,
+    GLLDesignSystem: { ICONS: { close: "close", success: "success", warning: "warning", error: "error", info: "info" } },
     createRadarEngineAdminFeature: () => ({ showPage() {}, hide() {}, reset() {} }),
     bidFollowupCalls,
     createBidFollowupFeature: () => ({
@@ -465,7 +470,7 @@ function client(db = backend(), auth = { session: { user } }, config = {}) {
       reset() {}, updateAvailability() {},
     }),
     window: { GLL_CONFIG: { supabaseUrl: "https://test.invalid", supabaseAnonKey: "test", sessionIdleTimeoutMinutes: 30, sessionMaxLifetimeHours: 8, ...config }, location, history, localStorage, ...events },
-    document: { hidden: false, getElementById: element, querySelectorAll: () => [], createElement: () => element("syncNotice"), ...events },
+    document: { hidden: false, body, getElementById: element, querySelector: (selector) => selector === "dialog:modal" ? activeModal : null, querySelectorAll: () => [], createElement: () => element("syncNotice"), ...events },
     setTimeout: (fn) => { timers.set(++nextTimer, fn); return nextTimer; },
     clearTimeout: (id) => timers.delete(id),
     setInterval: (fn, delay) => { intervalDelays.push(delay); timers.set(++nextTimer, fn); return nextTimer; },
@@ -473,7 +478,13 @@ function client(db = backend(), auth = { session: { user } }, config = {}) {
   });
   vm.runInContext(application, context);
   element("notificationsMenu").classList.add("hidden");
-  const api = vm.runInContext(`({ store, appState, authState, AUTH_STATUS, bidFollowupCalls, main, initializeAuthStateListener, showAuthBootstrap, showAuthBootstrapError, showLoginView, showAppDataBootstrap, showAppDataBootstrapError, retryAppDataBootstrap, restoreSession, logout, reloadData, refreshInBackground, startLiveUpdates, stopLiveUpdates, resetAuthenticatedView, scheduleLiveRefresh, handleOrganizationDataChanged, verifyCurrentUserAccess, calculateBidSummary, calculateLineTotal, calculateItemProfit, calculateProfitMargin, calculateValueWithMargin, parseDecimal, parseProfitMargin, money, formatDateTime, toDateTimeInputValue, fromDateTimeInputValue, readNavigationRoute, writeNavigationRoute, resolveAuthorizedPage, normalizeBidRecord, normalizeBidAttachments, validateEditalFiles, bidDisplayNumber, bidMatchesSearch, bidActivityDescription, creatorName, creatorInitials, creatorTagMarkup, normalizeQuotationRecord, normalizeQuotationItemRecord, quotationItemToBidItem, bidItemToQuotationItem, normalizeTechnicalSpecifications, quotationSaveError, sessionPolicyStorageKey, enforceSessionPolicy, availableBidQuotations, navigationNotifications, clearAllNotifications, updateCurrentUserProfile, waitForAppData: () => pendingAppDataBootstrap, waitForSessionRestore: () => pendingSessionRestore?.promise || Promise.resolve() })`, context);
+  const api = vm.runInContext(`({ store, appState, authState, AUTH_STATUS, bidFollowupCalls, body: document.body, toast: refs.toast, showToast, main, initializeAuthStateListener, showAuthBootstrap, showAuthBootstrapError, showLoginView, showAppDataBootstrap, showAppDataBootstrapError, retryAppDataBootstrap, restoreSession, logout, reloadData, refreshInBackground, startLiveUpdates, stopLiveUpdates, resetAuthenticatedView, scheduleLiveRefresh, handleOrganizationDataChanged, verifyCurrentUserAccess, calculateBidSummary, calculateLineTotal, calculateItemProfit, calculateProfitMargin, calculateValueWithMargin, parseDecimal, parseProfitMargin, money, formatDateTime, toDateTimeInputValue, fromDateTimeInputValue, readNavigationRoute, writeNavigationRoute, resolveAuthorizedPage, normalizeBidRecord, normalizeBidAttachments, validateEditalFiles, bidDisplayNumber, bidMatchesSearch, bidActivityDescription, creatorName, creatorInitials, creatorTagMarkup, normalizeQuotationRecord, normalizeQuotationItemRecord, quotationItemToBidItem, bidItemToQuotationItem, normalizeTechnicalSpecifications, quotationSaveError, sessionPolicyStorageKey, enforceSessionPolicy, availableBidQuotations, navigationNotifications, clearAllNotifications, updateCurrentUserProfile, waitForAppData: () => pendingAppDataBootstrap, waitForSessionRestore: () => pendingSessionRestore?.promise || Promise.resolve() })`, context);
+  api.setActiveModal = (modal) => { activeModal = modal; };
+  api.runTimers = () => {
+    const callbacks = [...timers.values()];
+    timers.clear();
+    callbacks.forEach((callback) => callback());
+  };
   vm.runInContext(`
     renderSuppliers = renderBids = renderDetails = renderQuotations = renderUsers = () => {};
     clearBidForm = clearQuotationForm = setPage = updateMainNavigationState = () => {};
@@ -1072,6 +1083,31 @@ test("an incoming edital chat event immediately refreshes unread state and menti
   assert.equal(app.bidFollowupCalls.incomingMessages.at(-1).bidId, "TEST-1");
   assert.equal(app.bidFollowupCalls.notificationRefreshes.length, notificationsBefore + 1);
   assert.equal(app.bidFollowupCalls.notificationRefreshes.at(-1).notifyMessageId, "message-229");
+});
+
+test("toast de menção fica acima do modal do chat e retorna ao fechar o modal", () => {
+  const app = client();
+  const modalListeners = new Map();
+  const modal = {
+    append(element) { element.parentElement = this; },
+    addEventListener(name, callback) { modalListeners.set(name, callback); },
+  };
+  app.setActiveModal(modal);
+  app.showToast("Você foi mencionado no chat do edital 10/2026", "info", "top-right");
+
+  assert.equal(app.toast.parentElement, modal);
+  assert.equal(app.toast.popoverOpen, true);
+  assert.equal(app.toast.classList.contains("show"), true);
+  assert.equal(app.toast.dataset.placement, "top-right");
+  assert.match(html, /id="toast"[^>]*popover="manual"/);
+  assert.match(styles, /\.toast\[popover\]:not\(:popover-open\)\s*\{\s*display:\s*none;/);
+
+  app.setActiveModal(null);
+  modalListeners.get("close")();
+  assert.equal(app.toast.parentElement, app.body);
+  app.runTimers();
+  assert.equal(app.toast.popoverOpen, false);
+  assert.equal(app.toast.classList.contains("show"), false);
 });
 
 test("technical specifications are normalized and incomplete values are preserved", () => {
