@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "release_id": "2026-10-23-pacote-de-melhorias-2",
+  "release_id": "2026-11-01-acompanhamento-de-fornecimento",
   "environment": "production",
   "target_branch": "main",
   "items": [
@@ -1201,6 +1201,31 @@
       "backend_commits": [],
       "frontend_commits": [
         "bcd801f36894f13b54c464729426e562a173537d"
+      ],
+      "migrations": []
+    },
+    {
+      "id": "FEAT-001",
+      "backend_commits": [
+        "e12e0236e5cd9cc7145a8cbaf975e1342e2623f2",
+        "3f17ca5fb23cd34945836f6132d0c7af016169ca"
+      ],
+      "frontend_commits": [
+        "1a4d7c4ce6faf61e3ff200b994c20c0a6fb9274e",
+        "2b475179052189c9093660bd15c8de9a99347e4c"
+      ],
+      "migrations": [
+        "supabase/migrations/20261018163925_add_bid_item_fulfillment_tracking.sql",
+        "supabase/migrations/20261018170909_faturamento_fornecedor_texto_livre.sql"
+      ]
+    },
+    {
+      "id": "ISSUE-108",
+      "backend_commits": [],
+      "frontend_commits": [
+        "451d0337f820bb31d750d64dc4820eae17abf938",
+        "ad05709357d0c22f71e002945bd25cd40a75b1e1",
+        "724304ab9860592fda170b0796a79b7f10fbca01"
       ],
       "migrations": []
     }
