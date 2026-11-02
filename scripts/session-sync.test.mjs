@@ -6,10 +6,10 @@ import test from "node:test";
 const source = await readFile(new URL("../web/app.js", import.meta.url), "utf8");
 const html = await readFile(new URL("../web/index.html", import.meta.url), "utf8");
 const styles = await readFile(new URL("../web/styles.css", import.meta.url), "utf8");
-const classicSource = source.replace(
-  /^import \{ formatCnpj, isValidCnpj \} from "\.\/company-data\.js";\r?\n/m,
-  "",
-);
+const classicSource = source
+  .replace(/^\uFEFF/, "")
+  .replace(/^import \{ createBidFollowupFeature \} from "\.\/bid-followup\.js";\r?\n/m, "")
+  .replace(/^import \{ formatCnpj, isValidCnpj \} from "\.\/company-data\.js";\r?\n/m, "");
 const application = classicSource.slice(0, classicSource.lastIndexOf('withBlockingLoading(main, "Verificando sessão…")'));
 const user = { email: "test@example.test", name: "Teste" };
 
