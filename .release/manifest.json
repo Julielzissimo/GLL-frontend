@@ -1763,6 +1763,19 @@
       "migrations": [
         "supabase/migrations/20261101000000_broadcast_bid_process_messages.sql"
       ]
+    },
+    {
+      "id": "ISSUE-238",
+      "backend_commits": [
+        "27640a4ec1c59d92c03138aea5bd2accbcc37fe3",
+        "a71e4b65539c0e83f3ed9f63422f1a4024f527b7"
+      ],
+      "frontend_commits": [
+        "2aa6973fcef44d921d390d2744cb85e3977acd82"
+      ],
+      "migrations": [
+        "supabase/migrations/20261101163559_reliable_message_notifications.sql"
+      ]
     }
   ]
 }
