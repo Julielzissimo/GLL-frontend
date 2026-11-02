@@ -76,6 +76,115 @@ test("feed da home abrevia descrições longas e permite expandir, recolher ou a
   assert.deepEqual(JSON.parse(JSON.stringify(app.context.openedBids)), ["bid-1", "bid-1"]);
 });
 
+test("avatar do feed renova o link assinado uma vez e mantém as iniciais se a nova imagem falhar", async () => {
+  const app = client();
+  const profile = {
+    auth_user_id: "auth-user-1",
+    avatar_path: "auth-user-1/foto.webp",
+    avatar_signed_url: "https://storage.example.test/foto.webp?token=expired",
+  };
+  app.appState.users = [profile];
+  app.appState.bidActivity = [{
+    bid_id: "bid-1",
+    actor_id: profile.auth_user_id,
+    actor_name: "Juliel Mendonça",
+    created_at: "2026-10-23T12:00:00Z",
+    event_type: "bid_updated",
+  }];
+
+  const feed = app.element("homeRecentActivitiesList");
+  vm.runInContext("renderHomeRecentActivities()", app.context);
+  assert.match(feed.innerHTML, /data-home-activity-avatar="true"/);
+  assert.match(feed.innerHTML, /data-avatar-fallback="JM"/);
+
+  let refreshCalls = 0;
+  let refreshPaths = [];
+  app.store.addSignedAvatarUrls = async (users, options) => {
+    refreshCalls += 1;
+    refreshPaths = options.refreshPaths;
+    return [{ ...users[0], avatar_signed_url: "https://storage.example.test/foto.webp?token=fresh" }];
+  };
+
+  const avatar = { isConnected: true, image: null, _textContent: "" };
+  Object.defineProperty(avatar, "textContent", {
+    get() { return this._textContent; },
+    set(value) { this._textContent = String(value); this.image = null; },
+  });
+  avatar.replaceChildren = (image) => { avatar._textContent = ""; avatar.image = image; };
+  const image = {
+    dataset: {
+      avatarUserId: profile.auth_user_id,
+      avatarPath: profile.avatar_path,
+      avatarFallback: "JM",
+    },
+    src: profile.avatar_signed_url,
+    closest: () => avatar,
+    addEventListener(type, listener) {
+      if (type === "load") this.loadListener = listener;
+    },
+  };
+  app.context.failedHomeActivityAvatar = image;
+
+  await vm.runInContext("handleHomeRecentActivityAvatarError(failedHomeActivityAvatar)", app.context);
+  assert.equal(refreshCalls, 1);
+  assert.deepEqual(JSON.parse(JSON.stringify(refreshPaths)), [profile.avatar_path]);
+  assert.equal(avatar.textContent, "JM");
+  assert.equal(avatar.image, null);
+  assert.equal(image.src, "https://storage.example.test/foto.webp?token=fresh");
+  assert.equal(app.appState.users[0].avatar_signed_url, image.src);
+  image.loadListener();
+  assert.equal(avatar.image, image);
+
+  await vm.runInContext("handleHomeRecentActivityAvatarError(failedHomeActivityAvatar)", app.context);
+  assert.equal(refreshCalls, 1);
+  assert.equal(avatar.textContent, "JM");
+  assert.equal(avatar.image, null);
+});
+
+test("avatar do feed ignora uma URL renovada depois que o perfil já trocou de foto", async () => {
+  const app = client();
+  const profile = {
+    auth_user_id: "auth-user-1",
+    avatar_path: "auth-user-1/foto-antiga.webp",
+    avatar_signed_url: "https://storage.example.test/foto-antiga.webp?token=expired",
+  };
+  app.appState.users = [profile];
+
+  let resolveRefresh;
+  app.store.addSignedAvatarUrls = () => new Promise((resolve) => { resolveRefresh = resolve; });
+  const avatar = { isConnected: true, image: null, _textContent: "" };
+  Object.defineProperty(avatar, "textContent", {
+    get() { return this._textContent; },
+    set(value) { this._textContent = String(value); this.image = null; },
+  });
+  avatar.replaceChildren = (image) => { avatar._textContent = ""; avatar.image = image; };
+  const image = {
+    dataset: {
+      avatarUserId: profile.auth_user_id,
+      avatarPath: profile.avatar_path,
+      avatarFallback: "JM",
+    },
+    src: profile.avatar_signed_url,
+    closest: () => avatar,
+  };
+  app.context.failedHomeActivityAvatar = image;
+
+  const pendingError = vm.runInContext("handleHomeRecentActivityAvatarError(failedHomeActivityAvatar)", app.context);
+  await new Promise((resolve) => setImmediate(resolve));
+  app.appState.users[0] = {
+    ...profile,
+    avatar_path: "auth-user-1/foto-nova.webp",
+    avatar_signed_url: "https://storage.example.test/foto-nova.webp?token=current",
+  };
+  resolveRefresh([{ ...profile, avatar_signed_url: "https://storage.example.test/foto-antiga.webp?token=fresh" }]);
+  await pendingError;
+
+  assert.equal(avatar.textContent, "JM");
+  assert.equal(avatar.image, null);
+  assert.equal(app.appState.users[0].avatar_path, "auth-user-1/foto-nova.webp");
+  assert.equal(app.appState.users[0].avatar_signed_url, "https://storage.example.test/foto-nova.webp?token=current");
+});
+
 test("número do edital é separado do identificador interno e aceita repetição", () => {
   const app = client();
   const first = app.normalizeBidRecord({ id: "internal-1", edital_number: "10/2026" });
@@ -264,7 +373,11 @@ function client(db = backend(), auth = { session: { user } }, config = {}) {
   const elements = new Map();
   const listeners = new Map();
   const timers = new Map();
+  const bidFollowupCalls = { incomingMessages: [], notificationRefreshes: [], notificationRows: [], onNotificationsChanged: null };
+  const toastCalls = [];
   const intervalDelays = [];
+  const body = { append: (child) => { child.parentElement = body; } };
+  let activeModal = null;
   let nextTimer = 0;
   const location = { pathname: "/homolog/", search: "", hash: "" };
   const updateLocation = (url) => {
@@ -288,13 +401,19 @@ function client(db = backend(), auth = { session: { user } }, config = {}) {
     if (!elements.has(id)) {
       const classes = new Set();
       elements.set(id, {
-        id, value: "", textContent: "", dataset: {}, attributes: {}, classList: {
+        id, value: "", textContent: "", dataset: {}, attributes: {}, parentElement: body, popoverOpen: false, _innerHTML: "", innerHTMLWrites: 0, classList: {
           add: (...values) => values.forEach((v) => classes.add(v)),
           remove: (...values) => values.forEach((v) => classes.delete(v)),
           contains: (v) => classes.has(v),
           toggle: (v, on = !classes.has(v)) => on ? classes.add(v) : classes.delete(v),
         },
-        querySelector: () => null, querySelectorAll: () => [], setAttribute(name, value) { this.attributes[name] = String(value); }, insertAdjacentHTML() {}, prepend() {}, reset() {}, close() {},
+        querySelector: () => null, querySelectorAll: () => [], matches(selector) { return selector === ":popover-open" && this.popoverOpen; },
+        showPopover() { this.popoverOpen = true; }, hidePopover() { this.popoverOpen = false; },
+        setAttribute(name, value) { this.attributes[name] = String(value); }, addEventListener() {}, removeEventListener() {}, insertAdjacentHTML() {}, prepend() {}, reset() {}, close() {},
+      });
+      Object.defineProperty(elements.get(id), "innerHTML", {
+        get() { return this._innerHTML; },
+        set(value) { this.innerHTMLWrites += 1; this._innerHTML = String(value); },
       });
     }
     return elements.get(id);
@@ -305,8 +424,24 @@ function client(db = backend(), auth = { session: { user } }, config = {}) {
   };
   const context = vm.createContext({
     console, URL, URLSearchParams, Intl, Date,
+    GLLDesignSystem: { ICONS: { close: "close", success: "success", warning: "warning", error: "error", info: "info" } },
+    bidFollowupCalls, toastCalls,
+    createBidFollowupFeature: (options = {}) => {
+      bidFollowupCalls.onNotificationsChanged = options.onNotificationsChanged;
+      return {
+        bind() {}, close() {}, handleIncomingMessage: (payload) => bidFollowupCalls.incomingMessages.push(payload), open() {},
+        refreshNotifications: async (refreshOptions = {}) => {
+          bidFollowupCalls.notificationRefreshes.push(refreshOptions);
+          const notificationRows = bidFollowupCalls.notificationRows;
+          const notifyMessageIds = refreshOptions.notifyMessageId ? [refreshOptions.notifyMessageId] : [];
+          bidFollowupCalls.onNotificationsChanged?.(notificationRows, { notifyMessageIds });
+          return notificationRows;
+        },
+        reset() {}, updateAvailability() {},
+      };
+    },
     window: { GLL_CONFIG: { supabaseUrl: "https://test.invalid", supabaseAnonKey: "test", sessionIdleTimeoutMinutes: 30, sessionMaxLifetimeHours: 8, ...config }, location, history, localStorage, ...events },
-    document: { hidden: false, getElementById: element, querySelectorAll: () => [], createElement: () => element("syncNotice"), ...events },
+    document: { hidden: false, body, getElementById: element, querySelector: (selector) => selector === "dialog:modal" ? activeModal : null, querySelectorAll: () => [], createElement: () => element("syncNotice"), ...events },
     setTimeout: (fn) => { timers.set(++nextTimer, fn); return nextTimer; },
     clearTimeout: (id) => timers.delete(id),
     setInterval: (fn, delay) => { intervalDelays.push(delay); timers.set(++nextTimer, fn); return nextTimer; },
@@ -314,11 +449,17 @@ function client(db = backend(), auth = { session: { user } }, config = {}) {
   });
   vm.runInContext(application, context);
   element("notificationsMenu").classList.add("hidden");
-  const api = vm.runInContext(`({ store, appState, restoreSession, logout, reloadData, refreshInBackground, startLiveUpdates, stopLiveUpdates, resetAuthenticatedView, scheduleLiveRefresh, verifyCurrentUserAccess, calculateBidSummary, calculateLineTotal, calculateItemProfit, calculateProfitMargin, calculateValueWithMargin, parseDecimal, parseProfitMargin, money, formatDateTime, toDateTimeInputValue, fromDateTimeInputValue, readNavigationRoute, writeNavigationRoute, resolveAuthorizedPage, normalizeBidRecord, normalizeBidAttachments, validateEditalFiles, bidDisplayNumber, bidMatchesSearch, bidActivityDescription, creatorName, creatorInitials, creatorTagMarkup, normalizeQuotationRecord, normalizeQuotationItemRecord, quotationItemToBidItem, bidItemToQuotationItem, normalizeTechnicalSpecifications, quotationSaveError, sessionPolicyStorageKey, enforceSessionPolicy, availableBidQuotations, navigationNotifications, clearAllNotifications, updateCurrentUserProfile })`, context);
+  const api = vm.runInContext(`({ store, appState, bidFollowupCalls, body: document.body, toast: refs.toast, showToast, restoreSession, logout, reloadData, refreshInBackground, startLiveUpdates, stopLiveUpdates, resetAuthenticatedView, scheduleLiveRefresh, handleOrganizationDataChanged, verifyCurrentUserAccess, calculateBidSummary, calculateLineTotal, calculateItemProfit, calculateProfitMargin, calculateValueWithMargin, parseDecimal, parseProfitMargin, money, formatDateTime, toDateTimeInputValue, fromDateTimeInputValue, readNavigationRoute, writeNavigationRoute, resolveAuthorizedPage, normalizeBidRecord, normalizeBidAttachments, validateEditalFiles, bidDisplayNumber, bidMatchesSearch, bidActivityDescription, creatorName, creatorInitials, creatorTagMarkup, normalizeQuotationRecord, normalizeQuotationItemRecord, quotationItemToBidItem, bidItemToQuotationItem, normalizeTechnicalSpecifications, quotationSaveError, sessionPolicyStorageKey, enforceSessionPolicy, availableBidQuotations, navigationNotifications, clearAllNotifications, updateCurrentUserProfile })`, context);
+  api.setActiveModal = (modal) => { activeModal = modal; };
+  api.runTimers = () => {
+    const callbacks = [...timers.values()];
+    timers.clear();
+    callbacks.forEach((callback) => callback());
+  };
   vm.runInContext(`
     renderSuppliers = renderBids = renderDetails = renderQuotations = renderUsers = () => {};
     clearBidForm = clearQuotationForm = setPage = updateMainNavigationState = () => {};
-    showToast = () => {};
+    showToast = (...args) => toastCalls.push(args);
   `, context);
   api.store.getAll = async (table) => structuredClone(db.tables[table]);
   api.store.getBidActivity = async () => structuredClone(db.tables.bid_activity || []);
@@ -365,7 +506,7 @@ function client(db = backend(), auth = { session: { user } }, config = {}) {
     },
     removeChannel: async (channel) => db.channels.delete(channel),
   };
-  return { ...api, db, auth, context, elements, element, timers, listeners, location, history,
+  return { ...api, db, auth, context, elements, element, timers, listeners, location, history, toastCalls,
     intervalDelays,
     flush: async () => {
       const pending = [...timers.values()]; timers.clear();
@@ -392,14 +533,14 @@ test("sets the Realtime JWT before subscribing to the private organization chann
   assert.equal(calls[0], "set-auth");
   const privateChannel = calls.find((call) => typeof call === "object" && call.topic === "organization:org-1");
   assert.deepEqual(JSON.parse(JSON.stringify(privateChannel.options)), { config: { private: true, broadcast: { self: false } } });
-  assert.deepEqual(app.intervalDelays, [5 * 60 * 1000]);
+  assert.deepEqual(app.intervalDelays, [5 * 60 * 1000, 30_000]);
   app.stopLiveUpdates();
 });
 
 test("refreshes document alerts every five minutes without restoring full-data polling", async () => {
   const app = client();
   await app.restoreSession();
-  assert.deepEqual(app.intervalDelays, [60_000, 5 * 60 * 1000]);
+  assert.deepEqual(app.intervalDelays, [60_000, 5 * 60 * 1000, 30_000]);
   await app.logout();
 });
 
@@ -764,6 +905,59 @@ test("two independent sessions apply only resources announced by the organizatio
   assert.equal(b.appState.bids.length, 0);
 });
 
+test("a realtime edital chat event refreshes unread state and shows the mention toast", async () => {
+  const app = client();
+  await app.restoreSession();
+  app.appState.bids = [{ id: "TEST-1", edital_number: "10/2026" }];
+  app.bidFollowupCalls.notificationRows = [{
+    message_id: "message-229",
+    bid_id: "TEST-1",
+    message: { author_id: "another-user" },
+  }];
+  const incomingBefore = app.bidFollowupCalls.incomingMessages.length;
+  const notificationsBefore = app.bidFollowupCalls.notificationRefreshes.length;
+
+  app.db.broadcast("organization:org-1", "organization-data-changed", {
+    resource: "bid_process_messages",
+    bidId: "TEST-1",
+    messageId: "message-229",
+  });
+
+  assert.equal(app.bidFollowupCalls.incomingMessages.length, incomingBefore + 1);
+  assert.equal(app.bidFollowupCalls.incomingMessages.at(-1).bidId, "TEST-1");
+  assert.equal(app.bidFollowupCalls.notificationRefreshes.length, notificationsBefore + 1);
+  assert.equal(app.bidFollowupCalls.notificationRefreshes.at(-1).notifyMessageId, "message-229");
+  assert.deepEqual(
+    JSON.parse(JSON.stringify(app.toastCalls)),
+    [["Você foi mencionado no chat do edital 10/2026", "info", "top-right"]],
+  );
+});
+
+test("toast de menção fica acima do modal do chat e retorna ao fechar o modal", () => {
+  const app = client();
+  const modalListeners = new Map();
+  const modal = {
+    append(element) { element.parentElement = this; },
+    addEventListener(name, callback) { modalListeners.set(name, callback); },
+  };
+  app.setActiveModal(modal);
+  app.showToast("Você foi mencionado no chat do edital 10/2026", "info", "top-right");
+
+  assert.equal(app.toast.parentElement, modal);
+  assert.equal(app.toast.popoverOpen, true);
+  assert.equal(app.toast.classList.contains("show"), true);
+  assert.equal(app.toast.dataset.placement, "top-right");
+  assert.match(html, /id="toast"[^>]*popover="manual"/);
+  assert.match(styles, /\.toast\[popover\]:not\(:popover-open\)\s*\{\s*display:\s*none;/);
+
+  app.setActiveModal(null);
+  modalListeners.get("close")();
+  assert.equal(app.toast.parentElement, app.body);
+  app.runTimers();
+  assert.equal(app.toast.popoverOpen, false);
+  assert.equal(app.toast.classList.contains("show"), false);
+});
+
 test("technical specifications are normalized and incomplete values are preserved", () => {
   const app = client();
   assert.deepEqual(
@@ -930,4 +1124,34 @@ test("bid revenue uses only won items for approved, billed, disputed, and discar
   assert.equal(app.calculateBidSummary("DISQUALIFIED").totalFinal, 350);
   assert.equal(app.calculateBidSummary("BILLED").totalFinal, 200);
   assert.equal(app.calculateBidSummary("APPROVED").itemCount, 2);
+});
+
+
+test("toast queue preserves successive messages and clears private notices on logout", () => {
+  const app = client();
+  app.context.realShowToast = app.showToast;
+  vm.runInContext("showToast = realShowToast", app.context);
+  app.showToast("Primeira menção", "info", "top-right");
+  app.showToast("Segunda menção", "info", "top-right");
+  assert.equal(app.element("toastMessage").textContent, "Primeira menção");
+  vm.runInContext("hideToast()", app.context);
+  assert.equal(app.element("toastMessage").textContent, "Segunda menção");
+  app.resetAuthenticatedView();
+  assert.equal(app.toast.classList.contains("show"), false);
+});
+
+test("hidden mentions are grouped on return and never repeated by duplicate refreshes", async () => {
+  const app = client();
+  await app.restoreSession();
+  app.appState.bids = [{ id: "TEST-1", edital_number: "10/2026" }];
+  app.context.document.hidden = true;
+  const rows = ["a", "b"].map((id) => ({ message_id: id, bid_id: "TEST-1", message: {author_id: "other"} }));
+  app.bidFollowupCalls.onNotificationsChanged(rows, { notifyMessageIds: ["a", "b"] });
+  assert.equal(app.context.toastCalls.length, 0);
+  app.context.document.hidden = false;
+  vm.runInContext("flushMentionToasts()", app.context);
+  assert.equal(app.context.toastCalls.length, 1);
+  assert.match(app.context.toastCalls[0][0], /2 novas menções/);
+  app.bidFollowupCalls.onNotificationsChanged(rows, { notifyMessageIds: ["a", "b"] });
+  assert.equal(app.context.toastCalls.length, 1);
 });

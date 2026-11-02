@@ -1,0 +1,597 @@
+export function createBidFollowupFeature({
+  getClient,
+  getBid,
+  getUsers,
+  getUserId,
+  formatBidLabel = (bid) => bid?.edital_number || `Edital ${bid?.id || ""}`,
+  onNotificationsChanged = () => {},
+}) {
+  const byId = (id) => document.getElementById(id);
+  const dialog = byId("bidFollowupDrawer");
+  const messagesHost = byId("bidFollowupMessages");
+  const input = byId("bidFollowupInput");
+  const form = byId("bidFollowupForm");
+  const suggestions = byId("bidFollowupSuggestions");
+  const sendButton = byId("bidFollowupSendButton");
+  const errorNode = byId("bidFollowupError");
+  const emptyNode = byId("bidFollowupEmpty");
+  const submitLabel = byId("bidFollowupSubmitLabel");
+  const button = byId("bidFollowupButton");
+  const unreadIndicator = byId("bidFollowupUnreadIndicator");
+
+  let active = false;
+  let timer = null;
+  let activeBidId = null;
+  let highlightedMessageId = null;
+  let messages = [];
+  let messageMentions = [];
+  let mentionRanges = [];
+  let draftBeforeEdit = "";
+  let mentionContext = null;
+  let selectedSuggestionIndex = 0;
+  let messageRequest = 0;
+  let notificationRequest = 0;
+  const pendingNotificationMessageIds = new Set();
+  let notificationFlight = null;
+  let notificationRefreshPending = false;
+  let notificationsInitialized = false;
+  const knownNotificationIds = new Set();
+  let unreadRequest = 0;
+  let unreadTimer = null;
+  let trackedBidId = null;
+
+  function setUnread(visible) {
+    const hasUnread = Boolean(visible);
+    const label = hasUnread ? "Acompanhamento, mensagens não lidas" : "Acompanhamento";
+    button.classList.toggle("has-unread", hasUnread);
+    button.setAttribute("aria-label", label);
+    button.title = label;
+    if (unreadIndicator) unreadIndicator.hidden = !hasUnread;
+  }
+
+  async function refreshUnreadState() {
+    const client = getClient();
+    const bid = getBid();
+    const userId = getUserId();
+    if (!client || !bid?.id || !userId || trackedBidId !== bid.id) return;
+    const request = ++unreadRequest;
+    try {
+      const { data, error } = await client.rpc("has_unread_bid_process_messages", { p_bid_id: bid.id });
+      if (error) throw error;
+      if (request !== unreadRequest || trackedBidId !== bid.id || bid.id !== getBid()?.id || userId !== getUserId()) return;
+      setUnread(data === true);
+    } catch (error) {
+      console.warn(error.message || "Não foi possível atualizar as mensagens não lidas deste edital.");
+    }
+  }
+
+  async function markMessagesAsRead(rows, bidId) {
+    const client = getClient();
+    const userId = getUserId();
+    if (!rows.length) {
+      setUnread(false);
+      return;
+    }
+    if (!client || !userId) return;
+    const incoming = rows.filter((message) => message.author_id && message.author_id !== userId);
+    if (!incoming.length) {
+      setUnread(false);
+      return;
+    }
+    const receipts = incoming.map((message) => ({
+      message_id: message.id,
+      bid_id: bidId,
+      organization_id: message.organization_id,
+      reader_id: userId,
+    }));
+    const { error } = await client.from("bid_process_message_reads").upsert(receipts, {
+      onConflict: "message_id,reader_id",
+      ignoreDuplicates: true,
+    });
+    if (error) throw error;
+    if (active && activeBidId === bidId && bidId === getBid()?.id && userId === getUserId()) setUnread(false);
+  }
+
+  function stopUnreadTracking() {
+    unreadRequest += 1;
+    clearInterval(unreadTimer);
+    unreadTimer = null;
+    trackedBidId = null;
+    setUnread(false);
+  }
+
+  function startUnreadTracking(bidId) {
+    if (trackedBidId !== bidId) {
+      unreadRequest += 1;
+      trackedBidId = bidId;
+      setUnread(false);
+      void refreshUnreadState();
+    }
+    if (!unreadTimer) {
+      unreadTimer = setInterval(() => {
+        if (document.hidden || (active && activeBidId === trackedBidId)) return;
+        void refreshUnreadState();
+      }, 20_000);
+    }
+  }
+
+  function handleVisibilityChange() {
+    if (document.hidden) return;
+    if (active) void refreshMessages().catch(() => {});
+    else if (trackedBidId) void refreshUnreadState();
+  }
+
+  function handleIncomingMessage({ bidId } = {}) {
+    const bid = getBid();
+    if (!bid?.id || String(bidId) !== String(bid.id) || trackedBidId !== bid.id) return;
+    if (active && activeBidId === bid.id && !document.hidden) {
+      void refreshMessages().catch((error) => {
+        console.warn(error.message || "Não foi possível atualizar as mensagens deste edital.");
+      });
+      return;
+    }
+    void refreshUnreadState();
+  }
+
+  const displayName = (user) => String(user?.display_name || user?.full_name || user?.name || user?.email || "Integrante").trim();
+  const escapeSelectorValue = (value) => globalThis.CSS?.escape ? CSS.escape(String(value)) : String(value).replace(/[^a-zA-Z0-9_-]/g, "\\$&");
+  const codePointLength = (value) => Array.from(value).length;
+  const codePointToUtf16 = (value, offset) => Array.from(value).slice(0, Math.max(0, offset)).join("").length;
+  const utf16ToCodePoint = (value, offset) => codePointLength(value.slice(0, offset));
+
+  function eligibleUsers(bid) {
+    const currentUserId = getUserId();
+    return (getUsers() || [])
+      .filter((user) => {
+        if (!user?.auth_user_id || user.auth_user_id === currentUserId) return false;
+        if (user.access_revoked_at || user.auth_access_status === "revoked" || user.auth_access_status === "pending" || user.must_change_password) return false;
+        return user.role === "Administrador" || bid?.created_by === user.auth_user_id || bid?.assigned_to === user.auth_user_id;
+      })
+      .sort((a, b) => displayName(a).localeCompare(displayName(b), "pt-BR"));
+  }
+
+  function setError(message = "") {
+    errorNode.textContent = message;
+    errorNode.classList.toggle("hidden", !message);
+  }
+
+  function setComposerEnabled(enabled) {
+    input.disabled = !enabled;
+    sendButton.disabled = !enabled;
+    submitLabel.textContent = enabled ? "Enviar" : "Enviando…";
+  }
+
+  function currentMentionQuery() {
+    const caret = input.selectionStart ?? input.value.length;
+    const beforeCaret = input.value.slice(0, caret);
+    const match = beforeCaret.match(/(^|\s)@([^\s@]*)$/u);
+    if (!match) return null;
+    const start = beforeCaret.length - match[0].length + match[1].length;
+    return { start, end: caret, query: match[2] };
+  }
+
+  function matchingSuggestions(context) {
+    const query = context?.query?.toLocaleLowerCase("pt-BR") || "";
+    const alreadyMentioned = new Set(mentionRanges.map((mention) => mention.userId));
+    return eligibleUsers(getBid())
+      .filter((user) => !alreadyMentioned.has(user.auth_user_id)
+        && displayName(user).toLocaleLowerCase("pt-BR").includes(query))
+      .slice(0, 8);
+  }
+
+  function updateSuggestionState() {
+    mentionContext = currentMentionQuery();
+    const results = matchingSuggestions(mentionContext);
+    suggestions.replaceChildren();
+    if (!mentionContext || !results.length) {
+      suggestions.hidden = true;
+      input.setAttribute("aria-expanded", "false");
+      return;
+    }
+    results.forEach((user, index) => {
+      const option = document.createElement("button");
+      option.type = "button";
+      option.className = "bid-followup-suggestion";
+      option.setAttribute("role", "option");
+      option.setAttribute("aria-selected", String(index === selectedSuggestionIndex));
+      option.dataset.userId = user.auth_user_id;
+      const initials = displayName(user).split(/\s+/).slice(0, 2).map((part) => part[0]).join("").toLocaleUpperCase("pt-BR");
+      const avatar = document.createElement("span");
+      avatar.className = "bid-followup-suggestion-avatar";
+      avatar.setAttribute("aria-hidden", "true");
+      avatar.textContent = initials || "U";
+      const copy = document.createElement("span");
+      copy.className = "bid-followup-suggestion-copy";
+      const name = document.createElement("strong");
+      name.textContent = displayName(user);
+      const role = document.createElement("small");
+      role.textContent = user.role || "Membro da organização";
+      copy.append(name, role);
+      option.append(avatar, copy);
+      suggestions.append(option);
+    });
+    selectedSuggestionIndex = Math.min(selectedSuggestionIndex, results.length - 1);
+    suggestions.hidden = false;
+    input.setAttribute("aria-expanded", "true");
+  }
+
+  function updateMentionRanges(previousValue, nextValue) {
+    if (!mentionRanges.length || previousValue === nextValue) return;
+    let prefix = 0;
+    while (prefix < previousValue.length && prefix < nextValue.length && previousValue[prefix] === nextValue[prefix]) prefix += 1;
+    let oldEnd = previousValue.length;
+    let newEnd = nextValue.length;
+    while (oldEnd > prefix && newEnd > prefix && previousValue[oldEnd - 1] === nextValue[newEnd - 1]) {
+      oldEnd -= 1;
+      newEnd -= 1;
+    }
+    const delta = newEnd - oldEnd;
+    mentionRanges = mentionRanges.flatMap((mention) => {
+      if (mention.end <= prefix) return [mention];
+      if (mention.start >= oldEnd) return [{ ...mention, start: mention.start + delta, end: mention.end + delta }];
+      return [];
+    }).filter((mention) => nextValue.slice(mention.start, mention.end) === mention.label);
+  }
+
+  function selectSuggestion(userId) {
+    const user = eligibleUsers(getBid()).find((candidate) => candidate.auth_user_id === userId);
+    if (!user || !mentionContext) return;
+    const label = `@${displayName(user)}`;
+    const before = input.value.slice(0, mentionContext.start);
+    const after = input.value.slice(mentionContext.end);
+    const nextValue = `${before}${label} ${after}`;
+    const end = before.length + label.length;
+    updateMentionRanges(input.value, nextValue);
+    input.value = nextValue;
+    mentionRanges.push({ userId, start: before.length, end, label });
+    mentionRanges.sort((a, b) => a.start - b.start);
+    draftBeforeEdit = nextValue;
+    input.setSelectionRange(end + 1, end + 1);
+    suggestions.hidden = true;
+    input.setAttribute("aria-expanded", "false");
+    mentionContext = null;
+    resizeComposer();
+    input.focus();
+  }
+
+  function resizeComposer() {
+    input.style.height = "auto";
+    input.style.height = `${Math.min(input.scrollHeight, 160)}px`;
+  }
+
+  function profileName(userId) {
+    return displayName((getUsers() || []).find((user) => user.auth_user_id === userId));
+  }
+
+  function renderMessageBody(body, mentions, host) {
+    const text = String(body || "");
+    const ranges = (mentions || []).map((mention) => ({
+      ...mention,
+      start: codePointToUtf16(text, Number(mention.start_offset)),
+      end: codePointToUtf16(text, Number(mention.end_offset)),
+    })).filter((mention) => mention.start >= 0 && mention.end > mention.start && mention.end <= text.length)
+      .sort((a, b) => a.start - b.start);
+    let cursor = 0;
+    for (const mention of ranges) {
+      if (mention.start < cursor) continue;
+      host.append(document.createTextNode(text.slice(cursor, mention.start)));
+      const tag = document.createElement("span");
+      tag.className = "bid-followup-mention";
+      tag.textContent = text.slice(mention.start, mention.end);
+      tag.title = `Menção a ${profileName(mention.recipient_user_id)}`;
+      host.append(tag);
+      cursor = mention.end;
+    }
+    host.append(document.createTextNode(text.slice(cursor)));
+  }
+
+  function renderMessages({ scrollToBottom = false } = {}) {
+    const wasAtBottom = messagesHost.scrollHeight - messagesHost.scrollTop - messagesHost.clientHeight < 48;
+    messagesHost.replaceChildren();
+    emptyNode.hidden = messages.length > 0;
+    if (!messages.length) {
+      messagesHost.append(emptyNode);
+      return;
+    }
+    for (const message of messages) {
+      const article = document.createElement("article");
+      article.className = `bid-followup-message${message.author_id === getUserId() ? " is-own" : ""}`;
+      article.dataset.messageId = message.id;
+      if (message.id === highlightedMessageId) article.classList.add("is-highlighted");
+      const header = document.createElement("div");
+      header.className = "bid-followup-message-header";
+      const author = document.createElement("strong");
+      author.textContent = message.author_name || profileName(message.author_id);
+      const time = document.createElement("time");
+      time.dateTime = message.created_at;
+      time.textContent = new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short" }).format(new Date(message.created_at));
+      header.append(author, time);
+      const body = document.createElement("p");
+      body.className = "bid-followup-message-body";
+      renderMessageBody(message.body, messageMentions.filter((mention) => mention.message_id === message.id), body);
+      article.append(header, body);
+      messagesHost.append(article);
+    }
+    if (highlightedMessageId) {
+      requestAnimationFrame(() => {
+        const highlighted = messagesHost.querySelector(`[data-message-id="${escapeSelectorValue(highlightedMessageId)}"]`);
+        highlighted?.scrollIntoView({ block: "center", behavior: "smooth" });
+      });
+    } else if (scrollToBottom || wasAtBottom) {
+      messagesHost.scrollTop = messagesHost.scrollHeight;
+    }
+  }
+
+  async function refreshMessages({ scrollToBottom = false } = {}) {
+    const client = getClient();
+    const bid = getBid();
+    if (!client || !bid?.id) return;
+    const request = ++messageRequest;
+    const userId = getUserId();
+    const { data, error } = await client.from("bid_process_messages")
+      .select("id,bid_id,organization_id,author_id,author_name,body,created_at")
+      .eq("bid_id", bid.id)
+      .order("created_at", { ascending: false })
+      .order("id", { ascending: false })
+      .limit(250);
+    if (error) throw error;
+    if (!active || request !== messageRequest || activeBidId !== bid.id || userId !== getUserId()) return;
+    const rows = (data || []).slice().reverse();
+    if (highlightedMessageId && !rows.some((row) => row.id === highlightedMessageId)) {
+      const target = await client.from("bid_process_messages")
+        .select("id,bid_id,organization_id,author_id,author_name,body,created_at")
+        .eq("bid_id", bid.id).eq("id", highlightedMessageId).maybeSingle();
+      if (target.error) throw target.error;
+      if (!active || request !== messageRequest || activeBidId !== bid.id || userId !== getUserId()) return;
+      if (target.data) rows.unshift(target.data);
+      else setError("A mensagem não está mais disponível para este perfil.");
+    }
+    let mentions = [];
+    if (rows.length) {
+      const result = await client.from("bid_message_mentions")
+        .select("message_id,recipient_user_id,start_offset,end_offset")
+        .in("message_id", rows.map((row) => row.id));
+      if (result.error) throw result.error;
+      mentions = result.data || [];
+    }
+    if (!active || request !== messageRequest || activeBidId !== bid.id || userId !== getUserId()) return;
+    messages = rows;
+    messageMentions = mentions;
+    renderMessages({ scrollToBottom });
+    try {
+      if (!document.hidden) await markMessagesAsRead(rows, bid.id);
+      if (request === messageRequest && active && activeBidId === bid.id) await refreshUnreadState();
+    } catch (readError) {
+      console.warn(readError.message || "Não foi possível registrar a leitura das atualizações deste edital.");
+      void refreshUnreadState();
+    }
+  }
+
+  function refreshNotifications({ notifyMessageId = null } = {}) {
+    if (notifyMessageId) pendingNotificationMessageIds.add(String(notifyMessageId));
+    notificationRefreshPending = true;
+    if (notificationFlight) return notificationFlight;
+    const epoch = notificationRequest;
+    const client = getClient();
+    const recipientId = getUserId();
+    if (!client || !recipientId) return Promise.resolve([]);
+    const valid = () => epoch === notificationRequest && client === getClient() && recipientId === getUserId();
+    const work = async () => {
+      let notifications = [];
+      while (notificationRefreshPending && valid()) {
+        notificationRefreshPending = false;
+        notifications = [];
+        let cursor = {};
+        while (valid()) {
+          const { data, error } = await client.rpc("list_bid_message_notifications", cursor);
+          if (error) throw error;
+          if (!valid()) return [];
+          const page = data || [];
+          notifications.push(...page);
+          if (page.length < 100) break;
+          const last = page.at(-1);
+          cursor = { p_before_created_at: last.created_at, p_before_message_id: last.message_id };
+        }
+        if (!valid()) return [];
+        const notifyMessageIds = notifications.filter((row) =>
+          !knownNotificationIds.has(String(row.message_id)) &&
+          (notificationsInitialized || pendingNotificationMessageIds.has(String(row.message_id)))
+        ).map((row) => String(row.message_id));
+        notifications.forEach((row) => {
+          knownNotificationIds.add(String(row.message_id));
+          pendingNotificationMessageIds.delete(String(row.message_id));
+        });
+        notificationsInitialized = true;
+        onNotificationsChanged(notifications, { notifyMessageIds });
+      }
+      return notifications;
+    };
+    const flight = work().finally(() => {
+      if (notificationFlight === flight) notificationFlight = null;
+    });
+    notificationFlight = flight;
+    return flight;
+  }
+
+  async function reconcile() {
+    await Promise.all([
+      refreshNotifications(),
+      active && !document.hidden ? refreshMessages() : refreshUnreadState(),
+    ]);
+  }
+
+  function open(messageId = null) {
+    const bid = getBid();
+    if (!bid?.id) return false;
+    if (!dialog.open) dialog.showModal();
+    if (activeBidId !== bid.id) {
+      messages = [];
+      messageMentions = [];
+    }
+    active = true;
+    setComposerEnabled(true);
+    activeBidId = bid.id;
+    highlightedMessageId = messageId;
+    if (messageId) messagesHost.replaceChildren();
+    byId("bidFollowupSubtitle").textContent = `${formatBidLabel(bid)} · ${bid.buyer_agency || "Órgão não informado"}`;
+    setError("");
+    void refreshMessages({ scrollToBottom: !messageId }).catch((error) => setError(error.message || "Não foi possível carregar as atualizações deste edital."));
+    clearInterval(timer);
+    timer = setInterval(() => {
+      if (active && !document.hidden) void refreshMessages().catch(() => {});
+    }, 20_000);
+    window.setTimeout(() => input.focus(), 50);
+    return true;
+  }
+
+  function close() {
+    setComposerEnabled(true);
+    active = false;
+    messageRequest += 1;
+    clearInterval(timer);
+    timer = null;
+    if (dialog.open) dialog.close();
+    activeBidId = null;
+    highlightedMessageId = null;
+    messages = [];
+    messageMentions = [];
+    suggestions.hidden = true;
+    input.setAttribute("aria-expanded", "false");
+    mentionContext = null;
+    input.value = "";
+    mentionRanges = [];
+    draftBeforeEdit = "";
+    resizeComposer();
+    renderMessages();
+  }
+
+  async function submit(event) {
+    event.preventDefault();
+    const client = getClient();
+    const bid = getBid();
+    const body = input.value.trim();
+    const userId = getUserId();
+    const epoch = notificationRequest;
+    const isCurrent = () => epoch === notificationRequest && userId === getUserId() && bid?.id === getBid()?.id && active;
+    if (!client || !bid?.id || !body) return;
+    const trimStart = input.value.length - input.value.trimStart().length;
+    const normalizedMentions = mentionRanges
+      .filter((mention) => input.value.slice(mention.start, mention.end) === mention.label)
+      .map((mention) => ({
+        user_id: mention.userId,
+        start_offset: utf16ToCodePoint(body, Math.max(0, mention.start - trimStart)),
+        end_offset: utf16ToCodePoint(body, Math.max(0, mention.end - trimStart)),
+      }));
+    setError("");
+    setComposerEnabled(false);
+    try {
+      const { error } = await client.rpc("create_bid_process_message", {
+        p_bid_id: bid.id,
+        p_body: body,
+        p_mentions: normalizedMentions,
+      });
+      if (error) throw error;
+      if (!isCurrent()) return;
+      input.value = "";
+      mentionRanges = [];
+      draftBeforeEdit = "";
+      resizeComposer();
+      await refreshMessages({ scrollToBottom: true });
+    } catch (error) {
+      if (isCurrent()) setError(error.message || "Não foi possível enviar a atualização. Tente novamente.");
+    } finally {
+      if (isCurrent()) { setComposerEnabled(true); input.focus(); }
+    }
+  }
+
+  function handleInput() {
+    updateMentionRanges(draftBeforeEdit, input.value);
+    draftBeforeEdit = input.value;
+    selectedSuggestionIndex = 0;
+    resizeComposer();
+    updateSuggestionState();
+  }
+
+  function handleKeydown(event) {
+    if (!suggestions.hidden) {
+      const options = [...suggestions.querySelectorAll("[role=option]")];
+      if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+        event.preventDefault();
+        const direction = event.key === "ArrowDown" ? 1 : -1;
+        selectedSuggestionIndex = (selectedSuggestionIndex + direction + options.length) % options.length;
+        options.forEach((option, index) => option.setAttribute("aria-selected", String(index === selectedSuggestionIndex)));
+        options[selectedSuggestionIndex]?.scrollIntoView({ block: "nearest" });
+        return;
+      }
+      if ((event.key === "Enter" || event.key === "Tab") && options.length) {
+        event.preventDefault();
+        selectSuggestion(options[selectedSuggestionIndex].dataset.userId);
+        return;
+      }
+      if (event.key === "Escape") {
+        suggestions.hidden = true;
+        input.setAttribute("aria-expanded", "false");
+      }
+    }
+
+    if (event.key === "Enter" && !event.shiftKey && !event.isComposing) {
+      event.preventDefault();
+      if (!sendButton.disabled) form.requestSubmit(sendButton);
+    }
+  }
+
+  function bind() {
+    byId("bidFollowupButton").addEventListener("click", () => open());
+    byId("closeBidFollowupButton").addEventListener("click", close);
+    form.addEventListener("submit", submit);
+    input.addEventListener("input", handleInput);
+    input.addEventListener("keydown", handleKeydown);
+    suggestions.addEventListener("mousedown", (event) => event.preventDefault());
+    suggestions.addEventListener("click", (event) => {
+      const option = event.target.closest("[data-user-id]");
+      if (option) selectSuggestion(option.dataset.userId);
+    });
+    dialog.addEventListener("close", () => {
+      active = false;
+      clearInterval(timer);
+      timer = null;
+      activeBidId = null;
+      highlightedMessageId = null;
+      messages = [];
+      messageMentions = [];
+      input.value = "";
+      mentionRanges = [];
+      draftBeforeEdit = "";
+      resizeComposer();
+      renderMessages();
+    });
+    dialog.addEventListener("click", (event) => {
+      if (event.target === dialog) close();
+    });
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+  }
+
+  function updateAvailability(visible) {
+    button.classList.toggle("hidden", !visible);
+    const bid = getBid();
+    if (visible && bid?.id) startUnreadTracking(bid.id);
+    else if (trackedBidId || unreadTimer) stopUnreadTracking();
+    if (!visible && dialog.open) close();
+  }
+
+  function reset() {
+    close();
+    stopUnreadTracking();
+    notificationRequest += 1;
+    notificationFlight = null;
+    notificationRefreshPending = false;
+    notificationsInitialized = false;
+    knownNotificationIds.clear();
+    pendingNotificationMessageIds.clear();
+    messages = [];
+    messageMentions = [];
+    onNotificationsChanged([]);
+  }
+
+  return { bind, close, handleIncomingMessage, open, reconcile, refreshNotifications, reset, updateAvailability };
+}
