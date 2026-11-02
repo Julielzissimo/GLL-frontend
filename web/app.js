@@ -5092,6 +5092,7 @@ async function startLiveUpdates() {
       filter: `organization_id=eq.${appState.currentOrganizationId}`,
     }, (event) => { if (current()) organizationChat.handleIncomingMessage(event); })
     .subscribe((status, error) => {
+      if (!current()) return;
       if (status === "SUBSCRIBED") {
         scheduleLiveRefresh();
       } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
