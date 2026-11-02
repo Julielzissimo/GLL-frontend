@@ -1778,7 +1778,8 @@
         "13e3ac1741cd3ebefc2c6d5499ade869a44f7044",
         "ef25e439f442945df5538c6c8a034adcbbe8cf48",
         "10e0bd52e9b9c670421491079b21d5ea49aa6b50",
-        "b8a1c5488ca5038560be03c4926c9cbfa5310aca"
+        "b8a1c5488ca5038560be03c4926c9cbfa5310aca",
+        "0cdeb2094561bb93fffae4764d9de0b6ec44ed6e"
       ],
       "frontend_commits": [
         "2aa6973fcef44d921d390d2744cb85e3977acd82",
@@ -1788,10 +1789,12 @@
         "d8f852051d92ce6e4f9afac52f3315e6b39cce25",
         "6fab665b2dd0977da33da5ac403fd8046e0ce592",
         "61e9ef74156cca156b777866d65dcbe315faf34c",
-        "b3168ffa4fe143dd96878805c0d7a69ab4aaa687"
+        "b3168ffa4fe143dd96878805c0d7a69ab4aaa687",
+        "e1613a4894ce9b08667ce005c22646ac9bdbf91a"
       ],
       "migrations": [
-        "supabase/migrations/20261101163559_reliable_message_notifications.sql"
+        "supabase/migrations/20261101163559_reliable_message_notifications.sql",
+        "supabase/migrations/20261102151000_fix_realtime_private_channel_authorization.sql"
       ]
     }
   ]
