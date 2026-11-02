@@ -1,5 +1,17 @@
 import { expect, test } from '@playwright/test';
 
+function realtimeReplyCategory(response) {
+  const reason = [response?.response?.reason, response?.response?.message,
+    response?.reason, response?.message]
+    .filter((value) => typeof value === 'string').join(' ').toLowerCase();
+  if (/permission denied|insufficient privilege/.test(reason)) return 'database-permission';
+  if (/policy|row.level|rls/.test(reason)) return 'rls-policy';
+  if (/jwt|token|claims/.test(reason)) return 'session-token';
+  if (/unauthori[sz]ed|forbidden|not allowed/.test(reason)) return 'realtime-authorization';
+  if (/private|public channel/.test(reason)) return 'channel-mode';
+  return 'unknown';
+}
+
 function watchMentionSubscription(page, user) {
   let resolveReady;
   let ready = false;
@@ -7,8 +19,11 @@ function watchMentionSubscription(page, user) {
   let privateChannelReplies = 0;
   let expectedTopicReply = false;
   let replyCategory = 'unknown';
+  let organizationTopicStatus = 'no-reply';
+  let organizationTopicCategory = 'unknown';
   const subscribed = new Promise((resolve) => { resolveReady = resolve; });
   const expectedTopic = `realtime:organization:${user.org}:user:${user.id}`;
+  const organizationTopic = `realtime:organization:${user.org}`;
   const onWebSocket = (socket) => {
     if (!socket.url().includes('/realtime/v1/websocket')) return;
     socket.on('framereceived', ({ payload }) => {
@@ -20,18 +35,16 @@ function watchMentionSubscription(page, user) {
         if (event === 'phx_reply' && typeof topic === 'string' && topic.includes(':user:')) {
           privateChannelReplies += 1;
         }
+        if (topic === organizationTopic && event === 'phx_reply') {
+          organizationTopicStatus = response?.status ?? 'unknown';
+          organizationTopicCategory = realtimeReplyCategory(response);
+        }
         if (topic === expectedTopic && event === 'phx_reply') {
           expectedTopicReply = true;
           if (!ready) {
             ready = true;
             replyStatus = response?.status ?? 'unknown';
-            const reason = [response?.response?.reason, response?.response?.message,
-              response?.reason, response?.message]
-              .filter((value) => typeof value === 'string').join(' ').toLowerCase();
-            if (/permission denied|insufficient privilege/.test(reason)) replyCategory = 'database-permission';
-            else if (/policy|row.level|rls|unauthori[sz]ed|forbidden|not allowed/.test(reason)) replyCategory = 'authorization-policy';
-            else if (/jwt|token|claims/.test(reason)) replyCategory = 'session-token';
-            else if (/private|public channel/.test(reason)) replyCategory = 'channel-mode';
+            replyCategory = realtimeReplyCategory(response);
             resolveReady(replyStatus);
           }
         }
@@ -50,7 +63,7 @@ function watchMentionSubscription(page, user) {
           ]);
         }
         if (replyStatus !== 'ok') {
-          throw new Error(`Private mention channel subscription rejected (status=${replyStatus ?? 'unknown'}, category=${replyCategory}).`);
+          throw new Error(`Private mention channel rejected (status=${replyStatus ?? 'unknown'}, category=${replyCategory}, organization channel=${organizationTopicStatus}/${organizationTopicCategory}).`);
         }
       } catch (error) {
         if (error?.message === 'Private mention channel did not subscribe.') {
@@ -94,6 +107,13 @@ test('real database events deliver mentions, recover offline and enforce isolati
       data: {},
     });
     if (!authProbe.ok()) throw new Error(`Synthetic notification auth probe failed (${authProbe.status()}).`);
+    const organizationProbe = await request.post(config.supabaseUrl + '/rest/v1/rpc/current_organization_id', {
+      headers: { apikey: config.supabaseAnonKey, Authorization: `Bearer ${sessions[index].access_token}` },
+      data: {},
+    });
+    if (!organizationProbe.ok() || await organizationProbe.json() !== fixture.users[index].org) {
+      throw new Error('Synthetic organization session probe did not match the fixture.');
+    }
     await mentionSubscription.wait();
     return page;
   }
