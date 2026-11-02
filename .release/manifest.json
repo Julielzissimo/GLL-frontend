@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "release_id": "2026-11-01-acompanhamento-de-fornecimento",
+  "release_id": "2026-11-02-pacote-de-melhorias-3",
   "environment": "production",
   "target_branch": "main",
   "items": [
@@ -1226,6 +1226,124 @@
         "451d0337f820bb31d750d64dc4820eae17abf938",
         "ad05709357d0c22f71e002945bd25cd40a75b1e1",
         "724304ab9860592fda170b0796a79b7f10fbca01"
+      ],
+      "migrations": []
+    },
+    {
+      "id": "ISSUE-207",
+      "backend_commits": [],
+      "frontend_commits": [
+        "75d9c6118fb3087a7af51a33ded3490eb9591d8b"
+      ],
+      "migrations": []
+    },
+    {
+      "id": "ISSUE-208",
+      "backend_commits": [],
+      "frontend_commits": [
+        "7d01862c310d667bbe315487c1fe00c72fe3dee4",
+        "a62f5b5a59444169713addbe438bf6d1e0c1a147"
+      ],
+      "migrations": []
+    },
+    {
+      "id": "ISSUE-215",
+      "backend_commits": [],
+      "frontend_commits": [
+        "2dbe903621aa8b3433951bbfb56b702866a596aa"
+      ],
+      "migrations": []
+    },
+    {
+      "id": "ISSUE-217",
+      "backend_commits": [
+        "25aa9987cd6909c648ea8bb450dd22854cfc0f77",
+        "b98836d6c7e836a5d6ed60042adee789d059b412",
+        "d54d33a01f826900184cdaf6ecfa348ade48257b"
+      ],
+      "frontend_commits": [
+        "b6c18d2bd9ed5f88c44e965184bd9f1a3c85d9c4",
+        "542d333721afecdf8a9bfd36adc327b78734332e",
+        "18cfb6cb389212066c2e8d5dff7d29951cd5fb0c",
+        "58302175997700d0555e2a80b1e8d8d724b428fc",
+        "dba730e8d88693798e27f5fa95b2d78c4fb820ca",
+        "2f31183611c430b35319d5382ce78a4a7335b09a",
+        "0ef62dba08c52c5c5a0f0f1345fbc231760bf935"
+      ],
+      "migrations": [
+        "supabase/migrations/20261024154734_bid_process_messages.sql",
+        "supabase/migrations/20261025003517_add_bid_process_message_reads.sql"
+      ]
+    },
+    {
+      "id": "ISSUE-223",
+      "backend_commits": [],
+      "frontend_commits": [
+        "683f703900ea6734a244073d55be547ffca52451",
+        "4abf9231395424b4dc434a3f11810c3bf0b44ce0",
+        "187fbef771fb4ab0f20948e1b8711cfd62964148"
+      ],
+      "migrations": []
+    },
+    {
+      "id": "ISSUE-228",
+      "backend_commits": [],
+      "frontend_commits": [
+        "3d995bcde067f881e0587b25e9abb41f9bfa9fdc"
+      ],
+      "migrations": []
+    },
+    {
+      "id": "ISSUE-229",
+      "backend_commits": [
+        "22244a38016d86d2df5987bab88f8f4b77b27047"
+      ],
+      "frontend_commits": [
+        "144d67f18f054da0522b3790fee1d3d5da76ea86",
+        "cda68ee555acc1b224704f30847c0176f4931b5a",
+        "c847bc3f0bebe9c8d537541bf83f2588bbb5299c"
+      ],
+      "migrations": [
+        "supabase/migrations/20261101000000_broadcast_bid_process_messages.sql"
+      ]
+    },
+    {
+      "id": "ISSUE-238",
+      "backend_commits": [
+        "be4ffeafddcca15633266b7ac8867cf683f9bed4",
+        "02b942a9ce3414828dae5fc7d78accedd2da22fd",
+        "9ae73f5e39ebf122de34f7576ee82d67076edce8",
+        "23120f30ca3da90a75e734bbfb4bcc35a8f5607e",
+        "7500d18a87f5133e7504a751d9de32da9075d280",
+        "fcf081d71c6d814c314a4fb6ca91a28619cf2198",
+        "ca3132213063f0da13983f61ab8ffc935b843a8a",
+        "7cbbfa1c194b2f3e8595436a3ed703bd2ebbac2f",
+        "c375a14165754cc0d629688b716fa764e0d714cc",
+        "3a8109698ce9c389ec8520cfc887b5b03b661fb3",
+        "7d088e9086e4ecb2cbcdb12668e7bb94b04564a4",
+        "d4e7e712f280058ae33f5e1ae658365323e89fe6",
+        "c7f1f00634d68674bbc73a30aaa910292658e594"
+      ],
+      "frontend_commits": [
+        "b5e1ce76220beff3a58532389ef408c3c75e64eb",
+        "878b02159eac20ff3e9bfd556e7faf6a503da822",
+        "672760d208d9a579d523c37f9fead2cffbfd572d",
+        "b6f442337eb0fdca7f35ec56f1b2eaf7adee56cf",
+        "f0fb1a99353bb87ddf69a79bd6e43ad33d5bdfd4",
+        "3d8e843bb36e06b67294d3c9a1a8eaf929272c94",
+        "a7b9eaead654e092a69f1dd981add4034ebcfd16",
+        "2aaa2d97113215fdfa6f9ac8367a1d2931b266a1"
+      ],
+      "migrations": [
+        "supabase/migrations/20261101163559_reliable_message_notifications.sql",
+        "supabase/migrations/20261102151000_fix_realtime_private_channel_authorization.sql"
+      ]
+    },
+    {
+      "id": "ISSUE-254",
+      "backend_commits": [],
+      "frontend_commits": [
+        "fd5069ec7280ddb02c5bc45510697a986a8cb11c"
       ],
       "migrations": []
     }
