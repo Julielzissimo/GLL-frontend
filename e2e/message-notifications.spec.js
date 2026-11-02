@@ -6,6 +6,7 @@ function watchMentionSubscription(page, user) {
   let replyStatus = null;
   let privateChannelReplies = 0;
   let expectedTopicReply = false;
+  let replyCategory = 'unknown';
   const subscribed = new Promise((resolve) => { resolveReady = resolve; });
   const expectedTopic = `realtime:organization:${user.org}:user:${user.id}`;
   const onWebSocket = (socket) => {
@@ -24,6 +25,13 @@ function watchMentionSubscription(page, user) {
           if (!ready) {
             ready = true;
             replyStatus = response?.status ?? 'unknown';
+            const reason = [response?.response?.reason, response?.response?.message,
+              response?.reason, response?.message]
+              .filter((value) => typeof value === 'string').join(' ').toLowerCase();
+            if (/permission denied|insufficient privilege/.test(reason)) replyCategory = 'database-permission';
+            else if (/policy|row.level|rls|unauthori[sz]ed|forbidden|not allowed/.test(reason)) replyCategory = 'authorization-policy';
+            else if (/jwt|token|claims/.test(reason)) replyCategory = 'session-token';
+            else if (/private|public channel/.test(reason)) replyCategory = 'channel-mode';
             resolveReady(replyStatus);
           }
         }
@@ -42,7 +50,7 @@ function watchMentionSubscription(page, user) {
           ]);
         }
         if (replyStatus !== 'ok') {
-          throw new Error(`Private mention channel subscription rejected (${replyStatus ?? 'unknown'}).`);
+          throw new Error(`Private mention channel subscription rejected (status=${replyStatus ?? 'unknown'}, category=${replyCategory}).`);
         }
       } catch (error) {
         if (error?.message === 'Private mention channel did not subscribe.') {
@@ -81,6 +89,11 @@ test('real database events deliver mentions, recover offline and enforce isolati
     sessions[index] = await auth.json();
     await expect(page.locator('#appView')).toBeVisible({timeout:45_000});
     await expect(page.locator('#blockingLoadingModal')).not.toBeVisible({timeout:45_000});
+    const authProbe = await request.post(config.supabaseUrl + '/rest/v1/rpc/list_bid_message_notifications', {
+      headers: { apikey: config.supabaseAnonKey, Authorization: `Bearer ${sessions[index].access_token}` },
+      data: {},
+    });
+    if (!authProbe.ok()) throw new Error(`Synthetic notification auth probe failed (${authProbe.status()}).`);
     await mentionSubscription.wait();
     return page;
   }
