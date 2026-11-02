@@ -1769,11 +1769,13 @@
       "backend_commits": [
         "27640a4ec1c59d92c03138aea5bd2accbcc37fe3",
         "a71e4b65539c0e83f3ed9f63422f1a4024f527b7",
-        "09e3f006678c5ed971e2028a658a6d07df6ea09e"
+        "09e3f006678c5ed971e2028a658a6d07df6ea09e",
+        "b99e13d1aafe15751afd4bb2199b5e2a1853495d"
       ],
       "frontend_commits": [
         "2aa6973fcef44d921d390d2744cb85e3977acd82",
-        "ec0ed5dd2c13de531845a20862973ed89065c380"
+        "ec0ed5dd2c13de531845a20862973ed89065c380",
+        "1a296e2ed8b4da4aae7399942af79291e11da916"
       ],
       "migrations": [
         "supabase/migrations/20261101163559_reliable_message_notifications.sql"
