@@ -1796,6 +1796,14 @@
         "supabase/migrations/20261101163559_reliable_message_notifications.sql",
         "supabase/migrations/20261102151000_fix_realtime_private_channel_authorization.sql"
       ]
+    },
+    {
+      "id": "ISSUE-254",
+      "backend_commits": [],
+      "frontend_commits": [
+        "a6e08e7188ee67276cca646eac5f17678fc22040"
+      ],
+      "migrations": []
     }
   ]
 }
