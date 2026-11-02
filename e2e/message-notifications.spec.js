@@ -3,6 +3,9 @@ import { expect, test } from '@playwright/test';
 function watchMentionSubscription(page, user) {
   let resolveReady;
   let ready = false;
+  let replyStatus = null;
+  let privateChannelReplies = 0;
+  let expectedTopicReply = false;
   const subscribed = new Promise((resolve) => { resolveReady = resolve; });
   const expectedTopic = `realtime:organization:${user.org}:user:${user.id}`;
   const onWebSocket = (socket) => {
@@ -13,9 +16,16 @@ function watchMentionSubscription(page, user) {
         const [, , topic, event, response] = Array.isArray(frame)
           ? frame
           : [frame.join_ref, frame.ref, frame.topic, frame.event, frame.payload];
-        if (topic === expectedTopic && event === 'phx_reply' && response?.status === 'ok' && !ready) {
-          ready = true;
-          resolveReady();
+        if (event === 'phx_reply' && typeof topic === 'string' && topic.includes(':user:')) {
+          privateChannelReplies += 1;
+        }
+        if (topic === expectedTopic && event === 'phx_reply') {
+          expectedTopicReply = true;
+          if (!ready) {
+            ready = true;
+            replyStatus = response?.status ?? 'unknown';
+            resolveReady(replyStatus);
+          }
         }
       } catch { /* Ignore unrelated Realtime frames. */ }
     });
@@ -26,11 +36,19 @@ function watchMentionSubscription(page, user) {
       let timer;
       try {
         if (!ready) {
-          await Promise.race([
+          replyStatus = await Promise.race([
             subscribed,
             new Promise((_, reject) => { timer = setTimeout(() => reject(new Error('Private mention channel did not subscribe.')), 15_000); }),
           ]);
         }
+        if (replyStatus !== 'ok') {
+          throw new Error(`Private mention channel subscription rejected (${replyStatus ?? 'unknown'}).`);
+        }
+      } catch (error) {
+        if (error?.message === 'Private mention channel did not subscribe.') {
+          throw new Error(`Private mention channel did not subscribe (private replies=${privateChannelReplies}, expected topic replied=${expectedTopicReply}).`);
+        }
+        throw error;
       } finally {
         clearTimeout(timer);
         page.off('websocket', onWebSocket);
