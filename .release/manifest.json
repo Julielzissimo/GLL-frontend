@@ -1768,10 +1768,12 @@
       "id": "ISSUE-238",
       "backend_commits": [
         "27640a4ec1c59d92c03138aea5bd2accbcc37fe3",
-        "a71e4b65539c0e83f3ed9f63422f1a4024f527b7"
+        "a71e4b65539c0e83f3ed9f63422f1a4024f527b7",
+        "09e3f006678c5ed971e2028a658a6d07df6ea09e"
       ],
       "frontend_commits": [
-        "2aa6973fcef44d921d390d2744cb85e3977acd82"
+        "2aa6973fcef44d921d390d2744cb85e3977acd82",
+        "ec0ed5dd2c13de531845a20862973ed89065c380"
       ],
       "migrations": [
         "supabase/migrations/20261101163559_reliable_message_notifications.sql"
