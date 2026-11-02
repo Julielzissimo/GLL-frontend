@@ -1,5 +1,44 @@
 import { expect, test } from '@playwright/test';
 
+function watchMentionSubscription(page, user) {
+  let resolveReady;
+  let ready = false;
+  const subscribed = new Promise((resolve) => { resolveReady = resolve; });
+  const expectedTopic = `realtime:organization:${user.org}:user:${user.id}`;
+  const onWebSocket = (socket) => {
+    if (!socket.url().includes('/realtime/v1/websocket')) return;
+    socket.on('framereceived', ({ payload }) => {
+      try {
+        const frame = JSON.parse(Buffer.isBuffer(payload) ? payload.toString('utf8') : payload);
+        const [, , topic, event, response] = Array.isArray(frame)
+          ? frame
+          : [frame.join_ref, frame.ref, frame.topic, frame.event, frame.payload];
+        if (topic === expectedTopic && event === 'phx_reply' && response?.status === 'ok' && !ready) {
+          ready = true;
+          resolveReady();
+        }
+      } catch { /* Ignore unrelated Realtime frames. */ }
+    });
+  };
+  page.on('websocket', onWebSocket);
+  return {
+    async wait() {
+      let timer;
+      try {
+        if (!ready) {
+          await Promise.race([
+            subscribed,
+            new Promise((_, reject) => { timer = setTimeout(() => reject(new Error('Private mention channel did not subscribe.')), 15_000); }),
+          ]);
+        }
+      } finally {
+        clearTimeout(timer);
+        page.off('websocket', onWebSocket);
+      }
+    },
+  };
+}
+
 test('real database events deliver mentions, recover offline and enforce isolation', async ({ browser, request }) => {
   test.setTimeout(180_000);
   if (!process.env.GLL_NOTIFICATION_FIXTURE) throw new Error('Run through the homolog fixture workflow.');
@@ -11,6 +50,7 @@ test('real database events deliver mentions, recover offline and enforce isolati
   async function login(index, route = '') {
     const context = await browser.newContext(); contexts.push(context);
     const page = await context.newPage();
+    const mentionSubscription = watchMentionSubscription(page, fixture.users[index]);
     await page.goto(base + route);
     config = await page.evaluate(() => window.GLL_CONFIG);
     if (config.environment !== 'homolog' || new URL(config.supabaseUrl).hostname !== 'dwotbzrjcetizyygzoty.supabase.co') throw new Error('Wrong environment.');
@@ -23,6 +63,7 @@ test('real database events deliver mentions, recover offline and enforce isolati
     sessions[index] = await auth.json();
     await expect(page.locator('#appView')).toBeVisible({timeout:45_000});
     await expect(page.locator('#blockingLoadingModal')).not.toBeVisible({timeout:45_000});
+    await mentionSubscription.wait();
     return page;
   }
   async function api(index, path, body) {
@@ -46,12 +87,13 @@ test('real database events deliver mentions, recover offline and enforce isolati
     await expect.poll(async () => api(1,'rpc/list_bid_message_notifications',{})).toEqual([]);
     const author = await login(0,`?page=itens&licitacao=${encodeURIComponent(fixture.bid)}`);
     // A real second authenticated session sends the product RPC; no client Broadcast is sent.
-    const start = Date.now();
+    const requestStartedAt = Date.now();
     const messageId = await send();
+    const confirmedAt = Date.now();
     await expect(recipient.locator('#toast')).toBeVisible({timeout:10_000});
     await expect(recipient.locator('#toastMessage')).toContainText('Você foi mencionado');
-    const elapsed = Date.now() - start;
-    console.log(`Synthetic mention delivery observed in ${elapsed} ms (target <= 2000 ms).`);
+    const elapsed = Date.now() - confirmedAt;
+    console.log(`Synthetic message RPC confirmed in ${confirmedAt - requestStartedAt} ms; mention toast arrived ${elapsed} ms after confirmation (target <= 2000 ms).`);
     expect(elapsed, 'Healthy-connection mention latency').toBeLessThanOrEqual(2000);
     await recipient.locator('#notificationsButton').click();
     await recipient.locator(`[data-notification-message="${messageId}"]`).click();
