@@ -21,6 +21,8 @@ function watchMentionSubscription(page, user) {
   let replyCategory = 'unknown';
   let mentionJoinDiagnostics = null;
   let organizationJoinDiagnostics = null;
+  let mentionJoinAttempts = 0;
+  let organizationJoinAttempts = 0;
   let organizationTopicStatus = 'no-reply';
   let organizationTopicCategory = 'unknown';
   const subscribed = new Promise((resolve) => { resolveReady = resolve; });
@@ -28,15 +30,17 @@ function watchMentionSubscription(page, user) {
   const organizationTopic = `realtime:organization:${user.org}`;
   const onWebSocket = (socket) => {
     if (!socket.url().includes('/realtime/v1/websocket')) return;
-    socket.on('framereceived', ({ payload }) => {
+    socket.on('framesent', ({ payload }) => {
       try {
         const frame = JSON.parse(Buffer.isBuffer(payload) ? payload.toString('utf8') : payload);
         const [, , topic, event, response] = Array.isArray(frame)
           ? frame
           : [frame.join_ref, frame.ref, frame.topic, frame.event, frame.payload];
-        const payload = Array.isArray(frame) ? frame[4] : frame.payload;
         if (event === 'phx_join' && (topic === expectedTopic || topic === organizationTopic)) {
-          const accessToken = payload?.access_token;
+          if (topic === expectedTopic) mentionJoinAttempts += 1;
+          if (topic === organizationTopic) organizationJoinAttempts += 1;
+          const joinPayload = Array.isArray(frame) ? frame[4] : frame.payload;
+          const accessToken = joinPayload?.access_token;
           let claims = null;
           try {
             claims = JSON.parse(Buffer.from(String(accessToken).split('.')[1] ?? '', 'base64url').toString('utf8'));
@@ -47,11 +51,19 @@ function watchMentionSubscription(page, user) {
             subjectMatches: claims?.sub === user.id,
             sessionIdPresent: typeof claims?.session_id === 'string' && claims.session_id.length > 0,
             issuedAtPresent: Number.isFinite(Number(claims?.iat)),
-            privateRequested: payload?.config?.private === true,
+            privateRequested: joinPayload?.config?.private === true,
           };
           if (topic === expectedTopic) mentionJoinDiagnostics = diagnostics;
           if (topic === organizationTopic) organizationJoinDiagnostics = diagnostics;
         }
+      } catch { /* Ignore unrelated Realtime frames. */ }
+    });
+    socket.on('framereceived', ({ payload }) => {
+      try {
+        const frame = JSON.parse(Buffer.isBuffer(payload) ? payload.toString('utf8') : payload);
+        const [, , topic, event, response] = Array.isArray(frame)
+          ? frame
+          : [frame.join_ref, frame.ref, frame.topic, frame.event, frame.payload];
         if (event === 'phx_reply' && typeof topic === 'string' && topic.includes(':user:')) {
           privateChannelReplies += 1;
         }
@@ -87,7 +99,7 @@ function watchMentionSubscription(page, user) {
         }
       } catch (error) {
         if (error?.message === 'Private mention channel did not subscribe.') {
-          throw new Error(`Private mention channel did not subscribe (private replies=${privateChannelReplies}, expected topic replied=${expectedTopicReply}).`);
+          throw new Error(`Private mention channel did not subscribe (mention join attempts=${mentionJoinAttempts}, join=${JSON.stringify(mentionJoinDiagnostics)}, private replies=${privateChannelReplies}, expected topic replied=${expectedTopicReply}, organization join attempts=${organizationJoinAttempts}, organization join=${JSON.stringify(organizationJoinDiagnostics)}).`);
         }
         throw error;
       } finally {
