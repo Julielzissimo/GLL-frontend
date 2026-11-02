@@ -1100,10 +1100,13 @@
       "backend_commits": [
         "45c1c60fe3d78eb09b4164824703165e2b84ee0c",
         "78bea79715dd698a5b46812e38cf0f0af4671d43",
-        "b64b22a1a780295e6b9a4c7122346093a9fbbc89"
+        "b64b22a1a780295e6b9a4c7122346093a9fbbc89",
+        "691458d4b1cdb558767abc63771a9e7c2b94e1e2",
+        "4bfffec7536647ae3b857836fac6d690192b137d"
       ],
       "frontend_commits": [
-        "f038bbf3b76d74bd5aa9bcb11a15f032ef9f55cb"
+        "f038bbf3b76d74bd5aa9bcb11a15f032ef9f55cb",
+        "eb326bc1eeae484d35a3cb7a184088045a8356d7"
       ],
       "migrations": []
     },
@@ -1111,10 +1114,13 @@
       "id": "EMAIL-02",
       "backend_commits": [
         "76f8df2ef2dbae84256d0d5167297a2db228e409",
-        "030f8223bd58b17453508a9c00c7608c0088b6f7"
+        "030f8223bd58b17453508a9c00c7608c0088b6f7",
+        "b33c899eded3aa9e7d6f912219c5e159c0f387ed",
+        "79ffdc580dd870cb747dacea7c9d89c7961f346d"
       ],
       "frontend_commits": [
-        "b3205594361934d3f901ea36c8c515e33a245395"
+        "b3205594361934d3f901ea36c8c515e33a245395",
+        "7778e0106aaadf405d78fd79abfef7d290fa7bae"
       ],
       "migrations": [
         "supabase/migrations/20261011180704_user_invitation_operations.sql"
@@ -1144,10 +1150,15 @@
         "b414b9dc2b4853bb7185a8884f03aab9e93210ea",
         "d3d5a39c4c17f538617ca25d5be656670b0d24d3",
         "1304978951888d4663a3c7691cfa6316b3d15c0b",
-        "85a56d5d71991653980c24f71af60c045d4325b5"
+        "85a56d5d71991653980c24f71af60c045d4325b5",
+        "fa27407361e280df2067d9bb5398b4c738301023",
+        "a86e6c14796fb19d4f50909ccefa8e8ed7334ea4",
+        "90c70bd75593897f032904262f8999a94b2394ca",
+        "52810c3dde8df390775a94164d79117a3d95d57f"
       ],
       "frontend_commits": [
-        "0a7198220b45d55506364ce74f38f2ef31bd27dc"
+        "0a7198220b45d55506364ce74f38f2ef31bd27dc",
+        "8cd1835f334abc40e6d8838dcce9c4953d48fc12"
       ],
       "migrations": [
         "supabase/migrations/20261011184318_first_access_username_avatar.sql"
@@ -1162,7 +1173,14 @@
         "5c25f433e4ea999686b3c67b474dfadf6f4b6eee",
         "425ce3176ec97bc6b5d37c246f0659c241605590",
         "84e93440e67b4eab56fa07799a6f0be8e400713c",
-        "36c816c8a24813ac8940ed61d37d448f1cb07b19"
+        "36c816c8a24813ac8940ed61d37d448f1cb07b19",
+        "aaf25e539b07d162ca757f2f4a2832785dbb61d2",
+        "a1091790fc8ddb17fd7ece4665fe88d65991d28d",
+        "d4171281a9ac5a31298cbbeb66e2f9eb48ee868c",
+        "d78f6e19e783a37dbce307eb7c915af5959277cd",
+        "c6b5e20c420766588ee190f53bee9533b3a599f3",
+        "2072d3359481984a990a273f52bc9cf9f892012d",
+        "536ea9c1fc36cdaabf30b3b5805dd0de8fd09054"
       ],
       "frontend_commits": [],
       "migrations": [
@@ -1173,7 +1191,8 @@
     {
       "id": "EMAIL-08",
       "backend_commits": [
-        "4ea176ee4ad1b3ed8695b9449b571fab804cf510"
+        "4ea176ee4ad1b3ed8695b9449b571fab804cf510",
+        "8b30b1b0e715e03d37f2b24020140cca1ea8fc5b"
       ],
       "frontend_commits": [],
       "migrations": []
@@ -1181,7 +1200,8 @@
     {
       "id": "EMAIL-09",
       "backend_commits": [
-        "bad728f1b5483013b0b5a10de8aededff5569fd2"
+        "bad728f1b5483013b0b5a10de8aededff5569fd2",
+        "9e2465c44a7180eb3f3eaf38b34051a0dbcce763"
       ],
       "frontend_commits": [],
       "migrations": []
@@ -1210,10 +1230,13 @@
       "id": "EMAIL-10",
       "backend_commits": [
         "45a17b63d1054d6f67ff9336c0835ab7bf0c6a94",
-        "b96117a3c46686cbe1b45163e1f907403ffe016f"
+        "b96117a3c46686cbe1b45163e1f907403ffe016f",
+        "2eb64035ef8b084bde37ec34d5e9dbd1416d066d",
+        "15271424c0532f33cf81ef42f1af5fad149b030e"
       ],
       "frontend_commits": [
-        "d2d9ed37c5803a00f2a3ca1b2269a8cf15232f51"
+        "d2d9ed37c5803a00f2a3ca1b2269a8cf15232f51",
+        "241e53d58b35937516d01f3b8e8552518ef63255"
       ],
       "migrations": [
         "supabase/migrations/20261012012343_email_invitation_resend_cooldown_15_seconds.sql",
@@ -1258,10 +1281,12 @@
     {
       "id": "ISSUE-93",
       "backend_commits": [
-        "d57236e038b494f8846b85e47770539dd33396e4"
+        "d57236e038b494f8846b85e47770539dd33396e4",
+        "1d2cfd61f652f8303ed440727656e21eac9cd6ed"
       ],
       "frontend_commits": [
-        "63e85ab7bf09ec1ad369b62dee42a4d6e7603b7c"
+        "63e85ab7bf09ec1ad369b62dee42a4d6e7603b7c",
+        "a25b5a870d7995fc0db41bf7a19bc6d25db2a417"
       ],
       "migrations": [
         "supabase/migrations/20261019195431_email_chat_history_rls_privacy.sql"
@@ -1280,7 +1305,10 @@
       "backend_commits": [
         "af8466e3968ac0278e88000cfdadbe6c8a7fc8a8",
         "f95154c2887fa633b4161ef21eae6bb0ae12ced5",
-        "066a2051282ca198354f5d35c11ad6179f4a02d2"
+        "066a2051282ca198354f5d35c11ad6179f4a02d2",
+        "bdba9f48a68d7b01c1e86d0daf6804c365626b0b",
+        "9f5d33d29f8bda768ac1592310e968e14fe9e1c7",
+        "63168d4b3f7911641283feb541df4cff88bb1e9a"
       ],
       "frontend_commits": [],
       "migrations": []
@@ -1288,10 +1316,12 @@
     {
       "id": "EMAIL-12",
       "backend_commits": [
-        "97c4e9e61da6ec2bd748c7f408df91258300fd30"
+        "97c4e9e61da6ec2bd748c7f408df91258300fd30",
+        "e915de06d98410a6603b06ed0767a4258486f9a2"
       ],
       "frontend_commits": [
-        "ea5885fcbd81d7b0fd9a92c3f630f4f94c372e9f"
+        "ea5885fcbd81d7b0fd9a92c3f630f4f94c372e9f",
+        "839731ac46230fddce7cd948208f120601d9a369"
       ],
       "migrations": [
         "supabase/migrations/20261012031234_remove_username_from_first_access.sql"
@@ -1325,10 +1355,12 @@
     {
       "id": "ISSUE-102",
       "backend_commits": [
-        "04dbbe4e274216a3a1584240145bed0d903ba399"
+        "04dbbe4e274216a3a1584240145bed0d903ba399",
+        "9f1cf80b3be7601eecdefabdb514cde05765c3b5"
       ],
       "frontend_commits": [
-        "c563b63938b8f8f79b5efaa4e7b7c3b3875d8777"
+        "c563b63938b8f8f79b5efaa4e7b7c3b3875d8777",
+        "8f78da8007ecaaae78dfd33916c6e812e29d77f1"
       ],
       "migrations": [
         "supabase/migrations/20261018143551_add_em_fornecimento_bid_status.sql"
@@ -1350,11 +1382,15 @@
       "id": "FEAT-001",
       "backend_commits": [
         "c2ff290adb6c924e41484e9d02309b78603ad060",
-        "ad49b48a4cd5aca0d01876a60b77d3b11bcbbe74"
+        "ad49b48a4cd5aca0d01876a60b77d3b11bcbbe74",
+        "e12e0236e5cd9cc7145a8cbaf975e1342e2623f2",
+        "3f17ca5fb23cd34945836f6132d0c7af016169ca"
       ],
       "frontend_commits": [
         "77c4a6904eac8fde36b4bbd5ea54571034b5dd79",
-        "63119bfd6c0d87de0ed51b8cb16d06a7700539a6"
+        "63119bfd6c0d87de0ed51b8cb16d06a7700539a6",
+        "1a4d7c4ce6faf61e3ff200b994c20c0a6fb9274e",
+        "2b475179052189c9093660bd15c8de9a99347e4c"
       ],
       "migrations": [
         "supabase/migrations/20261018163925_add_bid_item_fulfillment_tracking.sql",
@@ -1392,7 +1428,8 @@
       "id": "ISSUE-123",
       "backend_commits": [],
       "frontend_commits": [
-        "6479da767136c1e60a2f0e1b367be1dedc281cb0"
+        "6479da767136c1e60a2f0e1b367be1dedc281cb0",
+        "84df4386b4a179031319c9da98fe34bc6a3e833a"
       ],
       "migrations": []
     },
@@ -1400,7 +1437,8 @@
       "id": "ISSUE-121",
       "backend_commits": [],
       "frontend_commits": [
-        "b47df6bf0c91e2c04e226460462729f9364a7d18"
+        "b47df6bf0c91e2c04e226460462729f9364a7d18",
+        "4182bc75f522ab538b73b87453f4d9efbc706105"
       ],
       "migrations": []
     },
@@ -1417,7 +1455,8 @@
       "id": "ISSUE-126",
       "backend_commits": [],
       "frontend_commits": [
-        "3c8d105fcf924daaf6c5878d632c526007b8fe4b"
+        "3c8d105fcf924daaf6c5878d632c526007b8fe4b",
+        "a0b4cc57a73b7faa367722a6ebd2375ce1e52598"
       ],
       "migrations": []
     },
@@ -1425,14 +1464,16 @@
       "id": "ISSUE-127",
       "backend_commits": [],
       "frontend_commits": [
-        "969eac16cb00ad65388b37f10f86980ce9063234"
+        "969eac16cb00ad65388b37f10f86980ce9063234",
+        "736ecafb63fadf4c69dbddbf222f7e07addac753"
       ],
       "migrations": []
     },
     {
       "id": "EMAIL-01",
       "backend_commits": [
-        "e4ec0dcd7e7c676eec529a3255c59c0a3ca7dab5"
+        "e4ec0dcd7e7c676eec529a3255c59c0a3ca7dab5",
+        "1cb54ae195ad3e172097306337096e371ff4537a"
       ],
       "frontend_commits": [],
       "migrations": [
@@ -1451,7 +1492,8 @@
       "id": "ISSUE-137",
       "backend_commits": [],
       "frontend_commits": [
-        "27a8568d93f8ecb22570000eb86cf86e5dd699eb"
+        "27a8568d93f8ecb22570000eb86cf86e5dd699eb",
+        "ecfb7a9b1383526f25532499cb1a7efc83245928"
       ],
       "migrations": []
     },
@@ -1473,11 +1515,16 @@
         "a3de68fa3670d69df9b17eaa199b0edf9d51ad70",
         "c14063dd391113819b7c9d6db12da9c899d51c37",
         "4df2703e96e71724e3d4de981bc01da2f0964e6e",
-        "54ac5ac00b5920e9d22283e4d6649097a25a703c"
+        "54ac5ac00b5920e9d22283e4d6649097a25a703c",
+        "8ea80cc1e190db31abb1de554f91184d29af1944",
+        "b4f6bff9cb1a0464d02c85c63e1386956d50103f",
+        "83ac7cf8b33863fe42da98a0e1372fc05967713a"
       ],
       "frontend_commits": [
         "7d04c6f633fae9e5e4f20ea24c2cde95a1a0b062",
-        "5164be741487f23531a495c02eeaf193f1174c17"
+        "5164be741487f23531a495c02eeaf193f1174c17",
+        "236c388c8c7e7f9ae8d99a76b557822b8725b6d3",
+        "7a21161a72696115bc1dd13973ff3442df517aba"
       ],
       "migrations": [
         "supabase/migrations/20261020092810_organization_self_registration.sql"
@@ -1497,14 +1544,16 @@
       "id": "ISSUE-150",
       "backend_commits": [],
       "frontend_commits": [
-        "989fe7d0d28e6ddac946b1ef5a2b6c02006bf6f3"
+        "989fe7d0d28e6ddac946b1ef5a2b6c02006bf6f3",
+        "a993960d72a3a3681f3924f2f8fcacfbbea59076"
       ],
       "migrations": []
     },
     {
       "frontend_commits": [],
       "backend_commits": [
-        "f1d78081916808f04c88a3c5b817754ad36d58e2"
+        "f1d78081916808f04c88a3c5b817754ad36d58e2",
+        "8e6897c05e8fcafe3843964cab2fb55126ec8624"
       ],
       "migrations": [
         "supabase/migrations/20261020195255_kit_documentos_backend.sql"
@@ -1521,7 +1570,16 @@
         "dd99d48288a279a173c6fab42ffe6a21fc74de06",
         "bc2c4d0439533c5588a8cad088902b2560c2f84d",
         "8cd108e4d48120a39e97fc5b360c59355c94cc2e",
-        "64868daa69d25f1ab3b488174cae9b95053593e6"
+        "64868daa69d25f1ab3b488174cae9b95053593e6",
+        "df56343214abfa9a6dda809c2bc00cca8ae63298",
+        "f62a304c4639646357b63259ab00c5177b21b3b2",
+        "b6abf3ed913dc819e17e54a866cd805176d07d6d",
+        "07ceae9e519d321e4b2ecff72e81708d3c28d969",
+        "22a58826bf06ef62cc1122451cd69bd357679778",
+        "9cbeae66dcd8212f89451252805a34667e7f1fbb",
+        "77d5c4529218616c408753396af5facaea47ce75",
+        "3664403627648fdcd5c9ee002f9131640c308350",
+        "e69bfc8da52d33c43974aafc7d5c0fec2d1d64f1"
       ],
       "backend_commits": [],
       "migrations": [],
@@ -1529,11 +1587,13 @@
     },
     {
       "frontend_commits": [
-        "21e735f00cabc35da3a0688312e3c33392c07db6"
+        "21e735f00cabc35da3a0688312e3c33392c07db6",
+        "df56343214abfa9a6dda809c2bc00cca8ae63298"
       ],
       "backend_commits": [
         "f1d78081916808f04c88a3c5b817754ad36d58e2",
-        "957c48e62d9aa084a6d87ab451e06974cd726fa1"
+        "957c48e62d9aa084a6d87ab451e06974cd726fa1",
+        "8e6897c05e8fcafe3843964cab2fb55126ec8624"
       ],
       "migrations": [
         "supabase/migrations/20261020201959_enable_pg_cron_for_document_notifications.sql",
@@ -1546,10 +1606,12 @@
     {
       "id": "ISSUE-156",
       "backend_commits": [
-        "1b7905bcfbfc16e603e77a99988fef380df4d45f"
+        "1b7905bcfbfc16e603e77a99988fef380df4d45f",
+        "2f92ec433d551adf0a578cd53f17dea614c05c14"
       ],
       "frontend_commits": [
-        "494f6aae120a3dee0a67a36d2c5ce265b6116b1e"
+        "494f6aae120a3dee0a67a36d2c5ce265b6116b1e",
+        "62be46a9c649be98e74a3e5065a5babfad191829"
       ],
       "migrations": []
     },
@@ -1557,7 +1619,8 @@
       "id": "ISSUE-173",
       "backend_commits": [],
       "frontend_commits": [
-        "2f6b78d1c0f9646c72e299e39d460a707ec9442e"
+        "2f6b78d1c0f9646c72e299e39d460a707ec9442e",
+        "3b2008f381c6e185f8b3cb2f684abd81d3624384"
       ],
       "migrations": []
     },
@@ -1569,7 +1632,12 @@
         "72f2c96fb649c30d162fdbadb1e211562d38e170",
         "17c73f848ad3030ec09b818fe31e4597f2adbd83",
         "2b3b08d5e6ac1e98ce0d11473d238a7f263588e6",
-        "394d022589123dcabf92abd6b47f93963b7d78d2"
+        "394d022589123dcabf92abd6b47f93963b7d78d2",
+        "350bd2b09d1754ddd410f26c6a06bcda38193964",
+        "9c97198d5180f724a7690505a1611fc48d0bbdab",
+        "129f129e2a412712cfee656f28047821489aabea",
+        "dd973f29b865e4e8eacc054111f5837019205a78",
+        "8b65fc14de78bc93723a851214c049e7123be9a0"
       ],
       "migrations": []
     },
@@ -1577,7 +1645,8 @@
       "id": "ISSUE-177",
       "backend_commits": [],
       "frontend_commits": [
-        "6d34731caf0a8a0d65b29a82fc09388652eb9a0d"
+        "6d34731caf0a8a0d65b29a82fc09388652eb9a0d",
+        "8a6714579b0c8f6a3f028cd48cd9ddb7fa112402"
       ],
       "migrations": []
     },
@@ -1585,7 +1654,8 @@
       "id": "ISSUE-176",
       "backend_commits": [],
       "frontend_commits": [
-        "92cd8b915dbf8a90d017d112d721cfff1ae6f565"
+        "92cd8b915dbf8a90d017d112d721cfff1ae6f565",
+        "6a32b4f78d9e0d75ff6c3d67ed58e7c8da9983e9"
       ],
       "migrations": []
     },
@@ -1593,7 +1663,8 @@
       "id": "ISSUE-187",
       "backend_commits": [],
       "frontend_commits": [
-        "d152a62327d9e68b20374da7634ea29d21d57a01"
+        "d152a62327d9e68b20374da7634ea29d21d57a01",
+        "57dc0fb7b949978ae9089ab6ec89caf20f487097"
       ],
       "migrations": []
     },
@@ -1616,7 +1687,13 @@
         "e51aef6974c362b0546eb759f58806880330eade",
         "53b44bc4768cb6e954403a00b6936865a3bcff6b",
         "f57b59b9645ebce7ad75d0248542adfa40a7af26",
-        "8859fb83ae555a6baf609aab1365bb47193c9b70"
+        "8859fb83ae555a6baf609aab1365bb47193c9b70",
+        "bfa70059b6bd2ef5e2899eb1d3bbdc04da09acfb",
+        "ba100d2b5841e137e4659a1a05028603159bb7c9",
+        "f05449bef5ae36676805f37e3a33e52f1520f4ed",
+        "98269046ebeb824e1816147c4c53663b01d17b9b",
+        "4100a4c746dfeaa42b80052411861f1095cf8853",
+        "e801031363f56c1871a36c0639d8c721383bdc35"
       ],
       "frontend_commits": [],
       "migrations": [
@@ -1631,7 +1708,8 @@
       "id": "ISSUE-189",
       "backend_commits": [],
       "frontend_commits": [
-        "c531436f6a3e4cc05c3fe191a4ce284baa8b3896"
+        "c531436f6a3e4cc05c3fe191a4ce284baa8b3896",
+        "c3251098c3757dac745ccfb653fdbfdea0305d76"
       ],
       "migrations": []
     },
@@ -1639,7 +1717,8 @@
       "id": "ISSUE-140",
       "backend_commits": [],
       "frontend_commits": [
-        "0320fa1fdd3fffa4e23d37b6aaa650fa4cc27d37"
+        "0320fa1fdd3fffa4e23d37b6aaa650fa4cc27d37",
+        "f8520d8c5dbe1ce447443d3b334b340372799a4b"
       ],
       "migrations": []
     },
@@ -1647,7 +1726,8 @@
       "id": "ISSUE-192",
       "backend_commits": [],
       "frontend_commits": [
-        "d335c0412b6be17c9a059c9ad5b94b1d73ccdadd"
+        "d335c0412b6be17c9a059c9ad5b94b1d73ccdadd",
+        "e8effc9c676e4f69ace750aace3ec61825e37f2c"
       ],
       "migrations": []
     },
@@ -1672,7 +1752,9 @@
       "backend_commits": [],
       "frontend_commits": [
         "e7e895d9bd4706a4aa23b6efde2f8bbcecd88672",
-        "20f7a9311ccb36743fce3ce21e34cb0e6430d0f9"
+        "20f7a9311ccb36743fce3ce21e34cb0e6430d0f9",
+        "7d01862c310d667bbe315487c1fe00c72fe3dee4",
+        "a62f5b5a59444169713addbe438bf6d1e0c1a147"
       ],
       "migrations": []
     },
@@ -1680,7 +1762,8 @@
       "id": "ISSUE-207",
       "backend_commits": [],
       "frontend_commits": [
-        "046f88a02f859f6851effc2cf1b008a221828ec5"
+        "046f88a02f859f6851effc2cf1b008a221828ec5",
+        "75d9c6118fb3087a7af51a33ded3490eb9591d8b"
       ],
       "migrations": []
     },
@@ -1697,7 +1780,8 @@
       "id": "ISSUE-215",
       "backend_commits": [],
       "frontend_commits": [
-        "ccf2d1b6de1ea49db5b122ac9d69d13839c8f33e"
+        "ccf2d1b6de1ea49db5b122ac9d69d13839c8f33e",
+        "2dbe903621aa8b3433951bbfb56b702866a596aa"
       ],
       "migrations": []
     },
@@ -1706,7 +1790,10 @@
       "backend_commits": [
         "fa5e43a12dbdcbace5fabb9ea2e9005d7a4aa2fe",
         "4a5c062210cf6ea8bcace1acba32163ecd6826fc",
-        "d51a1471d888c341bfcd89321596cb421a39ebd2"
+        "d51a1471d888c341bfcd89321596cb421a39ebd2",
+        "25aa9987cd6909c648ea8bb450dd22854cfc0f77",
+        "b98836d6c7e836a5d6ed60042adee789d059b412",
+        "d54d33a01f826900184cdaf6ecfa348ade48257b"
       ],
       "frontend_commits": [
         "ae1413c15b837f034d749e89205ec3fc1a872920",
@@ -1715,7 +1802,14 @@
         "d63f0bda67fa41265bfb89cb1e5116f2d534e116",
         "73eb188faa823b611ff36eb8f8170a9d40546f4b",
         "a49bde66936b92e1dc558fd5616263bee8ecd487",
-        "9b4a887c0b7b5eb95c020d18a402680f9f19e5da"
+        "9b4a887c0b7b5eb95c020d18a402680f9f19e5da",
+        "b6c18d2bd9ed5f88c44e965184bd9f1a3c85d9c4",
+        "542d333721afecdf8a9bfd36adc327b78734332e",
+        "18cfb6cb389212066c2e8d5dff7d29951cd5fb0c",
+        "58302175997700d0555e2a80b1e8d8d724b428fc",
+        "dba730e8d88693798e27f5fa95b2d78c4fb820ca",
+        "2f31183611c430b35319d5382ce78a4a7335b09a",
+        "0ef62dba08c52c5c5a0f0f1345fbc231760bf935"
       ],
       "migrations": [
         "supabase/migrations/20261024154734_bid_process_messages.sql",
@@ -1728,7 +1822,10 @@
       "frontend_commits": [
         "5e1cd9d2c998797a1d4fd35445e8120fdb9cb93a",
         "f8aa08caad990567956379ac4471bdce7a8d0621",
-        "c5459cf0cc6bd13607ca2de9eb23bc54573b7cdd"
+        "c5459cf0cc6bd13607ca2de9eb23bc54573b7cdd",
+        "683f703900ea6734a244073d55be547ffca52451",
+        "4abf9231395424b4dc434a3f11810c3bf0b44ce0",
+        "187fbef771fb4ab0f20948e1b8711cfd62964148"
       ],
       "migrations": []
     },
@@ -1738,7 +1835,9 @@
       "frontend_commits": [
         "b4d648141b1d9cd8ae55ae12766fdedb0ba01fc6",
         "a71af5d07a876cef377790405ced93e4663aed9a",
-        "724304ab9860592fda170b0796a79b7f10fbca01"
+        "724304ab9860592fda170b0796a79b7f10fbca01",
+        "451d0337f820bb31d750d64dc4820eae17abf938",
+        "ad05709357d0c22f71e002945bd25cd40a75b1e1"
       ],
       "migrations": []
     },
@@ -1746,19 +1845,24 @@
       "id": "ISSUE-228",
       "backend_commits": [],
       "frontend_commits": [
-        "1a1f7891fe3f8e364fa0c42f79436b38cbf08cbd"
+        "1a1f7891fe3f8e364fa0c42f79436b38cbf08cbd",
+        "3d995bcde067f881e0587b25e9abb41f9bfa9fdc"
       ],
       "migrations": []
     },
     {
       "id": "ISSUE-229",
       "backend_commits": [
-        "b17d0d368a2aeeea8b191d1994881ac350e9093c"
+        "b17d0d368a2aeeea8b191d1994881ac350e9093c",
+        "22244a38016d86d2df5987bab88f8f4b77b27047"
       ],
       "frontend_commits": [
         "2f1c7d0c13315349f2df79a831dce487b9249326",
         "203c4e983f990a9cfdc641d353d9f3701c299018",
-        "4bc621e845f1a67ac42162764fc023815b11bd1c"
+        "4bc621e845f1a67ac42162764fc023815b11bd1c",
+        "144d67f18f054da0522b3790fee1d3d5da76ea86",
+        "cda68ee555acc1b224704f30847c0176f4931b5a",
+        "c847bc3f0bebe9c8d537541bf83f2588bbb5299c"
       ],
       "migrations": [
         "supabase/migrations/20261101000000_broadcast_bid_process_messages.sql"
@@ -1779,7 +1883,23 @@
         "ef25e439f442945df5538c6c8a034adcbbe8cf48",
         "10e0bd52e9b9c670421491079b21d5ea49aa6b50",
         "b8a1c5488ca5038560be03c4926c9cbfa5310aca",
-        "0cdeb2094561bb93fffae4764d9de0b6ec44ed6e"
+        "0cdeb2094561bb93fffae4764d9de0b6ec44ed6e",
+        "be4ffeafddcca15633266b7ac8867cf683f9bed4",
+        "02b942a9ce3414828dae5fc7d78accedd2da22fd",
+        "9ae73f5e39ebf122de34f7576ee82d67076edce8",
+        "23120f30ca3da90a75e734bbfb4bcc35a8f5607e",
+        "7500d18a87f5133e7504a751d9de32da9075d280",
+        "fcf081d71c6d814c314a4fb6ca91a28619cf2198",
+        "ca3132213063f0da13983f61ab8ffc935b843a8a",
+        "7cbbfa1c194b2f3e8595436a3ed703bd2ebbac2f",
+        "c375a14165754cc0d629688b716fa764e0d714cc",
+        "3a8109698ce9c389ec8520cfc887b5b03b661fb3",
+        "7d088e9086e4ecb2cbcdb12668e7bb94b04564a4",
+        "d4e7e712f280058ae33f5e1ae658365323e89fe6",
+        "c7f1f00634d68674bbc73a30aaa910292658e594",
+        "509bcf92bd5cd9911fdf360071919df7880d771e",
+        "0f54e496d582b53de170f2cb3f051a1ee5151d25",
+        "17f73895757d7e772c4afe9ee00aeed28bcaff58"
       ],
       "frontend_commits": [
         "2aa6973fcef44d921d390d2744cb85e3977acd82",
@@ -1790,7 +1910,15 @@
         "6fab665b2dd0977da33da5ac403fd8046e0ce592",
         "61e9ef74156cca156b777866d65dcbe315faf34c",
         "b3168ffa4fe143dd96878805c0d7a69ab4aaa687",
-        "e1613a4894ce9b08667ce005c22646ac9bdbf91a"
+        "e1613a4894ce9b08667ce005c22646ac9bdbf91a",
+        "b5e1ce76220beff3a58532389ef408c3c75e64eb",
+        "878b02159eac20ff3e9bfd556e7faf6a503da822",
+        "672760d208d9a579d523c37f9fead2cffbfd572d",
+        "b6f442337eb0fdca7f35ec56f1b2eaf7adee56cf",
+        "f0fb1a99353bb87ddf69a79bd6e43ad33d5bdfd4",
+        "3d8e843bb36e06b67294d3c9a1a8eaf929272c94",
+        "a7b9eaead654e092a69f1dd981add4034ebcfd16",
+        "2aaa2d97113215fdfa6f9ac8367a1d2931b266a1"
       ],
       "migrations": [
         "supabase/migrations/20261101163559_reliable_message_notifications.sql",
@@ -1801,7 +1929,8 @@
       "id": "ISSUE-254",
       "backend_commits": [],
       "frontend_commits": [
-        "a6e08e7188ee67276cca646eac5f17678fc22040"
+        "a6e08e7188ee67276cca646eac5f17678fc22040",
+        "fd5069ec7280ddb02c5bc45510697a986a8cb11c"
       ],
       "migrations": []
     }
