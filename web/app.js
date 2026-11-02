@@ -2372,6 +2372,21 @@ const organizationChat = (window.GLLOrganizationChat?.createOrganizationChat || 
   getUserId: () => appState.currentUserAuthId,
   getUserCreatedAt: () => appState.currentUserCreatedAt,
 });
+const pendingMentionToasts = new Map();
+const presentedMentionIds = new Set();
+function flushMentionToasts() {
+  if (document.hidden || !appState.authenticated) return;
+  const ready = [...pendingMentionToasts.values()].filter((row) => appState.bids.some((bid) => bid.id === row.bid_id));
+  if (!ready.length) return;
+  for (const row of ready) {
+    pendingMentionToasts.delete(String(row.message_id));
+    presentedMentionIds.add(String(row.message_id));
+  }
+  const bid = appState.bids.find((row) => row.id === ready[0].bid_id);
+  showToast(ready.length > 1
+    ? `Você recebeu ${ready.length} novas menções nos chats dos editais`
+    : `Você foi mencionado no chat do edital ${bidDisplayNumber(bid)}`, "info", "top-right");
+}
 const bidFollowupFeature = createBidFollowupFeature({
   getClient: () => (store.requiresAuthenticationBeforeData ? store.client : null),
   getBid: currentBid,
@@ -2379,18 +2394,22 @@ const bidFollowupFeature = createBidFollowupFeature({
   getUserId: () => appState.currentUserAuthId,
   formatBidLabel: bidDisplayNumber,
   onNotificationsChanged: (notifications, { notifyMessageIds = [] } = {}) => {
-    const previousMessageIds = new Set(appState.bidMessageNotifications.map((notification) => String(notification.message_id)));
     appState.bidMessageNotifications = Array.isArray(notifications) ? notifications : [];
     updateNotificationsIndicator();
     if (!refs.notificationsMenu.classList.contains("hidden")) setNotificationsMenuOpen(true);
     const requestedMessageIds = new Set(notifyMessageIds.map(String));
     for (const notification of appState.bidMessageNotifications) {
       if (!requestedMessageIds.has(String(notification.message_id))
-        || previousMessageIds.has(String(notification.message_id))
+        || presentedMentionIds.has(String(notification.message_id))
+        || appState.dismissedNotificationIds.includes(`bid-message:${notification.message_id}`)
         || notification.message?.author_id === appState.currentUserAuthId) continue;
-      const bid = appState.bids.find((row) => row.id === notification.bid_id);
-      if (bid) showToast(`Você foi mencionado no chat do edital ${bidDisplayNumber(bid)}`, "info", "top-right");
+      pendingMentionToasts.set(String(notification.message_id), notification);
     }
+    const available = new Set(appState.bidMessageNotifications.map((row) => String(row.message_id)));
+    for (const id of pendingMentionToasts.keys()) {
+      if (!available.has(id) || appState.dismissedNotificationIds.includes(`bid-message:${id}`)) pendingMentionToasts.delete(id);
+    }
+    flushMentionToasts();
   },
 });
 const declarationsFeature = createDeclarationsFeature({
@@ -2454,13 +2473,9 @@ async function refreshOrganizationDocumentAlerts() {
 
   const epoch = sessionEpoch;
   const organizationId = appState.currentOrganizationId;
-  const mentionRefresh = bidFollowupFeature.refreshNotifications().catch(() => {
-    console.warn("Não foi possível atualizar as notificações de menção no chat dos editais.");
-  });
   if (GLL_CONFIG.organizationDocumentsEnabled !== true) {
     appState.organizationDocumentNotifications = [];
     appState.organizationDocumentPendencies = [];
-    await mentionRefresh;
     if (request === organizationDocumentAlertsRequest && epoch === sessionEpoch) updateNotificationsIndicator();
     return;
   }
@@ -2469,7 +2484,6 @@ async function refreshOrganizationDocumentAlerts() {
     getClient: () => store.client,
   });
   if (!api) {
-    await mentionRefresh;
     if (request === organizationDocumentAlertsRequest && epoch === sessionEpoch) updateNotificationsIndicator();
     return;
   }
@@ -2494,7 +2508,6 @@ async function refreshOrganizationDocumentAlerts() {
       console.warn("Não foi possível atualizar as notificações e pendências de vencimento do Kit de Documentos.");
     }
   }
-  await mentionRefresh;
   if (request === organizationDocumentAlertsRequest && epoch === sessionEpoch) updateNotificationsIndicator();
 }
 const commercialProposalsFeature = createCommercialProposalsFeature({
@@ -2639,6 +2652,7 @@ function handleSessionVisibility() {
 }
 
 function handleLiveFocus() {
+  void reconcileMessages();
   void verifyVisibleSession();
   scheduleLiveRefresh();
 }
@@ -4600,6 +4614,10 @@ function resetAuthenticatedView({ showLogin = true } = {}) {
   pendingAppDataBootstrap = Promise.resolve();
   organizationChat.close();
   bidFollowupFeature.reset();
+  pendingMentionToasts.clear();
+  presentedMentionIds.clear();
+  toastQueue.length = 0;
+  hideToast();
   sessionEpoch += 1;
   dataRequest += 1;
   stopSessionPolicyMonitoring();
@@ -5125,6 +5143,34 @@ let dataRequest = 0;
 let liveSubscriptionRequest = 0;
 let liveChannel = null;
 let chatBroadcastChannel = null;
+let mentionBroadcastChannel = null;
+let messageReconcileTimer = null;
+let messageReconcileFlight = null;
+let messageReconcilePending = false;
+
+function reconcileMessages() {
+  if (!appState.authenticated || document.hidden) return Promise.resolve();
+  messageReconcilePending = true;
+  if (messageReconcileFlight) return messageReconcileFlight;
+  const epoch = sessionEpoch;
+  const request = liveSubscriptionRequest;
+  const work = async () => {
+    while (messageReconcilePending && epoch === sessionEpoch && request === liveSubscriptionRequest) {
+      messageReconcilePending = false;
+      await Promise.all([bidFollowupFeature.reconcile?.(), organizationChat.refreshUnreadCount()]);
+      if (epoch === sessionEpoch && request === liveSubscriptionRequest) flushMentionToasts();
+    }
+  };
+  const flight = work().catch(() => {
+    console.warn("Não foi possível reconciliar mensagens; nova tentativa na próxima atualização.");
+  }).finally(() => { if (messageReconcileFlight === flight) messageReconcileFlight = null; });
+  messageReconcileFlight = flight;
+  return flight;
+}
+
+function handleMessageVisibility() {
+  if (!document.hidden) void reconcileMessages();
+}
 let liveDebounce = null;
 let liveRetryTimer = null;
 const pendingLiveResources = new Set();
@@ -5488,6 +5534,9 @@ async function startLiveUpdates() {
   const client = store.client;
   const organizationId = appState.currentOrganizationId;
   const epoch = sessionEpoch;
+  const userId = appState.currentUserAuthId;
+  const current = () => request === liveSubscriptionRequest && epoch === sessionEpoch
+    && organizationId === appState.currentOrganizationId && userId === appState.currentUserAuthId;
   void organizationChat.startUnreadTracking();
   try {
     await client.realtime.setAuth();
@@ -5511,7 +5560,7 @@ async function startLiveUpdates() {
       schema: "public",
       table: "organization_messages",
       filter: `organization_id=eq.${appState.currentOrganizationId}`,
-    }, organizationChat.handleIncomingMessage)
+    }, (event) => { if (current()) organizationChat.handleIncomingMessage(event); })
     .subscribe((status, error) => {
       if (status === "SUBSCRIBED") {
         scheduleLiveRefresh();
@@ -5523,10 +5572,12 @@ async function startLiveUpdates() {
     chatBroadcastChannel = client.channel(`organization:${organizationId}`, {
       config: { private: true, broadcast: { self: false } },
     })
-      .on("broadcast", { event: "organization-data-changed" }, handleOrganizationDataChanged)
-      .on("broadcast", { event: "organization-message-inserted" }, organizationChat.handleIncomingMessage)
+      .on("broadcast", { event: "organization-data-changed" }, (event) => { if (current()) handleOrganizationDataChanged(event); })
+      .on("broadcast", { event: "organization-message-inserted" }, (event) => { if (current()) organizationChat.handleIncomingMessage(event); })
       .subscribe((status, error) => {
+        if (!current()) return;
         if (status === "SUBSCRIBED") {
+          void reconcileMessages();
           void verifyCurrentUserAccess().catch(() => {});
           scheduleLiveRefresh();
         } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
@@ -5534,6 +5585,26 @@ async function startLiveUpdates() {
         }
       });
   }
+  if (organizationId && userId) {
+    mentionBroadcastChannel = client.channel(`organization:${organizationId}:user:${userId}`, {
+      config: { private: true },
+    }).on("broadcast", { event: "bid-message-mentioned" }, (event) => {
+      if (!current()) return;
+      void bidFollowupFeature.refreshNotifications({ notifyMessageId: event?.payload?.messageId })
+        .catch(() => console.warn("Falha ao recuperar menção; a reconciliação tentará novamente."));
+    }).subscribe((status) => {
+      if (!current()) return;
+      if (status === "SUBSCRIBED") void reconcileMessages();
+      else if (["CHANNEL_ERROR", "TIMED_OUT", "CLOSED"].includes(status)) {
+        console.warn("Canal de menções indisponível; recuperação periódica ativa.");
+        void reconcileMessages();
+      }
+    });
+  }
+  messageReconcileTimer = setInterval(() => { void reconcileMessages(); }, 30_000);
+  void reconcileMessages();
+  window.addEventListener("online", handleMessageVisibility);
+  document.addEventListener("visibilitychange", handleMessageVisibility);
   window.addEventListener("online", scheduleLiveRefresh);
   window.addEventListener("focus", handleLiveFocus);
   document.addEventListener("visibilitychange", scheduleLiveRefresh);
@@ -5555,6 +5626,14 @@ function stopLiveUpdates() {
   if (chatBroadcastChannel) void store.client.removeChannel(chatBroadcastChannel);
   chatBroadcastChannel = null;
   organizationChat.stopUnreadTracking();
+  if (mentionBroadcastChannel) void store.client.removeChannel(mentionBroadcastChannel);
+  mentionBroadcastChannel = null;
+  clearInterval(messageReconcileTimer);
+  messageReconcileTimer = null;
+  messageReconcileFlight = null;
+  messageReconcilePending = false;
+  window.removeEventListener("online", handleMessageVisibility);
+  document.removeEventListener("visibilitychange", handleMessageVisibility);
   window.removeEventListener("online", scheduleLiveRefresh);
   window.removeEventListener("focus", handleLiveFocus);
   document.removeEventListener("visibilitychange", scheduleLiveRefresh);
@@ -9880,6 +9959,7 @@ function escapeHtml(value) {
 }
 
 let toastTimer;
+const toastQueue = [];
 function inferredToastTone(message) {
   if (/^(Falha salva|Falha excluída)/i.test(String(message))) return "success";
   if (/não foi possível|não encontrado|\berro\b|\bfalha\b/i.test(String(message))) return "error";
@@ -9888,6 +9968,10 @@ function inferredToastTone(message) {
 }
 
 function showToast(message, tone = inferredToastTone(message), placement = "bottom-right") {
+  if (refs.toast.classList.contains("show")) {
+    toastQueue.push({ message, tone, placement });
+    return;
+  }
   const safeTone = ["success", "warning", "error", "info"].includes(tone) ? tone : "info";
   const safePlacement = ["bottom-right", "top-right"].includes(placement) ? placement : "bottom-right";
   const iconName = safeTone === "error" ? "error" : safeTone;
@@ -9919,9 +10003,12 @@ function moveToastIntoActiveModal() {
 }
 
 function hideToast() {
+  clearTimeout(toastTimer);
   refs.toast.classList.remove("show");
   if (typeof refs.toast.hidePopover === "function" && refs.toast.matches(":popover-open")) refs.toast.hidePopover();
   if (refs.toast.parentElement !== document.body) document.body.append(refs.toast);
+  const next = toastQueue.shift();
+  if (next) showToast(next.message, next.tone, next.placement);
 }
 
 void main().catch(() => {
