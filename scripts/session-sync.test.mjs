@@ -533,14 +533,14 @@ test("sets the Realtime JWT before subscribing to the private organization chann
   assert.equal(calls[0], "set-auth");
   const privateChannel = calls.find((call) => typeof call === "object" && call.topic === "organization:org-1");
   assert.deepEqual(JSON.parse(JSON.stringify(privateChannel.options)), { config: { private: true, broadcast: { self: false } } });
-  assert.deepEqual(app.intervalDelays, [5 * 60 * 1000]);
+  assert.deepEqual(app.intervalDelays, [5 * 60 * 1000, 30_000]);
   app.stopLiveUpdates();
 });
 
 test("refreshes document alerts every five minutes without restoring full-data polling", async () => {
   const app = client();
   await app.restoreSession();
-  assert.deepEqual(app.intervalDelays, [60_000, 5 * 60 * 1000]);
+  assert.deepEqual(app.intervalDelays, [60_000, 5 * 60 * 1000, 30_000]);
   await app.logout();
 });
 
@@ -1124,4 +1124,34 @@ test("bid revenue uses only won items for approved, billed, disputed, and discar
   assert.equal(app.calculateBidSummary("DISQUALIFIED").totalFinal, 350);
   assert.equal(app.calculateBidSummary("BILLED").totalFinal, 200);
   assert.equal(app.calculateBidSummary("APPROVED").itemCount, 2);
+});
+
+
+test("toast queue preserves successive messages and clears private notices on logout", () => {
+  const app = client();
+  app.context.realShowToast = app.showToast;
+  vm.runInContext("showToast = realShowToast", app.context);
+  app.showToast("Primeira menção", "info", "top-right");
+  app.showToast("Segunda menção", "info", "top-right");
+  assert.equal(app.element("toastMessage").textContent, "Primeira menção");
+  vm.runInContext("hideToast()", app.context);
+  assert.equal(app.element("toastMessage").textContent, "Segunda menção");
+  app.resetAuthenticatedView();
+  assert.equal(app.toast.classList.contains("show"), false);
+});
+
+test("hidden mentions are grouped on return and never repeated by duplicate refreshes", async () => {
+  const app = client();
+  await app.restoreSession();
+  app.appState.bids = [{ id: "TEST-1", edital_number: "10/2026" }];
+  app.context.document.hidden = true;
+  const rows = ["a", "b"].map((id) => ({ message_id: id, bid_id: "TEST-1", message: {author_id: "other"} }));
+  app.bidFollowupCalls.onNotificationsChanged(rows, { notifyMessageIds: ["a", "b"] });
+  assert.equal(app.context.toastCalls.length, 0);
+  app.context.document.hidden = false;
+  vm.runInContext("flushMentionToasts()", app.context);
+  assert.equal(app.context.toastCalls.length, 1);
+  assert.match(app.context.toastCalls[0][0], /2 novas menções/);
+  app.bidFollowupCalls.onNotificationsChanged(rows, { notifyMessageIds: ["a", "b"] });
+  assert.equal(app.context.toastCalls.length, 1);
 });

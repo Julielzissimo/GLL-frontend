@@ -38,7 +38,7 @@ function createElement() {
   };
 }
 
-function createChatHarness() {
+function createChatHarness(createdAt = null) {
   const button = createElement();
   const counter = createElement();
   const elements = new Map([
@@ -70,6 +70,7 @@ function createChatHarness() {
         select() { return query; },
         eq() { return query; },
         neq() { return query; },
+        gte() { return query; },
         then(resolve, reject) {
           const count = table === "organization_messages" ? incomingCount : readCount;
           return Promise.resolve({ count, error: null }).then(resolve, reject);
@@ -83,6 +84,7 @@ function createChatHarness() {
     getOrganizationId: () => "org-1",
     getOrganizationName: () => "Organização",
     getUserId: () => "user-1",
+    getUserCreatedAt: () => createdAt,
   });
 
   return {
@@ -274,4 +276,18 @@ test("repeats the unread pulse every second and honors reduced motion", () => {
   assert.match(stylesSource, /\.organization-chat-button\.has-unread::after\s*\{\s*animation:\s*organization-chat-wave 1s ease-out \.3s infinite;/);
   assert.match(stylesSource, /\.organization-chat-unread-count\.has-unread\s*\{\s*animation:\s*organization-chat-counter-bump 1s ease-in-out infinite;/);
   assert.match(stylesSource, /@media \(prefers-reduced-motion: reduce\)[\s\S]*?\.organization-chat-button\.has-unread::before,[\s\S]*?\.organization-chat-unread-count\.has-unread \{ animation: none; \}/);
+});
+
+
+test("Broadcast with created_at respects account history and deduplicates Postgres delivery", async () => {
+  const { chat, counter, setCounts } = createChatHarness("2026-01-01T00:00:00Z");
+  await chat.startUnreadTracking();
+  const row = { id: 238, organization_id: "org-1", sender_id: "user-2", created_at: "2026-11-01T10:00:00Z" };
+  chat.handleIncomingMessage({payload: {...row, created_at: "2025-12-31T00:00:00Z"}});
+  assert.equal(counter.hidden, true);
+  setCounts(1, 0);
+  chat.handleIncomingMessage({payload: row});
+  chat.handleIncomingMessage({new: row});
+  assert.equal(counter.textContent, "1");
+  chat.stopUnreadTracking();
 });
