@@ -19,6 +19,8 @@ function watchMentionSubscription(page, user) {
   let privateChannelReplies = 0;
   let expectedTopicReply = false;
   let replyCategory = 'unknown';
+  let mentionJoinDiagnostics = null;
+  let organizationJoinDiagnostics = null;
   let organizationTopicStatus = 'no-reply';
   let organizationTopicCategory = 'unknown';
   const subscribed = new Promise((resolve) => { resolveReady = resolve; });
@@ -32,6 +34,24 @@ function watchMentionSubscription(page, user) {
         const [, , topic, event, response] = Array.isArray(frame)
           ? frame
           : [frame.join_ref, frame.ref, frame.topic, frame.event, frame.payload];
+        const payload = Array.isArray(frame) ? frame[4] : frame.payload;
+        if (event === 'phx_join' && (topic === expectedTopic || topic === organizationTopic)) {
+          const accessToken = payload?.access_token;
+          let claims = null;
+          try {
+            claims = JSON.parse(Buffer.from(String(accessToken).split('.')[1] ?? '', 'base64url').toString('utf8'));
+          } catch { /* Keep diagnostics boolean-only when a token cannot be decoded. */ }
+          const diagnostics = {
+            accessTokenPresent: typeof accessToken === 'string' && accessToken.length > 0,
+            authenticatedRole: claims?.role === 'authenticated',
+            subjectMatches: claims?.sub === user.id,
+            sessionIdPresent: typeof claims?.session_id === 'string' && claims.session_id.length > 0,
+            issuedAtPresent: Number.isFinite(Number(claims?.iat)),
+            privateRequested: payload?.config?.private === true,
+          };
+          if (topic === expectedTopic) mentionJoinDiagnostics = diagnostics;
+          if (topic === organizationTopic) organizationJoinDiagnostics = diagnostics;
+        }
         if (event === 'phx_reply' && typeof topic === 'string' && topic.includes(':user:')) {
           privateChannelReplies += 1;
         }
@@ -63,7 +83,7 @@ function watchMentionSubscription(page, user) {
           ]);
         }
         if (replyStatus !== 'ok') {
-          throw new Error(`Private mention channel rejected (status=${replyStatus ?? 'unknown'}, category=${replyCategory}, organization channel=${organizationTopicStatus}/${organizationTopicCategory}).`);
+          throw new Error(`Private mention channel rejected (status=${replyStatus ?? 'unknown'}, category=${replyCategory}, join=${JSON.stringify(mentionJoinDiagnostics)}, organization channel=${organizationTopicStatus}/${organizationTopicCategory}, organization join=${JSON.stringify(organizationJoinDiagnostics)}).`);
         }
       } catch (error) {
         if (error?.message === 'Private mention channel did not subscribe.') {
