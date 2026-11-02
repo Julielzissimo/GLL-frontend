@@ -32,6 +32,10 @@ export function createBidFollowupFeature({
   let messageRequest = 0;
   let notificationRequest = 0;
   const pendingNotificationMessageIds = new Set();
+  let notificationFlight = null;
+  let notificationRefreshPending = false;
+  let notificationsInitialized = false;
+  const knownNotificationIds = new Set();
   let unreadRequest = 0;
   let unreadTimer = null;
   let trackedBidId = null;
@@ -52,28 +56,10 @@ export function createBidFollowupFeature({
     if (!client || !bid?.id || !userId || trackedBidId !== bid.id) return;
     const request = ++unreadRequest;
     try {
-      const { data, error } = await client.from("bid_process_messages")
-        .select("id,author_id")
-        .eq("bid_id", bid.id)
-        .order("created_at", { ascending: false })
-        .order("id", { ascending: false })
-        .limit(250);
+      const { data, error } = await client.rpc("has_unread_bid_process_messages", { p_bid_id: bid.id });
       if (error) throw error;
       if (request !== unreadRequest || trackedBidId !== bid.id || bid.id !== getBid()?.id || userId !== getUserId()) return;
-      const incoming = (data || []).filter((message) => message.author_id && message.author_id !== userId);
-      if (!incoming.length) {
-        setUnread(false);
-        return;
-      }
-      const receiptResult = await client.from("bid_process_message_reads")
-        .select("message_id")
-        .eq("bid_id", bid.id)
-        .eq("reader_id", userId)
-        .in("message_id", incoming.map((message) => message.id));
-      if (receiptResult.error) throw receiptResult.error;
-      if (request !== unreadRequest || trackedBidId !== bid.id || bid.id !== getBid()?.id || userId !== getUserId()) return;
-      const readIds = new Set((receiptResult.data || []).map((receipt) => receipt.message_id));
-      setUnread(incoming.some((message) => !readIds.has(message.id)));
+      setUnread(data === true);
     } catch (error) {
       console.warn(error.message || "Não foi possível atualizar as mensagens não lidas deste edital.");
     }
@@ -341,14 +327,25 @@ export function createBidFollowupFeature({
     const bid = getBid();
     if (!client || !bid?.id) return;
     const request = ++messageRequest;
+    const userId = getUserId();
     const { data, error } = await client.from("bid_process_messages")
       .select("id,bid_id,organization_id,author_id,author_name,body,created_at")
       .eq("bid_id", bid.id)
       .order("created_at", { ascending: false })
+      .order("id", { ascending: false })
       .limit(250);
     if (error) throw error;
-    if (!active || request !== messageRequest || activeBidId !== bid.id) return;
+    if (!active || request !== messageRequest || activeBidId !== bid.id || userId !== getUserId()) return;
     const rows = (data || []).slice().reverse();
+    if (highlightedMessageId && !rows.some((row) => row.id === highlightedMessageId)) {
+      const target = await client.from("bid_process_messages")
+        .select("id,bid_id,organization_id,author_id,author_name,body,created_at")
+        .eq("bid_id", bid.id).eq("id", highlightedMessageId).maybeSingle();
+      if (target.error) throw target.error;
+      if (!active || request !== messageRequest || activeBidId !== bid.id || userId !== getUserId()) return;
+      if (target.data) rows.unshift(target.data);
+      else setError("A mensagem não está mais disponível para este perfil.");
+    }
     let mentions = [];
     if (rows.length) {
       const result = await client.from("bid_message_mentions")
@@ -357,58 +354,70 @@ export function createBidFollowupFeature({
       if (result.error) throw result.error;
       mentions = result.data || [];
     }
-    if (!active || request !== messageRequest || activeBidId !== bid.id) return;
+    if (!active || request !== messageRequest || activeBidId !== bid.id || userId !== getUserId()) return;
     messages = rows;
     messageMentions = mentions;
     renderMessages({ scrollToBottom });
     try {
-      await markMessagesAsRead(rows, bid.id);
-      if (request === messageRequest && active && activeBidId === bid.id) setUnread(false);
+      if (!document.hidden) await markMessagesAsRead(rows, bid.id);
+      if (request === messageRequest && active && activeBidId === bid.id) await refreshUnreadState();
     } catch (readError) {
       console.warn(readError.message || "Não foi possível registrar a leitura das atualizações deste edital.");
       void refreshUnreadState();
     }
   }
 
-  async function refreshNotifications({ notifyMessageId = null } = {}) {
+  function refreshNotifications({ notifyMessageId = null } = {}) {
+    if (notifyMessageId) pendingNotificationMessageIds.add(String(notifyMessageId));
+    notificationRefreshPending = true;
+    if (notificationFlight) return notificationFlight;
+    const epoch = notificationRequest;
     const client = getClient();
     const recipientId = getUserId();
-    const request = ++notificationRequest;
-    if (notifyMessageId) pendingNotificationMessageIds.add(String(notifyMessageId));
-    if (!client || !recipientId) {
-      pendingNotificationMessageIds.clear();
-      onNotificationsChanged([], { notifyMessageIds: [] });
-      return [];
-    }
-    const mentionsResult = await client.from("bid_message_mentions")
-      .select("message_id,bid_id,created_at")
-      .eq("recipient_user_id", recipientId)
-      .order("created_at", { ascending: false })
-      .limit(100);
-    if (mentionsResult.error) throw mentionsResult.error;
-    const mentions = mentionsResult.data || [];
-    if (!mentions.length) {
-      if (request === notificationRequest) {
-        pendingNotificationMessageIds.clear();
-        onNotificationsChanged([], { notifyMessageIds: [] });
+    if (!client || !recipientId) return Promise.resolve([]);
+    const valid = () => epoch === notificationRequest && client === getClient() && recipientId === getUserId();
+    const work = async () => {
+      let notifications = [];
+      while (notificationRefreshPending && valid()) {
+        notificationRefreshPending = false;
+        notifications = [];
+        let cursor = {};
+        while (valid()) {
+          const { data, error } = await client.rpc("list_bid_message_notifications", cursor);
+          if (error) throw error;
+          if (!valid()) return [];
+          const page = data || [];
+          notifications.push(...page);
+          if (page.length < 100) break;
+          const last = page.at(-1);
+          cursor = { p_before_created_at: last.created_at, p_before_message_id: last.message_id };
+        }
+        if (!valid()) return [];
+        const notifyMessageIds = notifications.filter((row) =>
+          !knownNotificationIds.has(String(row.message_id)) &&
+          (notificationsInitialized || pendingNotificationMessageIds.has(String(row.message_id)))
+        ).map((row) => String(row.message_id));
+        notifications.forEach((row) => {
+          knownNotificationIds.add(String(row.message_id));
+          pendingNotificationMessageIds.delete(String(row.message_id));
+        });
+        notificationsInitialized = true;
+        onNotificationsChanged(notifications, { notifyMessageIds });
       }
-      return [];
-    }
-    const messageResult = await client.from("bid_process_messages")
-      .select("id,bid_id,body,author_id,author_name,created_at")
-      .in("id", [...new Set(mentions.map((mention) => mention.message_id))]);
-    if (messageResult.error) throw messageResult.error;
-    const byId = new Map((messageResult.data || []).map((message) => [message.id, message]));
-    const notifications = mentions.map((mention) => ({ ...mention, message: byId.get(mention.message_id) }))
-      .filter((mention) => mention.message && mention.message.bid_id === mention.bid_id);
-    if (request === notificationRequest) {
-      const availableMessageIds = new Set(notifications.map((notification) => String(notification.message_id)));
-      const notifyMessageIds = [...pendingNotificationMessageIds]
-        .filter((messageId) => availableMessageIds.has(messageId));
-      pendingNotificationMessageIds.clear();
-      onNotificationsChanged(notifications, { notifyMessageIds });
-    }
-    return notifications;
+      return notifications;
+    };
+    const flight = work().finally(() => {
+      if (notificationFlight === flight) notificationFlight = null;
+    });
+    notificationFlight = flight;
+    return flight;
+  }
+
+  async function reconcile() {
+    await Promise.all([
+      refreshNotifications(),
+      active && !document.hidden ? refreshMessages() : refreshUnreadState(),
+    ]);
   }
 
   function open(messageId = null) {
@@ -420,6 +429,7 @@ export function createBidFollowupFeature({
       messageMentions = [];
     }
     active = true;
+    setComposerEnabled(true);
     activeBidId = bid.id;
     highlightedMessageId = messageId;
     if (messageId) messagesHost.replaceChildren();
@@ -435,6 +445,7 @@ export function createBidFollowupFeature({
   }
 
   function close() {
+    setComposerEnabled(true);
     active = false;
     messageRequest += 1;
     clearInterval(timer);
@@ -459,6 +470,9 @@ export function createBidFollowupFeature({
     const client = getClient();
     const bid = getBid();
     const body = input.value.trim();
+    const userId = getUserId();
+    const epoch = notificationRequest;
+    const isCurrent = () => epoch === notificationRequest && userId === getUserId() && bid?.id === getBid()?.id && active;
     if (!client || !bid?.id || !body) return;
     const trimStart = input.value.length - input.value.trimStart().length;
     const normalizedMentions = mentionRanges
@@ -477,16 +491,16 @@ export function createBidFollowupFeature({
         p_mentions: normalizedMentions,
       });
       if (error) throw error;
+      if (!isCurrent()) return;
       input.value = "";
       mentionRanges = [];
       draftBeforeEdit = "";
       resizeComposer();
       await refreshMessages({ scrollToBottom: true });
     } catch (error) {
-      setError(error.message || "Não foi possível enviar a atualização. Tente novamente.");
+      if (isCurrent()) setError(error.message || "Não foi possível enviar a atualização. Tente novamente.");
     } finally {
-      setComposerEnabled(true);
-      input.focus();
+      if (isCurrent()) { setComposerEnabled(true); input.focus(); }
     }
   }
 
@@ -569,11 +583,15 @@ export function createBidFollowupFeature({
     close();
     stopUnreadTracking();
     notificationRequest += 1;
+    notificationFlight = null;
+    notificationRefreshPending = false;
+    notificationsInitialized = false;
+    knownNotificationIds.clear();
     pendingNotificationMessageIds.clear();
     messages = [];
     messageMentions = [];
     onNotificationsChanged([]);
   }
 
-  return { bind, close, handleIncomingMessage, open, refreshNotifications, reset, updateAvailability };
+  return { bind, close, handleIncomingMessage, open, reconcile, refreshNotifications, reset, updateAvailability };
 }
