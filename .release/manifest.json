@@ -1933,6 +1933,16 @@
         "fd5069ec7280ddb02c5bc45510697a986a8cb11c"
       ],
       "migrations": []
+    },
+    {
+      "id": "AUDIT-ITEM-VENCIDO-001",
+      "backend_commits": [
+        "bbb11ef29d8e322d9db48f0fb0108e09c911bf32"
+      ],
+      "frontend_commits": [],
+      "migrations": [
+        "supabase/migrations/20261102204828_fix_false_item_unwon_history_events.sql"
+      ]
     }
   ]
 }
