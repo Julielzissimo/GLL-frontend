@@ -1785,7 +1785,8 @@
         "ec0ed5dd2c13de531845a20862973ed89065c380",
         "1a296e2ed8b4da4aae7399942af79291e11da916",
         "fa9c1e5d4606673538c5899cab68b0f740ef221e",
-        "d8f852051d92ce6e4f9afac52f3315e6b39cce25"
+        "d8f852051d92ce6e4f9afac52f3315e6b39cce25",
+        "6fab665b2dd0977da33da5ac403fd8046e0ce592"
       ],
       "migrations": [
         "supabase/migrations/20261101163559_reliable_message_notifications.sql"
