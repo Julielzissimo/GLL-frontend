@@ -259,6 +259,7 @@
           <div class="nav-section">
             <span class="nav-section-label">ADMINISTRAÇÃO</span>
             <button id="navSuppliersButton" class="nav-link" type="button" title="Fornecedores" data-navigation-page="suppliers"><span class="nav-icon" aria-hidden="true" data-gll-icon="package"></span><span class="nav-link-label">Fornecedores</span></button>
+            <button id="navFinanceButton" class="nav-link hidden" type="button" title="Financeiro" data-navigation-page="finance"><span class="nav-icon" aria-hidden="true" data-gll-icon="quotation"></span><span class="nav-link-label">Financeiro</span></button>
             <button id="navUsersButton" class="nav-link" type="button" title="Usuários" data-navigation-page="users"><span class="nav-icon" aria-hidden="true" data-gll-icon="lucideUsers"></span><span class="nav-link-label">Usuários</span></button>
             <button id="navRadarEngineAdminButton" class="nav-link hidden" type="button" title="Processamento do Radar" data-navigation-page="radarEngineAdmin"><span class="nav-icon" aria-hidden="true" data-gll-icon="quotation"></span><span class="nav-link-label">Processamento do Radar</span></button>
             <div id="settingsNavigationGroup" class="nav-group">
@@ -1849,6 +1850,24 @@
             <button class="primary-action" type="submit">Salvar dados da empresa</button>
           </div>
         </form>
+        <section id="companyShareholdersSection" class="section-band company-data-section hidden" aria-labelledby="companyShareholdersTitle">
+          <h2 id="companyShareholdersTitle">Acionistas</h2>
+          <p>Cadastre as pessoas que participam das distribuições e podem pagar custos da empresa.</p>
+          <form id="companyShareholderForm" class="form-grid">
+            <input id="companyShareholderId" type="hidden" />
+            <label>Nome<input id="companyShareholderName" maxlength="200" required /></label>
+            <label>Situação<select id="companyShareholderActive"><option value="true">Ativo</option><option value="false">Inativo</option></select></label>
+            <div class="button-row"><button class="primary-action" type="submit">Salvar acionista</button><button id="companyShareholderReset" class="quiet-action" type="button">Limpar</button></div>
+          </form>
+          <p id="companyShareholderStatus" role="status" aria-live="polite"></p>
+          <div id="companyShareholderList"></div>
+        </section>
+      </section>
+
+      <section id="financePage" class="users-page hidden" aria-labelledby="financeTitle">
+        <div class="page-heading"><div><h1 id="financeTitle">Financeiro</h1><p>Acompanhe os resultados, o caixa e os pagamentos aos acionistas.</p></div></div>
+        <p id="financeStatus" role="status" aria-live="polite"></p>
+        <div id="financeRoot"></div>
       </section>
 
       <section id="designSystemPage" class="users-page design-system-page hidden" aria-labelledby="designSystemTitle">
@@ -1974,6 +1993,7 @@
     <script type="module" src="./organization-documents-api.js"></script>
     <script type="module" src="./organization-documents.js"></script>
     <script type="module" src="./company-data.js"></script>
+    <script type="module" src="./finance.js"></script>
     <script type="module" src="./commercial-proposals.js"></script>
     <script type="module" src="./billing.js"></script>
     <script type="module" src="./dashboard.js"></script>
