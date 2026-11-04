@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "release_id": "2026-10-23-dashboard-1-0-feat-002-homolog",
+  "release_id": "2026-11-04-fluxo-de-caixa-retirada-homolog",
   "environment": "homolog",
   "target_branch": "homolog",
   "items": [
@@ -1942,6 +1942,19 @@
       "frontend_commits": [],
       "migrations": [
         "supabase/migrations/20261102204828_fix_false_item_unwon_history_events.sql"
+      ]
+    },
+    {
+      "id": "FLUXO-CAIXA-DESATIVACAO-001",
+      "backend_commits": [
+        "9a9384342e440df66e04dc256f75ae8149bc9955"
+      ],
+      "frontend_commits": [
+        "69c586acc095166f36dc7af9dc4e829e74db6ad2",
+        "180f18106be50bab8f54db8caa2e050303e4fdff"
+      ],
+      "migrations": [
+        "supabase/migrations/20261104142550_deactivate_finance_cashflow_access.sql"
       ]
     }
   ]
