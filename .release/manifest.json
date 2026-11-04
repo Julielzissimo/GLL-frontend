@@ -1955,8 +1955,7 @@
         "85968e27612c05093bbc9332e454a81681b19c3a"
       ],
       "frontend_commits": [
-        "91d74174dd149b8b48b81bca3ae7a58d4d1f0695",
-        "4a0a9b58ed2c55f483bc69140aa9e1ec17af218f"
+        "91d74174dd149b8b48b81bca3ae7a58d4d1f0695"
       ],
       "migrations": [
         "supabase/migrations/20261102223901_finance_cashflow.sql"

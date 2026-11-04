@@ -1,11 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { calculateFinanceSummary, financeBidName } from "../web/finance.js";
-
-test("financeiro identifica edital pelo número exibido no GLL", () => {
-  assert.equal(financeBidName({ id: "id-interno", edital_number: "PE-123", status: "Faturado" }), "PE-123 — Faturado");
-  assert.equal(financeBidName({ id: "id-interno", status: "Faturado" }), "id-interno — Faturado");
-});
+import { calculateFinanceSummary } from "../web/finance.js";
 
 test("caixa não desconta custo pago pelo acionista nem quitação histórica duas vezes", () => {
   const result = calculateFinanceSummary({

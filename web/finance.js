@@ -5,8 +5,6 @@ const escapeHtml = (value) => String(value ?? "").replaceAll("&", "&amp;").repla
 const active = (rows) => (rows || []).filter((row) => !row.cancelled_at);
 const sum = (rows, field = "amount") => rows.reduce((total, row) => total + Number(row[field] || 0), 0);
 
-export const financeBidName = (bid) => bid ? `${bid.edital_number || bid.id} — ${bid.status}` : "Edital indisponível";
-
 export function calculateFinanceSummary(data) {
   const receipts = active(data.finance_receipts);
   const reimbursements = active(data.finance_reimbursements);
@@ -28,7 +26,7 @@ export function createFinanceFeature({ getClient, getOrganizationId, getBids, ge
   let generation = 0;
   let saving = false;
   const validBid = (bid) => bid && ["Em Fornecimento", "Faturado"].includes(bid.status);
-  const bidName = financeBidName;
+  const bidName = (bid) => bid ? `${bid.number || bid.bid_number || bid.id} — ${bid.status}` : "Edital indisponível";
   const find = (table, id) => (data[table] || []).find((row) => String(row.id) === String(id));
   const shareholder = (id) => find("finance_shareholders", id)?.name || "Acionista indisponível";
   const profitLabel = (row) => `${bidName(getBids().find((bid) => String(bid.id) === String(row.bid_id)))} — ${money(row.expected_profit)}`;
