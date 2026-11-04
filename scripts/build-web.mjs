@@ -115,8 +115,6 @@ const assetVersion = createHash("sha256")
   .update(await readFile(resolve(sourceDir, "organization-chat.js")))
   .update(await readFile(resolve(sourceDir, "declarations.js")))
   .update(await readFile(resolve(sourceDir, "company-data.js")))
-  .update(await readFile(resolve(sourceDir, "finance.js")))
-  .update(await readFile(resolve(sourceDir, "finance-xlsx.js")))
   .update(await readFile(resolve(sourceDir, "organization-documents.js")))
   .update(await readFile(resolve(sourceDir, "commercial-proposals.js")))
   .update(await readFile(resolve(sourceDir, "radar-details.js")))
@@ -134,9 +132,6 @@ const outputIndexPath = resolve(outputDir, "index.html");
 const outputAppPath = resolve(outputDir, "app.js");
 const outputApp = await readFile(outputAppPath, "utf8");
 await writeFile(outputAppPath, outputApp.replace('from "./radar-engine-admin.js"', 'from "./radar-engine-admin.js?v=' + assetVersion + '"'), "utf8");
-const outputFinancePath = resolve(outputDir, "finance.js");
-const outputFinance = await readFile(outputFinancePath, "utf8");
-await writeFile(outputFinancePath, outputFinance.replace('from "./finance-xlsx.js"', `from "./finance-xlsx.js?v=${assetVersion}"`), "utf8");
 const outputDetailsPath = resolve(outputDir, "radar-details.js");
 const outputDetails = await readFile(outputDetailsPath, "utf8");
 await writeFile(
@@ -157,7 +152,6 @@ await writeFile(
     .replace('./design-system/components.js', `./design-system/components.js?v=${assetVersion}`)
     .replace('./declarations.js', `./declarations.js?v=${assetVersion}`)
     .replace('./company-data.js', `./company-data.js?v=${assetVersion}`)
-    .replace('./finance.js', `./finance.js?v=${assetVersion}`)
     .replace('./organization-documents.js', `./organization-documents.js?v=${assetVersion}`)
     .replace('./commercial-proposals.js', `./commercial-proposals.js?v=${assetVersion}`)
     .replace('./organization-chat.js', `./organization-chat.js?v=${assetVersion}`)

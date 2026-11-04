@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "release_id": "2026-11-02-fluxo-de-caixa-homolog",
+  "release_id": "2026-11-04-fluxo-de-caixa-retirada-homolog",
   "environment": "homolog",
   "target_branch": "homolog",
   "items": [
@@ -1945,21 +1945,16 @@
       ]
     },
     {
-      "id": "FLUXO-CAIXA-001",
+      "id": "FLUXO-CAIXA-DESATIVACAO-001",
       "backend_commits": [
-        "1fdd7da7b142bba6b643040cc54e33b620704aab",
-        "8239aa9ccc1497b16fb0e1f6f0e2903f6af568f1",
-        "8ede22629f3259e183f2d9a1bfd49322b3c9554a",
-        "657e128fcd63621128f8bc1d305bea79e72f84df",
-        "86b80bfe144be132f706476132918abf05af8df0",
-        "85968e27612c05093bbc9332e454a81681b19c3a"
+        "9a9384342e440df66e04dc256f75ae8149bc9955"
       ],
       "frontend_commits": [
-        "91d74174dd149b8b48b81bca3ae7a58d4d1f0695",
-        "4a0a9b58ed2c55f483bc69140aa9e1ec17af218f"
+        "69c586acc095166f36dc7af9dc4e829e74db6ad2",
+        "180f18106be50bab8f54db8caa2e050303e4fdff"
       ],
       "migrations": [
-        "supabase/migrations/20261102223901_finance_cashflow.sql"
+        "supabase/migrations/20261104142550_deactivate_finance_cashflow_access.sql"
       ]
     }
   ]
