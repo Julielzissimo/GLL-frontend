@@ -141,7 +141,6 @@ const PAGE_ROUTE_NAMES = {
   users: "usuarios",
   userProfile: "perfil",
   companyData: "configuracoes/dados-da-empresa",
-  finance: "financeiro",
   designSystem: "configuracoes/design-system",
   radarEngineAdmin: "administracao/radar-engine",
 };
@@ -2445,13 +2444,6 @@ const companyDataFeature = createCompanyDataFeature({
   toast: (message, tone) => showToast(message, tone),
   runBusy: (operation, message) => withBlockingLoading(operation, message)(),
 });
-const financeFeature = (window.GLLFinance?.createFinanceFeature || (() => ({ showPage: async () => undefined, reset: () => undefined })))({
-  getClient: () => (store.requiresAuthenticationBeforeData ? store.client : null),
-  getOrganizationId: () => appState.currentOrganizationId,
-  getBids: () => appState.bids,
-  getSuggestedProfit: (bid) => calculateLinkedQuotationProfit(bid),
-  isAdmin: () => isCurrentUserAdmin(),
-});
 const organizationDocumentsFeature = createOrganizationDocumentsFeature({
   getApi: () => window.GLLOrganizationDocumentsApi?.createOrganizationDocumentsApi?.({
     getClient: () => (store.requiresAuthenticationBeforeData ? store.client : null),
@@ -4663,7 +4655,6 @@ function resetAuthenticatedView({ showLogin = true } = {}) {
   declarationsFeature.reset();
   commercialProposalsFeature.reset();
   companyDataFeature.reset();
-  financeFeature.reset();
   organizationDocumentsFeature.reset();
   billingFeature.reset();
   dashboardFeature.reset();
@@ -4932,7 +4923,6 @@ function isCurrentUserAdmin() {
 }
 
 function resolveAuthorizedPage(page) {
-  if (page === "finance" && !isCurrentUserAdmin()) return "home";
   if (page === "organizationDocuments" && GLL_CONFIG.organizationDocumentsEnabled !== true) return "home";
   if (page === "suppliers" && GLL_CONFIG.suppliersEnabled === false) return "home";
   if (page === "commercialProposals" && GLL_CONFIG.commercialProposalsEnabled === false) return "home";
@@ -4957,7 +4947,6 @@ function breadcrumbItems(page) {
     declarationSettings: "Configurações",
     declarationHistory: "Histórico",
     companyData: "Dados da Empresa",
-    finance: "Financeiro",
     organizationDocuments: "Kit de Documentos",
     designSystem: "Design System",
     radarEngineAdmin: "Processamento do Radar",
@@ -5094,7 +5083,6 @@ function updateAccessInterface() {
   const showDesignSystemAccess = showUserManagement && GLL_CONFIG.designSystemEnabled !== false;
   const showRadarEngineAdmin = showUserManagement && GLL_CONFIG.radarEngineAdminEnabled === true;
   refs.navUsersButton.classList.toggle("hidden", !showUserManagement);
-  $("navFinanceButton").classList.toggle("hidden", !isCurrentUserAdmin());
   refs.navUsersButton.disabled = !showUserManagement;
   refs.navUsersButton.setAttribute("aria-hidden", String(!showUserManagement));
   refs.navDesignSystemButton.classList.toggle("hidden", !showDesignSystemAccess);
@@ -5867,7 +5855,6 @@ function setPage(page, options = {}) {
   const showUsers = page === "users";
   const showUserProfile = page === "userProfile";
   const showCompanyData = page === "companyData";
-  const showFinance = page === "finance";
   const showOrganizationDocuments = page === "organizationDocuments";
   const showDesignSystem = page === "designSystem";
   const showRadarEngineAdmin = page === "radarEngineAdmin";
@@ -5884,8 +5871,7 @@ function setPage(page, options = {}) {
   const showCatalog = page === "bids";
   const showEditor = page === "edit";
   const showDetail = detailPages.includes(page);
-  refs.bidsPage.classList.toggle("hidden", showFinance || showUsers || showUserProfile || showCompanyData || showOrganizationDocuments || showDesignSystem || showRadarEngineAdmin || showQuotations || showSuppliers || showDeclarations || showCommercialProposals || showRadarSearch);
-  $("financePage").classList.toggle("hidden", !showFinance);
+  refs.bidsPage.classList.toggle("hidden", showUsers || showUserProfile || showCompanyData || showOrganizationDocuments || showDesignSystem || showRadarEngineAdmin || showQuotations || showSuppliers || showDeclarations || showCommercialProposals || showRadarSearch);
   refs.radarSearchPage.classList.toggle("hidden", !showRadarSearch);
   refs.usersPage.classList.toggle("hidden", !showUsers);
   refs.userProfilePage.classList.toggle("hidden", !showUserProfile);
@@ -5906,7 +5892,7 @@ function setPage(page, options = {}) {
   refs.bidHistoryPanel.classList.toggle("hidden", page !== "history");
   refs.billingPanel.classList.toggle("hidden", page !== "billing");
   refs.failuresPanel.classList.toggle("hidden", page !== "failures");
-  refs.appView.classList.toggle("users-active", showFinance || showUsers || showUserProfile || showCompanyData || showOrganizationDocuments || showDesignSystem || showRadarEngineAdmin || showQuotations || showSuppliers || showDeclarations || showCommercialProposals || showRadarSearch);
+  refs.appView.classList.toggle("users-active", showUsers || showUserProfile || showCompanyData || showOrganizationDocuments || showDesignSystem || showRadarEngineAdmin || showQuotations || showSuppliers || showDeclarations || showCommercialProposals || showRadarSearch);
   refs.itemsTabButton.classList.toggle("active", page === "items");
   refs.documentsTabButton.classList.toggle("active", page === "documents");
   refs.bidHistoryTabButton.classList.toggle("active", page === "history");
@@ -5920,7 +5906,7 @@ function setPage(page, options = {}) {
   refs.failuresTabButton.setAttribute("aria-selected", String(page === "failures"));
   refs.failuresTabButton.classList.toggle("hidden", !shouldShowFailureHistory());
   const primaryPage = showOrganizationDocuments ? "organizationDocuments" : showRadarEngineAdmin ? "radarEngineAdmin" : showRadarSearch ? "radarSearch" : showCommercialProposals ? "commercialProposals" : showDeclarations ? "declarations" : showSuppliers ? "suppliers" : showUsers || (showUserProfile && isCurrentUserAdmin()) ? "users" : showQuotations ? "quotations" : showDashboard ? "dashboard" : showHome || showUserProfile ? "home" : "bids";
-  const activeNavigationPage = ["finance", "companyData", "designSystem", "radarEngineAdmin"].includes(page) ? page : primaryPage;
+  const activeNavigationPage = ["companyData", "designSystem", "radarEngineAdmin"].includes(page) ? page : primaryPage;
   renderBreadcrumb(page);
   document.querySelectorAll("[data-navigation-page]").forEach((button) => {
     button.classList.toggle("active", button.dataset.navigationPage === activeNavigationPage);
@@ -5941,7 +5927,6 @@ function setPage(page, options = {}) {
   if (showDeclarations) void declarationsFeature.showPage(page).catch((error) => showToast(error.message, "error"));
   if (showCommercialProposals) void commercialProposalsFeature.showPage().catch((error) => showToast(error.message, "error"));
   if (showCompanyData) void companyDataFeature.showPage().catch((error) => showToast(error.message, "error"));
-  if (showFinance) void financeFeature.showPage();
   if (showOrganizationDocuments) void organizationDocumentsFeature.showPage();
   if (showRadarSearch) void radarSearchFeature.showPage().catch((error) => showToast(error.message, "error"));
   if (showDesignSystem) window.GLLDesignSystem?.mountCatalog(refs.designSystemCatalog);

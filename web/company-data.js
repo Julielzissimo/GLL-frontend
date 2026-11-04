@@ -126,7 +126,6 @@ export function createCompanyDataFeature(options) {
   };
   const localKey = () => `gll-company-data-v1-${getContext().organizationId}`;
   let loaded = false;
-  let shareholders = [];
   let state = { organization: null, representatives: [] };
   let assetUrls = { logo: "", watermark: "" };
 
@@ -372,68 +371,10 @@ export function createCompanyDataFeature(options) {
 
   async function showPage() {
     await load();
-    await loadShareholders();
   }
-
-  const shareholderSection = $("companyShareholdersSection");
-  const shareholderForm = $("companyShareholderForm");
-  const shareholderStatus = $("companyShareholderStatus");
-  const shareholderList = $("companyShareholderList");
-  function clearShareholderForm() {
-    shareholderForm.reset();
-    $("companyShareholderId").value = "";
-  }
-  async function loadShareholders() {
-    shareholderSection.classList.toggle("hidden", !isAdmin());
-    shareholders = [];
-    shareholderList.replaceChildren();
-    if (!isAdmin()) return;
-    const client = getClient();
-    if (!client) {
-      shareholderStatus.textContent = "O cadastro de acionistas exige conexão com o banco de dados.";
-      return;
-    }
-    shareholderStatus.textContent = "Carregando acionistas…";
-    try {
-      shareholders = assertResult(await client.from("finance_shareholders").select("id,name,active")
-        .eq("organization_id", getContext().organizationId).order("name")) || [];
-      shareholderStatus.textContent = shareholders.length ? "" : "Nenhum acionista cadastrado.";
-      shareholderList.innerHTML = shareholders.map((person) => `<div class="button-row"><span>${escapeHtml(person.name)} — ${person.active ? "Ativo" : "Inativo"}</span><button type="button" class="quiet-action" data-shareholder-id="${escapeHtml(person.id)}">Editar</button></div>`).join("");
-    } catch (error) { shareholderStatus.textContent = error.message; }
-  }
-  shareholderForm.addEventListener("submit", async (event) => {
-    event.preventDefault();
-    try {
-      if (!isAdmin() || !getClient()) throw new Error("Cadastro disponível somente para administradores conectados.");
-      const id = $("companyShareholderId").value;
-      const value = { name: $("companyShareholderName").value.trim(), active: $("companyShareholderActive").value === "true" };
-      if (!value.name) throw new Error("Informe o nome do acionista.");
-      const query = getClient().from("finance_shareholders");
-      const result = id ? await query.update(value).eq("id", id).eq("organization_id", getContext().organizationId)
-        : await query.insert({ ...value, organization_id: getContext().organizationId });
-      assertResult(result);
-      clearShareholderForm();
-      await loadShareholders();
-      shareholderStatus.textContent = "Acionista salvo.";
-    } catch (error) { shareholderStatus.textContent = error.message; }
-  });
-  $("companyShareholderReset").addEventListener("click", clearShareholderForm);
-  shareholderList.addEventListener("click", (event) => {
-    const button = event.target.closest("[data-shareholder-id]");
-    const person = shareholders.find((item) => item.id === button?.dataset.shareholderId);
-    if (!person) return;
-    $("companyShareholderId").value = person.id;
-    $("companyShareholderName").value = person.name;
-    $("companyShareholderActive").value = String(person.active);
-    $("companyShareholderName").focus();
-  });
 
   function reset() {
     loaded = false;
-    shareholders = [];
-    shareholderSection.classList.add("hidden");
-    shareholderList.replaceChildren();
-    clearShareholderForm();
     revokeAssetUrls();
     assetUrls = { logo: "", watermark: "" };
     state = { organization: null, representatives: [] };

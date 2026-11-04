@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "release_id": "2026-11-02-fluxo-de-caixa-homolog",
+  "release_id": "2026-10-23-dashboard-1-0-feat-002-homolog",
   "environment": "homolog",
   "target_branch": "homolog",
   "items": [
@@ -1942,23 +1942,6 @@
       "frontend_commits": [],
       "migrations": [
         "supabase/migrations/20261102204828_fix_false_item_unwon_history_events.sql"
-      ]
-    },
-    {
-      "id": "FLUXO-CAIXA-001",
-      "backend_commits": [
-        "1fdd7da7b142bba6b643040cc54e33b620704aab",
-        "8239aa9ccc1497b16fb0e1f6f0e2903f6af568f1",
-        "8ede22629f3259e183f2d9a1bfd49322b3c9554a",
-        "657e128fcd63621128f8bc1d305bea79e72f84df",
-        "86b80bfe144be132f706476132918abf05af8df0",
-        "85968e27612c05093bbc9332e454a81681b19c3a"
-      ],
-      "frontend_commits": [
-        "91d74174dd149b8b48b81bca3ae7a58d4d1f0695"
-      ],
-      "migrations": [
-        "supabase/migrations/20261102223901_finance_cashflow.sql"
       ]
     }
   ]
