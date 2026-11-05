@@ -1,5 +1,7 @@
 # Contrato do cliente — Fluxo de Caixa
 
+> **Arquivo histórico:** a release Fluxo de Caixa foi descontinuada em 05/11/2026. As regras e exemplos abaixo descrevem a versão retirada; não são especificação nem backlog para a futura recriação. A retirada foi registrada na [issue #271](https://github.com/Julielzissimo/GLL-backend/issues/271); os dados e objetos de homologação foram apagados pelo [workflow #42033372202](https://github.com/Julielzissimo/GLL-backend/actions/runs/42033372202). `main` e produção não foram alteradas.
+
 **Release:** Fluxo de Caixa — milestone #13, issue [GLL-backend #261](https://github.com/Julielzissimo/GLL-backend/issues/261).
 **Estado:** frontend integrado e publicado em `homolog` em 05/11/2026; build, testes, login/isolamento e R2 sintético passaram no [workflow Pages #41955605032](https://github.com/Julielzissimo/GLL-frontend/actions/runs/41955605032). Produção não faz parte do escopo.
 

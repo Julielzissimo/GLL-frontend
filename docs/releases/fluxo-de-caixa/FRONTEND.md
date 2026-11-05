@@ -1,5 +1,7 @@
 # Camada web — Fluxo de Caixa
 
+> **Arquivo histórico:** a release Fluxo de Caixa foi descontinuada em 05/11/2026. As regras e exemplos abaixo descrevem a versão retirada; não são especificação nem backlog para a futura recriação. A retirada foi registrada na [issue #271](https://github.com/Julielzissimo/GLL-backend/issues/271); os dados e objetos de homologação foram apagados pelo [workflow #42033372202](https://github.com/Julielzissimo/GLL-backend/actions/runs/42033372202). `main` e produção não foram alteradas.
+
 ## Integração
 
 - `web/finance-ledger.js` implementa o ledger compartilhado entre Faturamento e Fluxo de Caixa e o componente `createFinanceLedgerPanel`.
