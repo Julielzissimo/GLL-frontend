@@ -1,5 +1,7 @@
 # Reservas e retiradas — contrato da tela
 
+> **Arquivo histórico:** a release Fluxo de Caixa foi descontinuada em 05/11/2026. As regras e exemplos abaixo descrevem a versão retirada; não são especificação nem backlog para a futura recriação. A retirada foi registrada na [issue #271](https://github.com/Julielzissimo/GLL-backend/issues/271); os dados e objetos de homologação foram apagados pelo [workflow #42033372202](https://github.com/Julielzissimo/GLL-backend/actions/runs/42033372202). `main` e produção não foram alteradas.
+
 **Release:** Fluxo de Caixa — milestone #13, issue [GLL-backend #261](https://github.com/Julielzissimo/GLL-backend/issues/261).
 **Estado:** testado em Supabase local descartável e publicado em `homolog` após sucesso do workflow oficial de banco [#41956395067](https://github.com/Julielzissimo/GLL-backend/actions/runs/41956395067). Nenhuma operação financeira de negócio foi criada no remoto.
 
