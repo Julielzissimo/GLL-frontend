@@ -1995,6 +1995,18 @@
         "fbadb295c8a5831c46bf1390c56f71ac15ffdd39"
       ],
       "migrations": []
+    },
+    {
+      "id": "FLUXO-CAIXA-DESATIVACAO-002",
+      "backend_commits": [
+        "d3dcf97f4fa3faa4114520e643639af3259eacc0"
+      ],
+      "frontend_commits": [
+        "d3befe7ac537813a8c1fe748c7d0704c174b6988"
+      ],
+      "migrations": [
+        "supabase/migrations/20261105124043_fluxo_caixa_desativacao_002.sql"
+      ]
     }
   ]
 }

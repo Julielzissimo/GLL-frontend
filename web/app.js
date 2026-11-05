@@ -1,10 +1,6 @@
 import { createRadarEngineAdminFeature } from "./radar-engine-admin.js";
 import { createBidFollowupFeature } from "./bid-followup.js";
-import { createCashflowExpenseFeature } from "./finance-expenses.js";
-import { createCashflowReservationFeature } from "./finance-reservations.js";
 import { formatCnpj, isValidCnpj } from "./company-data.js";
-import { createFinanceLedgerService } from "./finance-ledger.js";
-import { createFinanceFeature } from "./finance.js";
 
 const STATUS_OPTIONS = ["Em Analise", "Aguard. Disputa", "Descartada", "Aprovada", "Em Fornecimento", "Faturado", "Desclassificado", "Disputada"];
 const storageBucket = globalThis.window?.GLLFileStorage?.storageBucket || ((client, bucket) => client.storage.from(bucket));
@@ -133,7 +129,6 @@ const PAGE_ROUTE_NAMES = {
   documents: "documentos",
   history: "historico",
   billing: "faturamento",
-  financeLedger: "fluxo-de-caixa",
   failures: "falhas",
   quotations: "orcamentos",
   commercialProposals: "propostas-comerciais",
@@ -146,7 +141,6 @@ const PAGE_ROUTE_NAMES = {
   users: "usuarios",
   userProfile: "perfil",
   companyData: "configuracoes/dados-da-empresa",
-  finance: "financeiro",
   designSystem: "configuracoes/design-system",
   radarEngineAdmin: "administracao/radar-engine",
 };
@@ -289,7 +283,6 @@ const refs = {
   workspaceInitial: $("workspaceInitial"),
   workspaceName: $("workspaceName"),
   navHomeButton: $("navHomeButton"),
-  navFinanceLedgerButton: $("navFinanceLedgerButton"),
   navBidsButton: $("navBidsButton"),
   navQuotationsButton: $("navQuotationsButton"),
   navCommercialProposalsButton: $("navCommercialProposalsButton"),
@@ -297,7 +290,6 @@ const refs = {
   navDeclarationsButton: $("navDeclarationsButton"),
   navOrganizationDocumentsButton: $("navOrganizationDocumentsButton"),
   navUsersButton: $("navUsersButton"),
-  navFinanceButton: $("navFinanceButton"),
   navRadarEngineAdminButton: $("navRadarEngineAdminButton"),
   navSettingsButton: $("navSettingsButton"),
   settingsNavigationItems: $("settingsNavigationItems"),
@@ -324,7 +316,6 @@ const refs = {
   radarSearchPage: $("radarSearchPage"),
   homePage: $("homePage"),
   dashboardPage: $("dashboardPage"),
-  financeLedgerPage: $("financeLedgerPage"),
   bidCatalogPage: $("bidCatalogPage"),
   upcomingBidsList: $("upcomingBidsList"),
   pendingDocumentsList: $("pendingDocumentsList"),
@@ -395,7 +386,6 @@ const refs = {
   closeUserAccessDialogButton: $("closeUserAccessDialogButton"),
   cancelUserAccessButton: $("cancelUserAccessButton"),
   companyDataPage: $("companyDataPage"),
-  financePage: $("financePage"),
   organizationDocumentsPage: $("organizationDocumentsPage"),
   designSystemPage: $("designSystemPage"),
   radarEngineAdminPage: $("radarEngineAdminPage"),
@@ -2336,24 +2326,6 @@ class SupabaseStore {
 }
 
 const store = createStore();
-const financeLedgerService = createFinanceLedgerService(() => (store.requiresAuthenticationBeforeData ? store.client : null));
-let financeFeature;
-financeFeature = createFinanceFeature({
-  root: refs.financeLedgerPage,
-  service: financeLedgerService,
-  getBids: () => appState.bids,
-  isAdmin: isCurrentUserAdmin,
-  navigate: (page, bidId) => {
-    if (page !== "billing" || !bidId) return;
-    loadBid(String(bidId));
-    setPage("billing");
-  },
-  onSaved: () => {
-    broadcastFinanceDataChanged();
-    void financeFeature.refreshSummaries();
-  },
-  toast: (message, tone) => showToast(message, tone),
-});
 const dashboardFeature = createDashboardFeature({
   root: $("dashboardRoot"),
   getData: () => ({
@@ -2385,18 +2357,9 @@ const billingFeature = createBillingFeature({
       && Boolean(Number(bidItemForQuotationItem(item, bid.id)?.is_won)));
   },
   store,
-  financeService: financeLedgerService,
-  isAdmin: isCurrentUserAdmin,
-  navigateToFinance: (page, bidId) => {
-    if (page !== "financeLedger") return;
-    financeFeature.selectBid(bidId, { refresh: false });
-    setPage("financeLedger");
-  },
   toast: (message, tone) => showToast(message, tone),
   runBusy: (operation, message) => withBlockingLoading(operation, message)(),
-  onSaved: () => {
-    broadcastFinanceDataChanged();
-  },
+  onSaved: broadcastBillingDataChanged,
 });
 const organizationChat = (window.GLLOrganizationChat?.createOrganizationChat || (() => ({
   bind() {}, close() {}, handleIncomingMessage() {}, refreshUnreadCount() {}, startUnreadTracking() {}, stopUnreadTracking() {},
@@ -2479,36 +2442,6 @@ const companyDataFeature = createCompanyDataFeature({
   },
   toast: (message, tone) => showToast(message, tone),
   runBusy: (operation, message) => withBlockingLoading(operation, message)(),
-});
-const cashflowExpenseFeature = createCashflowExpenseFeature({
-  getClient: () => (store.requiresAuthenticationBeforeData ? store.client : null),
-  getUserRole: () => appState.currentUserRole,
-  getUsers: () => appState.users,
-  getActorName: (actorId) => {
-    const user = appState.users.find((candidate) => candidate.auth_user_id === actorId);
-    return user ? userDisplayName(user) : "";
-  },
-  onNavigate: (page) => setPage(page),
-});
-const cashflowReservationFeature = createCashflowReservationFeature({
-  getClient: () => (store.requiresAuthenticationBeforeData ? store.client : null),
-  getUserRole: () => appState.currentUserRole,
-  getUsers: () => appState.users,
-  getBids: () => appState.bids,
-  getActorName: (actorId) => {
-    const user = appState.users.find((candidate) => candidate.auth_user_id === actorId);
-    return user ? userDisplayName(user) : "";
-  },
-  getBidLabel: (bidId) => {
-    const bid = appState.bids.find((candidate) => candidate.id === bidId);
-    return bid ? bidDisplayNumber(bid) : bidId;
-  },
-  navigate: (page, bidId) => {
-    if (page !== "billing" || !bidId) return;
-    loadBid(String(bidId));
-    setPage("billing");
-  },
-  toast: (message, tone) => showToast(message, tone),
 });
 const organizationDocumentsFeature = createOrganizationDocumentsFeature({
   getApi: () => window.GLLOrganizationDocumentsApi?.createOrganizationDocumentsApi?.({
@@ -3506,7 +3439,6 @@ function bindEvents() {
   document.querySelectorAll("[data-navigation-page]").forEach((button) => {
     button.addEventListener("click", () => setPage(button.dataset.navigationPage));
   });
-  $("refreshFinanceLedgerButton").addEventListener("click", () => void financeFeature.refresh());
   refs.navSettingsButton.addEventListener("click", toggleSettingsNavigation);
   $("backToHomeFromDesignSystemButton").addEventListener("click", () => setPage("home"));
   $("backToHomeFromCompanyDataButton").addEventListener("click", () => setPage("home"));
@@ -4722,11 +4654,8 @@ function resetAuthenticatedView({ showLogin = true } = {}) {
   declarationsFeature.reset();
   commercialProposalsFeature.reset();
   companyDataFeature.reset();
-  cashflowExpenseFeature.reset();
-  cashflowReservationFeature.reset();
   organizationDocumentsFeature.reset();
   billingFeature.reset();
-  financeFeature.reset();
   dashboardFeature.reset();
   radarSearchFeature.reset();
   refs.appView.classList.remove("mobile-nav-open");
@@ -4993,7 +4922,6 @@ function isCurrentUserAdmin() {
 }
 
 function resolveAuthorizedPage(page) {
-  if (page === "finance" && !isCurrentUserAdmin()) return "home";
   if (page === "organizationDocuments" && GLL_CONFIG.organizationDocumentsEnabled !== true) return "home";
   if (page === "suppliers" && GLL_CONFIG.suppliersEnabled === false) return "home";
   if (page === "commercialProposals" && GLL_CONFIG.commercialProposalsEnabled === false) return "home";
@@ -5001,7 +4929,6 @@ function resolveAuthorizedPage(page) {
   if (page === "radarEngineAdmin" && GLL_CONFIG.radarEngineAdminEnabled !== true) return "home";
   if (page === "radarEngineAdmin" && !isCurrentUserAdmin()) return "home";
   if (page === "users" && !isCurrentUserAdmin()) return "home";
-  if (page === "financeLedger" && !isCurrentUserAdmin()) return "home";
   if (page === "userProfile" && refs.userCreateForm.dataset.mode === "create" && !isCurrentUserAdmin()) return "home";
   if (page === "designSystem" && !isCurrentUserAdmin()) return "home";
   return page;
@@ -5014,13 +4941,11 @@ function breadcrumbItems(page) {
     items: "Itens",
     documents: "Documentos",
     billing: "Faturamento",
-    financeLedger: "Fluxo de Caixa",
     failures: "Falhas",
     declarationLibrary: "Biblioteca",
     declarationSettings: "Configurações",
     declarationHistory: "Histórico",
     companyData: "Dados da Empresa",
-    finance: "Financeiro",
     organizationDocuments: "Kit de Documentos",
     designSystem: "Design System",
     radarEngineAdmin: "Processamento do Radar",
@@ -5081,7 +5006,6 @@ function breadcrumbItems(page) {
     quotations: "Orçamentos",
     commercialProposals: "Propostas comerciais",
     suppliers: "Fornecedores",
-    financeLedger: "Fluxo de Caixa",
     users: "Usuários",
     designSystem: "Design System",
     radarEngineAdmin: "Processamento do Radar",
@@ -5160,14 +5084,6 @@ function updateAccessInterface() {
   refs.navUsersButton.classList.toggle("hidden", !showUserManagement);
   refs.navUsersButton.disabled = !showUserManagement;
   refs.navUsersButton.setAttribute("aria-hidden", String(!showUserManagement));
-  refs.navFinanceButton.classList.toggle("hidden", !showUserManagement);
-  refs.navFinanceButton.disabled = !showUserManagement;
-  refs.navFinanceButton.setAttribute("aria-hidden", String(!showUserManagement));
-  refs.navFinanceButton.setAttribute("aria-disabled", String(!showUserManagement));
-  refs.navFinanceLedgerButton.classList.toggle("hidden", !showUserManagement);
-  refs.navFinanceLedgerButton.disabled = !showUserManagement;
-  refs.navFinanceLedgerButton.setAttribute("aria-hidden", String(!showUserManagement));
-  refs.navFinanceLedgerButton.setAttribute("aria-disabled", String(!showUserManagement));
   refs.navDesignSystemButton.classList.toggle("hidden", !showDesignSystemAccess);
   refs.navDesignSystemButton.disabled = !showDesignSystemAccess;
   refs.navDesignSystemButton.setAttribute("aria-hidden", String(!showDesignSystemAccess));
@@ -5346,11 +5262,6 @@ function handleOrganizationDataChanged(event = null) {
   const resource = payload.resource || event?.resource;
   const bidId = payload.bidId || event?.bidId;
   const messageId = payload.messageId || event?.messageId;
-  if (resource === "finance_ledger") {
-    if (appState.activePage === "financeLedger") void financeFeature.refresh();
-    if (appState.activePage === "billing") void billingFeature.refresh();
-    return;
-  }
   if (resource !== "bid_process_messages") {
     scheduleLiveRefresh(event);
     return;
@@ -5363,12 +5274,12 @@ function handleOrganizationDataChanged(event = null) {
   }
 }
 
-function broadcastFinanceDataChanged() {
+function broadcastBillingDataChanged() {
   if (!chatBroadcastChannel) return;
   void chatBroadcastChannel.send({
     type: "broadcast",
     event: "organization-data-changed",
-    payload: { resource: "finance_ledger" },
+    payload: { resource: "billing" },
   }).catch(() => {});
 }
 
@@ -5952,7 +5863,6 @@ function setPage(page, options = {}) {
   const showUsers = page === "users";
   const showUserProfile = page === "userProfile";
   const showCompanyData = page === "companyData";
-  const showFinance = page === "finance";
   const showOrganizationDocuments = page === "organizationDocuments";
   const showDesignSystem = page === "designSystem";
   const showRadarEngineAdmin = page === "radarEngineAdmin";
@@ -5960,7 +5870,6 @@ function setPage(page, options = {}) {
   const showDeclarations = declarationPages.includes(page);
   const showCommercialProposals = page === "commercialProposals";
   const showRadarSearch = page === "radarSearch";
-  const showFinanceLedger = page === "financeLedger";
   $("suppliersPage").classList.toggle("hidden", !showSuppliers);
   refs.declarationsPage.classList.toggle("hidden", !showDeclarations);
   refs.commercialProposalsPage.classList.toggle("hidden", !showCommercialProposals);
@@ -5970,17 +5879,15 @@ function setPage(page, options = {}) {
   const showCatalog = page === "bids";
   const showEditor = page === "edit";
   const showDetail = detailPages.includes(page);
-  refs.bidsPage.classList.toggle("hidden", showUsers || showUserProfile || showCompanyData || showFinance || showOrganizationDocuments || showDesignSystem || showRadarEngineAdmin || showQuotations || showSuppliers || showDeclarations || showCommercialProposals || showRadarSearch || showFinanceLedger);
+  refs.bidsPage.classList.toggle("hidden", showUsers || showUserProfile || showCompanyData || showOrganizationDocuments || showDesignSystem || showRadarEngineAdmin || showQuotations || showSuppliers || showDeclarations || showCommercialProposals || showRadarSearch);
   refs.radarSearchPage.classList.toggle("hidden", !showRadarSearch);
   refs.usersPage.classList.toggle("hidden", !showUsers);
   refs.userProfilePage.classList.toggle("hidden", !showUserProfile);
   refs.companyDataPage.classList.toggle("hidden", !showCompanyData);
-  refs.financePage.classList.toggle("hidden", !showFinance);
   refs.organizationDocumentsPage.classList.toggle("hidden", !showOrganizationDocuments);
   refs.designSystemPage.classList.toggle("hidden", !showDesignSystem);
   refs.radarEngineAdminPage.classList.toggle("hidden", !showRadarEngineAdmin);
   refs.quotationsPage.classList.toggle("hidden", !showQuotations);
-  refs.financeLedgerPage.classList.toggle("hidden", !showFinanceLedger);
   refs.homePage.classList.toggle("hidden", !showHome);
   refs.dashboardPage.classList.toggle("hidden", !showDashboard);
   refs.bidCatalogPage.classList.toggle("hidden", !showCatalog);
@@ -5993,7 +5900,7 @@ function setPage(page, options = {}) {
   refs.bidHistoryPanel.classList.toggle("hidden", page !== "history");
   refs.billingPanel.classList.toggle("hidden", page !== "billing");
   refs.failuresPanel.classList.toggle("hidden", page !== "failures");
-  refs.appView.classList.toggle("users-active", showUsers || showUserProfile || showCompanyData || showFinance || showOrganizationDocuments || showDesignSystem || showRadarEngineAdmin || showQuotations || showSuppliers || showDeclarations || showCommercialProposals || showRadarSearch || showFinanceLedger);
+  refs.appView.classList.toggle("users-active", showUsers || showUserProfile || showCompanyData || showOrganizationDocuments || showDesignSystem || showRadarEngineAdmin || showQuotations || showSuppliers || showDeclarations || showCommercialProposals || showRadarSearch);
   refs.itemsTabButton.classList.toggle("active", page === "items");
   refs.documentsTabButton.classList.toggle("active", page === "documents");
   refs.bidHistoryTabButton.classList.toggle("active", page === "history");
@@ -6006,8 +5913,8 @@ function setPage(page, options = {}) {
   refs.failuresTabButton.classList.toggle("active", page === "failures");
   refs.failuresTabButton.setAttribute("aria-selected", String(page === "failures"));
   refs.failuresTabButton.classList.toggle("hidden", !shouldShowFailureHistory());
-  const primaryPage = showFinanceLedger ? "financeLedger" : showFinance ? "finance" : showOrganizationDocuments ? "organizationDocuments" : showRadarEngineAdmin ? "radarEngineAdmin" : showRadarSearch ? "radarSearch" : showCommercialProposals ? "commercialProposals" : showDeclarations ? "declarations" : showSuppliers ? "suppliers" : showUsers || (showUserProfile && isCurrentUserAdmin()) ? "users" : showQuotations ? "quotations" : showDashboard ? "dashboard" : showHome || showUserProfile ? "home" : "bids";
-  const activeNavigationPage = ["companyData", "finance", "financeLedger", "designSystem", "radarEngineAdmin"].includes(page) ? page : primaryPage;
+  const primaryPage = showOrganizationDocuments ? "organizationDocuments" : showRadarEngineAdmin ? "radarEngineAdmin" : showRadarSearch ? "radarSearch" : showCommercialProposals ? "commercialProposals" : showDeclarations ? "declarations" : showSuppliers ? "suppliers" : showUsers || (showUserProfile && isCurrentUserAdmin()) ? "users" : showQuotations ? "quotations" : showDashboard ? "dashboard" : showHome || showUserProfile ? "home" : "bids";
+  const activeNavigationPage = ["companyData", "designSystem", "radarEngineAdmin"].includes(page) ? page : primaryPage;
   renderBreadcrumb(page);
   document.querySelectorAll("[data-navigation-page]").forEach((button) => {
     button.classList.toggle("active", button.dataset.navigationPage === activeNavigationPage);
@@ -6022,18 +5929,12 @@ function setPage(page, options = {}) {
   if (page === "items") renderBidQuotationWorkspace();
   if (page !== "billing") billingFeature.hide();
   if (page === "billing") void billingFeature.showPage().catch((error) => showToast(error.message, "error"));
-  if (page !== "financeLedger") financeFeature.hide();
-  if (page === "financeLedger") void financeFeature.showPage().catch((error) => showToast(error.message, "error"));
   if (page !== "dashboard") dashboardFeature.hide();
   if (page === "dashboard") dashboardFeature.showPage();
   if (showSuppliers) renderSuppliers();
   if (showDeclarations) void declarationsFeature.showPage(page).catch((error) => showToast(error.message, "error"));
   if (showCommercialProposals) void commercialProposalsFeature.showPage().catch((error) => showToast(error.message, "error"));
   if (showCompanyData) void companyDataFeature.showPage().catch((error) => showToast(error.message, "error"));
-  if (showFinance) {
-    void cashflowReservationFeature.showPage().catch((error) => showToast(error.message, "error"));
-    void cashflowExpenseFeature.showPage().catch((error) => showToast(error.message, "error"));
-  }
   if (showOrganizationDocuments) void organizationDocumentsFeature.showPage();
   if (showRadarSearch) void radarSearchFeature.showPage().catch((error) => showToast(error.message, "error"));
   if (showDesignSystem) window.GLLDesignSystem?.mountCatalog(refs.designSystemCatalog);
