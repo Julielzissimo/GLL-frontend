@@ -10,6 +10,7 @@
     <link rel="shortcut icon" href="./assets/favicon.ico?v=20261007" />
     <link rel="stylesheet" href="./design-system/tokens.css" />
     <link rel="stylesheet" href="./styles.css" />
+    <link rel="stylesheet" href="./finance.css" />
     <link rel="stylesheet" href="./design-system/design-system.css" />
     <link rel="stylesheet" href="./design-system/prototype-theme.css" />
   </head>
@@ -249,6 +250,7 @@
             <button id="navBidsButton" class="nav-link" type="button" title="Licitações" data-navigation-page="bids"><span class="nav-icon" aria-hidden="true" data-gll-icon="briefcaseBusiness"></span><span class="nav-link-label">Licitações</span></button>
             <button id="navRadarSearchButton" class="nav-link" type="button" title="Radar de Licitações" data-navigation-page="radarSearch"><span class="nav-icon" aria-hidden="true" data-gll-icon="search"></span><span class="nav-link-label">Radar de Licitações</span></button>
             <button id="navQuotationsButton" class="nav-link" type="button" title="Orçamentos" data-navigation-page="quotations"><span class="nav-icon" aria-hidden="true" data-gll-icon="clipboardList"></span><span class="nav-link-label">Orçamentos</span></button>
+            <button id="navCashflowButton" class="nav-link hidden" type="button" title="Fluxo de Caixa" data-navigation-page="cashflow"><span class="nav-icon" aria-hidden="true" data-gll-icon="clipboardList"></span><span class="nav-link-label">Fluxo de Caixa</span></button>
           </div>
           <div class="nav-section">
             <span class="nav-section-label">DOCUMENTOS</span>
@@ -1385,6 +1387,20 @@
         </div>
       </section>
 
+      <section id="cashflowPage" class="cashflow-page hidden" aria-labelledby="cashflowTitle">
+        <div class="cashflow-page-header">
+          <div>
+            <span class="eyebrow">GESTÃO FINANCEIRA</span>
+            <h1 id="cashflowTitle">Fluxo de Caixa</h1>
+            <p>Acompanhe recebimentos confirmados, despesas, reembolsos e valores reservados por edital.</p>
+          </div>
+          <div class="cashflow-header-actions" id="cashflowHeaderActions"></div>
+        </div>
+        <div id="cashflowStatus" class="cashflow-status" role="status" aria-live="polite">Abra esta página para carregar os lançamentos financeiros.</div>
+        <div id="cashflowDashboard" class="cashflow-dashboard hidden"></div>
+        <div id="cashflowWorkspace" class="cashflow-workspace hidden"></div>
+      </section>
+
       <section id="usersPage" class="users-page hidden">
         <section class="section-band users-list-panel">
           <div class="users-list-toolbar">
@@ -1975,6 +1991,9 @@
     <script type="module" src="./company-data.js"></script>
     <script type="module" src="./commercial-proposals.js"></script>
     <script type="module" src="./billing.js"></script>
+    <script type="module" src="./finance-money.js"></script>
+    <script type="module" src="./finance-service.js"></script>
+    <script type="module" src="./finance.js"></script>
     <script type="module" src="./dashboard.js"></script>
     <script type="module" src="./radar-catalogs.js"></script>
     <script type="module" src="./radar-import.js"></script>
