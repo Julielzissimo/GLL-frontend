@@ -162,7 +162,7 @@ export function createCashflowFeature(options = {}) {
     status: "idle",
     error: "",
     activeTab: "receipts",
-    filters: { bidId: "all", from: "", to: "" },
+    filters: { from: "", to: "" },
     data: null,
     service: null,
     drawerKind: null,
@@ -171,8 +171,7 @@ export function createCashflowFeature(options = {}) {
   };
 
   const accessibleBids = () => (Array.isArray(getBids()) ? getBids() : []);
-  const parties = () => (state.data?.parties || []).filter((party) => party.active);
-  const activeParticipants = () => parties().filter((party) => party.party_type === "participant");
+  const activeParticipants = () => (state.data?.parties || []).filter((party) => party.active && party.party_type === "participant");
   const metrics = () => state.data
     ? calculateCashflowMetrics(state.data, state.filters)
     : null;
@@ -201,7 +200,7 @@ export function createCashflowFeature(options = {}) {
     state.drawerKind = kind;
     dialog.classList.toggle("cashflow-dialog-wide", wide);
     dialog.innerHTML = `<form id="cashflowDrawerForm" class="cashflow-drawer-form" novalidate>
-      <header class="cashflow-drawer-header"><div><span class="eyebrow">LANÇAMENTO FINANCEIRO</span><h2 id="cashflowDrawerTitle">${escapeHtml(title)}</h2><p>${escapeHtml(subtitle)}</p></div><button class="cashflow-icon-button" type="button" data-cf-close aria-label="Fechar">×</button></header>
+      <header class="cashflow-drawer-header"><div><span class="eyebrow">LANÇAMENTO FINANCEIRO</span><h2 id="cashflowDrawerTitle">${escapeHtml(title)}</h2><p>${escapeHtml(subtitle)}</p></div><button class="icon-button modal-close-button" type="button" data-cf-close aria-label="Fechar">×</button></header>
       <div class="cashflow-drawer-body">${body}<div class="cashflow-form-error" data-cf-error role="alert" aria-live="assertive"></div></div>
       <footer class="cashflow-drawer-footer"><button type="button" class="quiet-action" data-cf-close>Cancelar</button><button type="submit" class="primary-action" ${state.saving ? "disabled" : ""}>${escapeHtml(submitLabel)}</button></footer>
     </form>`;
@@ -219,12 +218,12 @@ export function createCashflowFeature(options = {}) {
   function renderHeaderActions() {
     headerActions.innerHTML = isAdmin()
       ? `<button class="quiet-action" type="button" data-cf-action="new-expense">Nova despesa</button><button class="primary-action" type="button" data-cf-action="new-receipt">Registrar recebimento</button>`
-      : `<span class="cashflow-read-only-note">Consulta dos editais autorizados</span>`;
+      : `<span class="cashflow-read-only-note">Consulta dos lançamentos financeiros</span>`;
   }
 
   function renderDashboard() {
     const values = metrics();
-    const receivedLabel = state.filters.bidId === "all" ? "Recebido no período" : "Recebido no período · edital";
+    const receivedLabel = "Recebido no período";
     dashboard.innerHTML = `<article class="cashflow-metric"><span>${receivedLabel}</span><strong>${formatBrl(values.receivedInPeriodCents)}</strong><small>${values.receiptCount} recebimento(s) confirmado(s)</small></article>
       <article class="cashflow-metric"><span>Saldo atual em caixa</span><strong>${formatBrl(values.cashBalanceCents)}</strong><small>Entradas menos despesas pagas, reembolsos e retiradas</small></article>
       <article class="cashflow-metric"><span>Reserva disponível para despesas</span><strong>${formatBrl(values.expenseReserveBalanceCents)}</strong><small>Reserva constituída menos valores já comprometidos</small></article>
@@ -234,12 +233,7 @@ export function createCashflowFeature(options = {}) {
   }
 
   function filterToolbar() {
-    const bidOptions = [["all", "Todos os editais"], ...accessibleBids().map((bid) => {
-      const label = bidLabel(bid);
-      return [String(bid.id), `${label.title} · ${label.subtitle}`];
-    })];
-    return `<div class="cashflow-filters"><label>Editar filtro de edital<select data-cf-filter="bidId">${selectOptions(bidOptions, state.filters.bidId)}</select></label>
-      <label>Data inicial<input type="date" data-cf-filter="from" value="${escapeHtml(state.filters.from)}" /></label>
+    return `<div class="cashflow-filters"><label>Data inicial<input type="date" data-cf-filter="from" value="${escapeHtml(state.filters.from)}" /></label>
       <label>Data final<input type="date" data-cf-filter="to" value="${escapeHtml(state.filters.to)}" /></label>
       <button type="button" class="quiet-action" data-cf-action="clear-filters">Limpar filtros</button>
       <button type="button" class="quiet-action" data-cf-action="refresh">Atualizar</button></div>`;
@@ -249,10 +243,8 @@ export function createCashflowFeature(options = {}) {
     return `<nav class="cashflow-tabs" role="tablist" aria-label="Seções do Fluxo de Caixa">${TABS.map(([id, label]) => `<button type="button" role="tab" aria-selected="${state.activeTab === id}" class="cashflow-tab ${state.activeTab === id ? "active" : ""}" data-cf-tab="${id}">${label}</button>`).join("")}</nav>`;
   }
 
-  function filteredByBidAndDate(rows, dateKey) {
-    const bidId = state.filters.bidId === "all" ? null : String(state.filters.bidId);
-    return rows.filter((row) => (!bidId || String(row.bid_id || "") === bidId)
-      && (!state.filters.from || String(row[dateKey] || "").slice(0, 10) >= state.filters.from)
+  function filteredByDate(rows, dateKey) {
+    return rows.filter((row) => (!state.filters.from || String(row[dateKey] || "").slice(0, 10) >= state.filters.from)
       && (!state.filters.to || String(row[dateKey] || "").slice(0, 10) <= state.filters.to));
   }
 
@@ -262,7 +254,7 @@ export function createCashflowFeature(options = {}) {
 
   function receiptTable() {
     const data = state.data;
-    const rows = filteredByBidAndDate(data.receipts.filter((row) => !row.reversed_at), "received_on");
+    const rows = filteredByDate(data.receipts.filter((row) => !row.reversed_at), "received_on");
     if (!rows.length) return emptyState("Nenhum recebimento encontrado", "Os recebimentos só aparecem depois da confirmação de um crédito vinculado a uma nota fiscal de item faturado.");
     const body = rows.map((receipt) => {
       const lines = rowsForReceipt(receipt.id);
@@ -280,7 +272,7 @@ export function createCashflowFeature(options = {}) {
   }
 
   function expenseTable() {
-    const rows = filteredByBidAndDate(state.data.expenses.filter((row) => !row.reversed_at), "occurred_on");
+    const rows = filteredByDate(state.data.expenses.filter((row) => !row.reversed_at), "occurred_on");
     if (!rows.length) return emptyState("Nenhuma despesa encontrada", "Registre despesas da empresa ou despesas antecipadas para acompanhar a obrigação de reembolso.");
     const refunds = buildExpenseRefunds(state.data);
     return `<div class="cashflow-table-wrap"><table class="cashflow-table"><thead><tr><th>Data</th><th>Descrição</th><th>Categoria</th><th>Pago por</th><th class="cashflow-number">Valor</th><th>Tratamento</th><th>Situação</th><th></th></tr></thead><tbody>${rows.map((expense) => {
@@ -288,8 +280,7 @@ export function createCashflowFeature(options = {}) {
       const refunded = refunds.get(String(expense.id)) || 0;
       const owed = expense.payer_type === "company" ? 0 : Math.max(0, parseMoneyToCents(expense.amount) - refunded);
       const treatment = expense.profit_treatment === "included_in_item_cost" ? "Custo já considerado no item" : expense.profit_treatment === "outside_reserve" ? "Fora da reserva" : "Usou reserva de despesas";
-      const bid = expense.bid_id ? bidName(accessibleBids(), expense.bid_id) : "Despesa geral";
-      return `<tr><td>${formatDate(expense.occurred_on)}</td><td><strong>${escapeHtml(expense.description)}</strong><span class="cashflow-row-sub">${escapeHtml(bid)}${expense.proof_storage_path ? " · comprovante disponível" : ""}</span></td><td>${escapeHtml(expense.category)}</td><td>${escapeHtml(paidBy)}</td><td class="cashflow-number"><strong>${formatBrl(parseMoneyToCents(expense.amount))}</strong></td><td>${escapeHtml(treatment)}</td><td>${owed > 0 ? `<span class="cashflow-badge warning">A devolver ${formatBrl(owed)}</span>` : `<span class="cashflow-badge success">Sem pendência</span>`}</td><td>${expense.proof_storage_path ? `<button type="button" class="text-action" data-cf-action="view-proof" data-path="${escapeHtml(expense.proof_storage_path)}">Comprovante</button>` : ""}${owed > 0 && isAdmin() ? ` <button type="button" class="text-action" data-cf-action="reimburse" data-id="${escapeHtml(expense.id)}">Reembolsar</button>` : ""}</td></tr>`;
+      return `<tr><td>${formatDate(expense.occurred_on)}</td><td><strong>${escapeHtml(expense.description)}</strong>${expense.proof_storage_path ? `<span class="cashflow-row-sub">Comprovante disponível</span>` : ""}</td><td>${escapeHtml(expense.category)}</td><td>${escapeHtml(paidBy)}</td><td class="cashflow-number"><strong>${formatBrl(parseMoneyToCents(expense.amount))}</strong></td><td>${escapeHtml(treatment)}</td><td>${owed > 0 ? `<span class="cashflow-badge warning">A devolver ${formatBrl(owed)}</span>` : `<span class="cashflow-badge success">Sem pendência</span>`}</td><td>${expense.proof_storage_path ? `<button type="button" class="text-action" data-cf-action="view-proof" data-path="${escapeHtml(expense.proof_storage_path)}">Comprovante</button>` : ""}${owed > 0 && isAdmin() ? ` <button type="button" class="text-action" data-cf-action="reimburse" data-id="${escapeHtml(expense.id)}">Reembolsar</button>` : ""}</td></tr>`;
     }).join("")}</tbody></table></div>`;
   }
 
@@ -297,17 +288,16 @@ export function createCashflowFeature(options = {}) {
     const refunds = buildExpenseRefunds(state.data);
     const rows = state.data.expenses.filter((expense) => {
       if (expense.reversed_at || expense.payer_type === "company") return false;
-      if (state.filters.bidId !== "all" && String(expense.bid_id || "") !== String(state.filters.bidId)) return false;
       if (state.filters.from && String(expense.occurred_on).slice(0, 10) < state.filters.from) return false;
       if (state.filters.to && String(expense.occurred_on).slice(0, 10) > state.filters.to) return false;
       return parseMoneyToCents(expense.amount) > (refunds.get(String(expense.id)) || 0);
     });
-    if (!rows.length) return emptyState("Nenhum reembolso pendente", "Despesas pagas pela própria empresa não criam uma dívida com terceiros.");
+    if (!rows.length) return emptyState("Nenhum reembolso pendente", "Despesas pagas pela empresa não geram saldo de reembolso.");
     return `<div class="cashflow-table-wrap"><table class="cashflow-table"><thead><tr><th>Despesa de origem</th><th>Quem antecipou</th><th class="cashflow-number">Valor original</th><th class="cashflow-number">Já devolvido</th><th class="cashflow-number">Saldo a devolver</th><th>Ação</th></tr></thead><tbody>${rows.map((expense) => {
       const refunded = refunds.get(String(expense.id)) || 0;
       const amount = parseMoneyToCents(expense.amount);
       const remaining = amount - refunded;
-      return `<tr><td><strong>${escapeHtml(expense.description)}</strong><span class="cashflow-row-sub">${formatDate(expense.occurred_on)} · ${escapeHtml(bidName(accessibleBids(), expense.bid_id))}</span></td><td>${escapeHtml(partyName(state.data, expense.payer_party_id))}</td><td class="cashflow-number">${formatBrl(amount)}</td><td class="cashflow-number">${formatBrl(refunded)}</td><td class="cashflow-number"><strong>${formatBrl(remaining)}</strong></td><td>${isAdmin() ? `<button type="button" class="primary-action small-action" data-cf-action="reimburse" data-id="${escapeHtml(expense.id)}">Registrar devolução</button>` : "—"}</td></tr>`;
+      return `<tr><td><strong>${escapeHtml(expense.description)}</strong><span class="cashflow-row-sub">${formatDate(expense.occurred_on)}</span></td><td>${escapeHtml(partyName(state.data, expense.payer_party_id))}</td><td class="cashflow-number">${formatBrl(amount)}</td><td class="cashflow-number">${formatBrl(refunded)}</td><td class="cashflow-number"><strong>${formatBrl(remaining)}</strong></td><td>${isAdmin() ? `<button type="button" class="primary-action small-action" data-cf-action="reimburse" data-id="${escapeHtml(expense.id)}">Registrar devolução</button>` : "—"}</td></tr>`;
     }).join("")}</tbody></table></div>`;
   }
 
@@ -317,21 +307,17 @@ export function createCashflowFeature(options = {}) {
     const reserved = new Map();
     for (const allocation of state.data.allocations) {
       const receipt = receiptById.get(String(allocation.receipt_id));
-      if (!receipt || (state.filters.bidId !== "all" && String(receipt.bid_id) !== String(state.filters.bidId))) continue;
+      if (!receipt) continue;
       const key = `${receipt.bid_id}:${allocation.participant_id}`;
       reserved.set(key, (reserved.get(key) || 0) + parseMoneyToCents(allocation.amount));
     }
     const withdrawn = new Map();
     for (const withdrawal of state.data.withdrawals.filter((row) => !row.reversed_at)) {
-      if (state.filters.bidId !== "all" && String(withdrawal.bid_id) !== String(state.filters.bidId)) continue;
       const key = `${withdrawal.bid_id}:${withdrawal.participant_id}`;
       withdrawn.set(key, (withdrawn.get(key) || 0) + parseMoneyToCents(withdrawal.amount));
     }
     const pairs = [];
-    const bidScope = state.filters.bidId === "all"
-      ? accessibleBids()
-      : accessibleBids().filter((bid) => String(bid.id) === String(state.filters.bidId));
-    for (const bid of bidScope) {
+    for (const bid of accessibleBids()) {
       for (const participant of activeParticipants()) {
         const key = `${bid.id}:${participant.id}`;
         const reservedCents = reserved.get(key) || 0;
@@ -345,20 +331,18 @@ export function createCashflowFeature(options = {}) {
   function participantTable() {
     const rows = participantRows();
     const participantList = activeParticipants();
-    const partyTools = isAdmin() ? `<div class="cashflow-toolbar-actions"><button type="button" class="quiet-action" data-cf-action="settings">Ajustes financeiros</button><button type="button" class="quiet-action" data-cf-action="new-third-party">Cadastrar terceiro</button><button type="button" class="primary-action" data-cf-action="new-participant">Novo participante</button></div>` : "";
+    const partyTools = isAdmin() ? `<div class="cashflow-toolbar-actions"><button type="button" class="primary-action" data-cf-action="new-participant">Novo participante</button></div>` : "";
     const memberTable = participantList.length
       ? `<div class="cashflow-table-wrap"><table class="cashflow-table"><thead><tr><th>Participante financeiro</th><th class="cashflow-number">Percentual padrão</th><th>Edital</th><th class="cashflow-number">Reservado</th><th class="cashflow-number">Retirado</th><th class="cashflow-number">Disponível</th><th></th></tr></thead><tbody>${rows.map((row) => `<tr><td><strong>${escapeHtml(row.participant.name)}</strong></td><td class="cashflow-number">${Number(row.participant.default_share_percent || 0).toLocaleString("pt-BR", { maximumFractionDigits: 2 })}%</td><td>${escapeHtml(bidName(accessibleBids(), row.bid.id))}</td><td class="cashflow-number">${formatBrl(row.reservedCents)}</td><td class="cashflow-number">${formatBrl(row.withdrawnCents)}</td><td class="cashflow-number"><strong>${formatBrl(row.availableCents)}</strong></td><td>${isAdmin() && row.availableCents > 0 ? `<button type="button" class="text-action" data-cf-action="withdraw" data-bid="${escapeHtml(row.bid.id)}" data-party="${escapeHtml(row.participant.id)}">Registrar retirada</button>` : ""}</td></tr>`).join("")}</tbody></table></div>`
-      : emptyState("Nenhuma reserva por edital", "Lucro só aparece depois do recebimento. Cadastre participantes financeiros e vincule notas faturadas para reconhecer reservas.");
+      : emptyState("Nenhuma reserva por edital", "Lucro só aparece depois do recebimento. Cadastre participantes financeiros para reconhecer reservas.");
     const partiesTable = participantList.length
       ? `<div class="cashflow-party-list"><h3>Participantes financeiros cadastrados</h3>${participantList.map((party) => `<div class="cashflow-party-row"><span><strong>${escapeHtml(party.name)}</strong><small>${Number(party.default_share_percent || 0).toLocaleString("pt-BR", { maximumFractionDigits: 2 })}% padrão</small></span>${isAdmin() ? `<button type="button" class="text-action" data-cf-action="edit-party" data-id="${escapeHtml(party.id)}">Editar</button>` : ""}</div>`).join("")}</div>`
       : emptyState("Cadastre os participantes financeiros", "As participações são configuráveis por organização. A distribuição de cada recebimento fica registrada por edital e não muda quando o padrão for atualizado.");
-    const thirdParties = state.data.parties.filter((party) => party.active && party.party_type === "third_party");
-    return `<div class="cashflow-section-heading"><div><h2>Distribuição do lucro</h2><p>Reserva, retirada e saldo disponível são acompanhados por participante e edital.</p></div>${partyTools}</div>${memberTable}${partiesTable}<div class="cashflow-party-list"><h3>Terceiros cadastrados</h3>${thirdParties.length ? thirdParties.map((party) => `<div class="cashflow-party-row"><span><strong>${escapeHtml(party.name)}</strong><small>Credor de reembolso · sem participação no lucro</small></span>${isAdmin() ? `<button type="button" class="text-action" data-cf-action="edit-party" data-id="${escapeHtml(party.id)}">Editar</button>` : ""}</div>`).join("") : emptyState("Nenhum terceiro cadastrado", "Terceiros podem receber reembolso por despesas que anteciparam, sem participar do lucro.")}</div>`;
+    return `<div class="cashflow-section-heading"><div><h2>Distribuição do lucro</h2><p>Reserva, retirada e saldo disponível são acompanhados por participante e edital.</p></div>${partyTools}</div>${memberTable}${partiesTable}`;
   }
 
   function historyTable() {
     const rows = state.data.auditEvents.filter((row) => {
-      if (state.filters.bidId !== "all" && String(row.bid_id || "") !== String(state.filters.bidId)) return false;
       const date = String(row.created_at || "").slice(0, 10);
       return (!state.filters.from || date >= state.filters.from) && (!state.filters.to || date <= state.filters.to);
     });
@@ -444,7 +428,7 @@ export function createCashflowFeature(options = {}) {
     state.status = "idle";
     state.error = "";
     state.activeTab = "receipts";
-    state.filters = { bidId: "all", from: "", to: "" };
+    state.filters = { from: "", to: "" };
     headerActions.innerHTML = "";
     dashboard.innerHTML = "";
     workspace.innerHTML = "";
@@ -616,16 +600,8 @@ export function createCashflowFeature(options = {}) {
   }
 
   function expenseDrawer() {
-    const activeParties = parties();
-    const linkedItems = [...new Map(state.data.allInvoices.map((invoice) => [
-      `${invoice.bid_id}:${invoice.quotation_item_id}`,
-      invoice,
-    ])).values()];
-    const options = [["company", "Empresa"], ["participant", "Participante financeiro"], ["third_party", "Terceiro cadastrado"]];
-    const payerOptions = activeParties.map((party) => [String(party.id), `${party.name} · ${party.party_type === "participant" ? "Participante" : "Terceiro"}`]);
-    const noBidLabel = "Despesa geral · sem edital";
-    const bidOptions = [{ id: "", label: noBidLabel }, ...accessibleBids().map((bid) => ({ id: String(bid.id), label: bidLabel(bid).title }))];
-    const itemOptions = [["", "Sem vínculo com item"], ...linkedItems.map((invoice) => [`${invoice.bid_id}|${invoice.quotation_item_id}`, `${bidName(accessibleBids(), invoice.bid_id)} · Item ${invoice.item_number} · ${invoice.item_description}`])];
+    const options = [["company", "Empresa"], ["participant", "Participante financeiro"]];
+    const payerOptions = activeParticipants().map((party) => [String(party.id), party.name]);
     const body = `<div class="cashflow-form-grid"><label class="cashflow-field cashflow-field-wide">Descrição<input name="description" maxlength="180" required /></label>
       <label class="cashflow-field">Categoria<input name="category" maxlength="80" required placeholder="Ex.: tributos, logística, material" /></label>
       <label class="cashflow-field">Valor (R$)<input name="amount" type="text" inputmode="decimal" required /></label>
@@ -633,115 +609,15 @@ export function createCashflowFeature(options = {}) {
       <label class="cashflow-field">Forma de pagamento<select name="payment_method" required>${selectOptions(PAYMENT_METHODS, "pix")}</select></label>
       <label class="cashflow-field">Quem pagou<select name="payer_type" required>${selectOptions(options, "company")}</select></label>
       <label class="cashflow-field cashflow-payer-field hidden">Pagador cadastrado<select name="payer_party_id">${selectOptions([["", "Selecione quem antecipou"], ...payerOptions])}</select></label>
-      <div class="cashflow-field cashflow-bid-field"><label for="cashflowBidSearch">Vínculo com edital</label><div class="cashflow-bid-combobox">
-        <input id="cashflowBidSearch" name="bid_search" type="text" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="cashflowBidOptions" aria-describedby="cashflowBidSearchHint" autocomplete="off" value="${escapeHtml(noBidLabel)}" data-selection-valid="true" data-cf-bid-search />
-        <input type="hidden" name="bid_id" value="" data-cf-bid-id />
-        <div id="cashflowBidOptions" class="cashflow-bid-options" role="listbox" data-cf-bid-options hidden></div>
-      </div><small id="cashflowBidSearchHint" class="cashflow-field-hint">Digite para pesquisar e selecione um edital. A opção geral não vincula edital.</small></div>
-      <label class="cashflow-field">Vínculo com item faturado<select name="linked_item">${selectOptions(itemOptions, "")}</select></label>
-      <label class="cashflow-field cashflow-field-wide">Tratamento financeiro<select name="profit_treatment"><option value="expense_reserve">Usar reserva para despesas</option><option value="included_in_item_cost">Custo já considerado no custo do item</option><option value="outside_reserve">Despesa fora da reserva · exige justificativa</option></select></label>
-      <label class="cashflow-field cashflow-field-wide cashflow-justification-field hidden">Justificativa para despesa fora da reserva<textarea name="justification" rows="2" maxlength="500"></textarea></label>
       <label class="cashflow-field cashflow-field-wide">Observações<textarea name="notes" rows="2" maxlength="1000"></textarea></label>
       <label class="cashflow-field cashflow-field-wide">Comprovante opcional<input type="file" name="proof" accept="application/pdf,image/jpeg,image/png,image/webp" /><small>PDF, JPEG, PNG ou WebP · até 10 MB.</small></label></div>
-      <p class="cashflow-inline-note">Despesas de terceiros criam uma obrigação com o pagador. O reembolso posterior reduz a dívida e o caixa; não cria outra despesa.</p>
-      ${commonConfirmation("Confirmo que a despesa ocorreu e que o pagador e o tratamento financeiro estão corretos.")}`;
-    openDialog("Nova despesa", "Registre a origem do pagamento e o tratamento da reserva.", body, "Salvar despesa", "expense");
-    const bidSearch = dialog.querySelector("[data-cf-bid-search]");
-    const bidIdInput = dialog.querySelector("[data-cf-bid-id]");
-    const bidSuggestions = dialog.querySelector("[data-cf-bid-options]");
-    let activeBidOption = -1;
-    const closeBidSuggestions = () => {
-      bidSuggestions.hidden = true;
-      bidSearch.setAttribute("aria-expanded", "false");
-      bidSearch.removeAttribute("aria-activedescendant");
-      activeBidOption = -1;
-    };
-    const renderBidSuggestions = (query = "") => {
-      const normalizedQuery = query.trim().toLocaleLowerCase("pt-BR");
-      const matchingOptions = bidOptions.filter((option) => !normalizedQuery
-        || option.label.toLocaleLowerCase("pt-BR").includes(normalizedQuery));
-      bidSuggestions.innerHTML = matchingOptions.length
-        ? matchingOptions.map((option, index) => `<button id="cashflowBidOption${index}" type="button" tabindex="-1" class="cashflow-bid-option" role="option" aria-selected="${bidSearch.dataset.selectionValid === "true" && bidIdInput.value === option.id ? "true" : "false"}" data-active="false" data-cf-bid-option data-bid-id="${escapeHtml(option.id)}" data-bid-label="${escapeHtml(option.label)}">${escapeHtml(option.label)}</button>`).join("")
-        : `<div class="cashflow-bid-empty" role="option" aria-disabled="true" aria-selected="false">Nenhum edital corresponde à pesquisa.</div>`;
-      bidSuggestions.hidden = false;
-      bidSearch.setAttribute("aria-expanded", "true");
-      bidSearch.removeAttribute("aria-activedescendant");
-      activeBidOption = -1;
-    };
-    const setActiveBidOption = (index) => {
-      const matchingOptions = [...bidSuggestions.querySelectorAll("[data-cf-bid-option]")];
-      if (!matchingOptions.length) return;
-      activeBidOption = ((index % matchingOptions.length) + matchingOptions.length) % matchingOptions.length;
-      matchingOptions.forEach((option, optionIndex) => {
-        option.dataset.active = String(optionIndex === activeBidOption);
-      });
-      bidSearch.setAttribute("aria-activedescendant", matchingOptions[activeBidOption].id);
-    };
-    const chooseBidOption = (option) => {
-      bidIdInput.value = option.dataset.bidId || "";
-      bidSearch.value = option.dataset.bidLabel || "";
-      bidSearch.dataset.selectionValid = "true";
-      closeBidSuggestions();
-    };
-    bidSearch.addEventListener("focus", () => {
-      bidSearch.select();
-      renderBidSuggestions();
-    });
-    bidSearch.addEventListener("click", () => {
-      if (bidSuggestions.hidden) renderBidSuggestions();
-    });
-    bidSearch.addEventListener("input", () => {
-      bidIdInput.value = "";
-      bidSearch.dataset.selectionValid = "false";
-      renderBidSuggestions(bidSearch.value);
-    });
-    bidSearch.addEventListener("keydown", (event) => {
-      if (event.key === "Escape") {
-        if (!bidSuggestions.hidden) {
-          event.preventDefault();
-          event.stopPropagation();
-          closeBidSuggestions();
-        }
-        return;
-      }
-      if (event.key === "ArrowDown" || event.key === "ArrowUp") {
-        event.preventDefault();
-        if (bidSuggestions.hidden) renderBidSuggestions(bidSearch.value);
-        const optionsInList = bidSuggestions.querySelectorAll("[data-cf-bid-option]");
-        if (optionsInList.length) {
-          const nextIndex = activeBidOption < 0
-            ? (event.key === "ArrowDown" ? 0 : optionsInList.length - 1)
-            : activeBidOption + (event.key === "ArrowDown" ? 1 : -1);
-          setActiveBidOption(nextIndex);
-        }
-        return;
-      }
-      if (event.key === "Enter" && activeBidOption >= 0) {
-        event.preventDefault();
-        const option = bidSuggestions.querySelectorAll("[data-cf-bid-option]")[activeBidOption];
-        if (option) chooseBidOption(option);
-      }
-    });
-    bidSuggestions.addEventListener("mousedown", (event) => {
-      if (event.target.closest("[data-cf-bid-option]")) event.preventDefault();
-    });
-    bidSuggestions.addEventListener("click", (event) => {
-      const option = event.target.closest("[data-cf-bid-option]");
-      if (option) chooseBidOption(option);
-    });
-    bidSearch.addEventListener("blur", () => window.setTimeout(closeBidSuggestions, 100));
+      <p class="cashflow-inline-note">Quando um participante antecipa uma despesa, o reembolso reduz o saldo a devolver e o caixa.</p>`;
+    openDialog("Nova despesa", "Registre uma despesa da organização.", body, "Salvar despesa", "expense");
     const payerField = dialog.querySelector(".cashflow-payer-field");
     dialog.querySelector('[name="payer_type"]')?.addEventListener("change", (event) => {
       const isCompany = event.target.value === "company";
       payerField.classList.toggle("hidden", isCompany);
       payerField.querySelector("select").required = !isCompany;
-    });
-    const treatment = dialog.querySelector('[name="profit_treatment"]');
-    treatment?.addEventListener("change", () => {
-      const outside = treatment.value === "outside_reserve";
-      const reason = dialog.querySelector(".cashflow-justification-field");
-      reason.classList.toggle("hidden", !outside);
-      reason.querySelector("textarea").required = outside;
     });
   }
 
@@ -776,26 +652,14 @@ export function createCashflowFeature(options = {}) {
     dialog.querySelector("form").dataset.participantId = String(participantId);
   }
 
-  function partyDrawer(party = null, partyType = "participant") {
-    const body = `<div class="cashflow-form-grid"><label class="cashflow-field cashflow-field-wide">Nome<input name="name" maxlength="160" value="${escapeHtml(party?.name || "")}" required /></label>
-      <label class="cashflow-field">Tipo<select name="party_type" ${party ? "disabled" : ""}><option value="participant" ${partyType === "participant" ? "selected" : ""}>Participante financeiro</option><option value="third_party" ${partyType === "third_party" ? "selected" : ""}>Terceiro cadastrado</option></select></label>
-      <label class="cashflow-field">Percentual padrão de lucro<input name="share_percent" type="number" min="0" max="100" step="0.01" value="${escapeHtml(party?.default_share_percent ?? (partyType === "participant" ? "0.00" : "0.00"))}" ${partyType === "third_party" || party?.party_type === "third_party" ? "disabled" : ""} /></label>
+  function partyDrawer(party = null) {
+    if (party && party.party_type !== "participant") return;
+    const body = `<div class="cashflow-form-grid"><label class="cashflow-field cashflow-field-wide">Nome do participante<input name="name" maxlength="160" value="${escapeHtml(party?.name || "")}" required /></label>
+      <label class="cashflow-field">Percentual padrão de lucro<input name="share_percent" type="number" min="0" max="100" step="0.01" value="${escapeHtml(party?.default_share_percent ?? "0.00")}" /></label>
       <label class="cashflow-checkbox-field"><input type="checkbox" name="active" ${party?.active === false ? "" : "checked"} /><span>Cadastro ativo</span></label></div>
-      <p class="cashflow-inline-note">Terceiros podem ser credores de reembolso, mas nunca recebem distribuição de lucro.</p>`;
-    openDialog(party ? "Editar cadastro financeiro" : partyType === "third_party" ? "Cadastrar terceiro" : "Novo participante financeiro", "Os percentuais padrão podem ser alterados por recebimento com justificativa.", body, "Salvar cadastro", "party");
+      <p class="cashflow-inline-note">O percentual padrão pode ser alterado em um recebimento, com justificativa.</p>`;
+    openDialog(party ? "Editar participante" : "Novo participante", "Cadastre quem receberá distribuições de lucro.", body, "Salvar cadastro", "party");
     dialog.querySelector("form").dataset.partyId = party?.id || "";
-    if (party) dialog.querySelector('[name="party_type"]').value = party.party_type;
-  }
-
-  function settingsDrawer() {
-    const settings = state.data.settings;
-    const body = `<div class="cashflow-form-grid"><label class="cashflow-field">Reserva padrão de despesas (%)<input name="reserve_percent" type="number" min="0" max="100" step="0.01" value="${escapeHtml(settings.default_expense_reserve_percent || "0.00")}" required /></label>
-      <label class="cashflow-field">Caixa inicial (R$)<input name="opening_balance" type="text" inputmode="decimal" value="${escapeHtml(String(settings.opening_cash_balance || "0.00").replace(".", ","))}" required /></label>
-      <label class="cashflow-field">Data do saldo inicial<input name="opening_date" type="date" value="${escapeHtml(settings.opening_cash_date || "")}" /></label>
-      <label class="cashflow-field cashflow-field-wide">Justificativa<textarea name="reason" rows="2" maxlength="500" placeholder="Obrigatória ao alterar parâmetros financeiros."></textarea></label></div>
-      <p class="cashflow-inline-note">O caixa inicial registra o saldo já existente antes dos lançamentos deste controle. Não é recebimento de edital nem lucro.</p>
-      ${commonConfirmation("Confirmo que revisei os parâmetros de reserva e o saldo inicial.")}`;
-    openDialog("Ajustes financeiros", "Defina a reserva padrão e, antes dos lançamentos, informe o saldo inicial da empresa.", body, "Salvar ajustes", "settings");
   }
 
   function receiptDetail(receiptId) {
@@ -841,7 +705,8 @@ export function createCashflowFeature(options = {}) {
     if (!isAdmin()) throw new Error("Somente Administradores podem registrar ou alterar lançamentos financeiros.");
     const formData = new FormData(form);
     const confirmation = formData.get("confirmation") === "on";
-    if (state.drawerKind !== "detail" && !confirmation) throw new Error("Confirme que revisou os dados antes de salvar.");
+    const confirmationRequired = ["receipt", "reimbursement", "withdrawal", "reverse-receipt"].includes(state.drawerKind);
+    if (confirmationRequired && !confirmation) throw new Error("Confirme que revisou os dados antes de salvar.");
 
     if (state.drawerKind === "receipt") {
       const bidId = String(formData.get("bid_id") || "");
@@ -900,15 +765,8 @@ export function createCashflowFeature(options = {}) {
     }
 
     if (state.drawerKind === "expense") {
-      const bidSearch = form.querySelector("[data-cf-bid-search]");
-      if (bidSearch?.dataset.selectionValid !== "true") {
-        throw new Error("Selecione um edital nas opções ou escolha “Despesa geral · sem edital”.");
-      }
       const payerType = String(formData.get("payer_type") || "");
-      const linkedItem = String(formData.get("linked_item") || "");
-      const [linkedBidId = "", quotationItemId = ""] = linkedItem.split("|");
-      const bidId = String(formData.get("bid_id") || "") || linkedBidId;
-      if (linkedBidId && bidId && linkedBidId !== bidId) throw new Error("O edital do item precisa corresponder ao edital selecionado.");
+      if (payerType !== "company" && payerType !== "participant") throw new Error("Selecione a empresa ou um participante como pagador.");
       const partyId = payerType === "company" ? null : String(formData.get("payer_party_id") || "");
       if (payerType !== "company" && !partyId) throw new Error("Selecione quem antecipou a despesa.");
       const proof = formData.get("proof");
@@ -926,10 +784,6 @@ export function createCashflowFeature(options = {}) {
           paymentMethod: String(formData.get("payment_method") || ""),
           payerType,
           payerPartyId: partyId,
-          bidId,
-          quotationItemId,
-          profitTreatment: String(formData.get("profit_treatment") || "expense_reserve"),
-          justification: String(formData.get("justification") || "").trim(),
           notes: String(formData.get("notes") || "").trim(),
           proofStoragePath: proofPath,
         });
@@ -975,26 +829,13 @@ export function createCashflowFeature(options = {}) {
     }
 
     if (state.drawerKind === "party") {
-      const partyType = String(form.elements.party_type.value || "participant");
-      const sharePercent = partyType === "participant" ? Number(formData.get("share_percent") || 0) : 0;
+      const sharePercent = Number(formData.get("share_percent") || 0);
       if (!Number.isFinite(sharePercent) || sharePercent < 0 || sharePercent > 100) throw new Error("O percentual padrão deve ficar entre 0% e 100%.");
       return state.service.saveParty({
         id: String(form.dataset.partyId || "") || null,
         name: String(formData.get("name") || "").trim(),
-        partyType,
         sharePercent,
         active: formData.get("active") === "on",
-      });
-    }
-
-    if (state.drawerKind === "settings") {
-      const reservePercent = Number(formData.get("reserve_percent"));
-      if (!Number.isFinite(reservePercent) || reservePercent < 0 || reservePercent > 100) throw new Error("A reserva padrão deve ficar entre 0% e 100%.");
-      return state.service.saveSettings({
-        reservePercent: reservePercent.toFixed(2),
-        openingBalance: moneyToDecimalString(parseAmount(formData.get("opening_balance"), "Caixa inicial")),
-        openingDate: String(formData.get("opening_date") || ""),
-        reason: String(formData.get("reason") || "").trim(),
       });
     }
 
@@ -1089,12 +930,6 @@ export function createCashflowFeature(options = {}) {
       payerField.classList.toggle("hidden", isCompany);
       payerField.querySelector("select").required = !isCompany;
     }
-    if (target.name === "profit_treatment" && state.drawerKind === "expense") {
-      const outside = target.value === "outside_reserve";
-      const reason = dialog.querySelector(".cashflow-justification-field");
-      reason.classList.toggle("hidden", !outside);
-      reason.querySelector("textarea").required = outside;
-    }
   }
 
   function onClick(event) {
@@ -1109,10 +944,12 @@ export function createCashflowFeature(options = {}) {
     switch (target.dataset.cfAction) {
       case "new-receipt": return receiptDrawer();
       case "new-expense": return expenseDrawer();
-      case "new-participant": return partyDrawer(null, "participant");
-      case "new-third-party": return partyDrawer(null, "third_party");
-      case "edit-party": return partyDrawer(state.data.parties.find((row) => String(row.id) === String(target.dataset.id)));
-      case "settings": return settingsDrawer();
+      case "new-participant": return partyDrawer();
+      case "edit-party": {
+        const party = state.data.parties.find((row) => String(row.id) === String(target.dataset.id));
+        if (party?.party_type === "participant") return partyDrawer(party);
+        return undefined;
+      }
       case "reimburse": return reimbursementDrawer(target.dataset.id);
       case "withdraw": return withdrawalDrawer(target.dataset.bid, target.dataset.party);
       case "receipt-detail": return receiptDetail(target.dataset.id);
@@ -1120,7 +957,7 @@ export function createCashflowFeature(options = {}) {
       case "view-proof": return viewProof(target.dataset.path);
       case "refresh": return showPage(true);
       case "clear-filters":
-        state.filters = { bidId: "all", from: "", to: "" };
+        state.filters = { from: "", to: "" };
         return render();
       default: return undefined;
     }
@@ -1130,6 +967,7 @@ export function createCashflowFeature(options = {}) {
   page?.addEventListener("input", onInput);
   page?.addEventListener("change", onChange);
   dialog.addEventListener("submit", onSubmit);
+  dialog.addEventListener("click", onClick);
   dialog.addEventListener("click", (event) => {
     if (event.target === dialog) closeDialog();
   });
