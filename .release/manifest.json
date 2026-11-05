@@ -2007,6 +2007,18 @@
       "migrations": [
         "supabase/migrations/20261105124043_fluxo_caixa_desativacao_002.sql"
       ]
+    },
+    {
+      "id": "FLUXO-CAIXA-REIMPLEMENTACAO-001",
+      "backend_commits": [
+        "1c5fb16adb97ea0176441e11e5ded13315873d3f"
+      ],
+      "frontend_commits": [
+        "792d6a2fafaec2ca15cbdfdc79e5eae61dc9adf8"
+      ],
+      "migrations": [
+        "supabase/migrations/20261105185936_fluxo_caixa_ledger.sql"
+      ]
     }
   ]
 }
