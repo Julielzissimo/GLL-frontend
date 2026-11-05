@@ -164,22 +164,11 @@ export function createCashflowService(client) {
   return {
     load: (bids) => loadCashflowData(client, bids),
 
-    async saveSettings({ reservePercent, openingBalance, openingDate, reason }) {
-      const { data, error } = await client.rpc("update_cashflow_settings", {
-        p_default_expense_reserve_percent: String(reservePercent),
-        p_opening_cash_balance: String(openingBalance),
-        p_opening_cash_date: openingDate || null,
-        p_reason: reason || "",
-      });
-      assertSupabase(error);
-      return data;
-    },
-
-    async saveParty({ id, name, partyType, sharePercent, active = true }) {
+    async saveParty({ id, name, sharePercent, active = true }) {
       const { data, error } = await client.rpc("save_cashflow_party", {
         p_party_id: id || null,
         p_name: name,
-        p_party_type: partyType,
+        p_party_type: "participant",
         p_default_share_percent: String(sharePercent ?? 0),
         p_active: Boolean(active),
       });
@@ -226,10 +215,10 @@ export function createCashflowService(client) {
         p_payment_method: expense.paymentMethod,
         p_payer_type: expense.payerType,
         p_payer_party_id: expense.payerPartyId || null,
-        p_bid_id: expense.bidId || null,
-        p_quotation_item_id: expense.quotationItemId || null,
-        p_profit_treatment: expense.profitTreatment,
-        p_justification: expense.justification || "",
+        p_bid_id: null,
+        p_quotation_item_id: null,
+        p_profit_treatment: "expense_reserve",
+        p_justification: "",
         p_notes: expense.notes || "",
         p_proof_storage_path: expense.proofStoragePath || null,
       });

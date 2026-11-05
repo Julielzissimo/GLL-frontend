@@ -199,10 +199,8 @@ export function calculateCashflowMetrics(data, filters = {}) {
     });
   const profitAvailableCents = participantBalances.reduce((sum, row) => sum + row.availableCents, 0);
 
-  const selectedBidId = filters.bidId && filters.bidId !== "all" ? String(filters.bidId) : null;
   const selectedReceipts = receipts.filter((row) =>
-    (!selectedBidId || String(row.bid_id) === selectedBidId)
-      && dateInRange(row.received_on, filters.from, filters.to));
+    dateInRange(row.received_on, filters.from, filters.to));
   const receivedInPeriodCents = selectedReceipts.reduce((sum, row) => sum + centsFromDatabase(row.gross_amount), 0);
 
   return {

@@ -133,8 +133,9 @@
 
 .cashflow-filters {
   display: grid;
-  grid-template-columns: minmax(260px, 1.7fr) repeat(2, minmax(145px, .65fr)) auto auto;
+  grid-template-columns: repeat(2, minmax(145px, .65fr)) auto auto;
   align-items: end;
+  gap: var(--gll-space-3);
   padding-bottom: var(--gll-space-3);
   border-bottom: 1px solid var(--gll-line);
 }
@@ -305,7 +306,6 @@
 .cashflow-confirm { display: flex; align-items: flex-start; gap: var(--gll-space-2); color: var(--gll-ink); font-size: var(--gll-text-sm); }
 .cashflow-confirm input { margin-top: 2px; accent-color: var(--gll-forest); }
 .cashflow-form-error { min-height: 1.25rem; margin: 0; color: var(--gll-danger); font-size: var(--gll-text-sm); }
-.cashflow-icon-button { display: grid; flex: 0 0 auto; place-items: center; width: 36px; height: 36px; min-width: 36px; min-height: 36px; padding: 0; border: 1px solid var(--gll-line); border-radius: var(--gll-radius-sm); background: var(--gll-paper); color: var(--gll-ink); font-size: 1.25rem; cursor: pointer; }
 .cashflow-badge { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 999px; font-size: var(--gll-text-xs); font-weight: 700; white-space: nowrap; }
 .cashflow-badge.warning { background: var(--gll-warning-bg); color: var(--gll-warning); }
 .cashflow-badge.success { background: var(--gll-success-bg); color: var(--gll-success); }
@@ -329,25 +329,13 @@
 .cashflow-total-final { color: var(--gll-success); font-weight: 700; }
 .cashflow-detail-row { display: grid; gap: var(--gll-space-1); padding: var(--gll-space-3) 0; border-bottom: 1px solid var(--gll-line); }
 .cashflow-detail-row span, .cashflow-detail-row small { color: var(--gll-ink-soft); }
-.cashflow-payer-field.hidden, .cashflow-justification-field.hidden { display: none; }
+.cashflow-payer-field.hidden { display: none; }
 .cashflow-drawer-footer button[hidden] { display: none; }
 .cashflow-small-action { min-height: 34px; padding: var(--gll-space-1) var(--gll-space-2); }
-
-.cashflow-bid-combobox { position: relative; min-width: 0; }
-.cashflow-bid-options { position: absolute; z-index: var(--z-dropdown); top: calc(100% + var(--gll-space-1)); right: 0; left: 0; display: grid; max-height: 220px; overflow-y: auto; padding: var(--gll-space-1); border: 1px solid var(--gll-line-strong); border-radius: var(--gll-radius-md); background: var(--gll-paper); box-shadow: var(--gll-shadow-md); }
-.cashflow-bid-options[hidden] { display: none; }
-.cashflow-bid-option { width: 100%; min-height: var(--gll-control-height); padding: var(--gll-space-2) var(--gll-space-3); border: 0; border-radius: var(--gll-radius-sm); background: transparent; color: var(--gll-ink); font: inherit; font-weight: 400; text-align: left; cursor: pointer; }
-.cashflow-bid-option:hover,
-.cashflow-bid-option[data-active="true"],
-.cashflow-bid-option[aria-selected="true"] { background: var(--gll-selection-bg); color: var(--gll-forest); }
-.cashflow-bid-option:focus-visible { outline: 2px solid var(--gll-focus); outline-offset: -2px; }
-.cashflow-bid-empty { margin: 0; padding: var(--gll-space-2) var(--gll-space-3); color: var(--gll-ink-soft); font-size: var(--gll-text-sm); }
-.cashflow-field-hint { color: var(--gll-ink-soft); font-size: var(--gll-text-xs); font-weight: 400; }
 
 @media (max-width: 1050px) {
   .cashflow-dashboard { grid-template-columns: repeat(3, minmax(150px, 1fr)); }
   .cashflow-filters { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .cashflow-filters label:first-child { grid-column: 1 / -1; }
   .cashflow-filters > button { width: 100%; }
 }
 
@@ -357,7 +345,6 @@
   .cashflow-workspace { padding: var(--gll-space-3); }
   .cashflow-form-grid, .cashflow-invoice-fields, .cashflow-allocation-list { grid-template-columns: 1fr; }
   .cashflow-filters { grid-template-columns: minmax(0, 1fr); align-items: stretch; }
-  .cashflow-filters label:first-child { grid-column: auto; }
   .cashflow-filters > button { width: 100%; }
   .cashflow-dialog { width: calc(100vw - 1rem); max-height: calc(100dvh - 1rem); }
   .cashflow-drawer-form { max-height: calc(100dvh - 1rem); }
