@@ -2027,6 +2027,14 @@
         "9061d7887dc3ca62c3d28347e6e66168d017096f"
       ],
       "migrations": []
+    },
+    {
+      "id": "BILLING-SUPPLIER-COLUMN-001",
+      "backend_commits": [],
+      "frontend_commits": [
+        "c9728d79fd4326b5069d5a2e7aaff24c2779667e"
+      ],
+      "migrations": []
     }
   ]
 }
