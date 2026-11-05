@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "release_id": "2026-11-04-fluxo-de-caixa-retirada-homolog",
+  "release_id": "2026-11-04-pacote-de-melhorias-4-homolog",
   "environment": "homolog",
   "target_branch": "homolog",
   "items": [
@@ -1956,6 +1956,14 @@
       "migrations": [
         "supabase/migrations/20261104142550_deactivate_finance_cashflow_access.sql"
       ]
+    },
+    {
+      "id": "FEAT-004",
+      "backend_commits": [],
+      "frontend_commits": [
+        "fe9ce428556c767ed51a83f600911b35794af265"
+      ],
+      "migrations": []
     }
   ]
 }
