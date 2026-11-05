@@ -17,7 +17,23 @@ const classicSource = source
     "",
   )
   .replace(
+    /^import \{ createCashflowExpenseFeature \} from "\.\/finance-expenses\.js";\r?\n/m,
+    "",
+  )
+  .replace(
+    /^import \{ createCashflowReservationFeature \} from "\.\/finance-reservations\.js";\r?\n/m,
+    "",
+  )
+  .replace(
     /^import \{ formatCnpj, isValidCnpj \} from "\.\/company-data\.js";\r?\n/m,
+    "",
+  )
+  .replace(
+    /^import \{ createFinanceLedgerService \} from "\.\/finance-ledger\.js";\r?\n/m,
+    "",
+  )
+  .replace(
+    /^import \{ createFinanceFeature \} from "\.\/finance\.js";\r?\n/m,
     "",
   );
 const application = classicSource.slice(
@@ -468,6 +484,12 @@ function client(db = backend(), auth = { session: { user } }, config = {}) {
     console, URL, URLSearchParams, Intl, Date,
     GLLDesignSystem: { ICONS: { close: "close", success: "success", warning: "warning", error: "error", info: "info" } },
     createRadarEngineAdminFeature: () => ({ showPage() {}, hide() {}, reset() {} }),
+    createCashflowExpenseFeature: () => ({ showPage() {}, reset() {}, refresh: async () => [] }),
+    createCashflowReservationFeature: () => ({ showPage() {}, reset() {} }),
+    createFinanceLedgerService: () => ({}),
+    createFinanceFeature: () => ({
+      hide() {}, refresh() {}, refreshSummaries() {}, reset() {}, selectBid() {}, showPage() {},
+    }),
     bidFollowupCalls, toastCalls,
     createBidFollowupFeature: (options = {}) => {
       bidFollowupCalls.onNotificationsChanged = options.onNotificationsChanged;

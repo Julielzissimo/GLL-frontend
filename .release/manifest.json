@@ -1964,6 +1964,27 @@
         "fe9ce428556c767ed51a83f600911b35794af265"
       ],
       "migrations": []
+    },
+    {
+      "id": "ISSUE-261",
+      "backend_commits": [
+        "85dc08a4aa88ef1f0078faee4a695a85f05468e5",
+        "83ecab88de0cf327490e93a394a76f5deccec8d3"
+      ],
+      "frontend_commits": [
+        "2c4f9b0e56739eb52ca1a7bc4401a86973e8c64a",
+        "53292265b482cdfd08c6f18c15368e5021657b06"
+      ],
+      "migrations": [
+        "supabase/migrations/20261104150000_cashflow_foundation_schema.sql",
+        "supabase/migrations/20261104150100_cashflow_foundation_commands.sql",
+        "supabase/migrations/20261104171421_finance_edital_item_ledger.sql",
+        "supabase/migrations/20261104171556_cashflow_participants_registry.sql",
+        "supabase/migrations/20261104184145_cashflow_reservation_balance_guard.sql",
+        "supabase/migrations/20261105005422_fluxo_caixa_faturamento_financeiro_sync.sql",
+        "supabase/migrations/20261105014922_cashflow_remove_duplicate_participant_indexes.sql",
+        "supabase/migrations/20261105020313_cashflow_nonnegative_objective_profit.sql"
+      ]
     }
   ]
 }

@@ -1,5 +1,6 @@
 import "../web/design-system/tokens.css";
 import "../web/styles.css";
+import "../web/finance.css";
 import "../web/design-system/design-system.css";
 import "../web/design-system/prototype-theme.css";
 import "../web/design-system/components.js";

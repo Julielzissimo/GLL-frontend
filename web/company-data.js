@@ -1,3 +1,5 @@
+import { createFinancialParticipantsFeature } from "./financial-participants.js";
+
 const storageBucket = globalThis.window?.GLLFileStorage?.storageBucket || ((client, bucket) => client.storage.from(bucket));
 const COMPANY_ASSET_BUCKET = "declaration-assets";
 const MAX_IMAGE_SIZE = 5 * 1024 * 1024;
@@ -124,6 +126,9 @@ export function createCompanyDataFeature(options) {
     logoPreview: $("companyLogoPreview"),
     watermarkPreview: $("companyWatermarkPreview"),
   };
+  const financialParticipantsFeature = createFinancialParticipantsFeature({
+    getClient, getContext, isAdmin, toast, runBusy,
+  });
   const localKey = () => `gll-company-data-v1-${getContext().organizationId}`;
   let loaded = false;
   let state = { organization: null, representatives: [] };
@@ -371,10 +376,12 @@ export function createCompanyDataFeature(options) {
 
   async function showPage() {
     await load();
+    await financialParticipantsFeature.showPage();
   }
 
   function reset() {
     loaded = false;
+    financialParticipantsFeature.reset();
     revokeAssetUrls();
     assetUrls = { logo: "", watermark: "" };
     state = { organization: null, representatives: [] };
@@ -401,7 +408,12 @@ export function createCompanyDataFeature(options) {
   });
   refs.form.addEventListener("submit", (event) => runBusy(() => save(event), "Salvando dados da empresa…"));
 
-  return { showPage, reset, refresh: load, isLoaded: () => loaded };
+  return {
+    showPage,
+    reset,
+    refresh: showPage,
+    isLoaded: () => loaded,
+  };
 }
 
 if (typeof window !== "undefined") {
