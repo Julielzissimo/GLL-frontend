@@ -115,20 +115,12 @@ const assetVersion = createHash("sha256")
   .update(await readFile(resolve(sourceDir, "organization-chat.js")))
   .update(await readFile(resolve(sourceDir, "declarations.js")))
   .update(await readFile(resolve(sourceDir, "company-data.js")))
-  .update(await readFile(resolve(sourceDir, "financial-participants.js")))
-  .update(await readFile(resolve(sourceDir, "finance-expenses.js")))
-  .update(await readFile(resolve(sourceDir, "finance-reservations.js")))
-  .update(await readFile(resolve(sourceDir, "finance-service.js")))
-  .update(await readFile(resolve(sourceDir, "finance-money.js")))
   .update(await readFile(resolve(sourceDir, "organization-documents.js")))
   .update(await readFile(resolve(sourceDir, "commercial-proposals.js")))
   .update(await readFile(resolve(sourceDir, "radar-details.js")))
   .update(await readFile(resolve(sourceDir, "radar-preprocessed.js")))
   .update(await readFile(resolve(sourceDir, "radar-item-sync.js")))
   .update(await readFile(resolve(sourceDir, "radar-engine-admin.js")))
-  .update(await readFile(resolve(sourceDir, "finance.js")))
-  .update(await readFile(resolve(sourceDir, "finance-ledger.js")))
-  .update(await readFile(resolve(sourceDir, "finance.css")))
   .update(await readFile(resolve(sourceDir, "billing.js")))
   .update(await readFile(resolve(sourceDir, "styles.css")))
   .update(await readFile(resolve(sourceDir, "design-system", "tokens.css")))
@@ -143,34 +135,9 @@ const outputApp = await readFile(outputAppPath, "utf8");
 await writeFile(
   outputAppPath,
   outputApp
-    .replace('from "./radar-engine-admin.js"', `from "./radar-engine-admin.js?v=${assetVersion}"`)
-    .replace('from "./finance-expenses.js"', `from "./finance-expenses.js?v=${assetVersion}"`)
-    .replace('from "./finance-reservations.js"', `from "./finance-reservations.js?v=${assetVersion}"`)
-    .replace('from "./finance.js"', `from "./finance.js?v=${assetVersion}"`)
-    .replace('from "./finance-ledger.js"', `from "./finance-ledger.js?v=${assetVersion}"`),
+    .replace('from "./radar-engine-admin.js"', `from "./radar-engine-admin.js?v=${assetVersion}"`),
   "utf8",
 );
-for (const [fileName, dependencies] of [
-  ["company-data.js", ["financial-participants"]],
-  ["finance-expenses.js", ["finance-service", "finance-money"]],
-  ["finance-reservations.js", ["finance-service", "finance-money", "finance-expenses"]],
-]) {
-  const modulePath = resolve(outputDir, fileName);
-  let moduleSource = await readFile(modulePath, "utf8");
-  for (const dependency of dependencies) {
-    moduleSource = moduleSource.replaceAll(
-      '"./' + dependency + '.js"',
-      '"./' + dependency + '.js?v=' + assetVersion + '"',
-    );
-  }
-  await writeFile(modulePath, moduleSource, "utf8");
-}
-const outputFinancePath = resolve(outputDir, "finance.js");
-const outputFinance = await readFile(outputFinancePath, "utf8");
-await writeFile(outputFinancePath, outputFinance.replace('from "./finance-ledger.js"', `from "./finance-ledger.js?v=${assetVersion}"`), "utf8");
-const outputBillingPath = resolve(outputDir, "billing.js");
-const outputBilling = await readFile(outputBillingPath, "utf8");
-await writeFile(outputBillingPath, outputBilling.replace('from "./finance-ledger.js"', `from "./finance-ledger.js?v=${assetVersion}"`), "utf8");
 const outputDetailsPath = resolve(outputDir, "radar-details.js");
 const outputDetails = await readFile(outputDetailsPath, "utf8");
 await writeFile(
@@ -189,7 +156,6 @@ await writeFile(
     .replace('./design-system/design-system.css', `./design-system/design-system.css?v=${assetVersion}`)
     .replace('./design-system/prototype-theme.css', `./design-system/prototype-theme.css?v=${assetVersion}`)
     .replace('./design-system/components.js', `./design-system/components.js?v=${assetVersion}`)
-    .replace('./finance.css', `./finance.css?v=${assetVersion}`)
     .replace('./billing.js', `./billing.js?v=${assetVersion}`)
     .replace('./declarations.js', `./declarations.js?v=${assetVersion}`)
     .replace('./company-data.js', `./company-data.js?v=${assetVersion}`)
