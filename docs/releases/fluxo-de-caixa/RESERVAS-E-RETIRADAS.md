@@ -1,7 +1,7 @@
 # Reservas e retiradas — contrato da tela
 
 **Release:** Fluxo de Caixa — milestone #13, issue [GLL-backend #261](https://github.com/Julielzissimo/GLL-backend/issues/261).
-**Estado:** testado em Supabase local descartável; publicação em homologação depende dos workflows oficiais.
+**Estado:** testado em Supabase local descartável e publicado em `homolog` após sucesso do workflow oficial de banco [#41956395067](https://github.com/Julielzissimo/GLL-backend/actions/runs/41956395067). Nenhuma operação financeira de negócio foi criada no remoto.
 
 ## Ações
 
@@ -17,4 +17,4 @@
 
 O componente usa strings decimais e aritmética inteira em centavos. O servidor refaz cálculos e limites na transação, registra autoria, justificativa e timestamp, e bloqueia alterações diretas ao histórico.
 
-Uma retirada é lançamento de caixa, não integração bancária nem confirmação de pagamento externo. A publicação e o smoke test de homologação serão registrados na documentação da release após seus workflows.
+Uma retirada é lançamento de caixa, não integração bancária nem confirmação de pagamento externo. Login, isolamento e armazenamento sintético foram validados em homologação pelo [workflow Pages #41955605032](https://github.com/Julielzissimo/GLL-frontend/actions/runs/41955605032). A jornada financeira de negócio permaneceu em testes SQL e e2e locais descartáveis.
