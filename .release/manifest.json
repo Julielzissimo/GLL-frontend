@@ -1969,11 +1969,13 @@
       "id": "ISSUE-261",
       "backend_commits": [
         "85dc08a4aa88ef1f0078faee4a695a85f05468e5",
-        "83ecab88de0cf327490e93a394a76f5deccec8d3"
+        "83ecab88de0cf327490e93a394a76f5deccec8d3",
+        "a1350daf3f83e8be99fba51077af0a6668eae23b"
       ],
       "frontend_commits": [
         "2c4f9b0e56739eb52ca1a7bc4401a86973e8c64a",
-        "53292265b482cdfd08c6f18c15368e5021657b06"
+        "53292265b482cdfd08c6f18c15368e5021657b06",
+        "30563fe85ed308f64aad75e49e9d12eaf4637800"
       ],
       "migrations": [
         "supabase/migrations/20261104150000_cashflow_foundation_schema.sql",

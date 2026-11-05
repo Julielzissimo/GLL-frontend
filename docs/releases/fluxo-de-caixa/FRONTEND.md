@@ -21,4 +21,11 @@ Novos módulos reutilizam tokens e padrões existentes do GLL. Stories do ledger
 - `npm run build-storybook`: concluído com aviso de chunks grandes; revisão visual pendente.
 - `npm run test:e2e:finance-local`: um e2e local aprovado para despesa de terceiro e dois ressarcimentos parciais.
 
-O e2e permite apenas o servidor local, Supabase local e o host estático versionado do cliente Supabase. Builds geram artefatos locais; a publicação em homologação é feita somente pelo processo oficial.
+## Publicação em homologação
+
+- Integrada à branch `homolog` no commit `4d4ea41a8d5c5decf97683795869a108f4895b3d`.
+- [Workflow Pages #41955605032](https://github.com/Julielzissimo/GLL-frontend/actions/runs/41955605032) aprovou os testes obrigatórios, build, publicação e verificação do commit em `/homolog/`.
+- No mesmo workflow, login/isolamento em homologação e teste R2 com arquivo sintético passaram; o teste de produção foi ignorado.
+- Não foram criados lançamentos financeiros em homologação; os fluxos de negócio foram exercitados somente com fixtures locais descartáveis.
+
+O e2e de negócio permite apenas o servidor local, Supabase local e o host estático versionado do cliente Supabase. Builds geram artefatos locais; a publicação em homologação ocorre somente pelo processo oficial. Produção não foi alterada.
