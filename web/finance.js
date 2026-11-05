@@ -623,7 +623,8 @@ export function createCashflowFeature(options = {}) {
     ])).values()];
     const options = [["company", "Empresa"], ["participant", "Participante financeiro"], ["third_party", "Terceiro cadastrado"]];
     const payerOptions = activeParties.map((party) => [String(party.id), `${party.name} · ${party.party_type === "participant" ? "Participante" : "Terceiro"}`]);
-    const bidOptions = [["", "Despesa geral · sem edital"], ...accessibleBids().map((bid) => [String(bid.id), bidLabel(bid).title])];
+    const noBidLabel = "Despesa geral · sem edital";
+    const bidOptions = [{ id: "", label: noBidLabel }, ...accessibleBids().map((bid) => ({ id: String(bid.id), label: bidLabel(bid).title }))];
     const itemOptions = [["", "Sem vínculo com item"], ...linkedItems.map((invoice) => [`${invoice.bid_id}|${invoice.quotation_item_id}`, `${bidName(accessibleBids(), invoice.bid_id)} · Item ${invoice.item_number} · ${invoice.item_description}`])];
     const body = `<div class="cashflow-form-grid"><label class="cashflow-field cashflow-field-wide">Descrição<input name="description" maxlength="180" required /></label>
       <label class="cashflow-field">Categoria<input name="category" maxlength="80" required placeholder="Ex.: tributos, logística, material" /></label>
@@ -632,7 +633,11 @@ export function createCashflowFeature(options = {}) {
       <label class="cashflow-field">Forma de pagamento<select name="payment_method" required>${selectOptions(PAYMENT_METHODS, "pix")}</select></label>
       <label class="cashflow-field">Quem pagou<select name="payer_type" required>${selectOptions(options, "company")}</select></label>
       <label class="cashflow-field cashflow-payer-field hidden">Pagador cadastrado<select name="payer_party_id">${selectOptions([["", "Selecione quem antecipou"], ...payerOptions])}</select></label>
-      <label class="cashflow-field">Vínculo com edital<select name="bid_id">${selectOptions(bidOptions, "")}</select></label>
+      <div class="cashflow-field cashflow-bid-field"><label for="cashflowBidSearch">Vínculo com edital</label><div class="cashflow-bid-combobox">
+        <input id="cashflowBidSearch" name="bid_search" type="text" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="cashflowBidOptions" aria-describedby="cashflowBidSearchHint" autocomplete="off" value="${escapeHtml(noBidLabel)}" data-selection-valid="true" data-cf-bid-search />
+        <input type="hidden" name="bid_id" value="" data-cf-bid-id />
+        <div id="cashflowBidOptions" class="cashflow-bid-options" role="listbox" data-cf-bid-options hidden></div>
+      </div><small id="cashflowBidSearchHint" class="cashflow-field-hint">Digite para pesquisar e selecione um edital. A opção geral não vincula edital.</small></div>
       <label class="cashflow-field">Vínculo com item faturado<select name="linked_item">${selectOptions(itemOptions, "")}</select></label>
       <label class="cashflow-field cashflow-field-wide">Tratamento financeiro<select name="profit_treatment"><option value="expense_reserve">Usar reserva para despesas</option><option value="included_in_item_cost">Custo já considerado no custo do item</option><option value="outside_reserve">Despesa fora da reserva · exige justificativa</option></select></label>
       <label class="cashflow-field cashflow-field-wide cashflow-justification-field hidden">Justificativa para despesa fora da reserva<textarea name="justification" rows="2" maxlength="500"></textarea></label>
@@ -641,6 +646,90 @@ export function createCashflowFeature(options = {}) {
       <p class="cashflow-inline-note">Despesas de terceiros criam uma obrigação com o pagador. O reembolso posterior reduz a dívida e o caixa; não cria outra despesa.</p>
       ${commonConfirmation("Confirmo que a despesa ocorreu e que o pagador e o tratamento financeiro estão corretos.")}`;
     openDialog("Nova despesa", "Registre a origem do pagamento e o tratamento da reserva.", body, "Salvar despesa", "expense");
+    const bidSearch = dialog.querySelector("[data-cf-bid-search]");
+    const bidIdInput = dialog.querySelector("[data-cf-bid-id]");
+    const bidSuggestions = dialog.querySelector("[data-cf-bid-options]");
+    let activeBidOption = -1;
+    const closeBidSuggestions = () => {
+      bidSuggestions.hidden = true;
+      bidSearch.setAttribute("aria-expanded", "false");
+      bidSearch.removeAttribute("aria-activedescendant");
+      activeBidOption = -1;
+    };
+    const renderBidSuggestions = (query = "") => {
+      const normalizedQuery = query.trim().toLocaleLowerCase("pt-BR");
+      const matchingOptions = bidOptions.filter((option) => !normalizedQuery
+        || option.label.toLocaleLowerCase("pt-BR").includes(normalizedQuery));
+      bidSuggestions.innerHTML = matchingOptions.length
+        ? matchingOptions.map((option, index) => `<button id="cashflowBidOption${index}" type="button" tabindex="-1" class="cashflow-bid-option" role="option" aria-selected="${bidSearch.dataset.selectionValid === "true" && bidIdInput.value === option.id ? "true" : "false"}" data-active="false" data-cf-bid-option data-bid-id="${escapeHtml(option.id)}" data-bid-label="${escapeHtml(option.label)}">${escapeHtml(option.label)}</button>`).join("")
+        : `<div class="cashflow-bid-empty" role="option" aria-disabled="true" aria-selected="false">Nenhum edital corresponde à pesquisa.</div>`;
+      bidSuggestions.hidden = false;
+      bidSearch.setAttribute("aria-expanded", "true");
+      bidSearch.removeAttribute("aria-activedescendant");
+      activeBidOption = -1;
+    };
+    const setActiveBidOption = (index) => {
+      const matchingOptions = [...bidSuggestions.querySelectorAll("[data-cf-bid-option]")];
+      if (!matchingOptions.length) return;
+      activeBidOption = ((index % matchingOptions.length) + matchingOptions.length) % matchingOptions.length;
+      matchingOptions.forEach((option, optionIndex) => {
+        option.dataset.active = String(optionIndex === activeBidOption);
+      });
+      bidSearch.setAttribute("aria-activedescendant", matchingOptions[activeBidOption].id);
+    };
+    const chooseBidOption = (option) => {
+      bidIdInput.value = option.dataset.bidId || "";
+      bidSearch.value = option.dataset.bidLabel || "";
+      bidSearch.dataset.selectionValid = "true";
+      closeBidSuggestions();
+    };
+    bidSearch.addEventListener("focus", () => {
+      bidSearch.select();
+      renderBidSuggestions();
+    });
+    bidSearch.addEventListener("click", () => {
+      if (bidSuggestions.hidden) renderBidSuggestions();
+    });
+    bidSearch.addEventListener("input", () => {
+      bidIdInput.value = "";
+      bidSearch.dataset.selectionValid = "false";
+      renderBidSuggestions(bidSearch.value);
+    });
+    bidSearch.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") {
+        if (!bidSuggestions.hidden) {
+          event.preventDefault();
+          event.stopPropagation();
+          closeBidSuggestions();
+        }
+        return;
+      }
+      if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+        event.preventDefault();
+        if (bidSuggestions.hidden) renderBidSuggestions(bidSearch.value);
+        const optionsInList = bidSuggestions.querySelectorAll("[data-cf-bid-option]");
+        if (optionsInList.length) {
+          const nextIndex = activeBidOption < 0
+            ? (event.key === "ArrowDown" ? 0 : optionsInList.length - 1)
+            : activeBidOption + (event.key === "ArrowDown" ? 1 : -1);
+          setActiveBidOption(nextIndex);
+        }
+        return;
+      }
+      if (event.key === "Enter" && activeBidOption >= 0) {
+        event.preventDefault();
+        const option = bidSuggestions.querySelectorAll("[data-cf-bid-option]")[activeBidOption];
+        if (option) chooseBidOption(option);
+      }
+    });
+    bidSuggestions.addEventListener("mousedown", (event) => {
+      if (event.target.closest("[data-cf-bid-option]")) event.preventDefault();
+    });
+    bidSuggestions.addEventListener("click", (event) => {
+      const option = event.target.closest("[data-cf-bid-option]");
+      if (option) chooseBidOption(option);
+    });
+    bidSearch.addEventListener("blur", () => window.setTimeout(closeBidSuggestions, 100));
     const payerField = dialog.querySelector(".cashflow-payer-field");
     dialog.querySelector('[name="payer_type"]')?.addEventListener("change", (event) => {
       const isCompany = event.target.value === "company";
@@ -811,6 +900,10 @@ export function createCashflowFeature(options = {}) {
     }
 
     if (state.drawerKind === "expense") {
+      const bidSearch = form.querySelector("[data-cf-bid-search]");
+      if (bidSearch?.dataset.selectionValid !== "true") {
+        throw new Error("Selecione um edital nas opções ou escolha “Despesa geral · sem edital”.");
+      }
       const payerType = String(formData.get("payer_type") || "");
       const linkedItem = String(formData.get("linked_item") || "");
       const [linkedBidId = "", quotationItemId = ""] = linkedItem.split("|");
