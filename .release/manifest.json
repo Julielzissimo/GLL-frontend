@@ -2035,6 +2035,14 @@
         "c9728d79fd4326b5069d5a2e7aaff24c2779667e"
       ],
       "migrations": []
+    },
+    {
+      "id": "FLUXO-CAIXA-HEADER-001",
+      "backend_commits": [],
+      "frontend_commits": [
+        "b2728a47a1e1721120633e672c31eb6925711a3a"
+      ],
+      "migrations": []
     }
   ]
 }
