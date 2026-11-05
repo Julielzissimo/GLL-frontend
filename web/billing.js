@@ -55,6 +55,8 @@ function createBillingFeature({ getBid, getQuotation, getBudgetItems, store, toa
   const drawerContent = document.getElementById("billingDrawerContent");
   const state = {
     bidId: null,
+    dataStatus: "idle",
+    refreshRequestId: 0,
     fulfillment: [],
     commitment: [],
     delivery: [],
@@ -132,6 +134,14 @@ function createBillingFeature({ getBid, getQuotation, getBudgetItems, store, toa
   function renderSummary(items) {
     const summaries = items.map(summaryFor);
     document.getElementById("billingItemCount").textContent = String(items.length);
+    if (state.dataStatus !== "ready") {
+      const unavailable = state.dataStatus === "loading" ? "…" : "—";
+      document.getElementById("billingPendingCount").textContent = unavailable;
+      document.getElementById("billingPartialCount").textContent = unavailable;
+      document.getElementById("billingSuppliedCount").textContent = unavailable;
+      document.getElementById("billingInvoicedCount").textContent = unavailable;
+      return;
+    }
     document.getElementById("billingPendingCount").textContent = String(summaries.filter((row) => ["Não iniciado", "Em fornecimento"].includes(row.supplyStatus)).length);
     document.getElementById("billingPartialCount").textContent = String(summaries.filter((row) => row.supplyStatus === "Parcialmente fornecido").length);
     document.getElementById("billingSuppliedCount").textContent = String(summaries.filter((row) => row.supplyStatus === "Totalmente fornecido").length);
@@ -149,26 +159,41 @@ function createBillingFeature({ getBid, getQuotation, getBudgetItems, store, toa
       row.purchaseOrder,
     ].join(" ").toLocaleLowerCase("pt-BR");
     if (query && !text.includes(query)) return false;
-    if (state.supplyFilter === "Pendentes" && !["Não iniciado", "Em fornecimento"].includes(row.supplyStatus)) return false;
-    if (state.supplyFilter === "Parciais" && row.supplyStatus !== "Parcialmente fornecido") return false;
-    if (state.supplyFilter === "Concluídos" && row.supplyStatus !== "Totalmente fornecido") return false;
-    if (state.invoiceFilter !== "Todos" && row.invoiceStatus !== state.invoiceFilter) return false;
+    if (state.dataStatus === "ready") {
+      if (state.supplyFilter === "Pendentes" && !["Não iniciado", "Em fornecimento"].includes(row.supplyStatus)) return false;
+      if (state.supplyFilter === "Parciais" && row.supplyStatus !== "Parcialmente fornecido") return false;
+      if (state.supplyFilter === "Concluídos" && row.supplyStatus !== "Totalmente fornecido") return false;
+      if (state.invoiceFilter !== "Todos" && row.invoiceStatus !== state.invoiceFilter) return false;
+    }
     return true;
+  }
+
+  function billingDataNotice() {
+    if (state.dataStatus === "loading") {
+      return '<tr><td colspan="7"><div class="empty-state compact-empty" role="status" aria-live="polite">Carregando dados de fornecimento e faturamento…</div></td></tr>';
+    }
+    if (state.dataStatus === "error") {
+      return '<tr><td colspan="7"><div class="empty-state compact-empty" role="alert">Não foi possível carregar os dados de fornecimento e faturamento. <button class="quiet-action compact-action" type="button" data-retry-billing-data>Tentar novamente</button></div></td></tr>';
+    }
+    return "";
   }
 
   function renderTable() {
     if (!root) return;
     const items = budgetItems();
     const body = document.getElementById("billingTableBody");
+    if (!body) return;
     const visible = items.map(summaryFor).filter(matchesFilters);
     if (!items.length) {
-      body.innerHTML = '<tr><td colspan="7"><div class="empty-state compact-empty">Nenhum item foi marcado como vencido neste edital.</div></td></tr>';
+      body.innerHTML = `<tr><td colspan="7"><div class="empty-state compact-empty">Nenhum item foi marcado como vencido neste edital.</div></td></tr>${billingDataNotice()}`;
       return;
     }
     if (!visible.length) {
-      body.innerHTML = '<tr><td colspan="7"><div class="empty-state compact-empty">Nenhum item corresponde aos filtros selecionados.</div></td></tr>';
+      body.innerHTML = `<tr><td colspan="7"><div class="empty-state compact-empty">Nenhum item corresponde aos filtros selecionados.</div></td></tr>${billingDataNotice()}`;
       return;
     }
+    const dataLoaded = state.dataStatus === "ready";
+    const pendingLabel = state.dataStatus === "loading" ? "Carregando…" : "Indisponível";
     body.innerHTML = visible.map((row) => {
       const item = row.item;
       const progress = row.planned > 0 ? Math.min(100, Math.round((row.supplied / row.planned) * 100)) : 0;
@@ -178,20 +203,26 @@ function createBillingFeature({ getBid, getQuotation, getBudgetItems, store, toa
         const parsedPurchaseUrl = new URL(row.fulfillment?.purchase_link || "");
         if (["http:", "https:"].includes(parsedPurchaseUrl.protocol)) safePurchaseUrl = parsedPurchaseUrl.href;
       } catch { /* Invalid stored URLs remain plain text. */ }
-      const purchase = safePurchaseUrl
+      const purchase = !dataLoaded ? pendingLabel : safePurchaseUrl
         ? `<a class="table-link" href="${billingEscape(safePurchaseUrl)}" target="_blank" rel="noopener noreferrer">${billingEscape(row.purchaseOrder || "Abrir pedido")}</a>`
         : billingEscape(row.purchaseOrder || "—");
-      const supplier = row.supplier ? `<strong>${billingEscape(row.supplier)}</strong>` : '<span class="table-secondary">Fornecedor não informado</span>';
+      const supplier = !dataLoaded ? `<span class="table-secondary">${pendingLabel}</span>` : row.supplier ? `<strong>${billingEscape(row.supplier)}</strong>` : '<span class="table-secondary">Fornecedor não informado</span>';
+      const supplyStatus = dataLoaded
+        ? `${billingBadge(row.supplyStatus, supplyTone)}<div class="billing-progress" data-tone="${supplyTone}" role="progressbar" aria-label="${billingEscape(`Fornecimento do item ${item.item_number}`)}" aria-valuemin="0" aria-valuemax="${billingEscape(row.planned)}" aria-valuenow="${billingEscape(row.supplied)}"><span style="width:${progress}%"></span></div><small>${billingQuantity(row.supplied)} de ${billingQuantity(row.planned)} fornecidos</small>`
+        : billingBadge(pendingLabel);
+      const invoiceStatus = dataLoaded
+        ? `${billingBadge(row.invoiceStatus, badgeTone(row.invoiceStatus))}<small>${billingQuantity(row.billed)} de ${billingQuantity(row.planned)} faturados</small>`
+        : billingBadge(pendingLabel);
       return `<tr>
         <td><strong>${billingEscape(item.item_number)}</strong><small class="billing-cell-subtitle">${billingEscape(item.description || "Sem descrição")}</small></td>
         <td>${billingQuantity(row.planned)}<small class="billing-cell-subtitle">${billingEscape(item.unit || "Unidade")}</small></td>
-        <td><strong>${row.commitments.length ? `${row.commitments.length} ${row.commitments.length === 1 ? "empenho" : "empenhos"}` : "—"}</strong><small class="billing-cell-subtitle">${billingMoney(row.commitments.reduce((sum, entry) => sum + billingNumber(entry.amount), 0))}</small></td>
+        <td><strong>${dataLoaded ? row.commitments.length ? `${row.commitments.length} ${row.commitments.length === 1 ? "empenho" : "empenhos"}` : "—" : pendingLabel}</strong><small class="billing-cell-subtitle">${dataLoaded ? billingMoney(row.commitments.reduce((sum, entry) => sum + billingNumber(entry.amount), 0)) : ""}</small></td>
         <td>${supplier}<small class="billing-cell-subtitle">Pedido ${purchase}</small></td>
-        <td><div class="billing-status-stack">${billingBadge(row.supplyStatus, supplyTone)}<div class="billing-progress" data-tone="${supplyTone}" role="progressbar" aria-label="${billingEscape(`Fornecimento do item ${item.item_number}`)}" aria-valuemin="0" aria-valuemax="${billingEscape(row.planned)}" aria-valuenow="${billingEscape(row.supplied)}"><span style="width:${progress}%"></span></div><small>${billingQuantity(row.supplied)} de ${billingQuantity(row.planned)} fornecidos</small></div></td>
-        <td><div class="billing-status-stack">${billingBadge(row.invoiceStatus, badgeTone(row.invoiceStatus))}<small>${billingQuantity(row.billed)} de ${billingQuantity(row.planned)} faturados</small></div></td>
-        <td><button class="quiet-action compact-action" type="button" data-open-billing-item="${billingEscape(item.id)}">Acompanhar</button></td>
+        <td><div class="billing-status-stack">${supplyStatus}</div></td>
+        <td><div class="billing-status-stack">${invoiceStatus}</div></td>
+        <td><button class="quiet-action compact-action" type="button" data-open-billing-item="${billingEscape(item.id)}" ${dataLoaded ? "" : "disabled"}>Acompanhar</button></td>
       </tr>`;
-    }).join("");
+    }).join("") + billingDataNotice();
   }
 
   function renderOverview() {
@@ -283,7 +314,9 @@ function createBillingFeature({ getBid, getQuotation, getBudgetItems, store, toa
     return `<section class="billing-drawer-section billing-flow-section" aria-label="Resumo do item"><div class="billing-section-heading"><div><h3>Acompanhamento</h3><p>Acesse cada etapa para consultar ou registrar movimentações.</p></div></div><div class="billing-flow-list">${categories.map((category) => {
       const progress = row.planned > 0 ? Math.min(100, Math.round((category.quantity / row.planned) * 100)) : 0;
       const status = category.status ? `<span class="billing-flow-status">${billingBadge(category.status, badgeTone(category.status))}</span>` : "";
-      return `<button class="billing-flow-card" type="button" data-open-billing-section="${category.kind}" aria-label="Abrir ${category.title.toLocaleLowerCase("pt-BR")}: ${billingQuantity(category.quantity)} de ${billingQuantity(row.planned)} unidades"><span class="billing-flow-card-main"><span class="billing-flow-card-heading"><strong>${category.title}</strong>${status}</span><span class="billing-flow-card-quantity">${billingQuantity(category.quantity)} <small>de ${billingQuantity(row.planned)} un.</small></span><span class="billing-progress" data-tone="${category.status ? badgeTone(category.status) : "neutral"}" role="progressbar" aria-label={`${category.title}: ${billingQuantity(category.quantity)} de ${billingQuantity(row.planned)} unidades`} aria-valuemin="0" aria-valuemax="${billingEscape(row.planned)}" aria-valuenow="${billingEscape(category.quantity)}"><span style="width:${progress}%"></span></span></span><span class="billing-flow-card-action">Ver ${category.title.toLocaleLowerCase("pt-BR")} <span aria-hidden="true">→</span></span></button>`;
+      const openLabel = `Abrir ${category.title.toLocaleLowerCase("pt-BR")}: ${billingQuantity(category.quantity)} de ${billingQuantity(row.planned)} unidades`;
+      const progressLabel = `${category.title}: ${billingQuantity(category.quantity)} de ${billingQuantity(row.planned)} unidades`;
+      return `<button class="billing-flow-card" type="button" data-open-billing-section="${category.kind}" aria-label="${billingEscape(openLabel)}"><span class="billing-flow-card-main"><span class="billing-flow-card-heading"><strong>${category.title}</strong>${status}</span><span class="billing-flow-card-quantity">${billingQuantity(category.quantity)} <small>de ${billingQuantity(row.planned)} un.</small></span><span class="billing-progress" data-tone="${category.status ? badgeTone(category.status) : "neutral"}" role="progressbar" aria-label="${billingEscape(progressLabel)}" aria-valuemin="0" aria-valuemax="${billingEscape(row.planned)}" aria-valuenow="${billingEscape(category.quantity)}"><span style="width:${progress}%"></span></span></span><span class="billing-flow-card-action">Ver ${category.title.toLocaleLowerCase("pt-BR")} <span aria-hidden="true">→</span></span></button>`;
     }).join("")}</div></section>`;
   }
 
@@ -306,12 +339,35 @@ function createBillingFeature({ getBid, getQuotation, getBudgetItems, store, toa
   async function refreshData({ keepDrawer = true } = {}) {
     const bid = currentBid();
     if (!bid) return;
+    const changedBid = String(state.bidId) !== String(bid.id);
     state.bidId = bid.id;
-    const result = await store.getBillingData(bid.id);
-    state.fulfillment = result.fulfillment || [];
-    state.commitment = result.commitment || [];
-    state.delivery = result.delivery || [];
-    state.invoice = result.invoice || [];
+    if (changedBid) {
+      state.fulfillment = [];
+      state.commitment = [];
+      state.delivery = [];
+      state.invoice = [];
+      state.selectedItemId = null;
+      state.activeSection = null;
+    }
+    state.dataStatus = "loading";
+    const requestId = ++state.refreshRequestId;
+    renderOverview();
+    try {
+      const result = await store.getBillingData(bid.id);
+      if (requestId !== state.refreshRequestId || String(currentBid()?.id) !== String(bid.id)) return;
+      state.fulfillment = result?.fulfillment || [];
+      state.commitment = result?.commitment || [];
+      state.delivery = result?.delivery || [];
+      state.invoice = result?.invoice || [];
+      state.dataStatus = "ready";
+    } catch {
+      if (requestId !== state.refreshRequestId || String(currentBid()?.id) !== String(bid.id)) return;
+      state.dataStatus = "error";
+      renderOverview();
+      if (keepDrawer && drawer?.open && state.selectedItemId) renderDrawer();
+      void financePanel.refresh();
+      return;
+    }
     renderOverview();
     if (keepDrawer && drawer?.open && state.selectedItemId) renderDrawer();
   }
@@ -403,6 +459,10 @@ function createBillingFeature({ getBid, getQuotation, getBudgetItems, store, toa
       renderTable();
     });
     root.addEventListener("click", (event) => {
+      if (event.target.closest("[data-retry-billing-data]")) {
+        void refreshData();
+        return;
+      }
       const button = event.target.closest("[data-open-billing-item]");
       if (button) openItem(button.dataset.openBillingItem);
     });
@@ -465,7 +525,9 @@ function createBillingFeature({ getBid, getQuotation, getBudgetItems, store, toa
 
   function reset() {
     closeDrawer();
+    state.refreshRequestId += 1;
     state.bidId = null;
+    state.dataStatus = "idle";
     state.fulfillment = [];
     state.commitment = [];
     state.delivery = [];
