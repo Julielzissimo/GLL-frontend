@@ -115,6 +115,12 @@ const createBillingFeature = window.GLLBilling?.createBillingFeature || (() => (
   hide: () => undefined,
   reset: () => undefined,
 }));
+const createCashflowFeature = window.GLLFinance?.createCashflowFeature || (() => ({
+  showPage: async () => undefined,
+  refresh: async () => undefined,
+  hide: () => undefined,
+  reset: () => undefined,
+}));
 const createDashboardFeature = window.GLLDashboard?.createDashboardFeature || (() => ({
   showPage: () => undefined, refresh: () => undefined, hide: () => undefined, reset: () => undefined,
 }));
@@ -129,6 +135,7 @@ const PAGE_ROUTE_NAMES = {
   documents: "documentos",
   history: "historico",
   billing: "faturamento",
+  cashflow: "fluxo-de-caixa",
   failures: "falhas",
   quotations: "orcamentos",
   commercialProposals: "propostas-comerciais",
@@ -393,6 +400,7 @@ const refs = {
   suppliersPage: $("suppliersPage"),
   declarationsPage: $("declarationsPage"),
   commercialProposalsPage: $("commercialProposalsPage"),
+  cashflowPage: $("cashflowPage"),
   suppliersList: $("suppliersList"),
   supplierTagFilter: $("supplierTagFilter"),
   supplierSort: $("supplierSort"),
@@ -1619,11 +1627,17 @@ class SupabaseStore {
     const tables = ["bid_item_fulfillments", "bid_item_commitments", "bid_item_deliveries", "bid_item_invoices"];
     const results = await Promise.all(tables.map((tableName) => client.from(tableName).select("*").eq("bid_id", bidId)));
     results.forEach((result) => assertSupabase(result.error));
+    const invoiceSummaryResult = await client.rpc("get_cashflow_invoice_receipt_summary", { target_bid_id: bidId });
+    const invoiceSummaryError = invoiceSummaryResult.error;
+    const optionalCashflowRpcMissing = invoiceSummaryError
+      && (invoiceSummaryError.code === "42883" || invoiceSummaryError.code === "PGRST202");
+    if (invoiceSummaryError && !optionalCashflowRpcMissing) assertSupabase(invoiceSummaryError);
     return {
       fulfillment: results[0].data || [],
       commitment: results[1].data || [],
       delivery: results[2].data || [],
       invoice: results[3].data || [],
+      cashflowInvoiceSummary: optionalCashflowRpcMissing ? [] : (invoiceSummaryResult.data || []),
     };
   }
 
@@ -2357,6 +2371,19 @@ const billingFeature = createBillingFeature({
       && Boolean(Number(bidItemForQuotationItem(item, bid.id)?.is_won)));
   },
   store,
+  toast: (message, tone) => showToast(message, tone),
+  runBusy: (operation, message) => withBlockingLoading(operation, message)(),
+  onSaved: broadcastBillingDataChanged,
+});
+const cashflowFeature = createCashflowFeature({
+  getClient: () => (store.requiresAuthenticationBeforeData ? store.client : null),
+  getBids: () => appState.bids,
+  getQuotationItems: () => appState.quotationItems,
+  getBidItems: () => appState.items,
+  getUsers: () => appState.users,
+  getUserId: () => appState.currentUserAuthId,
+  getOrganizationId: () => appState.currentOrganizationId,
+  isAdmin: () => isCurrentUserAdmin(),
   toast: (message, tone) => showToast(message, tone),
   runBusy: (operation, message) => withBlockingLoading(operation, message)(),
   onSaved: broadcastBillingDataChanged,
@@ -4613,6 +4640,7 @@ function resetAuthenticatedView({ showLogin = true } = {}) {
   pendingAppDataBootstrap = Promise.resolve();
   organizationChat.close();
   bidFollowupFeature.reset();
+  cashflowFeature.reset();
   pendingMentionToasts.clear();
   presentedMentionIds.clear();
   toastQueue.length = 0;
@@ -4928,6 +4956,7 @@ function resolveAuthorizedPage(page) {
   if (page === "designSystem" && GLL_CONFIG.designSystemEnabled === false) return "home";
   if (page === "radarEngineAdmin" && GLL_CONFIG.radarEngineAdminEnabled !== true) return "home";
   if (page === "radarEngineAdmin" && !isCurrentUserAdmin()) return "home";
+  if (page === "cashflow" && !isCurrentUserAdmin()) return "home";
   if (page === "users" && !isCurrentUserAdmin()) return "home";
   if (page === "userProfile" && refs.userCreateForm.dataset.mode === "create" && !isCurrentUserAdmin()) return "home";
   if (page === "designSystem" && !isCurrentUserAdmin()) return "home";
@@ -4941,6 +4970,7 @@ function breadcrumbItems(page) {
     items: "Itens",
     documents: "Documentos",
     billing: "Faturamento",
+    cashflow: "Fluxo de Caixa",
     failures: "Falhas",
     declarationLibrary: "Biblioteca",
     declarationSettings: "Configurações",
@@ -5006,6 +5036,7 @@ function breadcrumbItems(page) {
     quotations: "Orçamentos",
     commercialProposals: "Propostas comerciais",
     suppliers: "Fornecedores",
+    cashflow: "Fluxo de Caixa",
     users: "Usuários",
     designSystem: "Design System",
     radarEngineAdmin: "Processamento do Radar",
@@ -5869,6 +5900,7 @@ function setPage(page, options = {}) {
   const showSuppliers = page === "suppliers";
   const showDeclarations = declarationPages.includes(page);
   const showCommercialProposals = page === "commercialProposals";
+  const showCashflow = page === "cashflow";
   const showRadarSearch = page === "radarSearch";
   $("suppliersPage").classList.toggle("hidden", !showSuppliers);
   refs.declarationsPage.classList.toggle("hidden", !showDeclarations);
@@ -5879,7 +5911,8 @@ function setPage(page, options = {}) {
   const showCatalog = page === "bids";
   const showEditor = page === "edit";
   const showDetail = detailPages.includes(page);
-  refs.bidsPage.classList.toggle("hidden", showUsers || showUserProfile || showCompanyData || showOrganizationDocuments || showDesignSystem || showRadarEngineAdmin || showQuotations || showSuppliers || showDeclarations || showCommercialProposals || showRadarSearch);
+  refs.bidsPage.classList.toggle("hidden", showUsers || showUserProfile || showCompanyData || showOrganizationDocuments || showDesignSystem || showRadarEngineAdmin || showQuotations || showSuppliers || showDeclarations || showCommercialProposals || showRadarSearch || showCashflow);
+  refs.cashflowPage.classList.toggle("hidden", !showCashflow);
   refs.radarSearchPage.classList.toggle("hidden", !showRadarSearch);
   refs.usersPage.classList.toggle("hidden", !showUsers);
   refs.userProfilePage.classList.toggle("hidden", !showUserProfile);
@@ -5900,7 +5933,7 @@ function setPage(page, options = {}) {
   refs.bidHistoryPanel.classList.toggle("hidden", page !== "history");
   refs.billingPanel.classList.toggle("hidden", page !== "billing");
   refs.failuresPanel.classList.toggle("hidden", page !== "failures");
-  refs.appView.classList.toggle("users-active", showUsers || showUserProfile || showCompanyData || showOrganizationDocuments || showDesignSystem || showRadarEngineAdmin || showQuotations || showSuppliers || showDeclarations || showCommercialProposals || showRadarSearch);
+  refs.appView.classList.toggle("users-active", showUsers || showUserProfile || showCompanyData || showOrganizationDocuments || showDesignSystem || showRadarEngineAdmin || showQuotations || showSuppliers || showDeclarations || showCommercialProposals || showRadarSearch || showCashflow);
   refs.itemsTabButton.classList.toggle("active", page === "items");
   refs.documentsTabButton.classList.toggle("active", page === "documents");
   refs.bidHistoryTabButton.classList.toggle("active", page === "history");
@@ -5913,7 +5946,7 @@ function setPage(page, options = {}) {
   refs.failuresTabButton.classList.toggle("active", page === "failures");
   refs.failuresTabButton.setAttribute("aria-selected", String(page === "failures"));
   refs.failuresTabButton.classList.toggle("hidden", !shouldShowFailureHistory());
-  const primaryPage = showOrganizationDocuments ? "organizationDocuments" : showRadarEngineAdmin ? "radarEngineAdmin" : showRadarSearch ? "radarSearch" : showCommercialProposals ? "commercialProposals" : showDeclarations ? "declarations" : showSuppliers ? "suppliers" : showUsers || (showUserProfile && isCurrentUserAdmin()) ? "users" : showQuotations ? "quotations" : showDashboard ? "dashboard" : showHome || showUserProfile ? "home" : "bids";
+  const primaryPage = showOrganizationDocuments ? "organizationDocuments" : showRadarEngineAdmin ? "radarEngineAdmin" : showRadarSearch ? "radarSearch" : showCashflow ? "cashflow" : showCommercialProposals ? "commercialProposals" : showDeclarations ? "declarations" : showSuppliers ? "suppliers" : showUsers || (showUserProfile && isCurrentUserAdmin()) ? "users" : showQuotations ? "quotations" : showDashboard ? "dashboard" : showHome || showUserProfile ? "home" : "bids";
   const activeNavigationPage = ["companyData", "designSystem", "radarEngineAdmin"].includes(page) ? page : primaryPage;
   renderBreadcrumb(page);
   document.querySelectorAll("[data-navigation-page]").forEach((button) => {
@@ -5928,7 +5961,9 @@ function setPage(page, options = {}) {
   if (showQuotations) renderQuotations();
   if (page === "items") renderBidQuotationWorkspace();
   if (page !== "billing") billingFeature.hide();
+  if (!showCashflow) cashflowFeature.hide();
   if (page === "billing") void billingFeature.showPage().catch((error) => showToast(error.message, "error"));
+  if (showCashflow) void cashflowFeature.showPage().catch((error) => showToast(error.message, "error"));
   if (page !== "dashboard") dashboardFeature.hide();
   if (page === "dashboard") dashboardFeature.showPage();
   if (showSuppliers) renderSuppliers();
@@ -6337,6 +6372,8 @@ function collapseSidebarFromEmptyArea(event) {
 }
 
 function updateSidebarVisibility() {
+  const cashflowNavigationButton = $("navCashflowButton");
+  if (cashflowNavigationButton) cashflowNavigationButton.classList.toggle("hidden", !isCurrentUserAdmin());
   refs.bidsPage.classList.remove("sidebar-hidden", "sidebar-previewing");
   refs.appView.classList.remove("sidebar-collapsed");
   refs.toggleSidebarButton.classList.add("hidden");

@@ -61,6 +61,7 @@ function createBillingFeature({ getBid, getQuotation, getBudgetItems, store, toa
     commitment: [],
     delivery: [],
     invoice: [],
+    cashflowInvoiceSummary: [],
     query: "",
     supplyFilter: "Todos",
     invoiceFilter: "Todos",
@@ -101,6 +102,9 @@ function createBillingFeature({ getBid, getQuotation, getBudgetItems, store, toa
     const committed = commitments.reduce((sum, row) => sum + billingNumber(row.quantity), 0);
     const supplied = deliveries.reduce((sum, row) => sum + billingNumber(row.quantity), 0);
     const billed = invoices.reduce((sum, row) => sum + billingNumber(row.quantity), 0);
+    const invoicePayments = invoices.map((invoice) => state.cashflowInvoiceSummary.find((summary) => Number(summary.invoice_id) === Number(invoice.id)));
+    const invoicedAmount = invoicePayments.reduce((sum, summary, index) => sum + billingNumber(summary?.invoice_total_amount ?? invoices[index].quantity * billingNumber(item.final_bid)), 0);
+    const receivedAmount = invoicePayments.reduce((sum, summary) => sum + billingNumber(summary?.received_amount), 0);
     const supplyStatus = supplied <= 0
       ? commitments.length ? "Em fornecimento" : "Não iniciado"
       : supplied + 0.000001 >= planned ? "Totalmente fornecido" : "Parcialmente fornecido";
@@ -117,6 +121,8 @@ function createBillingFeature({ getBid, getQuotation, getBudgetItems, store, toa
       committed,
       supplied,
       billed,
+      invoicedAmount,
+      receivedAmount,
       supplyStatus,
       invoiceStatus,
       supplier: supplierName(fulfillment),
@@ -211,7 +217,7 @@ function createBillingFeature({ getBid, getQuotation, getBudgetItems, store, toa
         ? `${billingBadge(row.supplyStatus, supplyTone)}<div class="billing-progress" data-tone="${supplyTone}" role="progressbar" aria-label="${billingEscape(`Fornecimento do item ${item.item_number}`)}" aria-valuemin="0" aria-valuemax="${billingEscape(row.planned)}" aria-valuenow="${billingEscape(row.supplied)}"><span style="width:${progress}%"></span></div><small>${billingQuantity(row.supplied)} de ${billingQuantity(row.planned)} fornecidos</small>`
         : billingBadge(pendingLabel);
       const invoiceStatus = dataLoaded
-        ? `${billingBadge(row.invoiceStatus, badgeTone(row.invoiceStatus))}<small>${billingQuantity(row.billed)} de ${billingQuantity(row.planned)} faturados</small>`
+        ? `${billingBadge(row.invoiceStatus, badgeTone(row.invoiceStatus))}<small>${billingQuantity(row.billed)} de ${billingQuantity(row.planned)} faturados</small><small>Recebido ${billingMoney(row.receivedAmount)} de ${billingMoney(row.invoicedAmount)} · pendente ${billingMoney(Math.max(0, row.invoicedAmount - row.receivedAmount))}</small>`
         : billingBadge(pendingLabel);
       return `<tr>
         <td><strong>${billingEscape(item.item_number)}</strong><small class="billing-cell-subtitle">${billingEscape(item.description || "Sem descrição")}</small></td>
@@ -294,7 +300,7 @@ function createBillingFeature({ getBid, getQuotation, getBudgetItems, store, toa
       },
       invoice: {
         title: "Faturado",
-        description: `${billingQuantity(row.billed)} de ${billingQuantity(row.planned)} un. faturadas.`,
+        description: `${billingQuantity(row.billed)} de ${billingQuantity(row.planned)} un. faturadas. ${billingMoney(row.receivedAmount)} recebidos de ${billingMoney(row.invoicedAmount)}; pendente ${billingMoney(Math.max(0, row.invoicedAmount - row.receivedAmount))}.`,
       },
     };
     const section = sections[kind];
@@ -346,6 +352,7 @@ function createBillingFeature({ getBid, getQuotation, getBudgetItems, store, toa
       state.commitment = [];
       state.delivery = [];
       state.invoice = [];
+      state.cashflowInvoiceSummary = [];
       state.selectedItemId = null;
       state.activeSection = null;
     }
@@ -359,6 +366,7 @@ function createBillingFeature({ getBid, getQuotation, getBudgetItems, store, toa
       state.commitment = result?.commitment || [];
       state.delivery = result?.delivery || [];
       state.invoice = result?.invoice || [];
+      state.cashflowInvoiceSummary = result?.cashflowInvoiceSummary || [];
       state.dataStatus = "ready";
     } catch {
       if (requestId !== state.refreshRequestId || String(currentBid()?.id) !== String(bid.id)) return;
@@ -531,6 +539,7 @@ function createBillingFeature({ getBid, getQuotation, getBudgetItems, store, toa
     state.commitment = [];
     state.delivery = [];
     state.invoice = [];
+    state.cashflowInvoiceSummary = [];
     state.query = "";
     state.supplyFilter = "Todos";
     state.invoiceFilter = "Todos";
