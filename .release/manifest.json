@@ -1987,6 +1987,14 @@
         "supabase/migrations/20261105014922_cashflow_remove_duplicate_participant_indexes.sql",
         "supabase/migrations/20261105020313_cashflow_nonnegative_objective_profit.sql"
       ]
+    },
+    {
+      "id": "BILLING-ITEMS-LOADING-001",
+      "backend_commits": [],
+      "frontend_commits": [
+        "fbadb295c8a5831c46bf1390c56f71ac15ffdd39"
+      ],
+      "migrations": []
     }
   ]
 }
