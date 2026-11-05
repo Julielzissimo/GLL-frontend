@@ -1,3 +1,5 @@
+import { createFinanceLedgerPanel } from "./finance-ledger.js";
+
 const BILLING_RECORD_TABLES = Object.freeze({
   commitment: "bid_item_commitments",
   delivery: "bid_item_deliveries",
@@ -49,10 +51,20 @@ function billingDate(value) {
   return Number.isNaN(date.getTime()) ? billingEscape(value) : new Intl.DateTimeFormat("pt-BR").format(date);
 }
 
-function createBillingFeature({ getBid, getQuotation, getBudgetItems, store, toast, runBusy, onSaved }) {
+function createBillingFeature({ getBid, getQuotation, getBudgetItems, store, toast, runBusy, onSaved, financeService, isAdmin = () => false, navigateToFinance = () => undefined }) {
   const root = document.getElementById("billingRoot");
   const drawer = document.getElementById("billingDrawer");
   const drawerContent = document.getElementById("billingDrawerContent");
+  const financePanel = createFinanceLedgerPanel({
+    root: document.getElementById("billingFinanceLedgerPanel"),
+    service: financeService,
+    getBid,
+    isAdmin,
+    navigate: navigateToFinance,
+    onSaved,
+    toast,
+    financeLink: true,
+  });
   const state = {
     bidId: null,
     fulfillment: [],
@@ -279,6 +291,7 @@ function createBillingFeature({ getBid, getQuotation, getBudgetItems, store, toa
     state.delivery = result.delivery || [];
     state.invoice = result.invoice || [];
     renderOverview();
+    await financePanel.refresh();
     if (keepDrawer && drawer?.open && state.selectedItemId) renderDrawer();
   }
 
@@ -435,10 +448,12 @@ function createBillingFeature({ getBid, getQuotation, getBudgetItems, store, toa
 
   function hide() {
     closeDrawer();
+    financePanel.hide();
   }
 
   function reset() {
     closeDrawer();
+    financePanel.hide();
     state.bidId = null;
     state.fulfillment = [];
     state.commitment = [];

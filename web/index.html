@@ -10,6 +10,7 @@
     <link rel="shortcut icon" href="./assets/favicon.ico?v=20261007" />
     <link rel="stylesheet" href="./design-system/tokens.css" />
     <link rel="stylesheet" href="./styles.css" />
+    <link rel="stylesheet" href="./finance.css" />
     <link rel="stylesheet" href="./design-system/design-system.css" />
     <link rel="stylesheet" href="./design-system/prototype-theme.css" />
   </head>
@@ -246,6 +247,7 @@
             <span class="nav-section-label">ÁREA DE TRABALHO</span>
             <button id="navHomeButton" class="nav-link active" type="button" title="Visão geral" data-navigation-page="home"><span class="nav-icon" aria-hidden="true" data-gll-icon="layoutDashboard"></span><span class="nav-link-label">Visão geral</span></button>
             <button id="navDashboardButton" class="nav-link" type="button" title="Dashboard" data-navigation-page="dashboard"><span class="nav-icon" aria-hidden="true" data-gll-icon="quotation"></span><span class="nav-link-label">Dashboard</span></button>
+            <button id="navFinanceLedgerButton" class="nav-link hidden" type="button" title="Fluxo de Caixa" data-navigation-page="financeLedger"><span class="nav-icon" aria-hidden="true" data-gll-icon="quotation"></span><span class="nav-link-label">Fluxo de Caixa</span></button>
             <button id="navBidsButton" class="nav-link" type="button" title="Licitações" data-navigation-page="bids"><span class="nav-icon" aria-hidden="true" data-gll-icon="briefcaseBusiness"></span><span class="nav-link-label">Licitações</span></button>
             <button id="navRadarSearchButton" class="nav-link" type="button" title="Radar de Licitações" data-navigation-page="radarSearch"><span class="nav-icon" aria-hidden="true" data-gll-icon="search"></span><span class="nav-link-label">Radar de Licitações</span></button>
             <button id="navQuotationsButton" class="nav-link" type="button" title="Orçamentos" data-navigation-page="quotations"><span class="nav-icon" aria-hidden="true" data-gll-icon="clipboardList"></span><span class="nav-link-label">Orçamentos</span></button>
@@ -259,6 +261,7 @@
           <div class="nav-section">
             <span class="nav-section-label">ADMINISTRAÇÃO</span>
             <button id="navSuppliersButton" class="nav-link" type="button" title="Fornecedores" data-navigation-page="suppliers"><span class="nav-icon" aria-hidden="true" data-gll-icon="package"></span><span class="nav-link-label">Fornecedores</span></button>
+            <button id="navFinanceButton" class="nav-link hidden" type="button" title="Financeiro" data-navigation-page="finance"><span class="nav-icon" aria-hidden="true" data-gll-icon="quotation"></span><span class="nav-link-label">Financeiro</span></button>
             <button id="navUsersButton" class="nav-link" type="button" title="Usuários" data-navigation-page="users"><span class="nav-icon" aria-hidden="true" data-gll-icon="lucideUsers"></span><span class="nav-link-label">Usuários</span></button>
             <button id="navRadarEngineAdminButton" class="nav-link hidden" type="button" title="Processamento do Radar" data-navigation-page="radarEngineAdmin"><span class="nav-icon" aria-hidden="true" data-gll-icon="quotation"></span><span class="nav-link-label">Processamento do Radar</span></button>
             <div id="settingsNavigationGroup" class="nav-group">
@@ -876,6 +879,7 @@
                   <article class="billing-summary-card billing-summary-supplied"><span>Totalmente fornecidos</span><strong id="billingSuppliedCount">0</strong></article>
                   <article class="billing-summary-card billing-summary-invoiced"><span>Totalmente faturados</span><strong id="billingInvoicedCount">0</strong></article>
                 </section>
+                <div id="billingFinanceLedgerPanel" class="billing-finance-ledger-panel"></div>
                 <section class="billing-workspace" aria-label="Itens para acompanhamento">
                   <div class="billing-toolbar">
                     <label class="billing-search-field" for="billingSearch"><span>Pesquisar</span><input id="billingSearch" type="search" placeholder="Item, descrição ou fornecedor" autocomplete="off" /></label>
@@ -1127,6 +1131,19 @@
             </form>
           </div>
         </dialog>
+      </section>
+
+      <section id="financeLedgerPage" class="users-page finance-page hidden" aria-labelledby="financePageTitle">
+        <header class="page-heading">
+          <div><span class="eyebrow">FINANCEIRO · EDITAIS</span><h1 id="financePageTitle">Fluxo de Caixa</h1><p>Acompanhe lucro objetivo, faturamento e recebimentos do órgão por edital.</p></div>
+          <button id="refreshFinanceLedgerButton" class="quiet-action" type="button">Atualizar dados</button>
+        </header>
+        <p id="financeLedgerNotice" class="finance-page-notice" role="status" aria-live="polite"></p>
+        <section class="section-band finance-ledger-index" aria-labelledby="financeLedgerIndexTitle">
+          <div class="finance-index-heading"><div><h2 id="financeLedgerIndexTitle">Editais</h2><p>Os totais são consolidados a partir do orçamento e das notas fiscais vinculadas.</p></div><label for="financeLedgerSearch">Pesquisar edital<input id="financeLedgerSearch" type="search" autocomplete="off" placeholder="Número, órgão ou situação" /></label></div>
+          <div class="table-wrap finance-index-table-wrap"><table class="finance-table finance-index-table"><thead><tr><th>Edital</th><th>Situação</th><th>Lucro objetivo</th><th>Faturado</th><th>Recebido</th><th>Lucro reconhecido</th><th>Saldo a receber</th></tr></thead><tbody id="financeLedgerList"><tr><td colspan="7"><p class="finance-loading" role="status">Carregando editais…</p></td></tr></tbody></table></div>
+        </section>
+        <div id="financeLedgerDetail" class="finance-ledger-detail"></div>
       </section>
 
       <section id="quotationsPage" class="users-page quotations-page hidden">
@@ -1849,6 +1866,87 @@
             <button class="primary-action" type="submit">Salvar dados da empresa</button>
           </div>
         </form>
+
+        <section id="financialParticipantsFeature" class="company-data-participants hidden" aria-labelledby="financialParticipantsTitle">
+          <div class="section-band company-data-section">
+            <div class="company-data-section-heading">
+              <div>
+                <span class="eyebrow">FLUXO DE CAIXA</span>
+                <h2 id="financialParticipantsTitle">Participantes financeiros</h2>
+                <p>Cadastre titulares, sócios legais e participantes financeiros. Terceiros pagadores têm cadastro separado no Financeiro.</p>
+              </div>
+            </div>
+            <p id="participantClassificationContext" class="company-data-read-only" role="status"></p>
+            <p id="financialParticipantsStatus" class="form-error company-data-status" role="status" aria-live="polite"></p>
+            <div id="financialParticipantsLoading" class="company-data-loading hidden" role="status">Carregando participantes…</div>
+          </div>
+
+          <section class="section-band company-data-section">
+            <div class="company-data-section-heading">
+              <div><h3>Participantes da empresa</h3><p>Quem não recebe percentual continua disponível para pagamentos e ressarcimentos.</p></div>
+            </div>
+            <form id="financialParticipantForm" class="participant-editor hidden">
+              <input id="financialParticipantId" type="hidden" />
+              <div class="form-grid participant-editor-grid">
+                <label>Nome completo *<input id="financialParticipantName" maxlength="240" required /></label>
+                <label>Vigência dos dados *<input id="financialParticipantEffectiveOn" type="date" required /></label>
+                <label>Tipo de participação *<select id="financialParticipantType" required></select></label>
+                <label class="participant-eligibility"><input id="financialParticipantDistributionEligible" type="checkbox" /><span>Elegível à distribuição de lucros</span></label>
+                <label class="full-field">Motivo do cadastro ou da alteração *<input id="financialParticipantReason" maxlength="500" required /></label>
+              </div>
+              <p class="participant-form-hint">Desmarcado: participante disponível para pagamentos e ressarcimentos, sem elegibilidade para receber percentuais.</p>
+              <div class="button-row end">
+                <button id="cancelFinancialParticipantEdit" class="quiet-action hidden" type="button">Cancelar edição</button>
+                <button class="primary-action" type="submit">Salvar participante</button>
+              </div>
+            </form>
+            <button id="addFinancialParticipantButton" class="quiet-action" type="button">＋ Adicionar participante</button>
+            <div id="financialParticipantsList" class="participant-record-list"></div>
+          </section>
+
+          <section class="section-band company-data-section">
+            <div class="company-data-section-heading">
+              <div><h3>Percentuais por vigência</h3><p>Cada gravação cria uma versão completa e imutável. Uma versão nova não altera operações anteriores.</p></div>
+            </div>
+            <form id="percentageVersionForm" class="participant-editor">
+              <input id="percentageVersionId" type="hidden" />
+              <div class="form-grid participant-editor-grid">
+                <label>Data de vigência *<input id="percentageVersionEffectiveOn" type="date" required /></label>
+                <label class="full-field">Motivo da composição *<input id="percentageVersionReason" maxlength="500" required /></label>
+              </div>
+              <div id="percentageMembersEditor" class="percentage-members-editor"></div>
+              <p id="percentageTotal" class="participant-form-hint" aria-live="polite">Total: 0%</p>
+              <div class="button-row end">
+                <button id="cancelPercentageVersionEdit" class="quiet-action hidden" type="button">Cancelar edição</button>
+                <button class="primary-action" type="submit">Salvar nova versão percentual</button>
+              </div>
+            </form>
+            <h4>Histórico de versões</h4>
+            <div id="percentageVersionsList" class="participant-record-list"></div>
+          </section>
+
+          <form id="participantStatusForm" class="section-band participant-status-editor hidden">
+            <input id="participantStatusTargetId" type="hidden" />
+            <div class="company-data-section-heading"><div><h3 id="participantStatusTitle">Alterar estado</h3><p>O registro é histórico e passa a valer na data informada.</p></div></div>
+            <div class="form-grid participant-editor-grid">
+              <label>Estado *<select id="participantStatusActive" required><option value="false">Inativo</option><option value="true">Ativo</option></select></label>
+              <label>Data de vigência *<input id="participantStatusEffectiveOn" type="date" required /></label>
+              <label class="full-field">Motivo *<input id="participantStatusReason" maxlength="500" required /></label>
+            </div>
+            <div class="button-row end">
+              <button id="cancelParticipantStatus" class="quiet-action" type="button">Cancelar</button>
+              <button class="primary-action" type="submit">Registrar estado</button>
+            </div>
+          </form>
+        </section>
+        </section>
+
+      <section id="financePage" class="users-page cashflow-expenses-page hidden" aria-labelledby="financeTitle">
+        <div class="page-heading"><div><h1 id="financeTitle">Fluxo de Caixa</h1><p>Acompanhe lucro reconhecido, reservas por edital, despesas gerais e retiradas dos beneficiários.</p></div></div>
+        <p id="financeReservationsStatus" role="status" aria-live="polite"></p>
+        <div id="financeReservationsRoot"></div>
+        <p id="financeStatus" role="status" aria-live="polite"></p>
+        <div id="financeRoot"></div>
       </section>
 
       <section id="designSystemPage" class="users-page design-system-page hidden" aria-labelledby="designSystemTitle">
