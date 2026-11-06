@@ -169,6 +169,8 @@ export function createCashflowFeature(options = {}) {
     drawerKind: null,
     loadingPromise: null,
     saving: false,
+    openingReceipt: false,
+    receiptOpenRequest: 0,
   };
 
   const accessibleBids = () => (Array.isArray(getBids()) ? getBids() : []);
@@ -446,6 +448,8 @@ export function createCashflowFeature(options = {}) {
     state.service = null;
     state.status = "idle";
     state.error = "";
+    state.receiptOpenRequest += 1;
+    state.openingReceipt = false;
     state.activeTab = "receipts";
     state.filters = { from: "", to: "" };
     headerActions.innerHTML = "";
@@ -491,6 +495,19 @@ export function createCashflowFeature(options = {}) {
       <label class="cashflow-field cashflow-reason-field">Justificativa para custo manual<input type="text" name="cost_reason_${id}" maxlength="500" data-cf-cost-reason="${id}" disabled /></label>
       <label class="cashflow-field cashflow-reason-field">Justificativa para reserva manual<input type="text" name="reserve_reason_${id}" maxlength="500" data-cf-reserve-reason="${id}" disabled /></label>
     </article>`;
+  }
+
+  async function openReceiptDrawer(bidId = "") {
+    if (state.openingReceipt) return;
+    const requestId = state.receiptOpenRequest + 1;
+    state.receiptOpenRequest = requestId;
+    state.openingReceipt = true;
+    try {
+      const refreshedData = await showPage(true);
+      if (requestId === state.receiptOpenRequest && refreshedData) receiptDrawer(bidId);
+    } finally {
+      if (requestId === state.receiptOpenRequest) state.openingReceipt = false;
+    }
   }
 
   function receiptDrawer(bidId) {
@@ -1034,7 +1051,7 @@ export function createCashflowFeature(options = {}) {
       return;
     }
     switch (target.dataset.cfAction) {
-      case "new-receipt": return receiptDrawer();
+      case "new-receipt": return openReceiptDrawer();
       case "new-expense": return expenseDrawer();
       case "new-participant": return partyDrawer();
       case "edit-party": {
