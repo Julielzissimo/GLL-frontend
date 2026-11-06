@@ -217,8 +217,8 @@ export function createCashflowService(client) {
         p_payer_party_id: expense.payerPartyId || null,
         p_bid_id: null,
         p_quotation_item_id: null,
-        p_profit_treatment: "expense_reserve",
-        p_justification: "",
+        p_profit_treatment: expense.profitTreatment || "expense_reserve",
+        p_justification: expense.justification || "",
         p_notes: expense.notes || "",
         p_proof_storage_path: expense.proofStoragePath || null,
       });
