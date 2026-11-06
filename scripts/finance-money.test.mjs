@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   calculateCashflowMetrics,
+  costForQuantityCents,
   formatBrl,
   moneyToDecimalString,
   parseMoneyToCents,
@@ -21,6 +22,11 @@ test("parses Brazilian currency exactly into integer cents", () => {
 test("rejects fractional cents and malformed currency", () => {
   assert.throws(() => parseMoneyToCents("12,345"), /casas decimais/);
   assert.throws(() => parseMoneyToCents("12 reais"), /numérico/);
+});
+
+test("calculates item cost from the exact four-decimal unit price", () => {
+  assert.equal(costForQuantityCents("28.7950", "400.0000"), 1151800);
+  assert.equal(costForQuantityCents("28.7950", "0.5000"), 1440);
 });
 
 test("splits profit to exact cents with deterministic remainder", () => {

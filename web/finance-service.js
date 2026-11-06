@@ -158,6 +158,7 @@ export async function loadCashflowData(client, accessibleBids = []) {
       item_unit: quotationItem.unit || "un.",
       contract_quantity: contractQuantity,
       unit_sale_cents: unitSaleCents,
+      unit_cost_price: String(itemSummary?.unit_cost_price ?? quotationItem.supplier_cost ?? "0"),
       unit_cost_cents: unitPriceToCents(itemSummary?.unit_cost_price ?? quotationItem.supplier_cost),
       contract_amount_cents: contractAmountCents,
       received_quantity: receivedQuantity,

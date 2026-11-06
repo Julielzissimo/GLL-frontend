@@ -35,6 +35,13 @@ export function parseQuantityToUnits(value) {
   return Number(parseScaledDecimal(value, 4));
 }
 
+export function costForQuantityCents(unitCostPrice, quantity) {
+  const unitCostUnits = parseScaledDecimal(unitCostPrice, 4);
+  const quantityUnits = parseScaledDecimal(quantity, 4);
+  if (unitCostUnits < 0n || quantityUnits < 0n) throw new Error("Custo e quantidade devem ser não negativos.");
+  return Number((unitCostUnits * quantityUnits + 500000n) / 1000000n);
+}
+
 export function quantityUnitsToNumber(units) {
   return Number(units || 0) / 10000;
 }
@@ -109,7 +116,7 @@ export function validateReceiptLine({ amountCents, costCents, reserveCents }) {
   const cost = Number(costCents);
   const reserve = Number(reserveCents);
   if (!Number.isSafeInteger(amount) || amount <= 0) throw new Error("O recebimento por nota deve ser maior que zero.");
-  if (!Number.isSafeInteger(cost) || cost < 0) throw new Error("O custo atribuído deve ser zero ou maior.");
+  if (!Number.isSafeInteger(cost) || cost < 0) throw new Error("O custo deve ser zero ou maior.");
   if (!Number.isSafeInteger(reserve) || reserve < 0) throw new Error("A reserva deve ser zero ou maior.");
   if (reserve > Math.max(0, amount - cost)) throw new Error("A reserva não pode superar o valor recebido depois dos custos.");
   return {

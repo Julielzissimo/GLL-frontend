@@ -313,20 +313,25 @@
 .cashflow-drawer-footer { padding: var(--gll-space-4) var(--gll-space-6); border-top: 1px solid var(--gll-line); background: var(--gll-paper-muted); }
 
 .cashflow-receipt-list { display: grid; gap: var(--gll-space-3); }
-.cashflow-awarded-item { display: grid; gap: var(--gll-space-2); padding: var(--gll-space-3); border: 1px solid var(--gll-line); border-radius: var(--gll-radius-md); background: var(--gll-paper-muted); }
-.cashflow-awarded-item > header { display: grid; gap: var(--gll-space-1); }
+.cashflow-awarded-item { display: grid; gap: var(--gll-space-3); padding: var(--gll-space-3); border: 1px solid var(--gll-line); border-radius: var(--gll-radius-md); background: var(--gll-paper-muted); }
+.cashflow-awarded-item > header { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--gll-space-3); }
+.cashflow-awarded-item > header > span:first-child { display: grid; gap: var(--gll-space-1); min-width: 0; }
 .cashflow-awarded-item > header small { color: var(--gll-ink-soft); }
 .cashflow-item-lines { display: grid; gap: var(--gll-space-2); }
-.cashflow-invoice-card { display: grid; gap: var(--gll-space-3); padding: var(--gll-space-3); border: 1px solid var(--gll-line); border-radius: var(--gll-radius-md); }
-.cashflow-invoice-choice { align-items: flex-start; }
-.cashflow-invoice-choice input { margin-top: 4px; accent-color: var(--gll-forest); }
-.cashflow-invoice-choice span { display: grid; gap: var(--gll-space-1); }
-.cashflow-invoice-choice small { color: var(--gll-ink-soft); }
+.cashflow-invoice-card { display: grid; border: 1px solid var(--gll-line); border-radius: var(--gll-radius-md); background: var(--gll-paper); overflow: hidden; }
+.cashflow-invoice-card.is-selected { border-color: var(--gll-forest); box-shadow: var(--gll-shadow-sm); }
+.cashflow-invoice-choice { min-height: var(--gll-control-height); padding: var(--gll-space-4); cursor: pointer; }
+.cashflow-invoice-choice input { width: 18px; height: 18px; margin: 0; flex: 0 0 18px; accent-color: var(--gll-forest); }
+.cashflow-invoice-choice-copy { display: grid; gap: var(--gll-space-1); min-width: 0; flex: 1; }
+.cashflow-invoice-choice-copy small { color: var(--gll-ink-soft); }
+.cashflow-line-details { display: grid; gap: var(--gll-space-4); padding: var(--gll-space-4); border-top: 1px solid var(--gll-line); }
+.cashflow-line-details[hidden] { display: none; }
+.cashflow-distribution-panel { display: grid; gap: var(--gll-space-4); }
+.cashflow-distribution-panel[hidden] { display: none; }
 .cashflow-invoice-fields,
-.cashflow-allocation-list { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--gll-space-3); }
-.cashflow-allocation-list { grid-template-columns: repeat(2, minmax(0, 1fr)); padding-top: var(--gll-space-3); border-top: 1px solid var(--gll-line); }
+.cashflow-allocation-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--gll-space-3); }
+.cashflow-allocation-list { padding-top: var(--gll-space-3); border-top: 1px solid var(--gll-line); }
 .cashflow-allocation-list > strong { grid-column: 1 / -1; }
-.cashflow-line-summary { padding: var(--gll-space-2); border-radius: var(--gll-radius-sm); background: var(--gll-success-bg); color: var(--gll-success); font-size: var(--gll-text-sm); }
 .cashflow-calculation { display: grid; gap: var(--gll-space-2); }
 .cashflow-calculation > div { display: flex; justify-content: space-between; gap: var(--gll-space-4); padding-bottom: var(--gll-space-2); border-bottom: 1px solid var(--gll-line); }
 .cashflow-calculation span { color: var(--gll-ink-soft); }
