@@ -2065,7 +2065,8 @@
       ],
       "frontend_commits": [
         "c157ac08426ad8d3da110a04f06b8cdb8a1a1134",
-        "bb747c68d2a086570aa240d4f1f291e936309e48"
+        "bb747c68d2a086570aa240d4f1f291e936309e48",
+        "965bfedb13decc60e2a64e329d4fb8207066c9f3"
       ],
       "migrations": [
         "supabase/migrations/20261106131338_fluxo_caixa_recebimentos_sem_nf.sql"
