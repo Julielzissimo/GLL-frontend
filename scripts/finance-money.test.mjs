@@ -77,6 +77,30 @@ test("keeps cash, expense reserve, participant profit and reimbursements indepen
   assert.equal(metrics.reimbursementPendingCents, 1000);
 });
 
+test("company reimbursements accumulate separately and enter cash only when received", () => {
+  const metrics = calculateCashflowMetrics({
+    settings: { opening_cash_balance: "100.00" },
+    receipts: [{ id: "r1", bid_id: "b1", received_on: "2026-11-05", gross_amount: "100.00" }],
+    receiptLines: [{ receipt_id: "r1", reserve_amount: "20.00" }],
+    allocations: [{ receipt_id: "r1", participant_id: "p1", amount: "40.00" }],
+    expenses: [
+      { id: "e1", payer_type: "company", reimbursement_direction: "receivable", amount: "10.00", reserve_charge_amount: "0.00" },
+      { id: "e2", payer_type: "participant", reimbursement_direction: "payable", amount: "15.00", reserve_charge_amount: "10.00" },
+    ],
+    reimbursements: [
+      { expense_id: "e1", amount: "4.00" },
+      { expense_id: "e2", amount: "5.00" },
+    ],
+    withdrawals: [{ bid_id: "b1", participant_id: "p1", amount: "12.00" }],
+    parties: [{ id: "p1", party_type: "participant" }],
+  });
+  assert.equal(metrics.grossReceiptsCents, 10000);
+  assert.equal(metrics.cashBalanceCents, 18700);
+  assert.equal(metrics.expenseReserveBalanceCents, 1000);
+  assert.equal(metrics.reimbursementReceivableCents, 600);
+  assert.equal(metrics.reimbursementPendingCents, 1000);
+});
+
 test("excludes reversed receipts and their allocations from balances", () => {
   const metrics = calculateCashflowMetrics({
     settings: { opening_cash_balance: "0.00" },

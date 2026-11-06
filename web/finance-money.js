@@ -146,6 +146,12 @@ function dateInRange(value, from, to) {
   return (!from || date >= from) && (!to || date <= to);
 }
 
+export function cashflowExpenseReimbursementDirection(expense) {
+  const direction = expense?.reimbursement_direction;
+  if (direction === "none" || direction === "receivable" || direction === "payable") return direction;
+  return expense?.payer_type === "company" ? "none" : "payable";
+}
+
 export function calculateCashflowMetrics(data, filters = {}) {
   const receipts = (data.receipts || []).filter(active);
   const receiptIds = new Set(receipts.map((row) => String(row.id)));
@@ -154,16 +160,22 @@ export function calculateCashflowMetrics(data, filters = {}) {
   const expenses = (data.expenses || []).filter(active);
   const reimbursements = (data.reimbursements || []).filter(active);
   const withdrawals = (data.withdrawals || []).filter(active);
+  const expensesById = new Map(expenses.map((row) => [String(row.id), row]));
 
   const grossReceiptsCents = receipts.reduce((sum, row) => sum + centsFromDatabase(row.gross_amount), 0);
   const companyExpensesCents = expenses
-    .filter((row) => row.payer_type === "company")
+    .filter((row) => row.payer_type === "company" && cashflowExpenseReimbursementDirection(row) !== "receivable")
     .reduce((sum, row) => sum + centsFromDatabase(row.amount), 0);
-  const reimbursementsPaidCents = reimbursements.reduce((sum, row) => sum + centsFromDatabase(row.amount), 0);
+  const reimbursementsPaidCents = reimbursements
+    .filter((row) => cashflowExpenseReimbursementDirection(expensesById.get(String(row.expense_id))) === "payable")
+    .reduce((sum, row) => sum + centsFromDatabase(row.amount), 0);
+  const reimbursementsReceivedCents = reimbursements
+    .filter((row) => cashflowExpenseReimbursementDirection(expensesById.get(String(row.expense_id))) === "receivable")
+    .reduce((sum, row) => sum + centsFromDatabase(row.amount), 0);
   const withdrawalsCents = withdrawals.reduce((sum, row) => sum + centsFromDatabase(row.amount), 0);
   const openingBalanceCents = centsFromDatabase(data.settings?.opening_cash_balance);
   const cashBalanceCents = openingBalanceCents + grossReceiptsCents
-    - companyExpensesCents - reimbursementsPaidCents - withdrawalsCents;
+    + reimbursementsReceivedCents - companyExpensesCents - reimbursementsPaidCents - withdrawalsCents;
 
   const reservedForExpensesCents = lines.reduce((sum, row) => sum + centsFromDatabase(row.reserve_amount), 0);
   const chargedToExpenseReserveCents = expenses.reduce((sum, row) => sum + centsFromDatabase(row.reserve_charge_amount), 0);
@@ -175,7 +187,10 @@ export function calculateCashflowMetrics(data, filters = {}) {
     reimbursementsByExpense.set(key, (reimbursementsByExpense.get(key) || 0) + centsFromDatabase(row.amount));
   }
   const reimbursementPendingCents = expenses
-    .filter((row) => row.payer_type !== "company")
+    .filter((row) => cashflowExpenseReimbursementDirection(row) === "payable")
+    .reduce((sum, row) => sum + Math.max(0, centsFromDatabase(row.amount) - (reimbursementsByExpense.get(String(row.id)) || 0)), 0);
+  const reimbursementReceivableCents = expenses
+    .filter((row) => cashflowExpenseReimbursementDirection(row) === "receivable")
     .reduce((sum, row) => sum + Math.max(0, centsFromDatabase(row.amount) - (reimbursementsByExpense.get(String(row.id)) || 0)), 0);
 
   const reservedByParticipant = new Map();
@@ -210,6 +225,7 @@ export function calculateCashflowMetrics(data, filters = {}) {
     expenseReserveBalanceCents,
     profitAvailableCents,
     reimbursementPendingCents,
+    reimbursementReceivableCents,
     participantBalances,
     receiptCount: selectedReceipts.length,
   };
