@@ -2071,6 +2071,14 @@
       "migrations": [
         "supabase/migrations/20261106131338_fluxo_caixa_recebimentos_sem_nf.sql"
       ]
+    },
+    {
+      "id": "FLUXO-CAIXA-REEMBOLSO-SITUACAO-001",
+      "backend_commits": [],
+      "frontend_commits": [
+        "a6e9e09dcfceb3356b25587d75d5fac00ba948ef"
+      ],
+      "migrations": []
     }
   ]
 }
