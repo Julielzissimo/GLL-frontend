@@ -451,8 +451,8 @@ export function createCashflowFeature(options = {}) {
       return `<label class="cashflow-field cashflow-allocation-field">${escapeHtml(party.name)}<input type="text" inputmode="decimal" name="allocation_${safeId}_${escapeHtml(party.id)}" value="${escapeHtml(amountAsInput(share?.cents || 0))}" data-cf-allocation="${safeId}" data-cf-party="${escapeHtml(party.id)}" disabled /></label>`;
     }).join("");
     return `<article class="cashflow-invoice-card" data-cf-invoice-card="${safeId}">
-      <label class="cashflow-invoice-choice"><input type="checkbox" name="invoice_${safeId}" value="${escapeHtml(invoice.id)}" data-cf-invoice-check="${safeId}" /><span><strong>NF ${escapeHtml(invoice.invoice_number)}</strong><small>Edital ${escapeHtml(bidName(accessibleBids(), invoice.bid_id))} · Item ${escapeHtml(invoice.item_number)} · ${escapeHtml(invoice.item_description)}</small><small>Faturado: ${escapeHtml(invoice.invoice_quantity)} ${escapeHtml(invoice.item_unit)} · Unidades recebidas: ${escapeHtml(invoice.received_quantity)} · Saldo: ${escapeHtml(invoice.open_quantity)} · Crédito: ${formatBrl(invoice.received_amount_cents)} · Saldo financeiro: ${formatBrl(invoice.open_amount_cents)} · Nota: ${formatBrl(invoice.face_amount_cents)}</small></span></label>
-      <div class="cashflow-invoice-fields"><label class="cashflow-field">Quantidade relacionada<input type="number" min="0" max="${escapeHtml(invoice.open_quantity)}" step="0.0001" name="quantity_${safeId}" value="0" data-cf-quantity="${safeId}" disabled /><small>Controla o saldo de unidades separadamente do valor recebido.</small></label>
+      <label class="cashflow-invoice-choice"><input type="checkbox" name="invoice_${safeId}" value="${escapeHtml(invoice.id)}" data-cf-invoice-check="${safeId}" /><span><strong>Item ${escapeHtml(invoice.item_number)} · ${escapeHtml(invoice.item_description)}</strong><small>NF ${escapeHtml(invoice.invoice_number)} · Edital ${escapeHtml(bidName(accessibleBids(), invoice.bid_id))}</small><small>Faturado: ${escapeHtml(invoice.invoice_quantity)} ${escapeHtml(invoice.item_unit)} · Já recebido: ${escapeHtml(invoice.received_quantity)} · Saldo: ${escapeHtml(invoice.open_quantity)} · Crédito: ${formatBrl(invoice.received_amount_cents)} · Saldo financeiro: ${formatBrl(invoice.open_amount_cents)} · Nota: ${formatBrl(invoice.face_amount_cents)}</small></span></label>
+      <div class="cashflow-invoice-fields"><label class="cashflow-field">Quantidade do item neste recebimento<input type="number" min="0" max="${escapeHtml(invoice.open_quantity)}" step="0.0001" name="quantity_${safeId}" value="0" data-cf-quantity="${safeId}" disabled /><small>Informe quantas unidades desta nota correspondem ao crédito recebido.</small></label>
       <label class="cashflow-field">Valor recebido nesta parcela (R$)<input type="text" inputmode="decimal" name="amount_${safeId}" value="0,00" data-cf-amount="${safeId}" data-touched="false" disabled /><small>Saldo financeiro da nota: ${formatBrl(invoice.open_amount_cents)}.</small></label>
       <label class="cashflow-field">Custo atribuído (R$)<input type="text" inputmode="decimal" name="cost_${safeId}" value="${escapeHtml(amountAsInput(cost))}" data-cf-cost="${safeId}" data-default-cents="${cost}" data-touched="false" disabled /></label>
       <label class="cashflow-field">Reserva de despesas (R$)<input type="text" inputmode="decimal" name="reserve_${safeId}" value="${escapeHtml(amountAsInput(reserve))}" data-cf-reserve="${safeId}" data-default-cents="${reserve}" data-touched="false" disabled /></label></div>
@@ -466,17 +466,21 @@ export function createCashflowFeature(options = {}) {
 
   function receiptDrawer(bidId) {
     const bidsWithInvoices = accessibleBids().filter((bid) => state.data.invoices.some((invoice) => String(invoice.bid_id) === String(bid.id)));
-    const selectedBidId = bidId || bidsWithInvoices[0]?.id || "";
-    const invoices = state.data.invoices.filter((invoice) => String(invoice.bid_id) === String(selectedBidId));
-    const bidOptions = bidsWithInvoices.map((bid) => {
+    const selectedBidId = bidId || "";
+    const invoices = selectedBidId
+      ? state.data.invoices.filter((invoice) => String(invoice.bid_id) === String(selectedBidId))
+      : [];
+    const bidOptions = [["", "Selecione um edital"], ...bidsWithInvoices.map((bid) => {
       const label = bidLabel(bid);
       return [String(bid.id), `${label.title} · ${label.subtitle}`];
-    });
+    })];
     const participantSharesValid = activeParticipants().length > 0
       && activeParticipants().reduce((sum, party) => sum + Number(party.default_share_percent || 0), 0) === 100;
-    const invoiceList = invoices.length
-      ? invoices.map(makeInvoiceCard).join("")
-      : emptyState("Sem nota fiscal elegível", "Apenas itens faturados com saldo monetário podem receber crédito.");
+    const invoiceList = !selectedBidId
+      ? emptyState("Selecione um edital", "Os itens faturados com saldo aparecerão aqui.")
+      : invoices.length
+        ? invoices.map(makeInvoiceCard).join("")
+        : emptyState("Sem item faturado elegível", "Este edital não tem item faturado com saldo disponível para recebimento.");
     const body = `<div class="cashflow-form-grid"><label class="cashflow-field cashflow-field-wide">Edital obrigatório<select name="bid_id" required>${selectOptions(bidOptions, selectedBidId)}</select></label>
       <label class="cashflow-field">Data do crédito<input name="received_on" type="date" value="${dateInputValue()}" required /></label>
       <label class="cashflow-field">Forma de recebimento<select name="payment_method" required>${selectOptions(PAYMENT_METHODS, "transfer")}</select></label>
@@ -488,8 +492,7 @@ export function createCashflowFeature(options = {}) {
       <label class="cashflow-field">Forma de distribuição<select name="distribution_mode" data-cf-distribution-mode><option value="default">Percentuais padrão</option><option value="manual">Ajuste manual por item</option></select></label>
       ${!participantSharesValid ? `<p class="cashflow-inline-note">Os percentuais padrão precisam totalizar 100% para usar a distribuição padrão. Ajuste os participantes antes de registrar o recebimento.</p>` : ""}
       <label class="cashflow-field cashflow-reason-field">Justificativa da distribuição manual<textarea name="distribution_justification" rows="2" maxlength="500" data-cf-distribution-reason disabled></textarea></label>
-      <div class="cashflow-calculation" data-cf-receipt-total>Selecione uma ou mais notas para conciliar o recebimento.</div>
-      ${commonConfirmation("Confirmo que o crédito foi efetivamente recebido e que os valores correspondem às notas selecionadas.")}`;
+      <div class="cashflow-calculation" data-cf-receipt-total>Selecione um edital e marque os itens que fazem parte deste recebimento.</div>`;
     openDialog("Registrar recebimento", "Vincule o crédito a um edital e às notas fiscais correspondentes.", body, "Confirmar recebimento", "receipt", true);
     updateReceiptForm();
   }
@@ -602,6 +605,7 @@ export function createCashflowFeature(options = {}) {
   function expenseDrawer() {
     const options = [["company", "Empresa"], ["participant", "Participante financeiro"]];
     const payerOptions = activeParticipants().map((party) => [String(party.id), party.name]);
+    const available = metrics();
     const body = `<div class="cashflow-form-grid"><label class="cashflow-field cashflow-field-wide">Descrição<input name="description" maxlength="180" required /></label>
       <label class="cashflow-field">Categoria<input name="category" maxlength="80" required placeholder="Ex.: tributos, logística, material" /></label>
       <label class="cashflow-field">Valor (R$)<input name="amount" type="text" inputmode="decimal" required /></label>
@@ -609,11 +613,22 @@ export function createCashflowFeature(options = {}) {
       <label class="cashflow-field">Forma de pagamento<select name="payment_method" required>${selectOptions(PAYMENT_METHODS, "pix")}</select></label>
       <label class="cashflow-field">Quem pagou<select name="payer_type" required>${selectOptions(options, "company")}</select></label>
       <label class="cashflow-field cashflow-payer-field hidden">Pagador cadastrado<select name="payer_party_id">${selectOptions([["", "Selecione quem antecipou"], ...payerOptions])}</select></label>
+      <label class="cashflow-field cashflow-field-wide">Tratamento financeiro<select name="profit_treatment" data-cf-profit-treatment required><option value="expense_reserve">Usar a reserva para despesas</option><option value="outside_reserve">Fora da reserva</option></select><small>Caixa atual: ${formatBrl(available?.cashBalanceCents || 0)} · Reserva disponível: ${formatBrl(available?.expenseReserveBalanceCents || 0)}. Despesas pagas pela empresa também precisam caber no caixa.</small></label>
+      <label class="cashflow-field cashflow-field-wide cashflow-justification-field hidden">Justificativa para despesa fora da reserva<textarea name="justification" rows="2" maxlength="500"></textarea></label>
       <label class="cashflow-field cashflow-field-wide">Observações<textarea name="notes" rows="2" maxlength="1000"></textarea></label>
       <label class="cashflow-field cashflow-field-wide">Comprovante opcional<input type="file" name="proof" accept="application/pdf,image/jpeg,image/png,image/webp" /><small>PDF, JPEG, PNG ou WebP · até 10 MB.</small></label></div>
-      <p class="cashflow-inline-note">Quando um participante antecipa uma despesa, o reembolso reduz o saldo a devolver e o caixa.</p>`;
+      <p class="cashflow-inline-note">Quando um participante antecipa uma despesa, o reembolso reduz o saldo a devolver e o caixa. Despesas fora da reserva exigem justificativa.</p>`;
     openDialog("Nova despesa", "Registre uma despesa da organização.", body, "Salvar despesa", "expense");
     const payerField = dialog.querySelector(".cashflow-payer-field");
+    const justificationField = dialog.querySelector(".cashflow-justification-field");
+    const justificationInput = justificationField.querySelector("textarea");
+    const syncExpenseTreatment = () => {
+      const outsideReserve = dialog.querySelector('[name="profit_treatment"]').value === "outside_reserve";
+      justificationField.classList.toggle("hidden", !outsideReserve);
+      justificationInput.required = outsideReserve;
+    };
+    dialog.querySelector('[name="profit_treatment"]')?.addEventListener("change", syncExpenseTreatment);
+    syncExpenseTreatment();
     dialog.querySelector('[name="payer_type"]')?.addEventListener("change", (event) => {
       const isCompany = event.target.value === "company";
       payerField.classList.toggle("hidden", isCompany);
@@ -705,7 +720,7 @@ export function createCashflowFeature(options = {}) {
     if (!isAdmin()) throw new Error("Somente Administradores podem registrar ou alterar lançamentos financeiros.");
     const formData = new FormData(form);
     const confirmation = formData.get("confirmation") === "on";
-    const confirmationRequired = ["receipt", "reimbursement", "withdrawal", "reverse-receipt"].includes(state.drawerKind);
+    const confirmationRequired = ["reimbursement", "withdrawal", "reverse-receipt"].includes(state.drawerKind);
     if (confirmationRequired && !confirmation) throw new Error("Confirme que revisou os dados antes de salvar.");
 
     if (state.drawerKind === "receipt") {
@@ -769,6 +784,9 @@ export function createCashflowFeature(options = {}) {
       if (payerType !== "company" && payerType !== "participant") throw new Error("Selecione a empresa ou um participante como pagador.");
       const partyId = payerType === "company" ? null : String(formData.get("payer_party_id") || "");
       if (payerType !== "company" && !partyId) throw new Error("Selecione quem antecipou a despesa.");
+      const profitTreatment = String(formData.get("profit_treatment") || "expense_reserve");
+      const justification = String(formData.get("justification") || "").trim();
+      if (profitTreatment === "outside_reserve" && justification.length < 5) throw new Error("Explique por que a despesa será paga fora da reserva.");
       const proof = formData.get("proof");
       if (proof?.size > 10 * 1024 * 1024) throw new Error("O comprovante deve ter no máximo 10 MB.");
       if (proof?.size && !["application/pdf", "image/jpeg", "image/png", "image/webp"].includes(proof.type)) throw new Error("Use PDF, JPEG, PNG ou WebP no comprovante.");
@@ -784,6 +802,8 @@ export function createCashflowFeature(options = {}) {
           paymentMethod: String(formData.get("payment_method") || ""),
           payerType,
           payerPartyId: partyId,
+          profitTreatment,
+          justification,
           notes: String(formData.get("notes") || "").trim(),
           proofStoragePath: proofPath,
         });
@@ -864,6 +884,11 @@ export function createCashflowFeature(options = {}) {
     submitButton.textContent = "Salvando…";
     try {
       await runBusy(() => runSubmission(event.target), "Salvando lançamento financeiro…");
+      const savedKind = state.drawerKind;
+      if (savedKind === "expense") {
+        state.activeTab = "expenses";
+        state.filters = { from: "", to: "" };
+      }
       const label = state.drawerKind === "receipt" ? "Recebimento registrado" : state.drawerKind === "expense" ? "Despesa registrada" : state.drawerKind === "reimbursement" ? "Reembolso registrado" : state.drawerKind === "withdrawal" ? "Retirada registrada" : state.drawerKind === "reverse-receipt" ? "Recebimento estornado" : state.drawerKind === "party" ? "Cadastro atualizado" : "Ajustes salvos";
       closeDialog();
       toast(label, "success");
