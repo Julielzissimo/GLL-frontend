@@ -79,7 +79,8 @@ textarea[aria-invalid="true"] {
 input[aria-invalid="true"]:focus,
 select[aria-invalid="true"]:focus,
 textarea[aria-invalid="true"]:focus {
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--gll-danger) 18%, transparent);
+  border-color: var(--gll-focus);
+  box-shadow: var(--shadow-focus);
 }
 
 ::selection {
