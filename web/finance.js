@@ -1075,6 +1075,8 @@ export function createCashflowFeature(options = {}) {
   page?.addEventListener("click", onClick);
   page?.addEventListener("input", onInput);
   page?.addEventListener("change", onChange);
+  dialog.addEventListener("input", onInput);
+  dialog.addEventListener("change", onChange);
   dialog.addEventListener("submit", onSubmit);
   dialog.addEventListener("click", onClick);
   dialog.addEventListener("click", (event) => {
