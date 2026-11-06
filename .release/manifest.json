@@ -2070,6 +2070,14 @@
       "migrations": [
         "supabase/migrations/20261106131338_fluxo_caixa_recebimentos_sem_nf.sql"
       ]
+    },
+    {
+      "id": "FIELD-FOCUS-COLOR-001",
+      "backend_commits": [],
+      "frontend_commits": [
+        "3e13c4770e48a876289810d4fd111b39b461ad64"
+      ],
+      "migrations": []
     }
   ]
 }
