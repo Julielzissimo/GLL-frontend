@@ -2057,6 +2057,18 @@
       "migrations": [
         "supabase/migrations/20261106015245_cashflow_company_expense_reimbursements.sql"
       ]
+    },
+    {
+      "id": "FLUXO-CAIXA-RECEBIMENTO-SEM-NF-001",
+      "backend_commits": [
+        "a53f37686529c7d259c2b0fb73d48e439eaa133c"
+      ],
+      "frontend_commits": [
+        "c157ac08426ad8d3da110a04f06b8cdb8a1a1134"
+      ],
+      "migrations": [
+        "supabase/migrations/20261106131338_fluxo_caixa_recebimentos_sem_nf.sql"
+      ]
     }
   ]
 }
