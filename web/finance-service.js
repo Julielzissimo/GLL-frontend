@@ -7,6 +7,15 @@ import {
 
 const CASHFLOW_PROOF_BUCKET = "cashflow-proofs";
 const QUERY_PAGE_SIZE = 1000;
+const RECEIVABLE_BID_STATUSES = new Set(["Em Fornecimento", "Faturado"]);
+
+export function eligibleReceiptBids(bids = [], awardedItems = []) {
+  const bidIdsWithWonItems = new Set((Array.isArray(awardedItems) ? awardedItems : [])
+    .filter((item) => Boolean(Number(item?.is_won)))
+    .map((item) => String(item.bid_id)));
+  return (Array.isArray(bids) ? bids : []).filter((bid) => RECEIVABLE_BID_STATUSES.has(String(bid.status))
+    && bidIdsWithWonItems.has(String(bid.id)));
+}
 
 function assertSupabase(error) {
   if (!error) return;
@@ -31,9 +40,13 @@ function textId(value) {
 }
 
 function multiplyMoneyByQuantity(unitPrice, quantity) {
-  const priceCents = BigInt(parseMoneyToCents(unitPrice));
+  const priceUnits = BigInt(parseQuantityToUnits(unitPrice));
   const quantityUnits = BigInt(parseQuantityToUnits(quantity));
-  return Number((priceCents * quantityUnits + 5000n) / 10000n);
+  return Number((priceUnits * quantityUnits + 500000n) / 1000000n);
+}
+
+function unitPriceToCents(value) {
+  return Number((BigInt(parseQuantityToUnits(value)) + 50n) / 100n);
 }
 
 function moneyForApi(cents) {
@@ -61,11 +74,12 @@ export async function loadCashflowData(client, accessibleBids = []) {
 
   let invoiceRows = [];
   let invoiceSummaries = [];
+  let itemSummaries = [];
   let fulfillmentRows = [];
   let quotationItems = [];
   let bidItems = [];
   if (bidIds.length) {
-    [invoiceRows, fulfillmentRows, bidItems, invoiceSummaries] = await Promise.all([
+    [invoiceRows, fulfillmentRows, bidItems, invoiceSummaries, itemSummaries] = await Promise.all([
       loadAll(() => client.from("bid_item_invoices")
         .select("id,bid_id,fulfillment_id,invoice_number,invoice_date,quantity")
         .in("bid_id", bidIds)
@@ -78,6 +92,9 @@ export async function loadCashflowData(client, accessibleBids = []) {
         .in("bid_id", bidIds)),
       loadAll(() => client.from("cashflow_invoice_receipt_summary")
         .select("invoice_id,invoice_total_amount,received_quantity,received_amount")
+        .in("bid_id", bidIds)),
+      loadAll(() => client.from("cashflow_item_receipt_summary")
+        .select("bid_id,quotation_item_id,contract_quantity,unit_sale_price,contract_total_amount,unit_cost_price,received_quantity,received_amount")
         .in("bid_id", bidIds)),
     ]);
   }
@@ -92,6 +109,7 @@ export async function loadCashflowData(client, accessibleBids = []) {
   const paidAmountByInvoice = new Map();
   for (const line of receiptLines) {
     if (!activeReceiptIds.has(String(line.receipt_id))) continue;
+    if (line.invoice_id == null) continue;
     const key = String(line.invoice_id);
     paidQuantityByInvoice.set(key, (paidQuantityByInvoice.get(key) || 0) + Number(line.received_quantity || 0));
     paidAmountByInvoice.set(key, (paidAmountByInvoice.get(key) || 0) + parseMoneyToCents(line.received_amount));
@@ -104,11 +122,55 @@ export async function loadCashflowData(client, accessibleBids = []) {
     row,
   ]));
   const invoiceSummaryById = new Map(invoiceSummaries.map((row) => [String(row.invoice_id), row]));
+  const itemSummaryByKey = new Map(itemSummaries.map((row) => [`${row.bid_id}:${row.quotation_item_id}`, row]));
+  const paidByItem = new Map();
+  for (const line of receiptLines) {
+    if (!activeReceiptIds.has(String(line.receipt_id))) continue;
+    const key = `${line.bid_id}:${line.quotation_item_id}`;
+    const total = paidByItem.get(key) || { quantity: 0, amountCents: 0 };
+    total.quantity += Number(line.received_quantity || 0);
+    total.amountCents += parseMoneyToCents(line.received_amount);
+    paidByItem.set(key, total);
+  }
+  const awardedItems = bidItems.flatMap((awardedItem) => {
+    if (!Boolean(Number(awardedItem.is_won))) return [];
+    const quotationItem = quotationItemById.get(String(awardedItem.quotation_item_id));
+    if (!quotationItem) return [];
+    const key = `${awardedItem.bid_id}:${awardedItem.quotation_item_id}`;
+    const itemSummary = itemSummaryByKey.get(key);
+    const paid = paidByItem.get(key) || { quantity: 0, amountCents: 0 };
+    const contractQuantity = Number(itemSummary?.contract_quantity ?? quotationItem.quantity ?? 0);
+    const unitSaleCents = unitPriceToCents(itemSummary?.unit_sale_price ?? quotationItem.final_bid);
+    const contractAmountCents = itemSummary
+      ? parseMoneyToCents(itemSummary.contract_total_amount)
+      : multiplyMoneyByQuantity(quotationItem.final_bid, contractQuantity);
+    const receivedQuantity = Number(itemSummary?.received_quantity ?? paid.quantity);
+    const receivedAmountCents = itemSummary
+      ? parseMoneyToCents(itemSummary.received_amount)
+      : paid.amountCents;
+    return [{
+      ...awardedItem,
+      id: String(awardedItem.quotation_item_id),
+      quotation_item_id: String(awardedItem.quotation_item_id),
+      bid_id: String(awardedItem.bid_id),
+      item_number: quotationItem.item_number ?? awardedItem.item_number,
+      item_description: quotationItem.description || awardedItem.name || "Item sem descrição",
+      item_unit: quotationItem.unit || "un.",
+      contract_quantity: contractQuantity,
+      unit_sale_cents: unitSaleCents,
+      unit_cost_cents: unitPriceToCents(itemSummary?.unit_cost_price ?? quotationItem.supplier_cost),
+      contract_amount_cents: contractAmountCents,
+      received_quantity: receivedQuantity,
+      received_amount_cents: receivedAmountCents,
+      open_quantity: Math.max(0, contractQuantity - receivedQuantity),
+      open_amount_cents: Math.max(0, contractAmountCents - receivedAmountCents),
+    }];
+  });
   const allInvoices = invoiceRows.flatMap((invoice) => {
     const fulfillment = fulfillmentById.get(String(invoice.fulfillment_id));
     const quotationItem = fulfillment && quotationItemById.get(String(fulfillment.quotation_item_id));
     const awardedItem = fulfillment && awardByBidAndQuotationItem.get(`${invoice.bid_id}:${fulfillment.quotation_item_id}`);
-    if (!fulfillment || !quotationItem || !awardedItem?.is_won) return [];
+    if (!fulfillment || !quotationItem || !Boolean(Number(awardedItem?.is_won))) return [];
     const calculatedFaceAmountCents = multiplyMoneyByQuantity(quotationItem.final_bid, invoice.quantity);
     const invoiceSummary = invoiceSummaryById.get(String(invoice.id));
     const faceAmountCents = invoiceSummary
@@ -132,8 +194,8 @@ export async function loadCashflowData(client, accessibleBids = []) {
       item_number: quotationItem.item_number,
       item_description: quotationItem.description || awardedItem.name || "Item sem descrição",
       item_unit: quotationItem.unit || "un.",
-      unit_sale_cents: parseMoneyToCents(invoiceSummary?.unit_sale_price ?? quotationItem.final_bid),
-      unit_cost_cents: parseMoneyToCents(quotationItem.supplier_cost),
+      unit_sale_cents: unitPriceToCents(invoiceSummary?.unit_sale_price ?? quotationItem.final_bid),
+      unit_cost_cents: unitPriceToCents(quotationItem.supplier_cost),
       face_amount_cents: faceAmountCents,
       received_amount_cents: receivedAmountCents,
       received_quantity: receivedQuantity,
@@ -153,6 +215,7 @@ export async function loadCashflowData(client, accessibleBids = []) {
     reimbursements,
     withdrawals,
     auditEvents,
+    awardedItems,
     invoices,
     allInvoices,
   };
@@ -178,7 +241,8 @@ export function createCashflowService(client) {
 
     async recordReceipt(receipt) {
       const lines = receipt.lines.map((line) => ({
-        invoice_id: String(line.invoiceId),
+        invoice_id: line.invoiceId == null ? null : String(line.invoiceId),
+        quotation_item_id: String(line.quotationItemId),
         received_quantity: String(line.receivedQuantity),
         received_amount: moneyForApi(line.amountCents),
         cost_amount: moneyForApi(line.costCents),
