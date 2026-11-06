@@ -290,11 +290,11 @@ export function createCashflowFeature(options = {}) {
       const status = remaining > 0 && direction === "receivable"
         ? `<span class="cashflow-badge warning">A receber ${formatBrl(remaining)}</span>`
         : remaining > 0 && direction === "payable"
-          ? `<span class="cashflow-badge warning">A devolver ${formatBrl(remaining)}</span>`
+          ? `<span class="cashflow-badge warning">Pendente</span><span class="cashflow-row-sub">A devolver ${formatBrl(remaining)}</span>`
           : direction === "receivable"
             ? `<span class="cashflow-badge success">Recebido</span>`
             : direction === "payable"
-              ? `<span class="cashflow-badge success">Reembolsada</span>`
+              ? `<span class="cashflow-badge success">Pago</span>`
               : `<span class="cashflow-badge success">Sem pendência</span>`;
       const reimbursementAction = direction === "receivable" ? "Registrar recebimento" : "Reembolsar";
       return `<tr><td>${formatDate(expense.occurred_on)}</td><td><strong>${escapeHtml(expense.description)}</strong>${expense.proof_storage_path ? `<span class="cashflow-row-sub">Comprovante disponível</span>` : ""}</td><td>${escapeHtml(expense.category)}</td><td>${escapeHtml(paidBy)}</td><td class="cashflow-number"><strong>${formatBrl(parseMoneyToCents(expense.amount))}</strong></td><td>${escapeHtml(treatment)}</td><td>${status}</td><td>${expense.proof_storage_path ? `<button type="button" class="text-action" data-cf-action="view-proof" data-path="${escapeHtml(expense.proof_storage_path)}">Comprovante</button>` : ""}${remaining > 0 && isAdmin() ? ` <button type="button" class="text-action" data-cf-action="reimburse" data-id="${escapeHtml(expense.id)}">${reimbursementAction}</button>` : ""}</td></tr>`;
