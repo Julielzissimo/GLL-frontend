@@ -313,6 +313,10 @@
 .cashflow-drawer-footer { padding: var(--gll-space-4) var(--gll-space-6); border-top: 1px solid var(--gll-line); background: var(--gll-paper-muted); }
 
 .cashflow-receipt-list { display: grid; gap: var(--gll-space-3); }
+.cashflow-awarded-item { display: grid; gap: var(--gll-space-2); padding: var(--gll-space-3); border: 1px solid var(--gll-line); border-radius: var(--gll-radius-md); background: var(--gll-paper-muted); }
+.cashflow-awarded-item > header { display: grid; gap: var(--gll-space-1); }
+.cashflow-awarded-item > header small { color: var(--gll-ink-soft); }
+.cashflow-item-lines { display: grid; gap: var(--gll-space-2); }
 .cashflow-invoice-card { display: grid; gap: var(--gll-space-3); padding: var(--gll-space-3); border: 1px solid var(--gll-line); border-radius: var(--gll-radius-md); }
 .cashflow-invoice-choice { align-items: flex-start; }
 .cashflow-invoice-choice input { margin-top: 4px; accent-color: var(--gll-forest); }
