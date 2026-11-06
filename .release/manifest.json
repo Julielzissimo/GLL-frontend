@@ -2045,6 +2045,18 @@
         "b2728a47a1e1721120633e672c31eb6925711a3a"
       ],
       "migrations": []
+    },
+    {
+      "id": "ISSUE-285",
+      "backend_commits": [
+        "50b3c415be707e6cca0875ad9326866f1d1b9c40"
+      ],
+      "frontend_commits": [
+        "9095792f4e2c3eda80ed203289231a339c072888"
+      ],
+      "migrations": [
+        "supabase/migrations/20261106011907_cashflow_company_expense_reimbursements.sql"
+      ]
     }
   ]
 }
