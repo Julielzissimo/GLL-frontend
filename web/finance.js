@@ -506,7 +506,7 @@ export function createCashflowFeature(options = {}) {
     return `<article class="cashflow-invoice-card" data-cf-line-card="${id}" data-cf-item-id="${escapeHtml(item.id)}" data-cf-invoice-id="${escapeHtml(invoice?.id || "")}">
       <label class="cashflow-invoice-choice"><input type="checkbox" name="receipt_line_${id}" value="${escapeHtml(invoice?.id || item.id)}" data-cf-line-check="${id}" ${selectable ? "" : "disabled"} /><span class="cashflow-invoice-choice-copy"><strong>${source}</strong><small>${invoice ? "Recebimento relacionado a esta nota" : "Recebimento relacionado diretamente ao item"}</small>${!selectable ? `<small>Sem saldo disponível para este lançamento.</small>` : ""}</span></label>
       <div class="cashflow-line-details" data-cf-line-details="${id}" hidden>
-        <div class="cashflow-invoice-fields"><label class="cashflow-field">Quantidade neste recebimento<input type="number" min="0" max="${escapeHtml(availableQuantity)}" step="0.0001" name="quantity_${id}" value="0" data-cf-quantity="${id}" disabled /><small data-cf-quantity-limit="${id}">Disponível: ${escapeHtml(availableQuantity)} ${escapeHtml(item.item_unit)}.</small></label>
+        <div class="cashflow-invoice-fields"><label class="cashflow-field">Quantidade neste recebimento<input type="number" min="0" max="${escapeHtml(availableQuantity)}" step="0.0001" name="quantity_${id}" value="0" data-cf-quantity="${id}" disabled /><small data-cf-quantity-limit="${id}">Disponível: ${escapeHtml(availableQuantity)} ${escapeHtml(item.item_unit)}</small></label>
         <label class="cashflow-field">Valor recebido (R$)<input type="text" inputmode="decimal" name="amount_${id}" value="0,00" data-cf-amount="${id}" data-touched="false" disabled /><small data-cf-amount-limit="${id}">Saldo financeiro disponível: ${formatBrl(availableAmount)}.</small></label>
         <label class="cashflow-field">Custo<input type="text" inputmode="decimal" name="cost_${id}" value="${escapeHtml(amountAsInput(cost))}" data-cf-cost="${id}" readonly aria-readonly="true" disabled /></label>
         <label class="cashflow-field">Reserva de despesas (R$)<input type="text" inputmode="decimal" name="reserve_${id}" value="${escapeHtml(amountAsInput(reserve))}" data-cf-reserve="${id}" data-default-cents="${reserve}" data-touched="false" disabled /></label></div>
@@ -634,7 +634,7 @@ export function createCashflowFeature(options = {}) {
       const { line, availableQuantity, availableAmount } = remainingReceiptLineBalance(form, card, item, invoice);
       const quantityInput = card.querySelector(`[data-cf-quantity="${id}"]`);
       quantityInput.max = String(availableQuantity);
-      card.querySelector(`[data-cf-quantity-limit="${id}"]`).textContent = `Disponível: ${availableQuantity} ${item.item_unit}.`;
+      card.querySelector(`[data-cf-quantity-limit="${id}"]`).textContent = `Disponível: ${availableQuantity} ${item.item_unit}`;
       card.querySelector(`[data-cf-amount-limit="${id}"]`).textContent = `Saldo financeiro disponível: ${formatBrl(availableAmount)}.`;
       const quantity = parseFloat(quantityInput.value || "0") || 0;
       const amountInput = card.querySelector(`[data-cf-amount="${id}"]`);
