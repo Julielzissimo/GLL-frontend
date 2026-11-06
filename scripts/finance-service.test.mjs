@@ -48,7 +48,7 @@ test("cashflow data exposes a won item even when there are no invoices", async (
     cashflow_item_receipt_summary: [{
       bid_id: "bid-1", quotation_item_id: 101, contract_quantity: "10.0000",
       unit_sale_price: "100.0000", contract_total_amount: "1000.00",
-      unit_cost_price: "40.0000", received_quantity: "2.0000", received_amount: "200.00",
+      unit_cost_price: "28.7950", received_quantity: "2.0000", received_amount: "200.00",
     }],
     quotation_items: [{
       id: 101, quotation_id: 201, item_number: 1, description: "Produto",
@@ -62,6 +62,7 @@ test("cashflow data exposes a won item even when there are no invoices", async (
   assert.equal(data.awardedItems.length, 1);
   assert.equal(data.awardedItems[0].open_quantity, 8);
   assert.equal(data.awardedItems[0].open_amount_cents, 80000);
+  assert.equal(data.awardedItems[0].unit_cost_price, "28.7950");
 });
 
 test("receipt RPC payload allows an item line with no invoice", async () => {
