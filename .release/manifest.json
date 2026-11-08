@@ -2068,7 +2068,8 @@
         "bb747c68d2a086570aa240d4f1f291e936309e48",
         "965bfedb13decc60e2a64e329d4fb8207066c9f3",
         "d49941f067252b2108fb8ef3f95b1ee302c146a2",
-        "d5e45ed6a1784ea747535e4f4b000ccdab50d8ae"
+        "d5e45ed6a1784ea747535e4f4b000ccdab50d8ae",
+        "6d647c188b78f895b6ac5655a843c7ff42735f07"
       ],
       "migrations": [
         "supabase/migrations/20261106131338_fluxo_caixa_recebimentos_sem_nf.sql"
