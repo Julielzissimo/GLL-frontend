@@ -2095,7 +2095,8 @@
       "id": "FLUXO-CAIXA-TABELAS-001",
       "backend_commits": [],
       "frontend_commits": [
-        "1484bad7344a4154e80a3c8e30a09df853dd01b7"
+        "1484bad7344a4154e80a3c8e30a09df853dd01b7",
+        "0e0147bcf47c1afb9c4b8165966e60d73fa5c7a5"
       ],
       "migrations": []
     },
