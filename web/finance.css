@@ -207,6 +207,7 @@
 .cashflow-section-heading { flex-wrap: wrap; margin-bottom: var(--gll-space-4); }
 .cashflow-section-heading h2,
 .cashflow-party-list h3 { margin: 0; font-size: var(--gll-text-lg); }
+.cashflow-section-title { margin: var(--gll-space-6) 0 var(--gll-space-3); font-size: var(--gll-text-lg); }
 
 .cashflow-table-wrap {
   width: 100%;

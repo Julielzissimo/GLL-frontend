@@ -134,6 +134,19 @@ function buildExpenseRefunds(data) {
   return amounts;
 }
 
+export function reimbursementTableRows(data, filters = {}) {
+  const expenses = (data.expenses || []).filter((expense) => !expense.reversed_at
+    && ["receivable", "payable"].includes(cashflowExpenseReimbursementDirection(expense)));
+  const expensesById = new Map(expenses.map((expense) => [String(expense.id), expense]));
+  const inPeriod = (value) => (!filters.from || String(value || "").slice(0, 10) >= filters.from)
+    && (!filters.to || String(value || "").slice(0, 10) <= filters.to);
+  return {
+    expenses: expenses.filter((expense) => inPeriod(expense.occurred_on)),
+    payments: (data.reimbursements || []).filter((payment) => !payment.reversed_at
+      && expensesById.has(String(payment.expense_id)) && inPeriod(payment.paid_on)),
+  };
+}
+
 export function createCashflowFeature(options = {}) {
   const {
     getClient = () => null,
@@ -301,23 +314,25 @@ export function createCashflowFeature(options = {}) {
 
   function reimbursementTable() {
     const refunds = buildExpenseRefunds(state.data);
-    const rows = state.data.expenses.filter((expense) => {
-      const direction = cashflowExpenseReimbursementDirection(expense);
-      if (expense.reversed_at || !["receivable", "payable"].includes(direction)) return false;
-      if (state.filters.from && String(expense.occurred_on).slice(0, 10) < state.filters.from) return false;
-      if (state.filters.to && String(expense.occurred_on).slice(0, 10) > state.filters.to) return false;
-      return parseMoneyToCents(expense.amount) > (refunds.get(String(expense.id)) || 0);
-    });
-    if (!rows.length) return emptyState("Nenhum reembolso pendente", "Valores a receber da empresa e a devolver a participantes aparecem aqui até a quitação.");
-    return `<div class="cashflow-table-wrap"><table class="cashflow-table"><thead><tr><th>Despesa de origem</th><th>Pagador</th><th class="cashflow-number">Valor original</th><th class="cashflow-number">Já recebido / devolvido</th><th class="cashflow-number">Saldo pendente</th><th>Ação</th></tr></thead><tbody>${rows.map((expense) => {
+    const { expenses, payments } = reimbursementTableRows(state.data, state.filters);
+    if (!expenses.length && !payments.length) return emptyState("Nenhum reembolso encontrado", "Despesas reembolsáveis e pagamentos registrados aparecem aqui conforme as datas selecionadas.");
+    const expenseById = new Map(state.data.expenses.map((expense) => [String(expense.id), expense]));
+    const expenseTable = expenses.length ? `<div class="cashflow-table-wrap"><table class="cashflow-table"><thead><tr><th>Despesa de origem</th><th>Pagador</th><th class="cashflow-number">Valor original</th><th class="cashflow-number">Já recebido / devolvido</th><th class="cashflow-number">Saldo pendente</th><th>Situação / ação</th></tr></thead><tbody>${expenses.map((expense) => {
       const refunded = refunds.get(String(expense.id)) || 0;
       const amount = parseMoneyToCents(expense.amount);
-      const remaining = amount - refunded;
+      const remaining = Math.max(0, amount - refunded);
       const isReceivable = cashflowExpenseReimbursementDirection(expense) === "receivable";
       const payer = isReceivable ? "Empresa" : partyName(state.data, expense.payer_party_id);
       const action = isReceivable ? "Registrar recebimento" : "Registrar pagamento";
-      return `<tr><td><strong>${escapeHtml(expense.description)}</strong><span class="cashflow-row-sub">${formatDate(expense.occurred_on)}</span></td><td>${escapeHtml(payer)}</td><td class="cashflow-number">${formatBrl(amount)}</td><td class="cashflow-number">${formatBrl(refunded)}</td><td class="cashflow-number"><strong>${formatBrl(remaining)}</strong></td><td>${isAdmin() ? `<button type="button" class="primary-action small-action" data-cf-action="reimburse" data-id="${escapeHtml(expense.id)}">${action}</button>` : "—"}</td></tr>`;
-    }).join("")}</tbody></table></div>`;
+      const status = remaining > 0 ? "Pendente" : isReceivable ? "Recebido" : "Pago";
+      return `<tr><td><strong>${escapeHtml(expense.description)}</strong><span class="cashflow-row-sub">${formatDate(expense.occurred_on)}</span></td><td>${escapeHtml(payer)}</td><td class="cashflow-number">${formatBrl(amount)}</td><td class="cashflow-number">${formatBrl(refunded)}</td><td class="cashflow-number"><strong>${formatBrl(remaining)}</strong></td><td><span class="cashflow-badge ${remaining > 0 ? "warning" : "success"}">${status}</span>${remaining > 0 && isAdmin() ? ` <button type="button" class="primary-action small-action" data-cf-action="reimburse" data-id="${escapeHtml(expense.id)}">${action}</button>` : ""}</td></tr>`;
+    }).join("")}</tbody></table></div>` : "";
+    const paymentTable = payments.length ? `<h3 class="cashflow-section-title">Lançamentos de reembolso</h3><div class="cashflow-table-wrap"><table class="cashflow-table"><thead><tr><th>Data</th><th>Despesa de origem</th><th>Tipo</th><th>Forma de pagamento</th><th class="cashflow-number">Valor</th></tr></thead><tbody>${payments.map((payment) => {
+      const expense = expenseById.get(String(payment.expense_id));
+      const type = cashflowExpenseReimbursementDirection(expense) === "receivable" ? "Recebido da empresa" : "Devolvido ao participante";
+      return `<tr><td>${formatDate(payment.paid_on)}</td><td>${escapeHtml(expense.description)}</td><td>${type}</td><td>${escapeHtml(paymentMethodLabel(payment.payment_method))}</td><td class="cashflow-number"><strong>${formatBrl(parseMoneyToCents(payment.amount))}</strong></td></tr>`;
+    }).join("")}</tbody></table></div>` : "";
+    return `${expenseTable}${paymentTable}`;
   }
 
   function participantRows() {
@@ -978,15 +993,15 @@ export function createCashflowFeature(options = {}) {
       if (savedKind === "receipt") {
         state.activeTab = "receipts";
         state.filters = { from: "", to: "" };
-      } else if (savedKind === "expense") {
-        state.activeTab = "expenses";
+      } else if (savedKind === "expense" || savedKind === "reimbursement") {
+        state.activeTab = savedKind === "expense" ? "expenses" : "reimbursements";
         state.filters = { from: "", to: "" };
       }
       const label = state.drawerKind === "receipt" ? "Recebimento registrado" : state.drawerKind === "expense" ? "Despesa registrada" : state.drawerKind === "reimbursement" ? "Reembolso registrado" : state.drawerKind === "withdrawal" ? "Retirada registrada" : state.drawerKind === "reverse-receipt" ? "Recebimento estornado" : state.drawerKind === "party" ? "Cadastro atualizado" : "Ajustes salvos";
       closeDialog();
-      toast(label, "success");
       onSaved();
-      await showPage(true);
+      const refreshedData = await showPage(true);
+      toast(refreshedData ? label : "Lançamento salvo, mas não foi possível atualizar as tabelas. Use Atualizar para tentar novamente.", refreshedData ? "success" : "warning");
     } catch (errorValue) {
       error.textContent = errorValue.message || "Não foi possível salvar o lançamento.";
       submitButton.disabled = false;
