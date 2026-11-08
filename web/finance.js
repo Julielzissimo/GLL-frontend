@@ -228,7 +228,6 @@ export function createCashflowFeature(options = {}) {
     const values = metrics();
     const receivedLabel = "Recebido no período";
     dashboard.innerHTML = `<article class="cashflow-metric"><span>${receivedLabel}</span><strong>${formatBrl(values.receivedInPeriodCents)}</strong><small>${values.receiptCount} recebimento(s) confirmado(s)</small></article>
-      <article class="cashflow-metric"><span>Saldo atual em caixa</span><strong>${formatBrl(values.cashBalanceCents)}</strong><small>Recebimentos e reembolsos recebidos, menos saídas e retiradas</small></article>
       <article class="cashflow-metric"><span>Reserva disponível para despesas</span><strong>${formatBrl(values.expenseReserveBalanceCents)}</strong><small>Reserva constituída menos valores já comprometidos</small></article>
       <article class="cashflow-metric"><span>Lucro disponível para retirada</span><strong>${formatBrl(values.profitAvailableCents)}</strong><small>Lucro reconhecido somente após crédito confirmado</small></article>
       <article class="cashflow-metric"><span>Reembolsos a receber</span><strong>${formatBrl(values.reimbursementReceivableCents)}</strong><small>Despesas da empresa ainda não reembolsadas</small></article>

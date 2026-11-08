@@ -2081,6 +2081,14 @@
         "a6e9e09dcfceb3356b25587d75d5fac00ba948ef"
       ],
       "migrations": []
+    },
+    {
+      "id": "FLUXO-CAIXA-CARD-SALDO-001",
+      "backend_commits": [],
+      "frontend_commits": [
+        "4512abf2f563ac85eb023ab0a852d7895e45ef81"
+      ],
+      "migrations": []
     }
   ]
 }
