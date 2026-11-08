@@ -147,6 +147,35 @@ export function reimbursementTableRows(data, filters = {}) {
   };
 }
 
+export async function submitCashflowOperation(runBusy, operation, message) {
+  let completed = false;
+  let result;
+  let failure;
+  await runBusy(async () => {
+    try {
+      result = await operation();
+    } catch (error) {
+      failure = error;
+    } finally {
+      completed = true;
+    }
+  }, message);
+  if (failure) throw failure;
+  if (!completed) throw new Error("Não foi possível confirmar o lançamento. Tente novamente.");
+  return result;
+}
+
+export function savedCashflowRecordIsVisible(data, kind, result) {
+  const collection = {
+    receipt: "receipts",
+    expense: "expenses",
+    reimbursement: "reimbursements",
+  }[kind];
+  if (!collection) return true;
+  if (!result?.id) return false;
+  return (data?.[collection] || []).some((row) => String(row.id) === String(result.id));
+}
+
 export function createCashflowFeature(options = {}) {
   const {
     getClient = () => null,
@@ -990,7 +1019,7 @@ export function createCashflowFeature(options = {}) {
     submitButton.disabled = true;
     submitButton.textContent = "Salvando…";
     try {
-      await runBusy(() => runSubmission(event.target), "Salvando lançamento financeiro…");
+      const savedRecord = await submitCashflowOperation(runBusy, () => runSubmission(event.target), "Salvando lançamento financeiro…");
       const savedKind = state.drawerKind;
       if (savedKind === "receipt") {
         state.activeTab = "receipts";
@@ -1003,7 +1032,8 @@ export function createCashflowFeature(options = {}) {
       closeDialog();
       onSaved();
       const refreshedData = await showPage(true);
-      toast(refreshedData ? label : "Lançamento salvo, mas não foi possível atualizar as tabelas. Use Atualizar para tentar novamente.", refreshedData ? "success" : "warning");
+      const visible = savedCashflowRecordIsVisible(refreshedData, savedKind, savedRecord);
+      toast(refreshedData && visible ? label : "O lançamento foi enviado, mas não apareceu na consulta. Use Atualizar e confira o Histórico antes de tentar salvar novamente.", refreshedData && visible ? "success" : "warning");
     } catch (errorValue) {
       error.textContent = errorValue.message || "Não foi possível salvar o lançamento.";
       submitButton.disabled = false;
