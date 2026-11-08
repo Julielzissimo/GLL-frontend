@@ -2090,6 +2090,14 @@
         "4512abf2f563ac85eb023ab0a852d7895e45ef81"
       ],
       "migrations": []
+    },
+    {
+      "id": "FLUXO-CAIXA-TABELAS-001",
+      "backend_commits": [],
+      "frontend_commits": [
+        "1484bad7344a4154e80a3c8e30a09df853dd01b7"
+      ],
+      "migrations": []
     }
   ]
 }
