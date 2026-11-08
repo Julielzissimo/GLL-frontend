@@ -975,7 +975,10 @@ export function createCashflowFeature(options = {}) {
     try {
       await runBusy(() => runSubmission(event.target), "Salvando lançamento financeiro…");
       const savedKind = state.drawerKind;
-      if (savedKind === "expense") {
+      if (savedKind === "receipt") {
+        state.activeTab = "receipts";
+        state.filters = { from: "", to: "" };
+      } else if (savedKind === "expense") {
         state.activeTab = "expenses";
         state.filters = { from: "", to: "" };
       }
