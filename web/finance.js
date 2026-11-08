@@ -747,7 +747,7 @@ export function createCashflowFeature(options = {}) {
       <label class="cashflow-field">Forma de pagamento<select name="payment_method" required>${selectOptions(PAYMENT_METHODS, "pix")}</select></label>
       ${isReceivable ? "" : `<label class="cashflow-field">Origem dos recursos<select name="funding_source" required><option value="expense_reserve">Reserva de despesas</option><option value="operating_cash">Caixa da empresa</option><option value="other">Outra origem</option></select></label>`}
       <label class="cashflow-field cashflow-field-wide">Observações<textarea name="notes" rows="2" maxlength="500"></textarea></label></div>
-      ${commonConfirmation(isReceivable ? "Confirmo que o reembolso foi recebido pela empresa." : "Confirmo que o valor foi pago ao credor identificado.")}`;
+      ${isReceivable ? commonConfirmation("Confirmo que o reembolso foi recebido pela empresa.") : ""}`;
     openDialog(
       isReceivable ? "Registrar reembolso recebido" : "Registrar pagamento de reembolso",
       isReceivable ? "O recebimento reduz o saldo pendente e aumenta o caixa da empresa." : "O pagamento reduz o saldo devido e o caixa da empresa.",
@@ -828,7 +828,9 @@ export function createCashflowFeature(options = {}) {
     if (!isAdmin()) throw new Error("Somente Administradores podem registrar ou alterar lançamentos financeiros.");
     const formData = new FormData(form);
     const confirmation = formData.get("confirmation") === "on";
-    const confirmationRequired = ["reimbursement", "withdrawal", "reverse-receipt"].includes(state.drawerKind);
+    const reimbursementNeedsConfirmation = state.drawerKind === "reimbursement"
+      && cashflowExpenseReimbursementDirection(state.data?.expenses.find((row) => String(row.id) === String(form.dataset.expenseId))) === "receivable";
+    const confirmationRequired = reimbursementNeedsConfirmation || ["withdrawal", "reverse-receipt"].includes(state.drawerKind);
     if (confirmationRequired && !confirmation) throw new Error("Confirme que revisou os dados antes de salvar.");
 
     if (state.drawerKind === "receipt") {
