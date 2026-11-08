@@ -2098,6 +2098,14 @@
         "1484bad7344a4154e80a3c8e30a09df853dd01b7"
       ],
       "migrations": []
+    },
+    {
+      "id": "FLUXO-CAIXA-CONFIRMACAO-001",
+      "backend_commits": [],
+      "frontend_commits": [
+        "75e033d27266eee11a9c2f9972d4c7c3b7627298"
+      ],
+      "migrations": []
     }
   ]
 }
