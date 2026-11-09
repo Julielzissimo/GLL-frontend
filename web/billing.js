@@ -53,6 +53,8 @@ function createBillingFeature({ getBid, getQuotation, getBudgetItems, store, toa
   const root = document.getElementById("billingRoot");
   const drawer = document.getElementById("billingDrawer");
   const drawerContent = document.getElementById("billingDrawerContent");
+  const discardDialog = document.getElementById("billingDiscardDialog");
+  let discardAction = null;
   const state = {
     bidId: null,
     dataStatus: "idle",
@@ -68,7 +70,51 @@ function createBillingFeature({ getBid, getQuotation, getBudgetItems, store, toa
     selectedItemId: null,
     activeSection: null,
     editing: { commitment: null, delivery: null, invoice: null },
+    draft: null,
   };
+
+  function formValues(form) {
+    return Object.fromEntries(new FormData(form));
+  }
+
+  function currentDraftKey() {
+    return `${state.selectedItemId}:${state.activeSection}:${state.editing[state.activeSection] || "new"}`;
+  }
+
+  function captureDraft() {
+    const form = drawerContent?.querySelector("[data-billing-form]");
+    if (form && state.draft) state.draft.values = formValues(form);
+  }
+
+  function restoreDraft() {
+    const form = drawerContent?.querySelector("[data-billing-form]");
+    if (!form) return;
+    const key = currentDraftKey();
+    if (state.draft?.key !== key) {
+      const values = formValues(form);
+      state.draft = { key, baseline: JSON.stringify(values), values };
+      return;
+    }
+    for (const [name, value] of Object.entries(state.draft.values)) {
+      const field = form.elements.namedItem(name);
+      if (field) field.value = value;
+    }
+  }
+
+  function hasUnsavedChanges() {
+    const form = drawerContent?.querySelector("[data-billing-form]");
+    return Boolean(form && state.draft?.key === currentDraftKey()
+      && JSON.stringify(formValues(form)) !== state.draft.baseline);
+  }
+
+  function requestDiscard(action) {
+    if (!hasUnsavedChanges()) {
+      action();
+      return;
+    }
+    discardAction = action;
+    if (!discardDialog.open) discardDialog.showModal();
+  }
 
   const recordsForItem = (kind, itemId) => {
     const fulfillment = fulfillmentFor(itemId);
@@ -317,6 +363,7 @@ function createBillingFeature({ getBid, getQuotation, getBudgetItems, store, toa
   }
 
   function renderDrawer() {
+    captureDraft();
     const itemId = state.selectedItemId;
     const item = budgetItems().find((row) => Number(row.id) === Number(itemId));
     if (!item) return;
@@ -325,6 +372,7 @@ function createBillingFeature({ getBid, getQuotation, getBudgetItems, store, toa
     const drawerDescription = document.getElementById("billingDrawerDescription");
     if (state.activeSection) {
       drawerContent.innerHTML = `<div class="billing-drawer-item-summary"><div><span class="eyebrow">ITEM DO ORÇAMENTO</span><h3>Item ${billingEscape(item.item_number)} · ${billingEscape(item.description || "Sem descrição")}</h3><p>${billingEscape([item.manufacturer, item.model].filter(Boolean).join(" · ") || item.unit || "")}</p></div><div class="billing-drawer-item-value"><span>Previsto</span><strong>${billingQuantity(row.planned)} un.</strong><small>${billingMoney(billingNumber(item.final_bid) * row.planned)}</small></div></div>${renderBillingSection(state.activeSection, itemId, row)}`;
+      restoreDraft();
       return;
     }
     drawerTitle.textContent = "Detalhes do item";
@@ -375,15 +423,19 @@ function createBillingFeature({ getBid, getQuotation, getBudgetItems, store, toa
     state.selectedItemId = Number(itemId);
     state.activeSection = null;
     state.editing = { commitment: null, delivery: null, invoice: null };
+    state.draft = null;
     renderDrawer();
     if (!drawer.open) drawer.showModal();
   }
 
   function closeDrawer() {
+    if (discardDialog.open) discardDialog.close();
+    discardAction = null;
     if (drawer.open) drawer.close();
     state.selectedItemId = null;
     state.activeSection = null;
     state.editing = { commitment: null, delivery: null, invoice: null };
+    state.draft = null;
   }
 
   function validateQuantity(kind, itemId, quantity, entryId) {
@@ -429,6 +481,7 @@ function createBillingFeature({ getBid, getQuotation, getBudgetItems, store, toa
     await runBusy(() => store.saveBillingRecord(kind, state.bidId, state.selectedItemId, record, entryId), `Salvando ${BILLING_LABELS[kind]}…`);
     onSaved?.();
     state.editing[kind] = null;
+    state.draft = null;
     await refreshData();
     toast(`${BILLING_LABELS[kind][0].toLocaleUpperCase("pt-BR")}${BILLING_LABELS[kind].slice(1)} salvo${kind === "invoice" ? "a" : ""}.`);
   }
@@ -438,6 +491,7 @@ function createBillingFeature({ getBid, getQuotation, getBudgetItems, store, toa
     await runBusy(() => store.deleteBillingRecord(kind, id, state.bidId, state.selectedItemId), `Excluindo ${BILLING_LABELS[kind]}…`);
     onSaved?.();
     if (Number(state.editing[kind]) === Number(id)) state.editing[kind] = null;
+    state.draft = null;
     await refreshData();
     toast(`${BILLING_LABELS[kind][0].toLocaleUpperCase("pt-BR")}${BILLING_LABELS[kind].slice(1)} excluído${kind === "invoice" ? "a" : ""}.`);
   }
@@ -464,25 +518,34 @@ function createBillingFeature({ getBid, getQuotation, getBudgetItems, store, toa
       if (button) openItem(button.dataset.openBillingItem);
     });
     drawer.addEventListener("click", (event) => {
-      if (event.target.closest("[data-close-billing-drawer]")) closeDrawer();
+      if (event.target.closest("[data-close-billing-drawer]")) requestDiscard(closeDrawer);
       const sectionButton = event.target.closest("[data-open-billing-section]");
       if (sectionButton) {
         state.activeSection = sectionButton.dataset.openBillingSection;
         renderDrawer();
       }
       if (event.target.closest("[data-back-billing-overview]")) {
-        state.activeSection = null;
-        renderDrawer();
+        requestDiscard(() => {
+          state.activeSection = null;
+          state.draft = null;
+          renderDrawer();
+        });
       }
       const editButton = event.target.closest("[data-edit-billing-entry]");
       if (editButton) {
-        state.editing[editButton.dataset.entryKind] = Number(editButton.dataset.editBillingEntry);
-        renderDrawer();
+        requestDiscard(() => {
+          state.editing[editButton.dataset.entryKind] = Number(editButton.dataset.editBillingEntry);
+          state.draft = null;
+          renderDrawer();
+        });
       }
       const cancelButton = event.target.closest("[data-cancel-entry]");
       if (cancelButton) {
-        state.editing[cancelButton.dataset.cancelEntry] = null;
-        renderDrawer();
+        requestDiscard(() => {
+          state.editing[cancelButton.dataset.cancelEntry] = null;
+          state.draft = null;
+          renderDrawer();
+        });
       }
       const deleteButton = event.target.closest("[data-delete-billing-entry]");
       if (deleteButton) void handleDelete(deleteButton.dataset.entryKind, Number(deleteButton.dataset.deleteBillingEntry))
@@ -501,7 +564,24 @@ function createBillingFeature({ getBid, getQuotation, getBudgetItems, store, toa
     });
     drawer.addEventListener("cancel", (event) => {
       event.preventDefault();
-      closeDrawer();
+      requestDiscard(closeDrawer);
+    });
+    discardDialog.addEventListener("click", (event) => {
+      if (event.target.closest("[data-billing-continue]")) {
+        discardAction = null;
+        discardDialog.close();
+      }
+      if (event.target.closest("[data-billing-discard]")) {
+        const action = discardAction;
+        discardAction = null;
+        discardDialog.close();
+        action?.();
+      }
+    });
+    discardDialog.addEventListener("cancel", (event) => {
+      event.preventDefault();
+      discardAction = null;
+      discardDialog.close();
     });
   }
 
