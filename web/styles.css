@@ -9065,6 +9065,8 @@ button.history-row:hover {
   margin: 0;
   padding: 0;
   border: 0;
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
   background: var(--gll-canvas);
   color: var(--gll-ink);
   box-shadow: var(--gll-shadow-overlay);
