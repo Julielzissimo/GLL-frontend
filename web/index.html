@@ -857,6 +857,16 @@
                   <div id="billingDrawerContent" class="billing-drawer-content"></div>
                 </div>
               </dialog>
+              <dialog id="billingDiscardDialog" class="quotation-item-discard-modal" aria-labelledby="billingDiscardTitle" aria-describedby="billingDiscardDescription">
+                <div class="quotation-item-discard-content">
+                  <h2 id="billingDiscardTitle">Descartar alterações?</h2>
+                  <p id="billingDiscardDescription">Há alterações não salvas neste lançamento. Se você sair agora, elas serão perdidas.</p>
+                  <div class="button-row end">
+                    <button class="quiet-action" type="button" data-billing-continue autofocus>Continuar editando</button>
+                    <button class="danger-action" type="button" data-billing-discard>Descartar alterações</button>
+                  </div>
+                </div>
+              </dialog>
             </div>
 
 
