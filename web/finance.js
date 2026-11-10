@@ -26,6 +26,7 @@ const TABS = Object.freeze([
   ["receipts", "Recebimentos"],
   ["expenses", "Despesas"],
   ["reimbursements", "Reembolsos"],
+  ["withdrawals", "Saques"],
   ["participants", "Participantes"],
   ["history", "Histórico"],
 ]);
@@ -449,6 +450,18 @@ export function createCashflowFeature(options = {}) {
     return `${expenseTable}${paymentTable}`;
   }
 
+  function withdrawalTable() {
+    const rows = filteredByDate(state.data.withdrawals || [], "withdrawn_on");
+    if (!rows.length) return emptyState("Nenhum saque registrado", "Quando uma retirada for registrada, ela aparecerá nesta lista.");
+    const users = getUsers() || [];
+    const bids = accessibleBids();
+    return `<div class="cashflow-table-wrap"><table class="cashflow-table"><thead><tr><th>Autor do saque</th><th>Quem recebeu o saque</th><th>Data do saque</th><th>Nº do edital</th></tr></thead><tbody>${rows.map((withdrawal) => {
+      const actor = users.find((user) => String(user.auth_user_id) === String(withdrawal.actor_id));
+      const actorName = actor?.display_name || actor?.full_name || actor?.name || "Usuário do GLL";
+      return `<tr><td>${escapeHtml(actorName)}</td><td>${escapeHtml(partyName(state.data, withdrawal.participant_id))}</td><td>${formatDate(withdrawal.withdrawn_on)}</td><td>${escapeHtml(bidName(bids, withdrawal.bid_id))}</td></tr>`;
+    }).join("")}</tbody></table></div>`;
+  }
+
   function participantRows() {
     const activeReceipts = state.data.receipts.filter((row) => !row.reversed_at);
     const receiptById = new Map(activeReceipts.map((row) => [String(row.id), row]));
@@ -543,6 +556,7 @@ export function createCashflowFeature(options = {}) {
     if (state.activeTab === "receipts") content = receiptTable();
     if (state.activeTab === "expenses") content = expenseTable();
     if (state.activeTab === "reimbursements") content = reimbursementTable();
+    if (state.activeTab === "withdrawals") content = withdrawalTable();
     if (state.activeTab === "participants") content = participantTable();
     if (state.activeTab === "history") content = historyTable();
     workspace.innerHTML = `${filterToolbar()}${renderTabs()}<section class="cashflow-panel" role="tabpanel">${content}</section><p class="cashflow-footnote">Os lançamentos são imutáveis. Estornos autorizados e correções preservam a trilha de auditoria.</p>`;
