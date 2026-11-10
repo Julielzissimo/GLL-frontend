@@ -435,8 +435,8 @@ textarea {
 input:focus,
 select:focus,
 textarea:focus {
-  border-color: var(--primary);
-  box-shadow: 0 0 0 2px rgb(24 61 53 / 14%);
+  border-color: var(--gll-focus);
+  box-shadow: var(--shadow-focus);
 }
 
 input:disabled,
@@ -2236,11 +2236,15 @@ textarea {
 }
 
 button:focus-visible,
-input:focus-visible,
-select:focus-visible,
-textarea:focus-visible,
 [tabindex="0"]:focus-visible {
   outline: 2px solid rgb(173 114 55 / 28%);
+  outline-offset: 2px;
+}
+
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 1px solid var(--gll-focus);
   outline-offset: 2px;
 }
 
@@ -2256,7 +2260,7 @@ textarea {
 input:focus,
 select:focus,
 textarea:focus {
-  border-color: var(--primary);
+  border-color: var(--gll-focus);
   box-shadow: var(--shadow-focus);
 }
 
@@ -2269,7 +2273,8 @@ textarea[aria-invalid="true"] {
 input[aria-invalid="true"]:focus,
 select[aria-invalid="true"]:focus,
 textarea[aria-invalid="true"]:focus {
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-danger) 18%, transparent);
+  border-color: var(--gll-focus);
+  box-shadow: var(--shadow-focus);
 }
 
 .eyebrow,
@@ -4854,8 +4859,8 @@ tr.item-won td {
 
 .users-search-control:focus-within,
 .users-filter-control:focus-within {
-  border-color: var(--gll-forest-hover);
-  box-shadow: none;
+  border-color: var(--gll-focus);
+  box-shadow: var(--shadow-focus);
 }
 
 .users-search-control {
@@ -8627,7 +8632,8 @@ button.history-row:hover {
 }
 
 .radar-tag-entry:focus-within {
-  border-color: var(--color-primary);
+  border-color: var(--gll-focus);
+  box-shadow: var(--shadow-focus);
 }
 
 .radar-tag-entry input {
@@ -8643,6 +8649,7 @@ button.history-row:hover {
 
 .radar-tag-entry input:focus {
   border: 0;
+  outline: 0;
   box-shadow: none;
 }
 
