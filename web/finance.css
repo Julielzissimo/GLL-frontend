@@ -199,8 +199,9 @@
 }
 
 .cashflow-tab.active {
-  border-bottom-color: var(--gll-accent);
-  color: var(--gll-forest);
+  border-bottom-color: var(--primary);
+  background: var(--gll-selection-bg);
+  color: var(--primary);
 }
 
 .cashflow-panel { min-width: 0; }
