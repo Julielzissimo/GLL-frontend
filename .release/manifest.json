@@ -2223,6 +2223,14 @@
         "d288c069c8414b0ca062e34c2e18ffa3ecc1c191"
       ],
       "migrations": []
+    },
+    {
+      "id": "FLUXO-CAIXA-RETIRADA-CONFIRMACAO-001",
+      "backend_commits": [],
+      "frontend_commits": [
+        "0fa2db93e0d4e005aac0973f34ce577ba2df8275"
+      ],
+      "migrations": []
     }
   ]
 }
