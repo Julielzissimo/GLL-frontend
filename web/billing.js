@@ -403,7 +403,6 @@ function createBillingFeature({ getBid, getQuotation, getBudgetItems, store, toa
       state.dataStatus = "error";
       renderOverview();
       if (keepDrawer && drawer?.open && state.selectedItemId) renderDrawer();
-      void financePanel.refresh();
       return;
     }
     renderOverview();
