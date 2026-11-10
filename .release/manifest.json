@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "release_id": "2026-11-02-pacote-de-melhorias-3",
+  "release_id": "2026-11-09-pacote-de-melhorias-4",
   "environment": "production",
   "target_branch": "main",
   "items": [
@@ -1347,6 +1347,66 @@
       "backend_commits": [],
       "frontend_commits": [
         "fd5069ec7280ddb02c5bc45510697a986a8cb11c"
+      ],
+      "migrations": []
+    },
+    {
+      "id": "AUDIT-ITEM-VENCIDO-001",
+      "backend_commits": [
+        "1f303628cf1a760a7840cfda11ec825498b9397a"
+      ],
+      "frontend_commits": [],
+      "migrations": [
+        "supabase/migrations/20261102204828_fix_false_item_unwon_history_events.sql"
+      ]
+    },
+    {
+      "id": "FEAT-004",
+      "backend_commits": [],
+      "frontend_commits": [
+        "2f7ae5f502d5cf760d4cd5e505b98c87844ce2e9"
+      ],
+      "migrations": []
+    },
+    {
+      "id": "BILLING-ITEMS-LOADING-001",
+      "backend_commits": [],
+      "frontend_commits": [
+        "07d97926a8dd631e9242af50e118a1bc45fe9cdb",
+        "bbbe2bba603d96faca0d5de98d49c288b9c8791f"
+      ],
+      "migrations": []
+    },
+    {
+      "id": "BILLING-SUPPLIER-COLUMN-001",
+      "backend_commits": [],
+      "frontend_commits": [
+        "445d708e66453ee870dc7ad33626e3506a4b8400"
+      ],
+      "migrations": []
+    },
+    {
+      "id": "FIELD-FOCUS-COLOR-001",
+      "backend_commits": [],
+      "frontend_commits": [
+        "d9120a6036cd6e114a55333579b2c7e47b120c3d",
+        "8d0e96045cdb192d5f742adf07ae74f8679e704e"
+      ],
+      "migrations": []
+    },
+    {
+      "id": "BILLING-DRAWER-DRAFT-001",
+      "backend_commits": [],
+      "frontend_commits": [
+        "17ecd2f3447add8dd560dd1e8a291de6b582f3e3"
+      ],
+      "migrations": []
+    },
+    {
+      "id": "BILLING-DRAWER-RADIUS-001",
+      "backend_commits": [],
+      "frontend_commits": [
+        "4e9ea49cf305d59e7dab9228391a29da9688c4b4"
       ],
       "migrations": []
     }

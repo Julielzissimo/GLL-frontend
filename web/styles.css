@@ -435,8 +435,8 @@ textarea {
 input:focus,
 select:focus,
 textarea:focus {
-  border-color: var(--primary);
-  box-shadow: 0 0 0 3px rgb(24 61 53 / 14%);
+  border-color: var(--gll-focus);
+  box-shadow: var(--shadow-focus);
 }
 
 input:disabled,
@@ -2181,11 +2181,15 @@ textarea {
 }
 
 button:focus-visible,
-input:focus-visible,
-select:focus-visible,
-textarea:focus-visible,
 [tabindex="0"]:focus-visible {
   outline: 3px solid rgb(173 114 55 / 28%);
+  outline-offset: 2px;
+}
+
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 1px solid var(--gll-focus);
   outline-offset: 2px;
 }
 
@@ -2201,7 +2205,7 @@ textarea {
 input:focus,
 select:focus,
 textarea:focus {
-  border-color: var(--primary);
+  border-color: var(--gll-focus);
   box-shadow: var(--shadow-focus);
 }
 
@@ -2214,7 +2218,8 @@ textarea[aria-invalid="true"] {
 input[aria-invalid="true"]:focus,
 select[aria-invalid="true"]:focus,
 textarea[aria-invalid="true"]:focus {
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-danger) 18%, transparent);
+  border-color: var(--gll-focus);
+  box-shadow: var(--shadow-focus);
 }
 
 .eyebrow,
@@ -4683,8 +4688,8 @@ tr.item-won td {
 
 .users-search-control:focus-within,
 .users-filter-control:focus-within {
-  border-color: var(--gll-forest-hover);
-  box-shadow: none;
+  border-color: var(--gll-focus);
+  box-shadow: var(--shadow-focus);
 }
 
 .users-search-control {
@@ -8448,7 +8453,8 @@ button.history-row:hover {
 }
 
 .radar-tag-entry:focus-within {
-  border-color: var(--color-primary);
+  border-color: var(--gll-focus);
+  box-shadow: var(--shadow-focus);
 }
 
 .radar-tag-entry input {
@@ -8464,6 +8470,7 @@ button.history-row:hover {
 
 .radar-tag-entry input:focus {
   border: 0;
+  outline: 0;
   box-shadow: none;
 }
 
@@ -8886,6 +8893,8 @@ button.history-row:hover {
   margin: 0;
   padding: 0;
   border: 0;
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
   background: var(--gll-canvas);
   color: var(--gll-ink);
   box-shadow: var(--gll-shadow-overlay);
@@ -9006,6 +9015,83 @@ button.history-row:hover {
   font-family: var(--gll-font-mono);
   font-size: var(--gll-text-sm);
 }
+
+.billing-flow-list {
+  display: grid;
+  gap: var(--gll-space-3);
+}
+
+.billing-flow-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--gll-space-4);
+  width: 100%;
+  min-height: 72px;
+  padding: var(--gll-space-4);
+  border: 1px solid var(--gll-line);
+  border-radius: var(--gll-radius-md);
+  background: var(--gll-paper);
+  color: var(--gll-ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.billing-flow-card:hover {
+  border-color: var(--gll-line-strong);
+  background: var(--gll-paper-muted);
+}
+
+.billing-flow-card:focus-visible {
+  outline: 2px solid var(--gll-focus);
+  outline-offset: 2px;
+}
+
+.billing-flow-card-main {
+  display: grid;
+  flex: 1 1 auto;
+  gap: var(--gll-space-2);
+  min-width: 0;
+}
+
+.billing-flow-card-heading {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--gll-space-2);
+}
+
+.billing-flow-card-heading strong {
+  font-size: var(--gll-text-md);
+}
+
+.billing-flow-card-quantity {
+  color: var(--gll-ink);
+  font-family: var(--gll-font-mono);
+  font-size: var(--gll-text-sm);
+  font-weight: 600;
+}
+
+.billing-flow-card-quantity small {
+  color: var(--gll-ink-soft);
+  font-family: var(--gll-font-body);
+  font-size: var(--gll-text-xs);
+  font-weight: 400;
+}
+
+.billing-flow-card-action {
+  display: flex;
+  align-items: center;
+  flex: 0 0 auto;
+  gap: var(--gll-space-2);
+  color: var(--gll-forest);
+  font-size: var(--gll-text-xs);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.billing-active-section-heading { align-items: center; }
 
 .billing-status-pair {
   display: flex;

@@ -845,16 +845,26 @@
                   </div>
                   <div class="table-wrap billing-table-wrap">
                     <table class="billing-table">
-                      <thead><tr><th>Item do orçamento</th><th>Qtd.</th><th>Empenhos</th><th>Fornecedor / compra</th><th>Fornecimento</th><th>Faturamento</th><th>Ações</th></tr></thead>
-                      <tbody id="billingTableBody"><tr><td colspan="7"><div class="empty-state compact-empty">Carregando itens do orçamento…</div></td></tr></tbody>
+                      <thead><tr><th>Item do orçamento</th><th>Qtd.</th><th>Empenhos</th><th>Fornecimento</th><th>Faturamento</th><th>Ações</th></tr></thead>
+                      <tbody id="billingTableBody"><tr><td colspan="6"><div class="empty-state compact-empty">Carregando itens do orçamento…</div></td></tr></tbody>
                     </table>
                   </div>
                 </section>
               </div>
               <dialog id="billingDrawer" class="billing-drawer" aria-labelledby="billingDrawerTitle" aria-describedby="billingDrawerDescription">
                 <div class="billing-drawer-shell">
-                  <header class="billing-drawer-header"><div><span class="eyebrow">FATURAMENTO</span><h2 id="billingDrawerTitle">Detalhes do item</h2><p id="billingDrawerDescription">Gerencie empenhos, fornecimento, compra e faturamento.</p></div><button class="quiet-action" type="button" data-close-billing-drawer>Fechar</button></header>
+                  <header class="billing-drawer-header"><div><span class="eyebrow">FATURAMENTO</span><h2 id="billingDrawerTitle">Detalhes do item</h2><p id="billingDrawerDescription">Acompanhe o que foi pedido, entregue e faturado.</p></div><button class="quiet-action" type="button" data-close-billing-drawer>Fechar</button></header>
                   <div id="billingDrawerContent" class="billing-drawer-content"></div>
+                </div>
+              </dialog>
+              <dialog id="billingDiscardDialog" class="quotation-item-discard-modal" aria-labelledby="billingDiscardTitle" aria-describedby="billingDiscardDescription">
+                <div class="quotation-item-discard-content">
+                  <h2 id="billingDiscardTitle">Descartar alterações?</h2>
+                  <p id="billingDiscardDescription">Há alterações não salvas neste lançamento. Se você sair agora, elas serão perdidas.</p>
+                  <div class="button-row end">
+                    <button class="quiet-action" type="button" data-billing-continue autofocus>Continuar editando</button>
+                    <button class="danger-action" type="button" data-billing-discard>Descartar alterações</button>
+                  </div>
                 </div>
               </dialog>
             </div>

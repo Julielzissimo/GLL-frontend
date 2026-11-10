@@ -53,8 +53,12 @@ function createBillingFeature({ getBid, getQuotation, getBudgetItems, store, toa
   const root = document.getElementById("billingRoot");
   const drawer = document.getElementById("billingDrawer");
   const drawerContent = document.getElementById("billingDrawerContent");
+  const discardDialog = document.getElementById("billingDiscardDialog");
+  let discardAction = null;
   const state = {
     bidId: null,
+    dataStatus: "idle",
+    refreshRequestId: 0,
     fulfillment: [],
     commitment: [],
     delivery: [],
@@ -63,8 +67,53 @@ function createBillingFeature({ getBid, getQuotation, getBudgetItems, store, toa
     supplyFilter: "Todos",
     invoiceFilter: "Todos",
     selectedItemId: null,
+    activeSection: null,
     editing: { commitment: null, delivery: null, invoice: null },
+    draft: null,
   };
+
+  function formValues(form) {
+    return Object.fromEntries(new FormData(form));
+  }
+
+  function currentDraftKey() {
+    return `${state.selectedItemId}:${state.activeSection}:${state.editing[state.activeSection] || "new"}`;
+  }
+
+  function captureDraft() {
+    const form = drawerContent?.querySelector("[data-billing-form]");
+    if (form && state.draft) state.draft.values = formValues(form);
+  }
+
+  function restoreDraft() {
+    const form = drawerContent?.querySelector("[data-billing-form]");
+    if (!form) return;
+    const key = currentDraftKey();
+    if (state.draft?.key !== key) {
+      const values = formValues(form);
+      state.draft = { key, baseline: JSON.stringify(values), values };
+      return;
+    }
+    for (const [name, value] of Object.entries(state.draft.values)) {
+      const field = form.elements.namedItem(name);
+      if (field) field.value = value;
+    }
+  }
+
+  function hasUnsavedChanges() {
+    const form = drawerContent?.querySelector("[data-billing-form]");
+    return Boolean(form && state.draft?.key === currentDraftKey()
+      && JSON.stringify(formValues(form)) !== state.draft.baseline);
+  }
+
+  function requestDiscard(action) {
+    if (!hasUnsavedChanges()) {
+      action();
+      return;
+    }
+    discardAction = action;
+    if (!discardDialog.open) discardDialog.showModal();
+  }
 
   const recordsForItem = (kind, itemId) => {
     const fulfillment = fulfillmentFor(itemId);
@@ -114,8 +163,6 @@ function createBillingFeature({ getBid, getQuotation, getBudgetItems, store, toa
       committed,
       supplied,
       billed,
-      pending: Math.max(planned - supplied, 0),
-      billedPending: Math.max(planned - billed, 0),
       supplyStatus,
       invoiceStatus,
       supplier: supplierName(fulfillment),
@@ -133,6 +180,14 @@ function createBillingFeature({ getBid, getQuotation, getBudgetItems, store, toa
   function renderSummary(items) {
     const summaries = items.map(summaryFor);
     document.getElementById("billingItemCount").textContent = String(items.length);
+    if (state.dataStatus !== "ready") {
+      const unavailable = state.dataStatus === "loading" ? "…" : "—";
+      document.getElementById("billingPendingCount").textContent = unavailable;
+      document.getElementById("billingPartialCount").textContent = unavailable;
+      document.getElementById("billingSuppliedCount").textContent = unavailable;
+      document.getElementById("billingInvoicedCount").textContent = unavailable;
+      return;
+    }
     document.getElementById("billingPendingCount").textContent = String(summaries.filter((row) => ["Não iniciado", "Em fornecimento"].includes(row.supplyStatus)).length);
     document.getElementById("billingPartialCount").textContent = String(summaries.filter((row) => row.supplyStatus === "Parcialmente fornecido").length);
     document.getElementById("billingSuppliedCount").textContent = String(summaries.filter((row) => row.supplyStatus === "Totalmente fornecido").length);
@@ -150,49 +205,60 @@ function createBillingFeature({ getBid, getQuotation, getBudgetItems, store, toa
       row.purchaseOrder,
     ].join(" ").toLocaleLowerCase("pt-BR");
     if (query && !text.includes(query)) return false;
-    if (state.supplyFilter === "Pendentes" && !["Não iniciado", "Em fornecimento"].includes(row.supplyStatus)) return false;
-    if (state.supplyFilter === "Parciais" && row.supplyStatus !== "Parcialmente fornecido") return false;
-    if (state.supplyFilter === "Concluídos" && row.supplyStatus !== "Totalmente fornecido") return false;
-    if (state.invoiceFilter !== "Todos" && row.invoiceStatus !== state.invoiceFilter) return false;
+    if (state.dataStatus === "ready") {
+      if (state.supplyFilter === "Pendentes" && !["Não iniciado", "Em fornecimento"].includes(row.supplyStatus)) return false;
+      if (state.supplyFilter === "Parciais" && row.supplyStatus !== "Parcialmente fornecido") return false;
+      if (state.supplyFilter === "Concluídos" && row.supplyStatus !== "Totalmente fornecido") return false;
+      if (state.invoiceFilter !== "Todos" && row.invoiceStatus !== state.invoiceFilter) return false;
+    }
     return true;
+  }
+
+  function billingDataNotice() {
+    if (state.dataStatus === "loading") {
+      return '<tr><td colspan="6"><div class="empty-state compact-empty" role="status" aria-live="polite">Carregando dados de fornecimento e faturamento…</div></td></tr>';
+    }
+    if (state.dataStatus === "error") {
+      return '<tr><td colspan="6"><div class="empty-state compact-empty" role="alert">Não foi possível carregar os dados de fornecimento e faturamento. <button class="quiet-action compact-action" type="button" data-retry-billing-data>Tentar novamente</button></div></td></tr>';
+    }
+    return "";
   }
 
   function renderTable() {
     if (!root) return;
     const items = budgetItems();
     const body = document.getElementById("billingTableBody");
+    if (!body) return;
     const visible = items.map(summaryFor).filter(matchesFilters);
     if (!items.length) {
-      body.innerHTML = '<tr><td colspan="7"><div class="empty-state compact-empty">Nenhum item foi marcado como vencido neste edital.</div></td></tr>';
+      body.innerHTML = `<tr><td colspan="6"><div class="empty-state compact-empty">Nenhum item foi marcado como vencido neste edital.</div></td></tr>${billingDataNotice()}`;
       return;
     }
     if (!visible.length) {
-      body.innerHTML = '<tr><td colspan="7"><div class="empty-state compact-empty">Nenhum item corresponde aos filtros selecionados.</div></td></tr>';
+      body.innerHTML = `<tr><td colspan="6"><div class="empty-state compact-empty">Nenhum item corresponde aos filtros selecionados.</div></td></tr>${billingDataNotice()}`;
       return;
     }
+    const dataLoaded = state.dataStatus === "ready";
+    const pendingLabel = state.dataStatus === "loading" ? "Carregando…" : "Indisponível";
     body.innerHTML = visible.map((row) => {
       const item = row.item;
       const progress = row.planned > 0 ? Math.min(100, Math.round((row.supplied / row.planned) * 100)) : 0;
       const supplyTone = badgeTone(row.supplyStatus);
-      let safePurchaseUrl = "";
-      try {
-        const parsedPurchaseUrl = new URL(row.fulfillment?.purchase_link || "");
-        if (["http:", "https:"].includes(parsedPurchaseUrl.protocol)) safePurchaseUrl = parsedPurchaseUrl.href;
-      } catch { /* Invalid stored URLs remain plain text. */ }
-      const purchase = safePurchaseUrl
-        ? `<a class="table-link" href="${billingEscape(safePurchaseUrl)}" target="_blank" rel="noopener noreferrer">${billingEscape(row.purchaseOrder || "Abrir pedido")}</a>`
-        : billingEscape(row.purchaseOrder || "—");
-      const supplier = row.supplier ? `<strong>${billingEscape(row.supplier)}</strong>` : '<span class="table-secondary">Fornecedor não informado</span>';
+      const supplyStatus = dataLoaded
+        ? `${billingBadge(row.supplyStatus, supplyTone)}<div class="billing-progress" data-tone="${supplyTone}" role="progressbar" aria-label="${billingEscape(`Fornecimento do item ${item.item_number}`)}" aria-valuemin="0" aria-valuemax="${billingEscape(row.planned)}" aria-valuenow="${billingEscape(row.supplied)}"><span style="width:${progress}%"></span></div><small>${billingQuantity(row.supplied)} de ${billingQuantity(row.planned)} fornecidos</small>`
+        : billingBadge(pendingLabel);
+      const invoiceStatus = dataLoaded
+        ? `${billingBadge(row.invoiceStatus, badgeTone(row.invoiceStatus))}<small>${billingQuantity(row.billed)} de ${billingQuantity(row.planned)} faturados</small>`
+        : billingBadge(pendingLabel);
       return `<tr>
         <td><strong>${billingEscape(item.item_number)}</strong><small class="billing-cell-subtitle">${billingEscape(item.description || "Sem descrição")}</small></td>
         <td>${billingQuantity(row.planned)}<small class="billing-cell-subtitle">${billingEscape(item.unit || "Unidade")}</small></td>
-        <td><strong>${row.commitments.length ? `${row.commitments.length} ${row.commitments.length === 1 ? "empenho" : "empenhos"}` : "—"}</strong><small class="billing-cell-subtitle">${billingMoney(row.commitments.reduce((sum, entry) => sum + billingNumber(entry.amount), 0))}</small></td>
-        <td>${supplier}<small class="billing-cell-subtitle">Pedido ${purchase}</small></td>
-        <td><div class="billing-status-stack">${billingBadge(row.supplyStatus, supplyTone)}<div class="billing-progress" data-tone="${supplyTone}" role="progressbar" aria-label="${billingEscape(`Fornecimento do item ${item.item_number}`)}" aria-valuemin="0" aria-valuemax="${billingEscape(row.planned)}" aria-valuenow="${billingEscape(row.supplied)}"><span style="width:${progress}%"></span></div><small>${billingQuantity(row.supplied)} de ${billingQuantity(row.planned)} fornecidos</small></div></td>
-        <td><div class="billing-status-stack">${billingBadge(row.invoiceStatus, badgeTone(row.invoiceStatus))}<small>${billingQuantity(row.billed)} de ${billingQuantity(row.planned)} faturados</small></div></td>
-        <td><button class="quiet-action compact-action" type="button" data-open-billing-item="${billingEscape(item.id)}">Acompanhar</button></td>
+        <td><strong>${dataLoaded ? row.commitments.length ? `${row.commitments.length} ${row.commitments.length === 1 ? "empenho" : "empenhos"}` : "—" : pendingLabel}</strong><small class="billing-cell-subtitle">${dataLoaded ? billingMoney(row.commitments.reduce((sum, entry) => sum + billingNumber(entry.amount), 0)) : ""}</small></td>
+        <td><div class="billing-status-stack">${supplyStatus}</div></td>
+        <td><div class="billing-status-stack">${invoiceStatus}</div></td>
+        <td><button class="quiet-action compact-action" type="button" data-open-billing-item="${billingEscape(item.id)}" ${dataLoaded ? "" : "disabled"}>Acompanhar</button></td>
       </tr>`;
-    }).join("");
+    }).join("") + billingDataNotice();
   }
 
   function renderOverview() {
@@ -245,39 +311,100 @@ function createBillingFeature({ getBid, getQuotation, getBudgetItems, store, toa
       fields = `<div class="billing-form-grid">${fieldMarkup({ id: "billingInvoiceNumber", name: "invoice_number", label: "Número da nota fiscal", value: record.invoice_number || "", required: true })}${fieldMarkup({ id: "billingInvoiceDate", name: "invoice_date", label: "Data da nota fiscal", type: "date", value: record.invoice_date || new Date().toISOString().slice(0, 10), required: true })}${fieldMarkup({ id: "billingInvoiceQuantity", name: "quantity", label: "Quantidade faturada", type: "number", value: record.quantity ?? "", required: true, min: "0.0001", step: "0.0001" })}${fieldMarkup({ id: "billingInvoiceObservations", name: "observations", label: "Observações", type: "textarea", value: record.observations || "", wide: true })}</div>`;
     }
     const descriptions = {
-      commitment: `Empenhado: ${billingQuantity(itemSummary.committed || 0)} de ${billingQuantity(itemSummary.planned)}.`,
-      delivery: `Fornecido: ${billingQuantity(itemSummary.supplied)} de ${billingQuantity(itemSummary.planned)}.`,
+      commitment: `Pedido: ${billingQuantity(itemSummary.committed || 0)} de ${billingQuantity(itemSummary.planned)}.`,
+      delivery: `Entregue: ${billingQuantity(itemSummary.supplied)} de ${billingQuantity(itemSummary.planned)}.`,
       invoice: `Faturado: ${billingQuantity(itemSummary.billed)} de ${billingQuantity(itemSummary.planned)}.`,
     };
     return `<form class="billing-entry-form" data-billing-form="${kind}" novalidate><p class="billing-form-hint">${descriptions[kind]}</p>${fields}<p class="billing-form-error" data-billing-error="${kind}" role="alert"></p><div class="button-row end"><button class="quiet-action" type="button" data-cancel-entry="${kind}" ${isEditing ? "" : "hidden"}>Cancelar edição</button><button class="primary-action" type="submit">${isEditing ? "Salvar alterações" : `Registrar ${BILLING_LABELS[kind]}`}</button></div></form>`;
   }
 
+  function renderBillingSection(kind, itemId, row) {
+    const sections = {
+      commitment: {
+        title: "Pedido",
+        description: `${billingQuantity(row.committed)} de ${billingQuantity(row.planned)} un. registradas em ${row.commitments.length} ${row.commitments.length === 1 ? "empenho" : "empenhos"}.`,
+      },
+      delivery: {
+        title: "Entregue",
+        description: `${billingQuantity(row.supplied)} de ${billingQuantity(row.planned)} un. entregues.`,
+      },
+      invoice: {
+        title: "Faturado",
+        description: `${billingQuantity(row.billed)} de ${billingQuantity(row.planned)} un. faturadas.`,
+      },
+    };
+    const section = sections[kind];
+    const title = document.getElementById("billingDrawerTitle");
+    const description = document.getElementById("billingDrawerDescription");
+    title.textContent = section.title;
+    description.textContent = `Item ${row.item.item_number} · ${row.item.description || "Sem descrição"}`;
+    return `<section class="billing-drawer-section" aria-labelledby="billingActiveSectionTitle"><div class="billing-section-heading billing-active-section-heading"><div><h3 id="billingActiveSectionTitle">${section.title}</h3><p>${section.description}</p></div><button class="quiet-action" type="button" data-back-billing-overview>Voltar</button></div>${renderRecordForm(kind, itemId)}${renderEntryList(kind, itemId)}</section>`;
+  }
+
+  function renderBillingOverview(row, itemId) {
+    const categories = [
+      { kind: "commitment", title: "Pedido", quantity: row.committed, status: null },
+      { kind: "delivery", title: "Entregue", quantity: row.supplied, status: row.supplyStatus },
+      { kind: "invoice", title: "Faturado", quantity: row.billed, status: row.invoiceStatus },
+    ];
+    return `<section class="billing-drawer-section billing-flow-section" aria-label="Resumo do item"><div class="billing-section-heading"><div><h3>Acompanhamento</h3><p>Acesse cada etapa para consultar ou registrar movimentações.</p></div></div><div class="billing-flow-list">${categories.map((category) => {
+      const progress = row.planned > 0 ? Math.min(100, Math.round((category.quantity / row.planned) * 100)) : 0;
+      const status = category.status ? `<span class="billing-flow-status">${billingBadge(category.status, badgeTone(category.status))}</span>` : "";
+      const openLabel = `Abrir ${category.title.toLocaleLowerCase("pt-BR")}: ${billingQuantity(category.quantity)} de ${billingQuantity(row.planned)} unidades`;
+      const progressLabel = `${category.title}: ${billingQuantity(category.quantity)} de ${billingQuantity(row.planned)} unidades`;
+      return `<button class="billing-flow-card" type="button" data-open-billing-section="${category.kind}" aria-label="${billingEscape(openLabel)}"><span class="billing-flow-card-main"><span class="billing-flow-card-heading"><strong>${category.title}</strong>${status}</span><span class="billing-flow-card-quantity">${billingQuantity(category.quantity)} <small>de ${billingQuantity(row.planned)} un.</small></span><span class="billing-progress" data-tone="${category.status ? badgeTone(category.status) : "neutral"}" role="progressbar" aria-label="${billingEscape(progressLabel)}" aria-valuemin="0" aria-valuemax="${billingEscape(row.planned)}" aria-valuenow="${billingEscape(category.quantity)}"><span style="width:${progress}%"></span></span></span><span class="billing-flow-card-action">Ver ${category.title.toLocaleLowerCase("pt-BR")} <span aria-hidden="true">→</span></span></button>`;
+    }).join("")}</div></section>`;
+  }
+
   function renderDrawer() {
+    captureDraft();
     const itemId = state.selectedItemId;
     const item = budgetItems().find((row) => Number(row.id) === Number(itemId));
     if (!item) return;
     const row = summaryFor(item);
-    const fulfillment = row.fulfillment || {};
-    const productLink = fulfillment.purchase_link || (Array.isArray(item.supplier_links) ? item.supplier_links[0] : "") || "";
-    const progress = row.planned > 0 ? Math.min(100, Math.round((row.supplied / row.planned) * 100)) : 0;
-    const supplyTone = badgeTone(row.supplyStatus);
-    drawerContent.innerHTML = `<div class="billing-drawer-item-summary"><div><span class="eyebrow">ITEM DO ORÇAMENTO</span><h3>Item ${billingEscape(item.item_number)} · ${billingEscape(item.description || "Sem descrição")}</h3><p>${billingEscape([item.manufacturer, item.model].filter(Boolean).join(" · ") || item.unit || "")}</p></div><div class="billing-drawer-item-value"><span>Previsto</span><strong>${billingQuantity(row.planned)} un.</strong><small>${billingMoney(billingNumber(item.final_bid) * row.planned)}</small></div></div>
-      <section class="billing-drawer-section" aria-labelledby="billingSupplySummaryTitle"><div class="billing-section-heading"><div><h3 id="billingSupplySummaryTitle">Acompanhamento</h3><p>Fornecimento e faturamento são acompanhados separadamente.</p></div></div><div class="billing-detail-stats"><div><span>Fornecido</span><strong>${billingQuantity(row.supplied)} / ${billingQuantity(row.planned)}</strong><div class="billing-progress" data-tone="${supplyTone}" role="progressbar" aria-label="Progresso de fornecimento" aria-valuemin="0" aria-valuemax="${billingEscape(row.planned)}" aria-valuenow="${billingEscape(row.supplied)}"><span style="width:${progress}%"></span></div></div><div><span>Pendente</span><strong>${billingQuantity(row.pending)}</strong></div><div><span>Faturado</span><strong>${billingQuantity(row.billed)} / ${billingQuantity(row.planned)}</strong></div></div><div class="billing-status-pair">${billingBadge(row.supplyStatus, supplyTone)}${billingBadge(row.invoiceStatus, badgeTone(row.invoiceStatus))}</div></section>
-      <section class="billing-drawer-section" aria-labelledby="billingPurchaseTitle"><div class="billing-section-heading"><div><h3 id="billingPurchaseTitle">Fornecedor e compra</h3><p>Informe o fornecedor como texto livre.</p></div></div><form id="billingPurchaseForm" class="billing-entry-form" data-billing-form="purchase"><div class="billing-form-grid">${fieldMarkup({ id: "billingSupplierName", name: "supplier_name", label: "Fornecedor", value: fulfillment.supplier_name || "", wide: true })}${fieldMarkup({ id: "billingPurchaseOrder", name: "purchase_order_number", label: "Número do pedido", value: fulfillment.purchase_order_number || "" })}${fieldMarkup({ id: "billingPurchaseDate", name: "purchase_date", label: "Data da compra", type: "date", value: fulfillment.purchase_date || "" })}${fieldMarkup({ id: "billingPurchaseLink", name: "purchase_link", label: "Link do produto ou pedido", type: "url", value: productLink, wide: true, placeholder: "https://" })}</div><p class="billing-form-error" data-billing-error="purchase" role="alert"></p><div class="button-row end"><button class="primary-action" type="submit">Salvar dados da compra</button></div></form></section>
-      <section class="billing-drawer-section" aria-labelledby="billingCommitmentsTitle"><div class="billing-section-heading"><div><h3 id="billingCommitmentsTitle">Notas de empenho</h3><p>${row.commitments.length} ${row.commitments.length === 1 ? "empenho registrado" : "empenhos registrados"} · ${billingQuantity(row.committed)} un.</p></div></div>${renderRecordForm("commitment", itemId)}${renderEntryList("commitment", itemId)}</section>
-      <section class="billing-drawer-section" aria-labelledby="billingDeliveriesTitle"><div class="billing-section-heading"><div><h3 id="billingDeliveriesTitle">Entregas</h3><p>Registre entregas parciais ou a entrega total.</p></div></div>${renderRecordForm("delivery", itemId)}${renderEntryList("delivery", itemId)}</section>
-      <section class="billing-drawer-section" aria-labelledby="billingInvoicesTitle"><div class="billing-section-heading"><div><h3 id="billingInvoicesTitle">Notas fiscais</h3><p>Registre faturamentos parciais ou totais, independentes das entregas.</p></div></div>${renderRecordForm("invoice", itemId)}${renderEntryList("invoice", itemId)}</section>`;
+    const drawerTitle = document.getElementById("billingDrawerTitle");
+    const drawerDescription = document.getElementById("billingDrawerDescription");
+    if (state.activeSection) {
+      drawerContent.innerHTML = `<div class="billing-drawer-item-summary"><div><span class="eyebrow">ITEM DO ORÇAMENTO</span><h3>Item ${billingEscape(item.item_number)} · ${billingEscape(item.description || "Sem descrição")}</h3><p>${billingEscape([item.manufacturer, item.model].filter(Boolean).join(" · ") || item.unit || "")}</p></div><div class="billing-drawer-item-value"><span>Previsto</span><strong>${billingQuantity(row.planned)} un.</strong><small>${billingMoney(billingNumber(item.final_bid) * row.planned)}</small></div></div>${renderBillingSection(state.activeSection, itemId, row)}`;
+      restoreDraft();
+      return;
+    }
+    drawerTitle.textContent = "Detalhes do item";
+    drawerDescription.textContent = "Acompanhe o que foi pedido, entregue e faturado.";
+    drawerContent.innerHTML = `<div class="billing-drawer-item-summary"><div><span class="eyebrow">ITEM DO ORÇAMENTO</span><h3>Item ${billingEscape(item.item_number)} · ${billingEscape(item.description || "Sem descrição")}</h3><p>${billingEscape([item.manufacturer, item.model].filter(Boolean).join(" · ") || item.unit || "")}</p></div><div class="billing-drawer-item-value"><span>Previsto</span><strong>${billingQuantity(row.planned)} un.</strong><small>${billingMoney(billingNumber(item.final_bid) * row.planned)}</small></div></div>${renderBillingOverview(row, itemId)}`;
   }
 
   async function refreshData({ keepDrawer = true } = {}) {
     const bid = currentBid();
     if (!bid) return;
+    const changedBid = String(state.bidId) !== String(bid.id);
     state.bidId = bid.id;
-    const result = await store.getBillingData(bid.id);
-    state.fulfillment = result.fulfillment || [];
-    state.commitment = result.commitment || [];
-    state.delivery = result.delivery || [];
-    state.invoice = result.invoice || [];
+    if (changedBid) {
+      state.fulfillment = [];
+      state.commitment = [];
+      state.delivery = [];
+      state.invoice = [];
+      state.selectedItemId = null;
+      state.activeSection = null;
+    }
+    state.dataStatus = "loading";
+    const requestId = ++state.refreshRequestId;
+    renderOverview();
+    try {
+      const result = await store.getBillingData(bid.id);
+      if (requestId !== state.refreshRequestId || String(currentBid()?.id) !== String(bid.id)) return;
+      state.fulfillment = result?.fulfillment || [];
+      state.commitment = result?.commitment || [];
+      state.delivery = result?.delivery || [];
+      state.invoice = result?.invoice || [];
+      state.dataStatus = "ready";
+    } catch {
+      if (requestId !== state.refreshRequestId || String(currentBid()?.id) !== String(bid.id)) return;
+      state.dataStatus = "error";
+      renderOverview();
+      if (keepDrawer && drawer?.open && state.selectedItemId) renderDrawer();
+      return;
+    }
     renderOverview();
     if (keepDrawer && drawer?.open && state.selectedItemId) renderDrawer();
   }
@@ -286,15 +413,21 @@ function createBillingFeature({ getBid, getQuotation, getBudgetItems, store, toa
     const item = budgetItems().find((row) => Number(row.id) === Number(itemId));
     if (!item) return;
     state.selectedItemId = Number(itemId);
+    state.activeSection = null;
     state.editing = { commitment: null, delivery: null, invoice: null };
+    state.draft = null;
     renderDrawer();
     if (!drawer.open) drawer.showModal();
   }
 
   function closeDrawer() {
+    if (discardDialog.open) discardDialog.close();
+    discardAction = null;
     if (drawer.open) drawer.close();
     state.selectedItemId = null;
+    state.activeSection = null;
     state.editing = { commitment: null, delivery: null, invoice: null };
+    state.draft = null;
   }
 
   function validateQuantity(kind, itemId, quantity, entryId) {
@@ -314,25 +447,6 @@ function createBillingFeature({ getBid, getQuotation, getBudgetItems, store, toa
   function reportFormError(form, error) {
     const message = error?.message || "Não foi possível salvar os dados.";
     form.querySelector("[data-billing-error]").textContent = message;
-  }
-
-  async function handlePurchaseSave(form) {
-    const values = new FormData(form);
-    const purchaseLink = String(values.get("purchase_link") || "").trim();
-    if (purchaseLink) {
-      let url;
-      try { url = new URL(purchaseLink); } catch { throw new Error("Informe um link válido do produto ou pedido."); }
-      if (!["http:", "https:"].includes(url.protocol)) throw new Error("O link precisa começar com http:// ou https://.");
-    }
-    await runBusy(() => store.saveBillingFulfillment(state.bidId, state.selectedItemId, {
-      supplier_name: String(values.get("supplier_name") || "").trim(),
-      purchase_link: purchaseLink,
-      purchase_order_number: String(values.get("purchase_order_number") || "").trim(),
-      purchase_date: values.get("purchase_date") || null,
-    }), "Salvando dados da compra…");
-    onSaved?.();
-    await refreshData();
-    toast("Dados do fornecedor e da compra salvos.");
   }
 
   async function handleRecordSave(kind, form) {
@@ -359,6 +473,7 @@ function createBillingFeature({ getBid, getQuotation, getBudgetItems, store, toa
     await runBusy(() => store.saveBillingRecord(kind, state.bidId, state.selectedItemId, record, entryId), `Salvando ${BILLING_LABELS[kind]}…`);
     onSaved?.();
     state.editing[kind] = null;
+    state.draft = null;
     await refreshData();
     toast(`${BILLING_LABELS[kind][0].toLocaleUpperCase("pt-BR")}${BILLING_LABELS[kind].slice(1)} salvo${kind === "invoice" ? "a" : ""}.`);
   }
@@ -368,6 +483,7 @@ function createBillingFeature({ getBid, getQuotation, getBudgetItems, store, toa
     await runBusy(() => store.deleteBillingRecord(kind, id, state.bidId, state.selectedItemId), `Excluindo ${BILLING_LABELS[kind]}…`);
     onSaved?.();
     if (Number(state.editing[kind]) === Number(id)) state.editing[kind] = null;
+    state.draft = null;
     await refreshData();
     toast(`${BILLING_LABELS[kind][0].toLocaleUpperCase("pt-BR")}${BILLING_LABELS[kind].slice(1)} excluído${kind === "invoice" ? "a" : ""}.`);
   }
@@ -386,20 +502,42 @@ function createBillingFeature({ getBid, getQuotation, getBudgetItems, store, toa
       renderTable();
     });
     root.addEventListener("click", (event) => {
+      if (event.target.closest("[data-retry-billing-data]")) {
+        void refreshData();
+        return;
+      }
       const button = event.target.closest("[data-open-billing-item]");
       if (button) openItem(button.dataset.openBillingItem);
     });
     drawer.addEventListener("click", (event) => {
-      if (event.target.closest("[data-close-billing-drawer]")) closeDrawer();
+      if (event.target.closest("[data-close-billing-drawer]")) requestDiscard(closeDrawer);
+      const sectionButton = event.target.closest("[data-open-billing-section]");
+      if (sectionButton) {
+        state.activeSection = sectionButton.dataset.openBillingSection;
+        renderDrawer();
+      }
+      if (event.target.closest("[data-back-billing-overview]")) {
+        requestDiscard(() => {
+          state.activeSection = null;
+          state.draft = null;
+          renderDrawer();
+        });
+      }
       const editButton = event.target.closest("[data-edit-billing-entry]");
       if (editButton) {
-        state.editing[editButton.dataset.entryKind] = Number(editButton.dataset.editBillingEntry);
-        renderDrawer();
+        requestDiscard(() => {
+          state.editing[editButton.dataset.entryKind] = Number(editButton.dataset.editBillingEntry);
+          state.draft = null;
+          renderDrawer();
+        });
       }
       const cancelButton = event.target.closest("[data-cancel-entry]");
       if (cancelButton) {
-        state.editing[cancelButton.dataset.cancelEntry] = null;
-        renderDrawer();
+        requestDiscard(() => {
+          state.editing[cancelButton.dataset.cancelEntry] = null;
+          state.draft = null;
+          renderDrawer();
+        });
       }
       const deleteButton = event.target.closest("[data-delete-billing-entry]");
       if (deleteButton) void handleDelete(deleteButton.dataset.entryKind, Number(deleteButton.dataset.deleteBillingEntry))
@@ -412,13 +550,30 @@ function createBillingFeature({ getBid, getQuotation, getBudgetItems, store, toa
       event.preventDefault();
       clearError(form);
       const kind = form.dataset.billingForm;
-      void (kind === "purchase" ? handlePurchaseSave(form) : handleRecordSave(kind, form))
+      void handleRecordSave(kind, form)
         .then(() => renderDrawer())
         .catch((error) => reportFormError(form, error));
     });
     drawer.addEventListener("cancel", (event) => {
       event.preventDefault();
-      closeDrawer();
+      requestDiscard(closeDrawer);
+    });
+    discardDialog.addEventListener("click", (event) => {
+      if (event.target.closest("[data-billing-continue]")) {
+        discardAction = null;
+        discardDialog.close();
+      }
+      if (event.target.closest("[data-billing-discard]")) {
+        const action = discardAction;
+        discardAction = null;
+        discardDialog.close();
+        action?.();
+      }
+    });
+    discardDialog.addEventListener("cancel", (event) => {
+      event.preventDefault();
+      discardAction = null;
+      discardDialog.close();
     });
   }
 
@@ -439,7 +594,9 @@ function createBillingFeature({ getBid, getQuotation, getBudgetItems, store, toa
 
   function reset() {
     closeDrawer();
+    state.refreshRequestId += 1;
     state.bidId = null;
+    state.dataStatus = "idle";
     state.fulfillment = [];
     state.commitment = [];
     state.delivery = [];
