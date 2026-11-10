@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "release_id": "2026-11-04-pacote-de-melhorias-4-homolog",
+  "release_id": "2026-11-10-fluxo-de-caixa-distribuicao-homolog",
   "environment": "homolog",
   "target_branch": "homolog",
   "items": [
@@ -2132,6 +2132,18 @@
         "8fc9ae9ec90db44b93e9bdf94890b8294ad5ecde"
       ],
       "migrations": []
+    },
+    {
+      "id": "FLUXO-CAIXA-DISTRIBUICAO-001",
+      "backend_commits": [
+        "77211e7b28adf09450df7ed78f92be0bbca1bda2"
+      ],
+      "frontend_commits": [
+        "97cb20201bf6980c783aa0e7a8fb66e6eaf15f31"
+      ],
+      "migrations": [
+        "supabase/migrations/20261110120000_fluxo_caixa_distribuicao_por_item.sql"
+      ]
     }
   ]
 }
