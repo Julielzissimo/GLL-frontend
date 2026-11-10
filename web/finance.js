@@ -912,8 +912,7 @@ export function createCashflowFeature(options = {}) {
       <label class="cashflow-field">Data da retirada<input name="withdrawn_on" type="date" value="${dateInputValue()}" required /></label>
       <label class="cashflow-field">Forma de pagamento<select name="payment_method" required>${selectOptions(PAYMENT_METHODS, "pix")}</select></label>
       <label class="cashflow-field cashflow-field-wide">Observações<textarea name="notes" rows="2" maxlength="500"></textarea></label></div>
-      <p class="cashflow-inline-note">A retirada é debitada do lucro deste edital e reduz o caixa. Ela não altera despesas nem reembolsos.</p>
-      ${commonConfirmation("Confirmo que a retirada foi efetivada e está vinculada ao edital exibido.")}`;
+      <p class="cashflow-inline-note">A retirada é debitada do lucro deste edital e reduz o caixa. Ela não altera despesas nem reembolsos.</p>`;
     openDialog("Registrar retirada", "Retire somente o saldo de lucro disponível deste edital.", body, "Confirmar retirada", "withdrawal");
     dialog.querySelector("form").dataset.bidId = String(bidId);
     dialog.querySelector("form").dataset.participantId = String(participantId);
@@ -975,7 +974,7 @@ export function createCashflowFeature(options = {}) {
     if (!isAdmin()) throw new Error("Somente Administradores podem registrar ou alterar lançamentos financeiros.");
     const formData = new FormData(form);
     const confirmation = formData.get("confirmation") === "on";
-    const confirmationRequired = ["withdrawal", "reverse-receipt"].includes(state.drawerKind);
+    const confirmationRequired = state.drawerKind === "reverse-receipt";
     if (confirmationRequired && !confirmation) throw new Error("Confirme que revisou os dados antes de salvar.");
 
     if (state.drawerKind === "receipt") {
