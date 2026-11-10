@@ -89,3 +89,31 @@ test("receipt RPC payload allows an item line with no invoice", async () => {
   assert.equal(client.calls[0].args.p_lines[0].invoice_id, null);
   assert.equal(client.calls[0].args.p_lines[0].quotation_item_id, "101");
 });
+
+test("receipt payload carries each item's distribution choice without a justification", async () => {
+  const client = makeClient();
+  await createCashflowService(client).recordReceipt({
+    bidId: "bid-1", receivedOn: "2026-11-10", paymentMethod: "pix",
+    distributionMode: "manual", idempotencyKey: "key-2",
+    lines: [
+      { quotationItemId: "101", receivedQuantity: 1, amountCents: 10000, costCents: 4000,
+        reserveCents: 600, distributionMode: "default" },
+      { quotationItemId: "102", receivedQuantity: 1, amountCents: 5000, costCents: 2000,
+        reserveCents: 0, distributionMode: "manual",
+        participantAllocations: [{ participantId: "party-1", amountCents: 3000 }] },
+    ],
+  });
+  const args = client.calls[0].args;
+  assert.equal(args.p_distribution_justification, "");
+  assert.deepEqual(args.p_lines.map((line) => line.distribution_mode), ["default", "manual"]);
+  assert.equal(args.p_lines[1].participant_allocations[0].amount, "30.00");
+});
+
+test("participant payload saves equal division preference", async () => {
+  const client = makeClient();
+  await createCashflowService(client).saveParty({
+    id: "party-1", name: "Participante", sharePercent: 0, equalShare: true,
+  });
+  assert.equal(client.calls[0].name, "save_cashflow_party");
+  assert.equal(client.calls[0].args.p_equal_share, true);
+});

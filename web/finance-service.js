@@ -228,13 +228,14 @@ export function createCashflowService(client) {
   return {
     load: (bids) => loadCashflowData(client, bids),
 
-    async saveParty({ id, name, sharePercent, active = true }) {
+    async saveParty({ id, name, sharePercent, equalShare = false, active = true }) {
       const { data, error } = await client.rpc("save_cashflow_party", {
         p_party_id: id || null,
         p_name: name,
         p_party_type: "participant",
         p_default_share_percent: String(sharePercent ?? 0),
         p_active: Boolean(active),
+        p_equal_share: Boolean(equalShare),
       });
       assertSupabase(error);
       return data;
@@ -250,6 +251,7 @@ export function createCashflowService(client) {
         cost_justification: line.costJustification || "",
         reserve_amount: moneyForApi(line.reserveCents),
         reserve_justification: line.reserveJustification || "",
+        distribution_mode: line.distributionMode,
         participant_allocations: (line.participantAllocations || []).map((allocation) => ({
           participant_id: String(allocation.participantId),
           amount: moneyForApi(allocation.amountCents),

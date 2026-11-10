@@ -7,6 +7,7 @@ import {
   moneyToDecimalString,
   parseMoneyToCents,
   splitCentsByPercent,
+  splitCentsByParticipantRules,
   validateInvoiceReceipt,
   validateReceiptLine,
 } from "../web/finance-money.js";
@@ -43,6 +44,25 @@ test("rejects shares that do not reconcile to one hundred percent", () => {
     { id: "a", percent: "60" },
     { id: "b", percent: "39" },
   ]), /somar 100%/);
+});
+
+test("divides a cent-exact profit equally among three participants", () => {
+  const participants = ["a", "b", "c"].map((id) => ({ id, equal_share: true, default_share_percent: 0 }));
+  assert.deepEqual(splitCentsByParticipantRules(10000, participants).map((row) => row.cents), [3334, 3333, 3333]);
+  assert.deepEqual(splitCentsByParticipantRules(5, participants).map((row) => row.cents), [2, 2, 1]);
+});
+
+test("equal participants divide the profit left after fixed percentages", () => {
+  const participants = [
+    { id: "a", equal_share: false, default_share_percent: 20 },
+    { id: "b", equal_share: true, default_share_percent: 0 },
+    { id: "c", equal_share: true, default_share_percent: 0 },
+  ];
+  assert.deepEqual(splitCentsByParticipantRules(101, participants).map((row) => row.cents), [20, 41, 40]);
+  assert.throws(() => splitCentsByParticipantRules(100, [
+    { id: "a", equal_share: false, default_share_percent: 101 },
+    { id: "b", equal_share: true, default_share_percent: 0 },
+  ]), /entre 0% e 100%/);
 });
 
 test("reconciles profit and preserves an item loss when cost is above the receipt", () => {
