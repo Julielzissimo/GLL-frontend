@@ -30,6 +30,24 @@ const TABS = Object.freeze([
   ["history", "Histórico"],
 ]);
 
+const HISTORY_EVENT_LABELS = Object.freeze({
+  settings_updated: "Atualizou as configurações financeiras",
+  party_created: "Cadastrou um participante financeiro",
+  party_updated: "Editou um participante financeiro",
+  receipt_recorded: "Registrou um recebimento",
+  receipt_reversed: "Estornou um recebimento",
+  expense_recorded: "Criou uma nova despesa",
+  reimbursement_paid: "Pagou um reembolso",
+  reimbursement_received: "Registrou o recebimento de um reembolso",
+  profit_withdrawn: "Registrou uma retirada de lucro",
+});
+
+function historyEventLabel(eventType) {
+  return Object.prototype.hasOwnProperty.call(HISTORY_EVENT_LABELS, eventType)
+    ? HISTORY_EVENT_LABELS[eventType]
+    : "Registrou uma alteração financeira";
+}
+
 function escapeHtml(value) {
   return String(value ?? "")
     .replaceAll("&", "&amp;")
@@ -479,12 +497,12 @@ export function createCashflowFeature(options = {}) {
     });
     if (!rows.length) return emptyState("Nenhum evento no histórico", "Cada operação financeira e ajuste manual gera um registro de auditoria.");
     const users = getUsers() || [];
-    return `<div class="cashflow-table-wrap"><table class="cashflow-table"><thead><tr><th>Data e hora</th><th>Evento</th><th>Edital</th><th>Autor</th><th>Detalhe</th></tr></thead><tbody>${rows.map((event) => {
+    return `<div class="cashflow-table-wrap"><table class="cashflow-table"><thead><tr><th>Data e hora</th><th>Alteração</th><th>Edital</th><th>Autor</th><th>Detalhe</th></tr></thead><tbody>${rows.map((event) => {
       const actor = users.find((user) => String(user.auth_user_id) === String(event.actor_id));
       const actorName = actor?.display_name || actor?.full_name || actor?.name || "Usuário do GLL";
       const details = event.details && typeof event.details === "object" ? event.details : {};
       const detail = details.description || details.reason || details.reference || (details.amount ? formatBrl(parseMoneyToCents(details.amount)) : "—");
-      return `<tr><td>${escapeHtml(new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short" }).format(new Date(event.created_at)))}</td><td><strong>${escapeHtml(event.event_type)}</strong></td><td>${event.bid_id ? escapeHtml(bidName(accessibleBids(), event.bid_id)) : "Geral da empresa"}</td><td>${escapeHtml(actorName)}</td><td>${escapeHtml(detail)}</td></tr>`;
+      return `<tr><td>${escapeHtml(new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short" }).format(new Date(event.created_at)))}</td><td><strong>${escapeHtml(historyEventLabel(event.event_type))}</strong></td><td>${event.bid_id ? escapeHtml(bidName(accessibleBids(), event.bid_id)) : "Geral da empresa"}</td><td>${escapeHtml(actorName)}</td><td>${escapeHtml(detail)}</td></tr>`;
     }).join("")}</tbody></table></div>`;
   }
 

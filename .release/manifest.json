@@ -2207,6 +2207,14 @@
         "5faf7b6b06cb1dd078082619c0349b254257bf64"
       ],
       "migrations": []
+    },
+    {
+      "id": "FLUXO-CAIXA-HISTORICO-ALTERACAO-001",
+      "backend_commits": [],
+      "frontend_commits": [
+        "6d7a34c5251749d3049645444964abf8840abe05"
+      ],
+      "migrations": []
     }
   ]
 }
