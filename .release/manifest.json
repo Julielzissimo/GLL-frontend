@@ -2150,6 +2150,14 @@
       ]
     },
     {
+      "id": "FLUXO-CAIXA-RECEBIMENTO-ESTORNO-001",
+      "backend_commits": [],
+      "frontend_commits": [
+        "08f90cc9f7a191f5aa55aed0b1fd7cb185d9a710"
+      ],
+      "migrations": []
+    },
+    {
       "id": "FLUXO-CAIXA-RECEBIMENTO-ITENS-001",
       "backend_commits": [],
       "frontend_commits": [
