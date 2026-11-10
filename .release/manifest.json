@@ -2188,6 +2188,14 @@
         "4c65e0087cb349215d69bef89464dd97b0c9df6f"
       ],
       "migrations": []
+    },
+    {
+      "id": "FLUXO-CAIXA-ABAS-001",
+      "backend_commits": [],
+      "frontend_commits": [
+        "7008658a0c43a5e2b1d3d73d7fa97adbb188377a"
+      ],
+      "migrations": []
     }
   ]
 }
