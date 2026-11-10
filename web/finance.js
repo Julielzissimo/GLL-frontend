@@ -200,6 +200,21 @@ export function createCashflowFeature(options = {}) {
   dialog.setAttribute("aria-labelledby", "cashflowDrawerTitle");
   document.body.append(dialog);
 
+  const receiptDiscardDialog = document.createElement("dialog");
+  receiptDiscardDialog.id = "cashflowReceiptDiscardDialog";
+  receiptDiscardDialog.className = "quotation-item-discard-modal";
+  receiptDiscardDialog.setAttribute("aria-labelledby", "cashflowReceiptDiscardTitle");
+  receiptDiscardDialog.setAttribute("aria-describedby", "cashflowReceiptDiscardDescription");
+  receiptDiscardDialog.innerHTML = `<div class="quotation-item-discard-content">
+    <h2 id="cashflowReceiptDiscardTitle">Descartar alterações?</h2>
+    <p id="cashflowReceiptDiscardDescription">Há alterações não salvas no recebimento. Se você sair agora, elas serão perdidas.</p>
+    <div class="button-row end">
+      <button class="quiet-action" type="button" data-cf-discard-continue autofocus>Continuar editando</button>
+      <button class="danger-action" type="button" data-cf-discard-confirm>Descartar alterações</button>
+    </div>
+  </div>`;
+  document.body.append(receiptDiscardDialog);
+
   const state = {
     status: "idle",
     error: "",
@@ -212,6 +227,7 @@ export function createCashflowFeature(options = {}) {
     saving: false,
     openingReceipt: false,
     receiptOpenRequest: 0,
+    receiptDirty: false,
   };
 
   const accessibleBids = () => (Array.isArray(getBids()) ? getBids() : []);
@@ -241,6 +257,7 @@ export function createCashflowFeature(options = {}) {
   }
 
   function openDialog(title, subtitle, body, submitLabel, kind, wide = false) {
+    if (!dialog.open && kind === "receipt") state.receiptDirty = false;
     state.drawerKind = kind;
     dialog.classList.toggle("cashflow-dialog-wide", wide);
     const eyebrow = kind === "expense" ? "" : '<span class="eyebrow">LANÇAMENTO FINANCEIRO</span>';
@@ -255,9 +272,26 @@ export function createCashflowFeature(options = {}) {
   }
 
   function closeDialog() {
+    if (receiptDiscardDialog.open) receiptDiscardDialog.close();
     if (dialog.open) dialog.close();
     state.drawerKind = null;
+    state.receiptDirty = false;
     dialog.innerHTML = "";
+  }
+
+  function requestCloseDialog() {
+    if (state.saving) return;
+    if (state.drawerKind !== "receipt" || !state.receiptDirty) {
+      closeDialog();
+      return;
+    }
+    if (!receiptDiscardDialog.open) receiptDiscardDialog.showModal();
+  }
+
+  function trackReceiptChanges(event) {
+    if (state.drawerKind === "receipt" && event.target.closest?.("#cashflowDrawerForm")) {
+      state.receiptDirty = true;
+    }
   }
 
   function renderHeaderActions() {
@@ -312,7 +346,7 @@ export function createCashflowFeature(options = {}) {
       return `<tr><td>${formatDate(receipt.received_on)}</td><td><strong>${escapeHtml(bidName(accessibleBids(), receipt.bid_id))}</strong><span class="cashflow-row-sub">${escapeHtml(receipt.payment_reference || paymentMethodLabel(receipt.payment_method))}</span></td>
         <td>${itemText || "—"}</td><td class="cashflow-number"><strong>${formatBrl(parseMoneyToCents(receipt.gross_amount))}</strong></td>
         <td class="cashflow-number">${formatBrl(parseMoneyToCents(receipt.cost_total))}</td><td class="cashflow-number">${formatBrl(parseMoneyToCents(receipt.expense_reserve_amount))}</td>
-        <td class="cashflow-number"><strong>${formatBrl(parseMoneyToCents(receipt.distributable_profit))}</strong></td><td><button class="text-action" type="button" data-cf-action="receipt-detail" data-id="${escapeHtml(receipt.id)}">Detalhes</button>${isAdmin() ? ` <button class="text-action cashflow-danger-action" type="button" data-cf-action="reverse-receipt" data-id="${escapeHtml(receipt.id)}">Estornar</button>` : ""}</td></tr>`;
+        <td class="cashflow-number"><strong>${formatBrl(parseMoneyToCents(receipt.distributable_profit))}</strong></td><td><button class="text-action" type="button" data-cf-action="receipt-detail" data-id="${escapeHtml(receipt.id)}">Detalhes</button></td></tr>`;
     }).join("");
     return `<div class="cashflow-table-wrap"><table class="cashflow-table"><thead><tr><th>Data do crédito</th><th>Edital</th><th>Notas e itens</th><th class="cashflow-number">Recebido</th><th class="cashflow-number">Custos</th><th class="cashflow-number">Reserva</th><th class="cashflow-number">Lucro distribuído</th><th>Ações</th></tr></thead><tbody>${body}</table></div>`;
   }
@@ -1043,6 +1077,7 @@ export function createCashflowFeature(options = {}) {
       renderWorkspace();
       return;
     }
+    trackReceiptChanges(event);
     if (target.matches("[data-cf-amount], [data-cf-reserve], [data-cf-allocation]")) target.dataset.touched = "true";
     if (target.matches("[data-cf-quantity], [data-cf-amount], [data-cf-reserve], [data-cf-allocation]")) updateReceiptForm();
   }
@@ -1055,6 +1090,7 @@ export function createCashflowFeature(options = {}) {
       renderWorkspace();
       return;
     }
+    trackReceiptChanges(event);
     if (target.matches("[data-cf-line-check]")) {
       const id = target.dataset.cfLineCheck;
       const card = target.closest("[data-cf-line-card]");
@@ -1098,7 +1134,7 @@ export function createCashflowFeature(options = {}) {
   function onClick(event) {
     const target = event.target.closest("[data-cf-action], [data-cf-tab], [data-cf-close]");
     if (!target) return;
-    if (target.hasAttribute("data-cf-close")) return closeDialog();
+    if (target.hasAttribute("data-cf-close")) return requestCloseDialog();
     if (target.dataset.cfTab) {
       state.activeTab = target.dataset.cfTab;
       renderWorkspace();
@@ -1134,7 +1170,26 @@ export function createCashflowFeature(options = {}) {
   dialog.addEventListener("submit", onSubmit);
   dialog.addEventListener("click", onClick);
   dialog.addEventListener("click", (event) => {
-    if (event.target === dialog) closeDialog();
+    if (event.target === dialog) requestCloseDialog();
+  });
+  dialog.addEventListener("cancel", (event) => {
+    event.preventDefault();
+    requestCloseDialog();
+  });
+  receiptDiscardDialog.addEventListener("click", (event) => {
+    if (event.target === receiptDiscardDialog) {
+      receiptDiscardDialog.close();
+      return;
+    }
+    if (event.target.closest("[data-cf-discard-continue]")) {
+      receiptDiscardDialog.close();
+      return;
+    }
+    if (event.target.closest("[data-cf-discard-confirm]")) closeDialog();
+  });
+  receiptDiscardDialog.addEventListener("cancel", (event) => {
+    event.preventDefault();
+    receiptDiscardDialog.close();
   });
 
   return {
