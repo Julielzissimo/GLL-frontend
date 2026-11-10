@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "release_id": "2026-11-10-fluxo-de-caixa-distribuicao-homolog",
+  "release_id": "2026-11-10-fluxo-de-caixa-reserva-homolog",
   "environment": "homolog",
   "target_branch": "homolog",
   "items": [
@@ -2137,13 +2137,16 @@
       "id": "FLUXO-CAIXA-DISTRIBUICAO-001",
       "backend_commits": [
         "77211e7b28adf09450df7ed78f92be0bbca1bda2",
-        "208064fa038098b6bf5e2b87ac054915b0a1cd28"
+        "208064fa038098b6bf5e2b87ac054915b0a1cd28",
+        "f57b2241063cdcf9f84cc52876061be85b5ca804"
       ],
       "frontend_commits": [
-        "97cb20201bf6980c783aa0e7a8fb66e6eaf15f31"
+        "97cb20201bf6980c783aa0e7a8fb66e6eaf15f31",
+        "c85853e4fde4c418db48126a53675af67b0ce667"
       ],
       "migrations": [
-        "supabase/migrations/20261110120000_fluxo_caixa_distribuicao_por_item.sql"
+        "supabase/migrations/20261110120000_fluxo_caixa_distribuicao_por_item.sql",
+        "supabase/migrations/20261110164000_cashflow_reserve_without_justification.sql"
       ]
     }
   ]
