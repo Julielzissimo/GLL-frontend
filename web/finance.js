@@ -556,7 +556,6 @@ export function createCashflowFeature(options = {}) {
         <label class="cashflow-field">Lucro distribuível (R$)<input type="text" value="${escapeHtml(amountAsInput(profit))}" data-cf-profit="${id}" readonly aria-readonly="true" disabled /></label></div>
         <label class="cashflow-checkbox-field"><input type="checkbox" name="manual_${id}" data-cf-manual="${id}" disabled /><span>Distribuir o lucro deste item manualmente</span></label>
         ${allocations ? `<div class="cashflow-allocation-list" data-cf-allocation-list="${id}"><strong>Distribuição do lucro deste item</strong>${allocations}</div>` : `<p class="cashflow-inline-note">Cadastre participantes financeiros antes de distribuir o lucro.</p>`}
-        <label class="cashflow-field cashflow-reason-field">Justificativa para reserva manual<input type="text" name="reserve_reason_${id}" maxlength="500" data-cf-reserve-reason="${id}" disabled /></label>
       </div>
     </article>`;
   }
@@ -708,7 +707,6 @@ export function createCashflowFeature(options = {}) {
         }
       }
       for (const field of allocationFields) field.disabled = !checked || !manual?.checked;
-      for (const reasonInput of card.querySelectorAll("[data-cf-reserve-reason]")) reasonInput.disabled = !checked;
     }
     const totals = form.querySelector("[data-cf-receipt-total]");
     try {
@@ -870,9 +868,6 @@ export function createCashflowFeature(options = {}) {
       const distributionMode = selected.some((line) => form.querySelector(`[data-cf-manual="${line.id}"]`)?.checked) ? "manual" : "default";
       const lines = selected.map((line) => {
         const formId = line.id;
-        const reserveReason = String(form.querySelector(`[data-cf-reserve-reason="${formId}"]`)?.value || "").trim();
-        const defaultReserve = defaultReserveCents(line.amountCents, line.costCents, state.data.settings.default_expense_reserve_percent);
-        if (line.reserveCents !== defaultReserve && reserveReason.length < 5) throw new Error(`Justifique a reserva manual do item ${line.item.item_number}.`);
         let participantAllocations = [];
         const lineDistributionMode = form.querySelector(`[data-cf-manual="${formId}"]`)?.checked ? "manual" : "default";
         if (lineDistributionMode === "default" && line.profitCents > 0) splitCentsByParticipantRules(line.profitCents, activeParticipants());
@@ -892,7 +887,7 @@ export function createCashflowFeature(options = {}) {
           costCents: line.costCents,
           costJustification: "",
           reserveCents: line.reserveCents,
-          reserveJustification: reserveReason,
+          reserveJustification: "",
           distributionMode: lineDistributionMode,
           participantAllocations,
         };
