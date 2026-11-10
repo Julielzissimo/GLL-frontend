@@ -2239,6 +2239,14 @@
         "f79415fb8c93b817435f7904f4b17a78c2379283"
       ],
       "migrations": []
+    },
+    {
+      "id": "DESIGN-SYSTEM-ANTETITULOS-001",
+      "backend_commits": [],
+      "frontend_commits": [
+        "88a59efda223b01f2f57c53b3c32eaa85b18b729"
+      ],
+      "migrations": []
     }
   ]
 }
