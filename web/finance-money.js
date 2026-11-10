@@ -111,6 +111,40 @@ export function splitCentsByPercent(totalCents, shares) {
   }));
 }
 
+export function splitCentsByParticipantRules(totalCents, participants) {
+  const equal = participants.filter((party) => party.equal_share);
+  if (!equal.length) {
+    return splitCentsByPercent(totalCents, participants.map((party) => ({
+      id: party.id, percent: party.default_share_percent || 0,
+    })));
+  }
+  const fixed = participants.filter((party) => !party.equal_share);
+  const fixedBasisPoints = fixed.reduce((sum, party) => sum + percentToBasisPoints(party.default_share_percent || 0), 0);
+  if (fixedBasisPoints < 0 || fixedBasisPoints > 10000) {
+    throw new Error("Os percentuais fixos devem ficar entre 0% e 100%.");
+  }
+  const denominator = BigInt(10000 * equal.length);
+  const total = BigInt(totalCents);
+  if (total < 0n) throw new Error("O valor a distribuir não pode ser negativo.");
+  const rows = participants.map((party) => {
+    const weight = party.equal_share
+      ? BigInt(10000 - fixedBasisPoints)
+      : BigInt(percentToBasisPoints(party.default_share_percent || 0) * equal.length);
+    const weighted = total * weight;
+    return { id: party.id, cents: weighted / denominator, remainder: weighted % denominator };
+  });
+  let remaining = total - rows.reduce((sum, row) => sum + row.cents, 0n);
+  for (const row of rows.slice().sort((a, b) => {
+    if (a.remainder !== b.remainder) return a.remainder > b.remainder ? -1 : 1;
+    return String(a.id).localeCompare(String(b.id));
+  })) {
+    if (remaining <= 0n) break;
+    row.cents += 1n;
+    remaining -= 1n;
+  }
+  return rows.map((row) => ({ id: row.id, cents: Number(row.cents) }));
+}
+
 export function validateReceiptLine({ amountCents, costCents, reserveCents }) {
   const amount = Number(amountCents);
   const cost = Number(costCents);
