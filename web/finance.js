@@ -303,18 +303,20 @@ export function createCashflowFeature(options = {}) {
     if (!rows.length) return emptyState("Nenhum recebimento encontrado", "Os recebimentos aparecem depois da confirmação de um crédito vinculado a um item vencido, com ou sem nota fiscal.");
     const body = rows.map((receipt) => {
       const lines = rowsForReceipt(receipt.id);
-      const itemText = lines.map((line) => {
+      const itemNumbers = [...new Set(lines.map((line) => {
         const invoice = line.invoice_id == null ? null : data.allInvoices.find((row) => String(row.id) === String(line.invoice_id));
         const item = data.awardedItems.find((row) => String(row.quotation_item_id) === String(line.quotation_item_id));
-        const source = invoice?.invoice_number ? `NF ${invoice.invoice_number}` : "Sem nota fiscal";
-        return `<span class="cashflow-row-sub">${escapeHtml(source)} · Item ${escapeHtml(invoice?.item_number ?? item?.item_number ?? "—")} · ${escapeHtml(line.received_quantity)} un.</span>`;
-      }).join("");
+        const itemNumber = invoice?.item_number ?? item?.item_number;
+        return itemNumber == null ? "" : String(itemNumber).trim();
+      }).filter(Boolean))];
+      const itemText = itemNumbers.join(", ");
+      const escapedItemText = escapeHtml(itemText);
       return `<tr><td>${formatDate(receipt.received_on)}</td><td><strong>${escapeHtml(bidName(accessibleBids(), receipt.bid_id))}</strong><span class="cashflow-row-sub">${escapeHtml(receipt.payment_reference || paymentMethodLabel(receipt.payment_method))}</span></td>
-        <td>${itemText || "—"}</td><td class="cashflow-number"><strong>${formatBrl(parseMoneyToCents(receipt.gross_amount))}</strong></td>
+        <td class="cashflow-receipt-items-cell"><span class="cashflow-receipt-items"${itemText ? ` title="${escapedItemText}"` : ""}>${escapedItemText || "—"}</span></td><td class="cashflow-number"><strong>${formatBrl(parseMoneyToCents(receipt.gross_amount))}</strong></td>
         <td class="cashflow-number">${formatBrl(parseMoneyToCents(receipt.cost_total))}</td><td class="cashflow-number">${formatBrl(parseMoneyToCents(receipt.loss_amount))}</td><td class="cashflow-number">${formatBrl(parseMoneyToCents(receipt.expense_reserve_amount))}</td>
         <td class="cashflow-number"><strong>${formatBrl(parseMoneyToCents(receipt.distributable_profit))}</strong></td><td><button class="text-action" type="button" data-cf-action="receipt-detail" data-id="${escapeHtml(receipt.id)}">Detalhes</button>${isAdmin() ? ` <button class="text-action cashflow-danger-action" type="button" data-cf-action="reverse-receipt" data-id="${escapeHtml(receipt.id)}">Estornar</button>` : ""}</td></tr>`;
     }).join("");
-    return `<div class="cashflow-table-wrap"><table class="cashflow-table"><thead><tr><th>Data do crédito</th><th>Edital</th><th>Notas e itens</th><th class="cashflow-number">Recebido</th><th class="cashflow-number">Custos</th><th class="cashflow-number">Prejuízo</th><th class="cashflow-number">Reserva</th><th class="cashflow-number">Lucro distribuído</th><th>Ações</th></tr></thead><tbody>${body}</tbody></table></div>`;
+    return `<div class="cashflow-table-wrap"><table class="cashflow-table"><thead><tr><th>Data do crédito</th><th>Edital</th><th class="cashflow-receipt-items-cell">Notas e itens</th><th class="cashflow-number">Recebido</th><th class="cashflow-number">Custos</th><th class="cashflow-number">Prejuízo</th><th class="cashflow-number">Reserva</th><th class="cashflow-number">Lucro distribuído</th><th>Ações</th></tr></thead><tbody>${body}</tbody></table></div>`;
   }
 
   function expenseTable() {
