@@ -297,7 +297,7 @@ export function createOrganizationDocumentsFeature({
     const progress = (sliderPosition / ALERT_DAYS_SLIDER_MAX) * 100;
     const disabled = !canManageSettings() || state.busy === "settings";
     return '<section class="section-band organization-documents-settings" aria-labelledby="organizationDocumentsSettingsTitle">'
-      + '<div class="organization-documents-settings-intro"><span class="eyebrow">PREFERÊNCIAS DA ORGANIZAÇÃO</span><h2 id="organizationDocumentsSettingsTitle">Alertas de vencimento</h2>'
+      + '<div class="organization-documents-settings-intro"><h2 id="organizationDocumentsSettingsTitle">Alertas de vencimento</h2>'
       + '<p>Defina com quantos dias de antecedência os documentos entram na lista de atenção.</p></div>'
       + '<form data-form="alert-settings" class="organization-documents-settings-form">'
       + '<div class="organization-documents-alert-label"><label for="organizationDocumentsAlertDays">Antecedência do alerta</label>'

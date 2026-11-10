@@ -221,7 +221,7 @@ function render(summary, state) {
   const disabled = !state.metricsProvider || state.loading ? " disabled" : "";
   const busy = state.loading ? ' aria-busy="true"' : "";
   const values = summary || {};
-  return '<div class="page-heading radar-engine-page-heading"><div><span class="eyebrow">ADMINISTRAÇÃO · RADAR</span><h1 id="radarEngineAdminTitle">Processamento do Radar</h1><p>Acompanhe a coleta, as filas e o processamento do GLL Radar Engine.</p></div><button class="quiet-action" type="button" data-radar-engine-refresh' + disabled + busy + '>Atualizar dados</button></div>' +
+  return '<div class="page-heading radar-engine-page-heading"><div><h1 id="radarEngineAdminTitle">Processamento do Radar</h1><p>Acompanhe a coleta, as filas e o processamento do GLL Radar Engine.</p></div><button class="quiet-action" type="button" data-radar-engine-refresh' + disabled + busy + '>Atualizar dados</button></div>' +
     '<div class="radar-engine-notice tone-' + tone + '" role="status" aria-live="polite">' + escapeHtml(message) + "</div>" +
     tabs(state.activeTab) +
     '<section id="radar-engine-panel-overview" class="radar-engine-tab-panel" role="tabpanel" aria-labelledby="radar-engine-tab-overview" data-radar-engine-panel="overview">' +
