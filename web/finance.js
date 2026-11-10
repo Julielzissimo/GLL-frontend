@@ -200,21 +200,6 @@ export function createCashflowFeature(options = {}) {
   dialog.setAttribute("aria-labelledby", "cashflowDrawerTitle");
   document.body.append(dialog);
 
-  const receiptDiscardDialog = document.createElement("dialog");
-  receiptDiscardDialog.id = "cashflowReceiptDiscardDialog";
-  receiptDiscardDialog.className = "quotation-item-discard-modal";
-  receiptDiscardDialog.setAttribute("aria-labelledby", "cashflowReceiptDiscardTitle");
-  receiptDiscardDialog.setAttribute("aria-describedby", "cashflowReceiptDiscardDescription");
-  receiptDiscardDialog.innerHTML = `<div class="quotation-item-discard-content">
-    <h2 id="cashflowReceiptDiscardTitle">Descartar alterações?</h2>
-    <p id="cashflowReceiptDiscardDescription">Há alterações não salvas no recebimento. Se você sair agora, elas serão perdidas.</p>
-    <div class="button-row end">
-      <button class="quiet-action" type="button" data-cf-discard-continue autofocus>Continuar editando</button>
-      <button class="danger-action" type="button" data-cf-discard-confirm>Descartar alterações</button>
-    </div>
-  </div>`;
-  document.body.append(receiptDiscardDialog);
-
   const state = {
     status: "idle",
     error: "",
@@ -228,6 +213,9 @@ export function createCashflowFeature(options = {}) {
     openingReceipt: false,
     receiptOpenRequest: 0,
     receiptDirty: false,
+    confirmingDiscard: false,
+    discardReturnFocus: null,
+    dialogWide: false,
   };
 
   const accessibleBids = () => (Array.isArray(getBids()) ? getBids() : []);
@@ -259,33 +247,77 @@ export function createCashflowFeature(options = {}) {
   function openDialog(title, subtitle, body, submitLabel, kind, wide = false) {
     if (!dialog.open && kind === "receipt") state.receiptDirty = false;
     state.drawerKind = kind;
+    state.dialogWide = wide;
+    state.confirmingDiscard = false;
+    state.discardReturnFocus = null;
     dialog.classList.toggle("cashflow-dialog-wide", wide);
+    dialog.classList.remove("cashflow-dialog-confirmation");
+    dialog.setAttribute("aria-labelledby", "cashflowDrawerTitle");
+    dialog.removeAttribute("aria-describedby");
     const eyebrow = kind === "expense" ? "" : '<span class="eyebrow">LANÇAMENTO FINANCEIRO</span>';
+    const discardPrompt = kind === "receipt" ? `<section id="cashflowReceiptDiscardDialog" class="cashflow-receipt-discard-view quotation-item-discard-content" aria-labelledby="cashflowReceiptDiscardTitle" aria-describedby="cashflowReceiptDiscardDescription" hidden>
+      <h2 id="cashflowReceiptDiscardTitle">Descartar alterações?</h2>
+      <p id="cashflowReceiptDiscardDescription">Há alterações não salvas no recebimento. Se você sair agora, elas serão perdidas.</p>
+      <div class="button-row end">
+        <button class="quiet-action" type="button" data-cf-discard-continue>Continuar editando</button>
+        <button class="danger-action" type="button" data-cf-discard-confirm>Descartar alterações</button>
+      </div>
+    </section>` : "";
     dialog.innerHTML = `<form id="cashflowDrawerForm" class="cashflow-drawer-form" novalidate>
       <header class="cashflow-drawer-header"><div>${eyebrow}<h2 id="cashflowDrawerTitle">${escapeHtml(title)}</h2><p>${escapeHtml(subtitle)}</p></div><button class="icon-button modal-close-button" type="button" data-cf-close aria-label="Fechar">×</button></header>
       <div class="cashflow-drawer-body">${body}<div class="cashflow-form-error" data-cf-error role="alert" aria-live="assertive"></div></div>
       <footer class="cashflow-drawer-footer"><button type="button" class="quiet-action" data-cf-close>Cancelar</button><button type="submit" class="primary-action" ${state.saving ? "disabled" : ""}>${escapeHtml(submitLabel)}</button></footer>
-    </form>`;
+    </form>${discardPrompt}`;
     if (!dialog.open) dialog.showModal();
     const firstField = dialog.querySelector("input:not([type=hidden]):not([disabled]), select:not([disabled]), textarea:not([disabled])");
     firstField?.focus();
   }
 
   function closeDialog() {
-    if (receiptDiscardDialog.open) receiptDiscardDialog.close();
     if (dialog.open) dialog.close();
     state.drawerKind = null;
     state.receiptDirty = false;
+    state.confirmingDiscard = false;
+    state.discardReturnFocus = null;
     dialog.innerHTML = "";
   }
 
   function requestCloseDialog() {
     if (state.saving) return;
+    if (state.confirmingDiscard) return;
     if (state.drawerKind !== "receipt" || !state.receiptDirty) {
       closeDialog();
       return;
     }
-    if (!receiptDiscardDialog.open) receiptDiscardDialog.showModal();
+    const form = dialog.querySelector("#cashflowDrawerForm");
+    const prompt = dialog.querySelector("#cashflowReceiptDiscardDialog");
+    if (!form || !prompt) return;
+    state.discardReturnFocus = form.contains(document.activeElement) ? document.activeElement : null;
+    state.confirmingDiscard = true;
+    form.hidden = true;
+    prompt.hidden = false;
+    dialog.classList.remove("cashflow-dialog-wide");
+    dialog.classList.add("cashflow-dialog-confirmation");
+    dialog.setAttribute("aria-labelledby", "cashflowReceiptDiscardTitle");
+    dialog.setAttribute("aria-describedby", "cashflowReceiptDiscardDescription");
+    prompt.querySelector("[data-cf-discard-continue]")?.focus();
+  }
+
+  function continueReceiptEditing() {
+    if (!state.confirmingDiscard) return;
+    const form = dialog.querySelector("#cashflowDrawerForm");
+    const prompt = dialog.querySelector("#cashflowReceiptDiscardDialog");
+    state.confirmingDiscard = false;
+    if (form) form.hidden = false;
+    if (prompt) prompt.hidden = true;
+    dialog.classList.remove("cashflow-dialog-confirmation");
+    dialog.classList.toggle("cashflow-dialog-wide", state.dialogWide);
+    dialog.setAttribute("aria-labelledby", "cashflowDrawerTitle");
+    dialog.removeAttribute("aria-describedby");
+    const returnFocus = state.discardReturnFocus;
+    state.discardReturnFocus = null;
+    if (returnFocus?.isConnected) returnFocus.focus();
+    else form?.querySelector("input:not([type=hidden]):not([disabled]), select:not([disabled]), textarea:not([disabled])")?.focus();
   }
 
   function trackReceiptChanges(event) {
@@ -1174,22 +1206,15 @@ export function createCashflowFeature(options = {}) {
   });
   dialog.addEventListener("cancel", (event) => {
     event.preventDefault();
-    requestCloseDialog();
+    if (state.confirmingDiscard) continueReceiptEditing();
+    else requestCloseDialog();
   });
-  receiptDiscardDialog.addEventListener("click", (event) => {
-    if (event.target === receiptDiscardDialog) {
-      receiptDiscardDialog.close();
-      return;
-    }
+  dialog.addEventListener("click", (event) => {
     if (event.target.closest("[data-cf-discard-continue]")) {
-      receiptDiscardDialog.close();
+      continueReceiptEditing();
       return;
     }
     if (event.target.closest("[data-cf-discard-confirm]")) closeDialog();
-  });
-  receiptDiscardDialog.addEventListener("cancel", (event) => {
-    event.preventDefault();
-    receiptDiscardDialog.close();
   });
 
   return {
