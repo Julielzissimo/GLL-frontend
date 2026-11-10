@@ -2169,7 +2169,8 @@
       "id": "FLUXO-CAIXA-RECEBIMENTO-ITENS-001",
       "backend_commits": [],
       "frontend_commits": [
-        "d099094bbfa8e11900a7fec04fe4d6db5c6805bf"
+        "d099094bbfa8e11900a7fec04fe4d6db5c6805bf",
+        "42e2e4265345509148f7b8e45d271cf5f4321f7d"
       ],
       "migrations": []
     },

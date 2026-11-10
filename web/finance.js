@@ -350,7 +350,7 @@ export function createCashflowFeature(options = {}) {
         <td class="cashflow-number">${formatBrl(parseMoneyToCents(receipt.cost_total))}</td><td class="cashflow-number">${formatBrl(parseMoneyToCents(receipt.expense_reserve_amount))}</td>
         <td class="cashflow-number"><strong>${formatBrl(parseMoneyToCents(receipt.distributable_profit))}</strong></td><td><button class="text-action" type="button" data-cf-action="receipt-detail" data-id="${escapeHtml(receipt.id)}">Detalhes</button></td></tr>`;
     }).join("");
-    return `<div class="cashflow-table-wrap"><table class="cashflow-table"><thead><tr><th>Data do crédito</th><th>Edital</th><th class="cashflow-receipt-items-cell">Notas e itens</th><th class="cashflow-number">Recebido</th><th class="cashflow-number">Custos</th><th class="cashflow-number">Reserva</th><th class="cashflow-number">Lucro distribuído</th><th>Ações</th></tr></thead><tbody>${body}</tbody></table></div>`;
+    return `<div class="cashflow-table-wrap"><table class="cashflow-table"><thead><tr><th>Data do crédito</th><th>Edital</th><th class="cashflow-receipt-items-cell">N° DO ITEM</th><th class="cashflow-number">Recebido</th><th class="cashflow-number">Custos</th><th class="cashflow-number">Reserva</th><th class="cashflow-number">Lucro distribuído</th><th>Ações</th></tr></thead><tbody>${body}</tbody></table></div>`;
   }
 
   function expenseTable() {
