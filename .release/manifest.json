@@ -2158,6 +2158,14 @@
       "migrations": []
     },
     {
+      "id": "FLUXO-CAIXA-RECEBIMENTO-DESCARTE-001",
+      "backend_commits": [],
+      "frontend_commits": [
+        "89598c0d13d343316b0fcdabadc8e74796bc6c11"
+      ],
+      "migrations": []
+    },
+    {
       "id": "FLUXO-CAIXA-ABAS-001",
       "backend_commits": [],
       "frontend_commits": [
