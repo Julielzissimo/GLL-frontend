@@ -835,9 +835,9 @@ export function createCashflowFeature(options = {}) {
     const isReceivable = direction === "receivable";
     const already = buildExpenseRefunds(state.data).get(String(expense.id)) || 0;
     const due = parseMoneyToCents(expense.amount) - already;
-    const expenseReserveBalance = isReceivable ? null : metrics().expenseReserveBalanceCents;
+    const expenseReserveBalance = metrics().expenseReserveBalanceCents;
     const body = `<div class="cashflow-callout"><strong>${isReceivable ? "Empresa" : escapeHtml(partyName(state.data, expense.payer_party_id))}</strong><span>${escapeHtml(expense.description)} · pendente ${formatBrl(due)}</span></div>
-      <div class="cashflow-form-grid">${isReceivable ? "" : `<label class="cashflow-field cashflow-field-wide">Reserva disponível para despesas<input type="text" value="${escapeHtml(formatBrl(expenseReserveBalance))}" readonly aria-readonly="true" /></label>`}
+      <div class="cashflow-form-grid"><label class="cashflow-field cashflow-field-wide">Reserva disponível para despesas<input type="text" value="${escapeHtml(formatBrl(expenseReserveBalance))}" readonly aria-readonly="true" /></label>
       <label class="cashflow-field">${isReceivable ? "Valor a receber (R$)" : "Valor a devolver (R$)"}<input name="amount" type="text" inputmode="decimal" value="${escapeHtml(amountAsInput(due))}" required /></label>
       <label class="cashflow-field">${isReceivable ? "Data do recebimento" : "Data do pagamento"}<input name="paid_on" type="date" value="${dateInputValue()}" required /></label>
       <label class="cashflow-field">Forma de pagamento<select name="payment_method" required>${selectOptions(PAYMENT_METHODS, "pix")}</select></label>
