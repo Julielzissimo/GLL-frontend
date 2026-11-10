@@ -311,10 +311,10 @@ export function createCashflowFeature(options = {}) {
       }).join("");
       return `<tr><td>${formatDate(receipt.received_on)}</td><td><strong>${escapeHtml(bidName(accessibleBids(), receipt.bid_id))}</strong><span class="cashflow-row-sub">${escapeHtml(receipt.payment_reference || paymentMethodLabel(receipt.payment_method))}</span></td>
         <td>${itemText || "—"}</td><td class="cashflow-number"><strong>${formatBrl(parseMoneyToCents(receipt.gross_amount))}</strong></td>
-        <td class="cashflow-number">${formatBrl(parseMoneyToCents(receipt.cost_total))}</td><td class="cashflow-number">${formatBrl(parseMoneyToCents(receipt.loss_amount))}</td><td class="cashflow-number">${formatBrl(parseMoneyToCents(receipt.expense_reserve_amount))}</td>
+        <td class="cashflow-number">${formatBrl(parseMoneyToCents(receipt.cost_total))}</td><td class="cashflow-number">${formatBrl(parseMoneyToCents(receipt.expense_reserve_amount))}</td>
         <td class="cashflow-number"><strong>${formatBrl(parseMoneyToCents(receipt.distributable_profit))}</strong></td><td><button class="text-action" type="button" data-cf-action="receipt-detail" data-id="${escapeHtml(receipt.id)}">Detalhes</button>${isAdmin() ? ` <button class="text-action cashflow-danger-action" type="button" data-cf-action="reverse-receipt" data-id="${escapeHtml(receipt.id)}">Estornar</button>` : ""}</td></tr>`;
     }).join("");
-    return `<div class="cashflow-table-wrap"><table class="cashflow-table"><thead><tr><th>Data do crédito</th><th>Edital</th><th>Notas e itens</th><th class="cashflow-number">Recebido</th><th class="cashflow-number">Custos</th><th class="cashflow-number">Prejuízo</th><th class="cashflow-number">Reserva</th><th class="cashflow-number">Lucro distribuído</th><th>Ações</th></tr></thead><tbody>${body}</tbody></table></div>`;
+    return `<div class="cashflow-table-wrap"><table class="cashflow-table"><thead><tr><th>Data do crédito</th><th>Edital</th><th>Notas e itens</th><th class="cashflow-number">Recebido</th><th class="cashflow-number">Custos</th><th class="cashflow-number">Reserva</th><th class="cashflow-number">Lucro distribuído</th><th>Ações</th></tr></thead><tbody>${body}</table></div>`;
   }
 
   function expenseTable() {
