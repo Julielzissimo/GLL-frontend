@@ -24,6 +24,7 @@ Antes de criar ou modificar qualquer interface:
 8. Alterações em componentes compartilhados devem ser avaliadas considerando todas as telas que os utilizam.
 9. Preserve acessibilidade, responsividade e compatibilidade visual com o GLL 2.0.
 10. Execute `npm test`, `npm run build:homolog` e `npm run build-storybook` antes de publicar.
+11. Não use antetítulos (`eyebrow`, `kicker` ou `overline`) em páginas, seções, diálogos ou drawers; comece pelo título principal e use uma descrição quando necessário.
 
 ## Storybook e segurança
 

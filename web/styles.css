@@ -214,7 +214,6 @@
   .declaration-generator-layout { grid-template-columns: 1fr; }
   .declaration-summary-column { position: static; }
   .declaration-summary-card { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .declaration-summary-card .eyebrow,
   .declaration-summary-card h2,
   .declaration-summary-card dl,
   .declaration-summary-card .form-error { grid-column: 1 / -1; }
@@ -313,7 +312,6 @@
 .commercial-proposal-list-card[hidden], .commercial-proposal-item[hidden] { display: none; }
 .commercial-proposal-list-card h3 { margin: var(--space-xs) 0; font-size: var(--font-size-lg); }
 .commercial-proposal-list-card p { margin: 0; color: var(--color-text-secondary); }
-.commercial-proposal-list-card-main .eyebrow { font-size: var(--font-size-xs); }
 .commercial-proposal-list-card-metric { display: grid; gap: var(--space-xs); }
 .commercial-proposal-list-card-meta { display: grid; justify-items: start; gap: var(--space-xs); }
 .commercial-proposal-row-actions { display: flex; flex-wrap: wrap; justify-content: end; gap: var(--space-xs); }
@@ -1132,13 +1130,6 @@ th.numeric {
   margin-top: 4px;
   color: var(--muted);
   font-size: 13px;
-}
-
-.workspace-kicker {
-  color: var(--muted);
-  font-size: 12px;
-  font-weight: 800;
-  text-transform: uppercase;
 }
 
 .section-title {
@@ -2275,15 +2266,6 @@ select[aria-invalid="true"]:focus,
 textarea[aria-invalid="true"]:focus {
   border-color: var(--gll-focus);
   box-shadow: var(--shadow-focus);
-}
-
-.eyebrow,
-.workspace-kicker {
-  color: var(--gll-ink-soft);
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
 }
 
 .login-view {
@@ -3821,26 +3803,6 @@ tr.item-won td {
   color: var(--gll-ink);
   font-size: clamp(21px, 2vw, 29px);
   line-height: 1.12;
-}
-
-.workspace-kicker {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 4px 8px;
-  border-radius: 999px;
-  background: var(--gll-selection-bg);
-  color: var(--gll-forest-hover);
-  font-size: 10px;
-  letter-spacing: 0.02em;
-}
-
-.workspace-kicker::before {
-  content: "";
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: var(--gll-forest-hover);
 }
 
 #metricsSection { order: 2; }
@@ -7261,11 +7223,6 @@ html.is-loading { overflow: hidden; }
   align-items: flex-start;
 }
 
-.commercial-proposal-editor-heading .eyebrow {
-  display: block;
-  margin-top: var(--space-md);
-}
-
 .commercial-proposal-tabs {
   width: fit-content;
   max-width: 100%;
@@ -7734,7 +7691,6 @@ button.history-row:hover {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .commercial-proposal-summary-card .eyebrow,
   .commercial-proposal-summary-card h2,
   .commercial-proposal-summary-card dl,
   .commercial-proposal-summary-card .commercial-proposal-total-words {
@@ -7770,7 +7726,6 @@ button.history-row:hover {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .commercial-proposal-summary-card .eyebrow,
   .commercial-proposal-summary-card h2,
   .commercial-proposal-summary-card dl,
   .commercial-proposal-summary-card .commercial-proposal-total-words {
@@ -7894,7 +7849,7 @@ button.history-row:hover {
 
 .commercial-proposal-editor-heading { align-items: flex-start; }
 .commercial-proposal-editor-heading > div:first-child { max-width: 48rem; }
-.commercial-proposal-editor-heading h1 { margin: var(--space-xs) 0; font-size: var(--font-size-2xl); letter-spacing: -0.035em; }
+.commercial-proposal-editor-heading h1 { margin: var(--space-md) 0 var(--space-xs); font-size: var(--font-size-2xl); letter-spacing: -0.035em; }
 .commercial-proposal-editor-heading p { max-width: 46rem; }
 .commercial-proposal-toolbar { display: flex; align-items: center; gap: var(--space-sm); }
 .commercial-proposal-tabs {
@@ -8295,7 +8250,6 @@ button.history-row:hover {
 
 /* Radar de Licitações — página, filtros, cobertura e resultados. */
 .radar-page .page-heading { align-items: center; margin-bottom: 0; }
-.radar-page .eyebrow { color: var(--gll-ink); }
 .radar-page .page-heading h1 { margin-bottom: var(--space-xs); }
 .radar-page .page-heading p { max-width: 58rem; line-height: var(--line-height-relaxed); }
 .radar-page { width: 100%; max-width: none; margin-inline: 0; align-self: stretch; }

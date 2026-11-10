@@ -272,7 +272,6 @@ export function createCashflowFeature(options = {}) {
     dialog.classList.remove("cashflow-dialog-confirmation");
     dialog.setAttribute("aria-labelledby", "cashflowDrawerTitle");
     dialog.removeAttribute("aria-describedby");
-    const eyebrow = kind === "expense" ? "" : '<span class="eyebrow">LANÇAMENTO FINANCEIRO</span>';
     const discardPrompt = kind === "receipt" ? `<section id="cashflowReceiptDiscardDialog" class="cashflow-receipt-discard-view quotation-item-discard-content" aria-labelledby="cashflowReceiptDiscardTitle" aria-describedby="cashflowReceiptDiscardDescription" hidden>
       <h2 id="cashflowReceiptDiscardTitle">Descartar alterações?</h2>
       <p id="cashflowReceiptDiscardDescription">Há alterações não salvas no recebimento. Se você sair agora, elas serão perdidas.</p>
@@ -282,7 +281,7 @@ export function createCashflowFeature(options = {}) {
       </div>
     </section>` : "";
     dialog.innerHTML = `<form id="cashflowDrawerForm" class="cashflow-drawer-form" novalidate>
-      <header class="cashflow-drawer-header"><div>${eyebrow}<h2 id="cashflowDrawerTitle">${escapeHtml(title)}</h2><p>${escapeHtml(subtitle)}</p></div><button class="icon-button modal-close-button" type="button" data-cf-close aria-label="Fechar">×</button></header>
+      <header class="cashflow-drawer-header"><div><h2 id="cashflowDrawerTitle">${escapeHtml(title)}</h2><p>${escapeHtml(subtitle)}</p></div><button class="icon-button modal-close-button" type="button" data-cf-close aria-label="Fechar">×</button></header>
       <div class="cashflow-drawer-body">${body}<div class="cashflow-form-error" data-cf-error role="alert" aria-live="assertive"></div></div>
       <footer class="cashflow-drawer-footer"><button type="button" class="quiet-action" data-cf-close>Cancelar</button><button type="submit" class="primary-action" ${state.saving ? "disabled" : ""}>${escapeHtml(submitLabel)}</button></footer>
     </form>${discardPrompt}`;

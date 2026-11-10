@@ -371,13 +371,13 @@ function createBillingFeature({ getBid, getQuotation, getBudgetItems, store, toa
     const drawerTitle = document.getElementById("billingDrawerTitle");
     const drawerDescription = document.getElementById("billingDrawerDescription");
     if (state.activeSection) {
-      drawerContent.innerHTML = `<div class="billing-drawer-item-summary"><div><span class="eyebrow">ITEM DO ORÇAMENTO</span><h3>Item ${billingEscape(item.item_number)} · ${billingEscape(item.description || "Sem descrição")}</h3><p>${billingEscape([item.manufacturer, item.model].filter(Boolean).join(" · ") || item.unit || "")}</p></div><div class="billing-drawer-item-value"><span>Previsto</span><strong>${billingQuantity(row.planned)} un.</strong><small>${billingMoney(billingNumber(item.final_bid) * row.planned)}</small></div></div>${renderBillingSection(state.activeSection, itemId, row)}`;
+      drawerContent.innerHTML = `<div class="billing-drawer-item-summary"><div><h3>Item ${billingEscape(item.item_number)} · ${billingEscape(item.description || "Sem descrição")}</h3><p>${billingEscape([item.manufacturer, item.model].filter(Boolean).join(" · ") || item.unit || "")}</p></div><div class="billing-drawer-item-value"><span>Previsto</span><strong>${billingQuantity(row.planned)} un.</strong><small>${billingMoney(billingNumber(item.final_bid) * row.planned)}</small></div></div>${renderBillingSection(state.activeSection, itemId, row)}`;
       restoreDraft();
       return;
     }
     drawerTitle.textContent = "Detalhes do item";
     drawerDescription.textContent = "Acompanhe o que foi pedido, entregue e faturado.";
-    drawerContent.innerHTML = `<div class="billing-drawer-item-summary"><div><span class="eyebrow">ITEM DO ORÇAMENTO</span><h3>Item ${billingEscape(item.item_number)} · ${billingEscape(item.description || "Sem descrição")}</h3><p>${billingEscape([item.manufacturer, item.model].filter(Boolean).join(" · ") || item.unit || "")}</p></div><div class="billing-drawer-item-value"><span>Previsto</span><strong>${billingQuantity(row.planned)} un.</strong><small>${billingMoney(billingNumber(item.final_bid) * row.planned)}</small></div></div>${renderBillingOverview(row, itemId)}`;
+    drawerContent.innerHTML = `<div class="billing-drawer-item-summary"><div><h3>Item ${billingEscape(item.item_number)} · ${billingEscape(item.description || "Sem descrição")}</h3><p>${billingEscape([item.manufacturer, item.model].filter(Boolean).join(" · ") || item.unit || "")}</p></div><div class="billing-drawer-item-value"><span>Previsto</span><strong>${billingQuantity(row.planned)} un.</strong><small>${billingMoney(billingNumber(item.final_bid) * row.planned)}</small></div></div>${renderBillingOverview(row, itemId)}`;
   }
 
   async function refreshData({ keepDrawer = true } = {}) {
