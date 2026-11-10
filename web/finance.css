@@ -244,7 +244,22 @@
 .cashflow-table td strong { color: var(--gll-ink); }
 .cashflow-row-sub { display: block; margin-top: var(--gll-space-1); font-size: var(--gll-text-xs); }
 .cashflow-receipt-items-cell { width: 12rem; max-width: 12rem; }
-.cashflow-receipt-items { display: block; max-width: 12rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cashflow-receipt-items { display: block; }
+.cashflow-cell-content {
+  display: -webkit-box;
+  min-width: 0;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+  line-height: 1.45;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+.cashflow-cell-content > .cashflow-row-sub { margin-top: 0; }
+.cashflow-cell-content[tabindex="0"]:focus-visible {
+  border-radius: var(--gll-radius-sm);
+  outline: 3px solid color-mix(in srgb, var(--gll-focus) 28%, transparent);
+  outline-offset: 1px;
+}
 .cashflow-number { text-align: right !important; font-variant-numeric: tabular-nums; white-space: nowrap; }
 
 .cashflow-table .text-action,

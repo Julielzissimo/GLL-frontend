@@ -396,7 +396,7 @@ export function createCashflowFeature(options = {}) {
       const itemText = itemNumbers.join(", ");
       const escapedItemText = escapeHtml(itemText);
       return `<tr><td>${formatDate(receipt.received_on)}</td><td><strong>${escapeHtml(bidName(accessibleBids(), receipt.bid_id))}</strong><span class="cashflow-row-sub">${escapeHtml(receipt.payment_reference || paymentMethodLabel(receipt.payment_method))}</span></td>
-        <td class="cashflow-receipt-items-cell"><span class="cashflow-receipt-items"${itemText ? ` title="${escapedItemText}"` : ""}>${escapedItemText || "—"}</span></td><td class="cashflow-number"><strong>${formatBrl(parseMoneyToCents(receipt.gross_amount))}</strong></td>
+        <td class="cashflow-receipt-items-cell"><span class="cashflow-receipt-items">${escapedItemText || "—"}</span></td><td class="cashflow-number"><strong>${formatBrl(parseMoneyToCents(receipt.gross_amount))}</strong></td>
         <td class="cashflow-number">${formatBrl(parseMoneyToCents(receipt.cost_total))}</td><td class="cashflow-number">${formatBrl(parseMoneyToCents(receipt.expense_reserve_amount))}</td>
         <td class="cashflow-number"><strong>${formatBrl(parseMoneyToCents(receipt.distributable_profit))}</strong></td><td><button class="text-action" type="button" data-cf-action="receipt-detail" data-id="${escapeHtml(receipt.id)}">Detalhes</button></td></tr>`;
     }).join("");
@@ -506,6 +506,39 @@ export function createCashflowFeature(options = {}) {
     }).join("")}</tbody></table></div>`;
   }
 
+  function updateCashflowCellTooltips() {
+    const cells = workspace.querySelectorAll(".cashflow-table tbody td:not(.cashflow-number)");
+    for (const cell of cells) {
+      if (cell.querySelector("button, a, input, select, textarea")) continue;
+
+      let content = cell.firstElementChild;
+      if (!content?.classList.contains("cashflow-cell-content") || cell.children.length !== 1) {
+        content = document.createElement("div");
+        content.className = "cashflow-cell-content";
+        while (cell.firstChild) content.append(cell.firstChild);
+        cell.append(content);
+      }
+
+      content.querySelectorAll("[title]").forEach((element) => element.removeAttribute("title"));
+      const fullDescription = [...content.childNodes]
+        .map((node) => node.textContent.trim())
+        .filter(Boolean)
+        .join(" ")
+        .replace(/\s+/gu, " ")
+        .trim();
+      content.removeAttribute("title");
+      content.removeAttribute("aria-label");
+      content.removeAttribute("tabindex");
+      if (!fullDescription) continue;
+
+      if (content.scrollHeight > content.clientHeight) {
+        content.title = fullDescription;
+        content.setAttribute("aria-label", fullDescription);
+        content.tabIndex = 0;
+      }
+    }
+  }
+
   function renderWorkspace() {
     let content = "";
     if (state.activeTab === "receipts") content = receiptTable();
@@ -514,6 +547,7 @@ export function createCashflowFeature(options = {}) {
     if (state.activeTab === "participants") content = participantTable();
     if (state.activeTab === "history") content = historyTable();
     workspace.innerHTML = `${filterToolbar()}${renderTabs()}<section class="cashflow-panel" role="tabpanel">${content}</section><p class="cashflow-footnote">Os lançamentos são imutáveis. Estornos autorizados e correções preservam a trilha de auditoria.</p>`;
+    updateCashflowCellTooltips();
   }
 
   function render() {
@@ -1235,6 +1269,7 @@ export function createCashflowFeature(options = {}) {
     }
     if (event.target.closest("[data-cf-discard-confirm]")) closeDialog();
   });
+  window.addEventListener("resize", updateCashflowCellTooltips, { passive: true });
 
   return {
     showPage,
