@@ -290,6 +290,8 @@
 
 .cashflow-dialog::backdrop { background: rgb(18 41 32 / 54%); }
 .cashflow-drawer-form { display: grid; min-height: 0; max-height: min(90dvh, 900px); grid-template-rows: auto minmax(0, 1fr) auto; }
+.cashflow-drawer-form[hidden],
+.cashflow-receipt-discard-view[hidden] { display: none; }
 .cashflow-drawer-header { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--gll-space-3); padding: var(--gll-space-4) var(--gll-space-6); border-bottom: 1px solid var(--gll-line); }
 .cashflow-drawer-header > div { min-width: 0; }
 .cashflow-drawer-header h2 { margin: 0; font-family: var(--gll-font-display); }
@@ -314,6 +316,8 @@
 .cashflow-badge.warning { background: var(--gll-warning-bg); color: var(--gll-warning); }
 .cashflow-badge.success { background: var(--gll-success-bg); color: var(--gll-success); }
 .cashflow-dialog-wide { width: min(1060px, calc(100vw - 2rem)); }
+.cashflow-dialog-confirmation { width: min(520px, calc(100vw - 2rem)); }
+.cashflow-receipt-discard-view { display: grid; gap: var(--gll-space-3); }
 .cashflow-drawer-footer { padding: var(--gll-space-4) var(--gll-space-6); border-top: 1px solid var(--gll-line); background: var(--gll-paper-muted); }
 
 .cashflow-receipt-list { display: grid; gap: var(--gll-space-3); }
