@@ -2231,6 +2231,14 @@
         "0fa2db93e0d4e005aac0973f34ce577ba2df8275"
       ],
       "migrations": []
+    },
+    {
+      "id": "CHAT-ORGANIZACAO-SCROLLBAR-001",
+      "backend_commits": [],
+      "frontend_commits": [
+        "f79415fb8c93b817435f7904f4b17a78c2379283"
+      ],
+      "migrations": []
     }
   ]
 }
