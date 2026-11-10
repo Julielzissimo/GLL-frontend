@@ -2148,6 +2148,14 @@
         "supabase/migrations/20261110120000_fluxo_caixa_distribuicao_por_item.sql",
         "supabase/migrations/20261110164000_cashflow_reserve_without_justification.sql"
       ]
+    },
+    {
+      "id": "FLUXO-CAIXA-RECEBIMENTO-ITENS-001",
+      "backend_commits": [],
+      "frontend_commits": [
+        "d099094bbfa8e11900a7fec04fe4d6db5c6805bf"
+      ],
+      "migrations": []
     }
   ]
 }
