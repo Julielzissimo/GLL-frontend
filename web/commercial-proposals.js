@@ -236,7 +236,7 @@ export function createCommercialProposalsFeature({ getClient, getContext, toast,
             const itemCount = Number(proposal.selected_items) || 0;
             const searchText = [edital, agency, statusLabel(proposal.status)].join(" ");
             return `<article class="commercial-proposal-list-card" role="listitem" data-status="${escapeHtml(proposal.status)}" data-search-text="${escapeHtml(searchText)}" ${matches(proposal) ? "" : "hidden"}>
-              <div class="commercial-proposal-list-card-main"><span class="eyebrow">EDITAL</span><h3>${escapeHtml(edital)}</h3><p>${escapeHtml(agency)}</p></div>
+              <div class="commercial-proposal-list-card-main"><h3>${escapeHtml(edital)}</h3><p>${escapeHtml(agency)}</p></div>
               <div class="commercial-proposal-list-card-metric"><span>Itens na proposta</span><strong>${itemCount === 0 ? "Nenhum item" : `${itemCount} ${itemCount === 1 ? "item" : "itens"}`}</strong></div>
               <div class="commercial-proposal-list-card-metric"><span>Valor total</span><strong>${formatCommercialMoney(proposal.total_value)}</strong></div>
               <div class="commercial-proposal-list-card-meta"><span class="status-pill proposal-status-${escapeHtml(proposal.status)}">${statusLabel(proposal.status)}</span><span>Atualizada em ${escapeHtml(updated)}</span></div>
@@ -446,7 +446,6 @@ export function createCommercialProposalsFeature({ getClient, getContext, toast,
     root.innerHTML = `
       <div class="page-heading commercial-proposal-editor-heading">
         <div><button class="quiet-action compact-action" type="button" data-proposal-action="back">← Todas as propostas</button>
-          <span class="eyebrow">PROPOSTA COMERCIAL · ${escapeHtml(bid.edital_number || bid.id)}</span>
           <h1 id="commercialProposalsTitle">Revise sua proposta</h1>
           <p>Os itens e dados do edital já estão aqui. Confira o que será enviado.</p>
         </div>
@@ -500,7 +499,7 @@ export function createCommercialProposalsFeature({ getClient, getContext, toast,
       <div class="commercial-proposal-tab-panel ${state.activeEditorTab === "proposal" ? "" : "hidden"}" data-proposal-panel="proposal">
       <section class="section-band commercial-builder-section commercial-edital-section">
         <h2>Edital</h2><p>A proposta ficará vinculada a este edital e ao orçamento correspondente.</p>
-        <div class="form-grid"><div class="commercial-bid-reference"><span class="eyebrow">Edital vinculado</span><strong>${escapeHtml(bid.edital_number || bid.id)}</strong><span>${escapeHtml(bidAgency)}</span></div>
+        <div class="form-grid"><div class="commercial-bid-reference"><strong>${escapeHtml(bid.edital_number || bid.id)}</strong><span>${escapeHtml(bidAgency)}</span></div>
           <label>Data da proposta<input type="date" data-proposal-field="proposal_date" value="${proposal.proposal_date || todayInSaoPaulo()}" /></label></div>
       </section>
       <section class="section-band commercial-builder-section">
@@ -579,7 +578,7 @@ export function createCommercialProposalsFeature({ getClient, getContext, toast,
         <div class="commercial-proposal-step-actions ${state.activeEditorTab === "proposal" ? "" : "hidden"}"><button class="quiet-action" type="button" data-proposal-action="back">Cancelar</button><div class="button-row"><button class="quiet-action" type="button" data-proposal-action="save">Salvar rascunho</button><button class="primary-action" type="button" data-proposal-action="next-step">Continuar <span aria-hidden="true">→</span></button></div></div>
       </div>
       <dialog id="commercialProposalPreviewDialog" class="declaration-preview-modal" aria-labelledby="commercialProposalPreviewTitle">
-        <div class="declaration-preview-shell"><div class="quotation-item-modal-header"><div><span class="eyebrow">PRÉ-VISUALIZAÇÃO</span><h2 id="commercialProposalPreviewTitle">Proposta Comercial</h2></div><button class="quotation-item-modal-close" type="button" data-proposal-action="close-preview" aria-label="Fechar">×</button></div>
+        <div class="declaration-preview-shell"><div class="quotation-item-modal-header"><div><h2 id="commercialProposalPreviewTitle">Proposta Comercial</h2></div><button class="quotation-item-modal-close" type="button" data-proposal-action="close-preview" aria-label="Fechar">×</button></div>
         <iframe id="commercialProposalPreviewFrame" title="Pré-visualização da Proposta Comercial"></iframe>
         <div class="button-row end"><button class="quiet-action" type="button" data-proposal-action="close-preview">Fechar</button><button class="primary-action" type="button" data-proposal-action="download">Baixar PDF</button></div></div>
       </dialog>

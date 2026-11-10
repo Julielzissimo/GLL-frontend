@@ -356,7 +356,6 @@ const refs = {
   configureUserAccessButton: $("configureUserAccessButton"),
   changeUserAccessButton: $("changeUserAccessButton"),
   userCreateOpenButton: $("userCreateOpenButton"),
-  userCreateEyebrow: $("userCreateEyebrow"),
   userProfilePageTitle: $("userProfilePageTitle"),
   userCreateDescription: $("userCreateDescription"),
   userCreateSubmitButton: $("userCreateSubmitButton"),
@@ -3897,7 +3896,6 @@ function setUserFormMode(mode, user = null) {
   refs.userCreateForm.dataset.mode = editing ? "edit" : "create";
   refs.userCreateForm.dataset.targetAuthUserId = editing ? user.auth_user_id : "";
   refs.userProfilePage.classList.toggle("is-profile-edit", editing);
-  refs.userCreateEyebrow.textContent = editing ? "PERFIL DE USUÁRIO" : "CONVITE DE USUÁRIO";
   refs.userProfilePageTitle.textContent = editing ? "Editar perfil" : "Convidar usuário";
   refs.userCreateDescription.textContent = editing
     ? "Atualize o nome e a foto usados nas páginas do GLL."

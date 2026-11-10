@@ -8,7 +8,7 @@ const frame = (content) => `<main class="users-page radar-page">${content}</main
 export const PesquisaInicial = {
   name: "Pesquisa inicial",
   render: () => frame(`
-    <div class="page-heading radar-page-heading"><div><span class="eyebrow">OPORTUNIDADES DO PNCP</span><h1>Radar de Licitações</h1><p>Pesquise contratações pelo objeto, com cobertura nacional e filtros oficiais do Radar.</p></div></div>
+    <div class="page-heading radar-page-heading"><div><h1>Radar de Licitações</h1><p>Pesquise contratações pelo objeto, com cobertura nacional e filtros oficiais do Radar.</p></div></div>
     <div class="radar-view-switch" role="group" aria-label="Visualização do Radar"><button class="quiet-action compact-action" type="button" aria-pressed="true">Pesquisar</button><button class="quiet-action compact-action" type="button" aria-pressed="false">Favoritos</button></div>
     <div class="radar-workbench"><aside class="radar-filter-rail">
     <form class="section-band radar-search-form">
@@ -75,7 +75,7 @@ export const DetalhesDaContratacao = {
   name: "Detalhes com orçamento sigiloso",
   render: () => frame(`
     <section class="radar-detail-page">
-      <div class="page-heading radar-page-heading"><div><span class="eyebrow">EDITAL SINCRONIZADO NO RADAR</span><h1>Detalhes — 61/2026</h1><p>Fonte: Cache centralizado do Radar · Edital atualizado em 10/10/2026, 15:30.</p></div><div class="button-row"><button class="quiet-action" type="button">Voltar aos resultados</button><button class="quiet-action" type="button" aria-pressed="true">Desfavoritar</button><button class="quiet-action" type="button">↻ Atualizar dados do Radar</button></div></div>
+      <div class="page-heading radar-page-heading"><div><h1>Detalhes — 61/2026</h1><p>Fonte: Cache centralizado do Radar · Edital atualizado em 10/10/2026, 15:30.</p></div><div class="button-row"><button class="quiet-action" type="button">Voltar aos resultados</button><button class="quiet-action" type="button" aria-pressed="true">Desfavoritar</button><button class="quiet-action" type="button">↻ Atualizar dados do Radar</button></div></div>
       <div class="radar-detail-layout">
         <main class="radar-detail-main">
           <section class="section-band radar-detail-section"><div class="radar-detail-section-heading"><div><h2>Informações gerais</h2><p>Dados armazenados no cache central do Radar.</p></div></div><dl class="radar-detail-grid"><div><dt>Identificador PNCP</dt><dd>88768080000170-1-000478/2026</dd></div><div><dt>Número da contratação</dt><dd>61/2026</dd></div><div><dt>Órgão responsável</dt><dd>Município de São Gabriel</dd></div><div><dt>Município e UF</dt><dd>São Gabriel / RS</dd></div><div><dt>Modalidade</dt><dd>Pregão eletrônico</dd></div><div><dt>Valor estimado</dt><dd>Orçamento sigiloso</dd></div><div><dt>Situação</dt><dd>Divulgada no PNCP</dd></div></dl><section class="radar-platform-detail" aria-labelledby="storyRadarPlatformTitle"><h3 id="storyRadarPlatformTitle">Plataforma de disputa</h3><p><strong>Licitanet</strong></p><p>Link de origem informado pelo PNCP: <a href="https://licitanet.com.br" target="_blank" rel="noopener noreferrer">Acessar plataforma ↗</a></p><small>A identificação automática corresponde ao domínio da URL. Ela não confirma que o endereço seja a sessão efetiva de disputa.</small></section><a class="quiet-action compact-action radar-official-link" href="https://pncp.gov.br/app/editais/88768080000170/2026/478" target="_blank" rel="noopener noreferrer">Abrir contratação no PNCP ↗</a></section>

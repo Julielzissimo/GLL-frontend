@@ -11,6 +11,12 @@ Este documento é a referência oficial de UI/UX do frontend GLL. O Design Syste
 5. Usar HTML semântico, labels associados, navegação por teclado e atributos ARIA apenas quando necessários.
 6. Documentar no Storybook todo componente compartilhado novo ou alterado.
 
+### Cabeçalhos
+
+- Não usar antetítulos (`eyebrow`, `kicker` ou `overline`) acima de títulos de páginas, seções, diálogos ou drawers.
+- Iniciar o cabeçalho pelo título principal e acrescentar uma descrição quando ela ajudar a explicar a tarefa.
+- Informações funcionais, como etapa do fluxo ou status, devem usar componentes semânticos próprios; não devem voltar como antetítulo.
+
 ## Arquitetura
 
 - `web/design-system/tokens.css`: fonte central de tokens e aliases compatíveis com o CSS legado.
