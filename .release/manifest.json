@@ -2161,7 +2161,8 @@
       "id": "FLUXO-CAIXA-RECEBIMENTO-DESCARTE-001",
       "backend_commits": [],
       "frontend_commits": [
-        "89598c0d13d343316b0fcdabadc8e74796bc6c11"
+        "89598c0d13d343316b0fcdabadc8e74796bc6c11",
+        "f5116787ae5ca8cdedcf9cb1a9b20bb98c446624"
       ],
       "migrations": []
     },
