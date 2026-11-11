@@ -1458,7 +1458,8 @@
     {
       "id": "FLUXO-CAIXA-RECEBIMENTO-SEM-NF-001",
       "backend_commits": [
-        "8bc3c314a152e846e61eb7403e0b4ab2212b8e55"
+        "8bc3c314a152e846e61eb7403e0b4ab2212b8e55",
+        "961fd8b42fdb049a1943da2da155fdda81cad3d4"
       ],
       "frontend_commits": [
         "396eb85dee445a6dc8308d309c0d18f46fbe3223",
@@ -1470,7 +1471,8 @@
         "b954dfb635ed0215ed1ed4663312c1dff922ef88"
       ],
       "migrations": [
-        "supabase/migrations/20261106131338_fluxo_caixa_recebimentos_sem_nf.sql"
+        "supabase/migrations/20261106131338_fluxo_caixa_recebimentos_sem_nf.sql",
+        "supabase/migrations/20261111140000_cashflow_quotation_item_read_access.sql"
       ]
     },
     {
