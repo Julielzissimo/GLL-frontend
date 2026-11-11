@@ -117,3 +117,20 @@ test("participant payload saves equal division preference", async () => {
   assert.equal(client.calls[0].name, "save_cashflow_party");
   assert.equal(client.calls[0].args.p_equal_share, true);
 });
+
+test("expense RPC preserves the optional bid selected in the form", async () => {
+  const client = makeClient();
+  await createCashflowService(client).recordExpense({
+    idempotencyKey: "expense-key",
+    description: "Frete",
+    category: "Logística",
+    amountCents: 12000,
+    occurredOn: "2026-11-10",
+    paymentMethod: "pix",
+    payerType: "company",
+    bidId: "bid-42",
+  });
+  assert.equal(client.calls[0].name, "record_cashflow_expense");
+  assert.equal(client.calls[0].args.p_bid_id, "bid-42");
+  assert.equal(client.calls[0].args.p_quotation_item_id, null);
+});

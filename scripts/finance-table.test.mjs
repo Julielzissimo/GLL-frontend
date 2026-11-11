@@ -2,7 +2,11 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 globalThis.window = {};
-const { reimbursementTableRows } = await import("../web/finance.js");
+const {
+  cashflowExpenseBidOptions,
+  reimbursementTableRows,
+  resolveCashflowExpenseBid,
+} = await import("../web/finance.js");
 
 test("reimbursement rows retain settled expenses and show each recorded payment", () => {
   const data = {
@@ -26,4 +30,27 @@ test("reimbursement rows retain settled expenses and show each recorded payment"
   const filtered = reimbursementTableRows(data, { from: "2026-11-07", to: "2026-11-08" });
   assert.deepEqual(filtered.expenses, []);
   assert.deepEqual(filtered.payments.map((row) => row.id), ["payment-2", "payment-3"]);
+});
+
+test("expense bid search resolves only an exact accessible option and keeps general expenses", () => {
+  const bids = [
+    { id: "bid-1", edital_number: "123/2026", buyer_agency: "Secretaria Municipal" },
+    { id: "bid-2", edital_number: "456/2026", buyer_agency: "Hospital Regional" },
+  ];
+  const firstOption = cashflowExpenseBidOptions(bids)[0];
+  assert.deepEqual(resolveCashflowExpenseBid(firstOption.label.toLocaleUpperCase("pt-BR"), bids), {
+    valid: true, bidId: "bid-1",
+  });
+  assert.deepEqual(resolveCashflowExpenseBid("", bids), { valid: true, bidId: null });
+  assert.deepEqual(resolveCashflowExpenseBid("Edital 123", bids), { valid: false, bidId: null });
+});
+
+test("expense bid search disambiguates repeated edital labels", () => {
+  const bids = [
+    { id: "bid-abcdefgh-one", edital_number: "123/2026", buyer_agency: "Secretaria Municipal" },
+    { id: "bid-abcdefgh-two", edital_number: "123/2026", buyer_agency: "Secretaria Municipal" },
+  ];
+  const options = cashflowExpenseBidOptions(bids);
+  assert.notEqual(options[0].label, options[1].label);
+  assert.equal(resolveCashflowExpenseBid(options[1].label, bids).bidId, bids[1].id);
 });
