@@ -193,6 +193,16 @@
   cursor: pointer;
 }
 
+.cashflow-tab:hover:not(.active) {
+  background: var(--gll-selection-bg);
+  color: var(--gll-forest);
+}
+
+.cashflow-tab:focus-visible {
+  outline: 2px solid var(--gll-focus);
+  outline-offset: 2px;
+}
+
 .cashflow-tab.active {
   border-bottom-color: var(--primary);
   background: var(--gll-selection-bg);
