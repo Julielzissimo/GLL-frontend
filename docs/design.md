@@ -86,7 +86,7 @@ A escala usa base de 4 px:
 - Bordas: `--border-default` e `--border-strong`.
 - Sombras: `--gll-shadow-sm` (2 px / 8 px / 5%), `--gll-shadow-md` (14 px / 34 px / 12%) e `--gll-shadow-overlay` (30 px / 70 px / 22%).
 - Sidebar: 258 px. Controles principais: altura mínima de 44 px.
-- Todos os controles de entrada (`input`, `select` e `textarea`), inclusive os inválidos e os que fazem parte de campos compostos, devem usar borda âmbar `var(--gll-focus)` (`#ad7237`) e halo `var(--shadow-focus)` ao receber foco, seguindo a referência visual do campo selecionado. Checkboxes e radios preservam sua forma própria, mas também usam `--gll-focus` no indicador de foco.
+- Todos os controles de entrada (`input`, `select` e `textarea`), inclusive os inválidos, filtros e os que fazem parte de campos compostos, devem usar borda âmbar `var(--gll-focus)` (`#ad7237`) e halo `var(--shadow-focus)` ao receber foco. Em `:focus-visible`, o contorno é `1px solid var(--gll-focus)` com `outline-offset: 2px`, seguindo a referência visual dos campos de Licitações. Campos novos e seletores específicos de módulo devem preservar esses mesmos valores. Checkboxes e radios preservam sua forma própria, mas também usam `--gll-focus` no indicador de foco.
 - O foco por teclado deve manter um contorno visível e acessível. A semântica e as mensagens de erro permanecem, mas não substituem a cor âmbar do foco enquanto o campo estiver focado.
 
 ### Z-index
