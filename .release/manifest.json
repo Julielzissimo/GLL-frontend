@@ -2026,7 +2026,8 @@
       "frontend_commits": [
         "9061d7887dc3ca62c3d28347e6e66168d017096f",
         "1afe30648fbbe2796769957242f15010c334a5ea",
-        "fa55481b1c4d73adb8258037ea2fd6c0f545bc79"
+        "fa55481b1c4d73adb8258037ea2fd6c0f545bc79",
+        "8bae799c14424e0e35bee21beffbb0b4b33b148b"
       ],
       "migrations": []
     },
@@ -2069,7 +2070,8 @@
         "965bfedb13decc60e2a64e329d4fb8207066c9f3",
         "d49941f067252b2108fb8ef3f95b1ee302c146a2",
         "d5e45ed6a1784ea747535e4f4b000ccdab50d8ae",
-        "6d647c188b78f895b6ac5655a843c7ff42735f07"
+        "6d647c188b78f895b6ac5655a843c7ff42735f07",
+        "05aa962972859c55a7110f9f6547c4f0970e13ee"
       ],
       "migrations": [
         "supabase/migrations/20261106131338_fluxo_caixa_recebimentos_sem_nf.sql"
@@ -2137,7 +2139,8 @@
       "id": "FLUXO-CAIXA-FOCO-001",
       "backend_commits": [],
       "frontend_commits": [
-        "01c94012d79489833ce6cae2a9c07da52ac11231"
+        "01c94012d79489833ce6cae2a9c07da52ac11231",
+        "a716ea7be9449dce99a9e724cd0d78e973e2e410"
       ],
       "migrations": []
     },
@@ -2204,7 +2207,8 @@
       "id": "FLUXO-CAIXA-ABAS-001",
       "backend_commits": [],
       "frontend_commits": [
-        "7008658a0c43a5e2b1d3d73d7fa97adbb188377a"
+        "7008658a0c43a5e2b1d3d73d7fa97adbb188377a",
+        "67bfaaa07c96d1c71895b6306a61452547f14467"
       ],
       "migrations": []
     },
@@ -2263,7 +2267,8 @@
       "backend_commits": [],
       "frontend_commits": [
         "fe5dc37ceb185a8b89fbfb5311798b8785c91b38",
-        "e5d02789245b5425539af7a2aab6f19fd23811db"
+        "e5d02789245b5425539af7a2aab6f19fd23811db",
+        "a312c7b058c50678916027fa7e0ae5c315ff42b8"
       ],
       "migrations": []
     },

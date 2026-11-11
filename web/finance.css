@@ -173,6 +173,7 @@
   outline: 1px solid var(--gll-focus);
   outline-offset: 2px;
   border-color: var(--gll-focus);
+  box-shadow: var(--shadow-focus);
 }
 
 .cashflow-tabs {
@@ -190,6 +191,16 @@
   font: inherit;
   font-weight: 600;
   cursor: pointer;
+}
+
+.cashflow-tab:hover:not(.active) {
+  background: var(--gll-selection-bg);
+  color: var(--gll-forest);
+}
+
+.cashflow-tab:focus-visible {
+  outline: 2px solid var(--gll-focus);
+  outline-offset: 2px;
 }
 
 .cashflow-tab.active {
