@@ -2363,6 +2363,15 @@ textarea[aria-invalid="true"]:focus {
   text-align: center;
 }
 
+.login-public-links {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--gll-space-2) var(--gll-space-4);
+  padding-top: var(--gll-space-2);
+  font-size: var(--gll-text-sm);
+}
+
 .full-action {
   width: 100%;
 }
