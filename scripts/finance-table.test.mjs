@@ -4,6 +4,7 @@ import assert from "node:assert/strict";
 globalThis.window = {};
 const {
   cashflowExpenseBidOptions,
+  cashflowWithdrawalsForAccessibleBids,
   reimbursementTableRows,
   resolveCashflowExpenseBid,
 } = await import("../web/finance.js");
@@ -53,4 +54,14 @@ test("expense bid search disambiguates repeated edital labels", () => {
   const options = cashflowExpenseBidOptions(bids);
   assert.notEqual(options[0].label, options[1].label);
   assert.equal(resolveCashflowExpenseBid(options[1].label, bids).bidId, bids[1].id);
+});
+test('withdrawal rows exclude bids outside the accessible list', () => {
+  const withdrawals = [
+    { id: 'visible', bid_id: 'bid-1', amount: '10.00' },
+    { id: 'hidden', bid_id: 'bid-2', amount: '90.00' },
+  ];
+  assert.deepEqual(
+    cashflowWithdrawalsForAccessibleBids(withdrawals, [{ id: 'bid-1' }]).map((row) => row.id),
+    ['visible'],
+  );
 });

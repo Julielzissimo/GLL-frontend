@@ -196,6 +196,12 @@ export function reimbursementTableRows(data, filters = {}) {
   };
 }
 
+export function cashflowWithdrawalsForAccessibleBids(withdrawals, bids) {
+  const accessibleBidIds = new Set((Array.isArray(bids) ? bids : []).map((bid) => String(bid.id)));
+  return (Array.isArray(withdrawals) ? withdrawals : [])
+    .filter((withdrawal) => accessibleBidIds.has(String(withdrawal.bid_id)));
+}
+
 export async function submitCashflowOperation(runBusy, operation, message) {
   let completed = false;
   let result;
@@ -510,12 +516,12 @@ export function createCashflowFeature(options = {}) {
   }
 
   function withdrawalTable() {
-    const sortedWithdrawals = [...(state.data.withdrawals || [])].sort((left, right) =>
+    const bids = accessibleBids();
+    const sortedWithdrawals = cashflowWithdrawalsForAccessibleBids(state.data.withdrawals, bids).sort((left, right) =>
       String(right.withdrawn_on || "").localeCompare(String(left.withdrawn_on || "")));
     const rows = filteredByDate(sortedWithdrawals, "withdrawn_on");
     if (!rows.length) return emptyState("Nenhum saque registrado", "Quando uma retirada for registrada, ela aparecerá nesta lista.");
     const users = getUsers() || [];
-    const bids = accessibleBids();
     return `<div class="cashflow-table-wrap"><table class="cashflow-table"><thead><tr><th>Autor do saque</th><th>Quem recebeu o saque</th><th class="cashflow-number">Valor do saque</th><th>Data do saque</th><th>Nº do edital</th></tr></thead><tbody>${rows.map((withdrawal) => {
       const actor = users.find((user) => String(user.auth_user_id) === String(withdrawal.actor_id));
       const actorName = actor?.display_name || actor?.full_name || actor?.name || "Usuário do GLL";
