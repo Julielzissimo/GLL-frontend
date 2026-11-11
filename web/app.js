@@ -4842,6 +4842,15 @@ function handleOrganizationDataChanged(event = null) {
   }
 }
 
+function broadcastBillingDataChanged() {
+  if (!chatBroadcastChannel) return;
+  void chatBroadcastChannel.send({
+    type: "broadcast",
+    event: "organization-data-changed",
+    payload: { resource: "billing" },
+  }).catch(() => {});
+}
+
 function mergeLiveRows(existing, incoming, scopeField = null, scopeValue = null) {
   if (!scopeField) return incoming;
   const retained = existing.filter((row) => String(row?.[scopeField]) !== String(scopeValue));
