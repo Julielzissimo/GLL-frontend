@@ -2258,6 +2258,14 @@
         "e5d02789245b5425539af7a2aab6f19fd23811db"
       ],
       "migrations": []
+    },
+    {
+      "id": "FLUXO-CAIXA-DESPESA-DESCARTE-001",
+      "backend_commits": [],
+      "frontend_commits": [
+        "a4ad48c751228ce09b2d238f677829de9ed7b922"
+      ],
+      "migrations": []
     }
   ]
 }

@@ -232,6 +232,7 @@ export function createCashflowFeature(options = {}) {
     openingReceipt: false,
     receiptOpenRequest: 0,
     receiptDirty: false,
+    expenseDirty: false,
     confirmingDiscard: false,
     discardReturnFocus: null,
     dialogWide: false,
@@ -265,6 +266,7 @@ export function createCashflowFeature(options = {}) {
 
   function openDialog(title, subtitle, body, submitLabel, kind, wide = false) {
     if (!dialog.open && kind === "receipt") state.receiptDirty = false;
+    if (!dialog.open && kind === "expense") state.expenseDirty = false;
     state.drawerKind = kind;
     state.dialogWide = wide;
     state.confirmingDiscard = false;
@@ -273,9 +275,23 @@ export function createCashflowFeature(options = {}) {
     dialog.classList.remove("cashflow-dialog-confirmation");
     dialog.setAttribute("aria-labelledby", "cashflowDrawerTitle");
     dialog.removeAttribute("aria-describedby");
-    const discardPrompt = kind === "receipt" ? `<section id="cashflowReceiptDiscardDialog" class="cashflow-receipt-discard-view quotation-item-discard-content" aria-labelledby="cashflowReceiptDiscardTitle" aria-describedby="cashflowReceiptDiscardDescription" hidden>
-      <h2 id="cashflowReceiptDiscardTitle">Descartar alterações?</h2>
-      <p id="cashflowReceiptDiscardDescription">Há alterações não salvas no recebimento. Se você sair agora, elas serão perdidas.</p>
+    const discardConfig = {
+      receipt: {
+        id: "cashflowReceiptDiscardDialog",
+        titleId: "cashflowReceiptDiscardTitle",
+        descriptionId: "cashflowReceiptDiscardDescription",
+        description: "Há alterações não salvas no recebimento. Se você sair agora, elas serão perdidas.",
+      },
+      expense: {
+        id: "cashflowExpenseDiscardDialog",
+        titleId: "cashflowExpenseDiscardTitle",
+        descriptionId: "cashflowExpenseDiscardDescription",
+        description: "Há alterações não salvas na despesa. Se você sair agora, elas serão perdidas.",
+      },
+    }[kind];
+    const discardPrompt = discardConfig ? `<section id="${discardConfig.id}" class="cashflow-discard-view quotation-item-discard-content" aria-labelledby="${discardConfig.titleId}" aria-describedby="${discardConfig.descriptionId}" hidden>
+      <h2 id="${discardConfig.titleId}">Descartar alterações?</h2>
+      <p id="${discardConfig.descriptionId}">${escapeHtml(discardConfig.description)}</p>
       <div class="button-row end">
         <button class="quiet-action" type="button" data-cf-discard-continue>Continuar editando</button>
         <button class="danger-action" type="button" data-cf-discard-confirm>Descartar alterações</button>
@@ -295,6 +311,7 @@ export function createCashflowFeature(options = {}) {
     if (dialog.open) dialog.close();
     state.drawerKind = null;
     state.receiptDirty = false;
+    state.expenseDirty = false;
     state.confirmingDiscard = false;
     state.discardReturnFocus = null;
     dialog.innerHTML = "";
@@ -303,12 +320,14 @@ export function createCashflowFeature(options = {}) {
   function requestCloseDialog() {
     if (state.saving) return;
     if (state.confirmingDiscard) return;
-    if (state.drawerKind !== "receipt" || !state.receiptDirty) {
+    const hasUnsavedChanges = (state.drawerKind === "receipt" && state.receiptDirty)
+      || (state.drawerKind === "expense" && state.expenseDirty);
+    if (!hasUnsavedChanges) {
       closeDialog();
       return;
     }
     const form = dialog.querySelector("#cashflowDrawerForm");
-    const prompt = dialog.querySelector("#cashflowReceiptDiscardDialog");
+    const prompt = dialog.querySelector(`#cashflow${state.drawerKind === "receipt" ? "Receipt" : "Expense"}DiscardDialog`);
     if (!form || !prompt) return;
     state.discardReturnFocus = form.contains(document.activeElement) ? document.activeElement : null;
     state.confirmingDiscard = true;
@@ -316,15 +335,15 @@ export function createCashflowFeature(options = {}) {
     prompt.hidden = false;
     dialog.classList.remove("cashflow-dialog-wide");
     dialog.classList.add("cashflow-dialog-confirmation");
-    dialog.setAttribute("aria-labelledby", "cashflowReceiptDiscardTitle");
-    dialog.setAttribute("aria-describedby", "cashflowReceiptDiscardDescription");
+    dialog.setAttribute("aria-labelledby", prompt.querySelector("h2")?.id || "cashflowReceiptDiscardTitle");
+    dialog.setAttribute("aria-describedby", prompt.querySelector("p")?.id || "cashflowReceiptDiscardDescription");
     prompt.querySelector("[data-cf-discard-continue]")?.focus();
   }
 
-  function continueReceiptEditing() {
+  function continueDrawerEditing() {
     if (!state.confirmingDiscard) return;
     const form = dialog.querySelector("#cashflowDrawerForm");
-    const prompt = dialog.querySelector("#cashflowReceiptDiscardDialog");
+    const prompt = dialog.querySelector(`#cashflow${state.drawerKind === "receipt" ? "Receipt" : "Expense"}DiscardDialog`);
     state.confirmingDiscard = false;
     if (form) form.hidden = false;
     if (prompt) prompt.hidden = true;
@@ -338,10 +357,10 @@ export function createCashflowFeature(options = {}) {
     else form?.querySelector("input:not([type=hidden]):not([disabled]), select:not([disabled]), textarea:not([disabled])")?.focus();
   }
 
-  function trackReceiptChanges(event) {
-    if (state.drawerKind === "receipt" && event.target.closest?.("#cashflowDrawerForm")) {
-      state.receiptDirty = true;
-    }
+  function trackDrawerChanges(event) {
+    if (!event.target.closest?.("#cashflowDrawerForm")) return;
+    if (state.drawerKind === "receipt") state.receiptDirty = true;
+    if (state.drawerKind === "expense") state.expenseDirty = true;
   }
 
   function renderHeaderActions() {
@@ -1176,7 +1195,7 @@ export function createCashflowFeature(options = {}) {
       renderWorkspace();
       return;
     }
-    trackReceiptChanges(event);
+    trackDrawerChanges(event);
     if (target.matches("[data-cf-amount], [data-cf-reserve], [data-cf-allocation]")) target.dataset.touched = "true";
     if (target.matches("[data-cf-quantity], [data-cf-amount], [data-cf-reserve], [data-cf-allocation]")) updateReceiptForm();
   }
@@ -1189,7 +1208,7 @@ export function createCashflowFeature(options = {}) {
       renderWorkspace();
       return;
     }
-    trackReceiptChanges(event);
+    trackDrawerChanges(event);
     if (target.matches("[data-cf-line-check]")) {
       const id = target.dataset.cfLineCheck;
       const card = target.closest("[data-cf-line-card]");
@@ -1273,12 +1292,12 @@ export function createCashflowFeature(options = {}) {
   });
   dialog.addEventListener("cancel", (event) => {
     event.preventDefault();
-    if (state.confirmingDiscard) continueReceiptEditing();
+    if (state.confirmingDiscard) continueDrawerEditing();
     else requestCloseDialog();
   });
   dialog.addEventListener("click", (event) => {
     if (event.target.closest("[data-cf-discard-continue]")) {
-      continueReceiptEditing();
+      continueDrawerEditing();
       return;
     }
     if (event.target.closest("[data-cf-discard-confirm]")) closeDialog();
