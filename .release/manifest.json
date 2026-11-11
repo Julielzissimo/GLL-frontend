@@ -2274,6 +2274,18 @@
         "a4ad48c751228ce09b2d238f677829de9ed7b922"
       ],
       "migrations": []
+    },
+    {
+      "id": "AUTH-CADASTRO-PUBLICO-001",
+      "backend_commits": [
+        "6be1f5e78f4dc04f1256471c6fd2ec00727a9ae2"
+      ],
+      "frontend_commits": [
+        "8e6b03752c7bf0364f68aa61a6bc12344850f804"
+      ],
+      "migrations": [
+        "supabase/migrations/20261111121207_public_signup_feature_flag.sql"
+      ]
     }
   ]
 }
