@@ -2368,6 +2368,16 @@
       "migrations": [
         "supabase/migrations/20261111121308_fluxo_caixa_reserva_no_pagamento_reembolso.sql"
       ]
+    },
+    {
+      "id": "FLUXO-CAIXA-BID-READ-ACCESS-001",
+      "backend_commits": [
+        "def12e49096874fb931e6da1bc560e2613573c97"
+      ],
+      "frontend_commits": [],
+      "migrations": [
+        "supabase/migrations/20261111182520_cashflow_bid_read_access.sql"
+      ]
     }
   ]
 }
