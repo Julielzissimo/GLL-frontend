@@ -177,7 +177,8 @@
 .cashflow-field textarea:focus-visible,
 .cashflow-filters input:focus-visible,
 .cashflow-filters select:focus-visible {
-  outline: 3px solid color-mix(in srgb, var(--gll-focus) 28%, transparent);
+  outline: 1px solid var(--gll-focus);
+  outline-offset: 2px;
   border-color: var(--gll-focus);
 }
 
