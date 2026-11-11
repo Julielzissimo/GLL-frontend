@@ -802,7 +802,7 @@ export function createCashflowFeature(options = {}) {
       <section class="cashflow-drawer-section"><div><h3>Itens marcados como vencidos</h3><p>Para cada item, marque uma ou mais opções de recebimento e informe as quantidades correspondentes.</p></div></section>
       <div class="cashflow-invoice-list">${itemList}</div>
       <div class="cashflow-distribution-panel" data-cf-distribution-panel hidden>
-        <div class="cashflow-calculation" data-cf-receipt-total>Selecione um edital e marque os itens que fazem parte deste recebimento.</div>
+        <p class="cashflow-inline-note" data-cf-receipt-validation role="status" aria-live="polite" hidden></p>
       </div>`;
     openDialog("Registrar recebimento", "Vincule o crédito a um edital e aos itens marcados como vencidos.", body, "Confirmar recebimento", "receipt", true);
     updateReceiptForm();
@@ -908,30 +908,20 @@ export function createCashflowFeature(options = {}) {
       }
       for (const field of allocationFields) field.disabled = !checked || !manual?.checked;
     }
-    const totals = form.querySelector("[data-cf-receipt-total]");
+    const validation = form.querySelector("[data-cf-receipt-validation]");
     try {
       const lines = receiptFormLines();
-      const amount = lines.reduce((sum, line) => sum + line.amountCents, 0);
-      const costs = lines.reduce((sum, line) => sum + line.costCents, 0);
-      const reserve = lines.reduce((sum, line) => sum + line.reserveCents, 0);
-      const profit = lines.reduce((sum, line) => sum + line.profitCents, 0);
-      const loss = lines.reduce((sum, line) => sum + line.lossCents, 0);
-      totals.innerHTML = `<div><span>Recebido bruto</span><strong>${formatBrl(amount)}</strong></div><div><span>Custos dos itens</span><strong>${formatBrl(costs)}</strong></div><div><span>Reserva para despesas</span><strong>${formatBrl(reserve)}</strong></div><div class="cashflow-total-final"><span>Lucro distribuível</span><strong>${formatBrl(profit)}</strong></div>`;
-      if (loss > 0) totals.innerHTML += `<div><span>Prejuízo dos itens</span><strong>${formatBrl(loss)}</strong></div>`;
-      if (lines.some((line) => form.querySelector(`[data-cf-manual="${line.id}"]`)?.checked)) {
-        let allocationTotal = 0;
-        for (const line of lines) {
-          if (!form.querySelector(`[data-cf-manual="${line.id}"]`)?.checked) continue;
-          for (const party of activeParticipants()) {
-            const field = form.querySelector(`[data-cf-allocation="${line.id}"][data-cf-party="${party.id}"]`);
-            if (field) allocationTotal += parseAmount(field.value, "Distribuição do participante");
-          }
-        }
-        const manualProfit = lines.filter((line) => form.querySelector(`[data-cf-manual="${line.id}"]`)?.checked)
-          .reduce((sum, line) => sum + line.profitCents, 0);
-        totals.innerHTML += `<p>${allocationTotal === manualProfit ? "A distribuição manual concilia com o lucro dos itens marcados." : `Distribuição manual informada ${formatBrl(allocationTotal)} · diferença ${formatBrl(manualProfit - allocationTotal)}`}</p>`;
+      let message = lines.length ? "" : "Marque ao menos uma opção de recebimento dos itens vencidos.";
+      for (const line of lines) {
+        if (!form.querySelector(`[data-cf-manual="${line.id}"]`)?.checked) continue;
+        const allocationTotal = activeParticipants().reduce((sum, party) => {
+          const field = form.querySelector(`[data-cf-allocation="${line.id}"][data-cf-party="${party.id}"]`);
+          return sum + parseAmount(field?.value || "0", "Distribuição do participante");
+        }, 0);
+        if (allocationTotal !== line.profitCents) message = "A distribuição manual precisa totalizar o lucro do item marcado.";
       }
-      if (!lines.length) totals.innerHTML += "<p>Marque ao menos uma opção de recebimento dos itens vencidos.</p>";
+      validation.textContent = message;
+      validation.hidden = !message;
     } catch (error) {
       validation.textContent = error.message;
       validation.hidden = false;
