@@ -198,6 +198,9 @@ const refs = {
   resendSignupFromLoginButton: $("resendSignupFromLoginButton"),
   organizationSignupView: $("organizationSignupView"),
   showOrganizationSignupButton: $("showOrganizationSignupButton"),
+  publicSignupDisabledDialog: $("publicSignupDisabledDialog"),
+  publicSignupDisabledMessage: $("publicSignupDisabledMessage"),
+  closePublicSignupDisabledDialogButton: $("closePublicSignupDisabledDialogButton"),
   organizationSignupForm: $("organizationSignupForm"),
   organizationSignupName: $("organizationSignupName"),
   organizationSignupCnpj: $("organizationSignupCnpj"),
@@ -1422,6 +1425,17 @@ class SupabaseStore {
     return null;
   }
 
+  async isPublicSignupEnabled() {
+    const client = await this.open();
+    const { data, error } = await client
+      .from("app_feature_flags")
+      .select("enabled")
+      .eq("key", "public_signup_enabled")
+      .maybeSingle();
+    assertSupabase(error);
+    return data?.enabled === true;
+  }
+
   async isPasswordResetRequired() {
     const client = await this.open();
     const data = await invokeSupabaseFunction(client, "password-reset-status");
@@ -2607,7 +2621,7 @@ function organizationSignupErrorMessage(error) {
     return "Informe um CNPJ válido.";
   }
   if (/signups_not_allowed|signup.*disabled|signups.*disabled/i.test(details)) {
-    return "O cadastro de contas está desativado neste ambiente. Entre em contato com o suporte.";
+    return "A funcionalidade de criar uma nova conta está temporariamente inativa. Os convites para novos usuários continuam ativos.";
   }
   if (/already registered|user exists|email exists/i.test(details)) {
     return "Não foi possível criar a conta com este e-mail. Se você já tem acesso, entre pelo login.";
@@ -2695,6 +2709,31 @@ function showOrganizationSignupView() {
   refs.organizationSignupError.textContent = "";
   refs.organizationSignupView.classList.remove("hidden");
   refs.organizationSignupFullName.focus();
+}
+
+function showPublicSignupDisabledDialog(message) {
+  refs.publicSignupDisabledMessage.textContent = message;
+  if (!refs.publicSignupDisabledDialog.open) refs.publicSignupDisabledDialog.showModal();
+}
+
+async function handleShowOrganizationSignupClick() {
+  if (refs.showOrganizationSignupButton.disabled) return;
+  refs.showOrganizationSignupButton.disabled = true;
+  try {
+    if (!(store instanceof SupabaseStore) || !(await store.isPublicSignupEnabled())) {
+      showPublicSignupDisabledDialog(
+        "A funcionalidade de criar uma nova conta está temporariamente inativa. Os convites para novos usuários continuam ativos."
+      );
+      return;
+    }
+    showOrganizationSignupView();
+  } catch {
+    showPublicSignupDisabledDialog(
+      "Não foi possível verificar se a criação de contas está liberada. Tente novamente em instantes."
+    );
+  } finally {
+    refs.showOrganizationSignupButton.disabled = false;
+  }
 }
 
 function returnToLoginFromOrganizationSignup() {
@@ -2987,7 +3026,8 @@ function bindEvents() {
     pendingSignupConfirmation = null;
     showLoginView();
   });
-  refs.showOrganizationSignupButton.addEventListener("click", showOrganizationSignupView);
+  refs.showOrganizationSignupButton.addEventListener("click", handleShowOrganizationSignupClick);
+  refs.closePublicSignupDisabledDialogButton.addEventListener("click", () => refs.publicSignupDisabledDialog.close());
   refs.cancelOrganizationSignupButton.addEventListener("click", returnToLoginFromOrganizationSignup);
   refs.organizationSignupForm.addEventListener("submit", withBlockingLoading(handleOrganizationSignupSubmit, "Criando sua conta…"));
   refs.organizationSignupCnpj.addEventListener("input", () => refs.organizationSignupCnpj.setCustomValidity(""));
