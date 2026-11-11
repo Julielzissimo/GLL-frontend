@@ -282,7 +282,7 @@ export function createCashflowService(client) {
         p_payment_method: expense.paymentMethod,
         p_payer_type: expense.payerType,
         p_payer_party_id: expense.payerPartyId || null,
-        p_bid_id: null,
+        p_bid_id: expense.bidId || null,
         p_quotation_item_id: null,
         p_profit_treatment: expense.profitTreatment || "expense_reserve",
         p_justification: expense.justification || "",
