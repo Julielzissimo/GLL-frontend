@@ -2286,6 +2286,18 @@
       "migrations": [
         "supabase/migrations/20261111121207_public_signup_feature_flag.sql"
       ]
+    },
+    {
+      "id": "FLUXO-CAIXA-RESERVA-REEMBOLSO-002",
+      "backend_commits": [
+        "229beb34b49994c3a8e10596940022bd8bfc2934"
+      ],
+      "frontend_commits": [
+        "c5e552d60cbd91655e15126ba3d845eb80eb7cac"
+      ],
+      "migrations": [
+        "supabase/migrations/20261111121308_fluxo_caixa_reserva_no_pagamento_reembolso.sql"
+      ]
     }
   ]
 }
