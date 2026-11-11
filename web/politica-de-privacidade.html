@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'none'; connect-src 'none'; img-src 'self'; style-src 'self'; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'none'; upgrade-insecure-requests" />
+    <meta name="description" content="Política de privacidade da integração LiciGestão Backup com Google Drive." />
+    <meta name="robots" content="index,follow" />
+    <title>Política de Privacidade — LiciGestão Backup</title>
+    <link rel="icon" type="image/svg+xml" href="./assets/favicon.svg" sizes="any" />
+    <link rel="stylesheet" href="./design-system/tokens.css" />
+    <link rel="stylesheet" href="./backup-public.css" />
+  </head>
+  <body>
+    <header class="public-header">
+      <div class="public-header-inner">
+        <a class="public-brand" href="./backup-google-drive.html" aria-label="LiciGestão Backup — página inicial">
+          <img src="./assets/gll-brand.svg" alt="LiciGestão" />
+        </a>
+        <nav aria-label="Links principais">
+          <a href="./backup-google-drive.html">Sobre o backup</a>
+          <a class="public-header-action" href="./">Acessar o LiciGestão</a>
+        </nav>
+      </div>
+    </header>
+
+    <main class="public-page public-policy" aria-labelledby="page-title">
+      <header class="public-policy-heading">
+        <h1 id="page-title">Política de Privacidade do LiciGestão Backup</h1>
+        <p>Última atualização: 11 de novembro de 2026.</p>
+        <p>Esta política explica como a integração de backup do LiciGestão usa dados do Google Drive e protege os arquivos de recuperação. A integração automática está em implantação e ainda não está habilitada para rotinas operacionais.</p>
+      </header>
+
+      <div class="public-content">
+        <section aria-labelledby="responsible-title">
+          <h2 id="responsible-title">Responsável e contato</h2>
+          <p>A operação do LiciGestão Backup é administrada pela equipe responsável pelo LiciGestão. Para dúvidas ou solicitações relativas a esta integração, escreva para <a href="mailto:lsms.suprimentos@gmail.com">lsms.suprimentos@gmail.com</a>.</p>
+        </section>
+
+        <section aria-labelledby="data-title">
+          <h2 id="data-title">Dados tratados</h2>
+          <ul>
+            <li><strong>Dados da conta Google:</strong> a identidade da conta autorizada, usada para confirmar a conta de destino, e informações de cota/uso do Drive necessárias para verificar a conexão e o espaço disponível.</li>
+            <li><strong>Arquivos do backup:</strong> o pacote criptografado e os arquivos da integração que o acompanham. O pacote lógico pode conter dados pessoais e comerciais existentes no banco Supabase do LiciGestão.</li>
+            <li><strong>Metadados operacionais:</strong> nome e ambiente do arquivo, data e hora, tamanho, hash SHA-256, tipo de backup, versão da ferramenta, resultado da restauração e horário da verificação. Esses dados permitem conferir integridade e aplicar retenção sem expor o conteúdo do banco.</li>
+            <li><strong>Credenciais de autorização:</strong> tokens OAuth e dados do cliente OAuth necessários para conectar a conta. Eles são material de segurança e não devem aparecer em páginas, repositórios ou logs.</li>
+          </ul>
+        </section>
+
+        <section aria-labelledby="scope-title">
+          <h2 id="scope-title">Permissão solicitada ao Google</h2>
+          <p>A integração solicita o escopo <code>https://www.googleapis.com/auth/drive.file</code>. Esse escopo permite criar arquivos e acessar arquivos criados pela aplicação ou compartilhados/abertos especificamente para ela. A aplicação não solicita o escopo geral de leitura ou gerenciamento de todo o Google Drive.</p>
+          <p>Dentro do acesso concedido, os scripts destinam listagem, upload, download, verificação e retenção às pastas gerenciadas <code>LiciGestao/Backups/Supabase/producao</code> e <code>LiciGestao/Backups/Supabase/homologacao</code>. O serviço também consulta a cota da conta para reportar o espaço disponível. O Google aplica seus próprios termos e práticas de privacidade ao serviço Drive.</p>
+        </section>
+
+        <section aria-labelledby="purpose-title">
+          <h2 id="purpose-title">Finalidade e uso dos dados</h2>
+          <p>Os dados do Google são usados somente para autorizar a conexão, armazenar os pacotes criptografados, verificar sua integridade, conferir a cota e, quando aplicável, manter a política de retenção e apoiar uma restauração solicitada pela organização. Não usamos os dados obtidos do Google para publicidade, venda, perfilamento ou finalidade alheia ao backup.</p>
+          <p>As cópias destinam-se à continuidade e recuperação do banco Supabase. Elas não incluem os objetos binários do Supabase Storage.</p>
+        </section>
+
+        <section aria-labelledby="security-title">
+          <h2 id="security-title">Armazenamento e segurança</h2>
+          <ul>
+            <li>O pacote de banco é criptografado com age antes do upload. O Drive recebe o arquivo criptografado e metadados operacionais mínimos, nunca um dump em texto claro.</li>
+            <li>Durante a preparação e a validação de uma execução, uma cópia temporária em texto claro pode existir em um ambiente isolado de processamento. Ela é necessária para gerar e validar o backup, permanece fora do Drive e deve ser removida ao final ou após uma falha.</li>
+            <li>O desenho de automação prevê guardar a configuração OAuth e a chave privada de descriptografia em GitHub Actions Secrets, separados por ambiente. O fluxo automático ainda não está ativo.</li>
+            <li>A chave privada age é mantida separada dos arquivos do Drive. O acesso às credenciais deve ficar restrito às pessoas e processos que operam os backups.</li>
+          </ul>
+          <p>O projeto usa OAuth em nome da conta autorizada. Não usa uma service account como proprietária dos arquivos no My Drive pessoal.</p>
+        </section>
+
+        <section aria-labelledby="retention-title">
+          <h2 id="retention-title">Retenção e exclusão</h2>
+          <p>Quando a automação estiver ativa, a regra será manter até os 30 backups válidos mais recentes por ambiente. Uma exclusão só ocorrerá após confirmação e verificação de um novo upload, dentro da pasta do ambiente correspondente, sem apagar o único backup válido. Arquivos reconhecidos como antigos e excedentes serão enviados à lixeira do Drive; a integração não esvazia a lixeira nem executa sincronização que apague outros arquivos.</p>
+          <p>A conta Google continua sujeita aos controles de retenção e exclusão do próprio Google Drive. A organização pode solicitar orientações de remoção pelo contato indicado nesta página.</p>
+        </section>
+
+        <section aria-labelledby="sharing-title">
+          <h2 id="sharing-title">Compartilhamento e serviços envolvidos</h2>
+          <p>Os arquivos ficam na conta Google autorizada e seguem as permissões aplicadas pelo titular dessa conta. O Google Drive fornece o armazenamento. A automação planejada usa GitHub Actions para executar tarefas e proteger credenciais por meio de GitHub Secrets. Esses serviços recebem somente os dados necessários às funções descritas nesta política e podem processá-los conforme seus próprios termos.</p>
+          <p>Não criamos links públicos de compartilhamento para os backups.</p>
+        </section>
+
+        <section aria-labelledby="rights-title">
+          <h2 id="rights-title">Controle da autorização e solicitações</h2>
+          <p>O titular da conta pode revogar o acesso do LiciGestão nas configurações da Conta Google. A revogação interrompe novas operações que dependam dessa autorização. Para solicitar informações sobre os dados tratados ou a remoção de arquivos gerenciados, contate <a href="mailto:lsms.suprimentos@gmail.com">lsms.suprimentos@gmail.com</a>.</p>
+        </section>
+
+        <section aria-labelledby="changes-title">
+          <h2 id="changes-title">Alterações desta política</h2>
+          <p>Esta página será atualizada quando mudarem os dados tratados, as permissões solicitadas, a retenção ou o funcionamento do backup. A versão publicada nesta URL é a referência para a autorização Google.</p>
+        </section>
+      </div>
+
+      <aside class="public-policy-callout" aria-label="Política de dados do Google">
+        <p>O uso de informações recebidas das APIs do Google também observa a <a href="https://developers.google.com/terms/api-services-user-data-policy" rel="noopener noreferrer">Política de Dados do Usuário dos Serviços de API do Google</a>, incluindo os requisitos de uso limitado.</p>
+      </aside>
+    </main>
+
+    <footer class="public-footer">
+      <a href="./backup-google-drive.html">Sobre o LiciGestão Backup</a>
+      <a href="mailto:lsms.suprimentos@gmail.com">Contato de privacidade e suporte</a>
+    </footer>
+  </body>
+</html>

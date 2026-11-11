@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "release_id": "2026-11-10-fluxo-de-caixa-reserva-homolog",
+  "release_id": "2026-11-11-backup-oauth-privacy-homolog",
   "environment": "homolog",
   "target_branch": "homolog",
   "items": [
@@ -2379,6 +2379,14 @@
       "migrations": [
         "supabase/migrations/20261111182520_cashflow_bid_read_access.sql"
       ]
+    },
+    {
+      "id": "BACKUP-OAUTH-POLITICA-001",
+      "backend_commits": [],
+      "frontend_commits": [
+        "4f85137f827e2a673d1ee889eb4fe60fbf9ce34c"
+      ],
+      "migrations": []
     }
   ]
 }

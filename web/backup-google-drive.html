@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'none'; connect-src 'none'; img-src 'self'; style-src 'self'; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'none'; upgrade-insecure-requests" />
+    <meta name="description" content="Conheça a integração LiciGestão Backup com Google Drive, o acesso solicitado e as medidas de proteção dos backups." />
+    <meta name="robots" content="index,follow" />
+    <title>LiciGestão Backup — Google Drive</title>
+    <link rel="icon" type="image/svg+xml" href="./assets/favicon.svg" sizes="any" />
+    <link rel="stylesheet" href="./design-system/tokens.css" />
+    <link rel="stylesheet" href="./backup-public.css" />
+  </head>
+  <body>
+    <header class="public-header">
+      <div class="public-header-inner">
+        <a class="public-brand" href="./" aria-label="LiciGestão — página inicial">
+          <img src="./assets/gll-brand.svg" alt="LiciGestão" />
+        </a>
+        <nav aria-label="Links principais">
+          <a href="./politica-de-privacidade.html">Política de privacidade</a>
+          <a class="public-header-action" href="./">Acessar o LiciGestão</a>
+        </nav>
+      </div>
+    </header>
+
+    <main class="public-page">
+      <section class="public-hero" aria-labelledby="page-title">
+        <div class="public-hero-copy">
+          <h1 id="page-title">Backups do LiciGestão no Google Drive</h1>
+          <p class="public-lead">A integração foi projetada para guardar cópias de recuperação do banco Supabase do LiciGestão na conta Google autorizada pela organização.</p>
+          <a class="public-button" href="./politica-de-privacidade.html">Leia a política de privacidade</a>
+        </div>
+        <aside class="public-status" aria-labelledby="availability-title">
+          <h2 id="availability-title">Disponibilidade</h2>
+          <p>O backup automático está em implantação e ainda não está habilitado para rotinas operacionais do LiciGestão. A integração só deverá ser usada após a conclusão da configuração, dos testes de renovação OAuth e da validação de restauração.</p>
+        </aside>
+      </section>
+
+      <div class="public-content">
+        <section aria-labelledby="function-title">
+          <h2 id="function-title">O que a integração faz</h2>
+          <p>Quando ativada, a rotina prepara um backup lógico do banco Supabase, valida a possibilidade de restauração em ambiente local isolado, criptografa o pacote antes do envio e verifica a cópia armazenada no Google Drive.</p>
+          <ol class="public-steps">
+            <li><strong>Preparação e validação:</strong> o banco é exportado e a restauração é verificada em um ambiente local descartável.</li>
+            <li><strong>Criptografia:</strong> o pacote é protegido com age antes de sair do ambiente temporário de processamento.</li>
+            <li><strong>Envio e verificação:</strong> somente o pacote criptografado e seus metadados operacionais são enviados para a pasta gerenciada no Drive.</li>
+          </ol>
+          <p>O escopo inicial cobre o banco PostgreSQL. Arquivos binários armazenados no Supabase Storage não fazem parte deste backup.</p>
+        </section>
+
+        <section aria-labelledby="google-data-title">
+          <h2 id="google-data-title">Acesso ao Google Drive</h2>
+          <p>A autorização planejada usa o escopo OAuth <code>drive.file</code>. Ele permite trabalhar com arquivos criados pela integração ou compartilhados individualmente com ela. A rotina limita suas operações às pastas gerenciadas do LiciGestão e não solicita acesso geral aos arquivos do Drive.</p>
+          <p>O serviço consulta a identidade da conta autorizada e informações de cota necessárias para validar a conexão e acompanhar o espaço disponível. Os arquivos são organizados em <code>LiciGestao/Backups/Supabase/producao</code> e <code>LiciGestao/Backups/Supabase/homologacao</code>.</p>
+        </section>
+
+        <section aria-labelledby="stored-data-title">
+          <h2 id="stored-data-title">O que fica armazenado</h2>
+          <ul>
+            <li>Um pacote <code>.tar.age</code> criptografado antes do upload.</li>
+            <li>Um manifesto e um relatório de restauração com metadados mínimos, como ambiente, horário, nome do pacote, tamanho, hash, tipo de backup, versão da ferramenta e resultado da validação.</li>
+          </ul>
+          <p>Os metadados não contêm o conteúdo do banco. O pacote criptografado pode conter dados pessoais e comerciais que já estejam no banco Supabase do LiciGestão; seu conteúdo só pode ser recuperado com a chave de descriptografia mantida separadamente.</p>
+        </section>
+
+        <section aria-labelledby="retention-title">
+          <h2 id="retention-title">Retenção e exclusão</h2>
+          <p>Quando a automação estiver habilitada, a política será manter os 30 backups válidos mais recentes de cada ambiente. A retenção só poderá remover cópias antigas depois que um novo upload tiver sido confirmado e verificado. Ela opera apenas nos arquivos reconhecidos como gerenciados pela integração, preserva pelo menos um backup válido e envia os arquivos excluídos à lixeira do Google Drive.</p>
+        </section>
+
+        <section class="public-privacy-callout" aria-labelledby="privacy-title">
+          <h2 id="privacy-title">Privacidade e segurança</h2>
+          <p>Os dados da conta Google são usados somente para autorizar e operar o armazenamento, consultar a cota e verificar os arquivos de backup. A integração não usa esses dados para publicidade nem os vende.</p>
+          <a href="./politica-de-privacidade.html">Consulte os dados tratados, a retenção, as exclusões e os canais de contato na política de privacidade.</a>
+        </section>
+      </div>
+    </main>
+
+    <footer class="public-footer">
+      <span>LiciGestão · Gerenciador de Licitações Locais</span>
+      <a href="mailto:lsms.suprimentos@gmail.com">Contato de privacidade e suporte</a>
+    </footer>
+  </body>
+</html>
