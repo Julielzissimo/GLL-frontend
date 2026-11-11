@@ -5984,7 +5984,7 @@ function setPage(page, options = {}) {
   refs.failuresTabButton.classList.toggle("active", page === "failures");
   refs.failuresTabButton.setAttribute("aria-selected", String(page === "failures"));
   refs.failuresTabButton.classList.toggle("hidden", !shouldShowFailureHistory());
-  const primaryPage = showOrganizationDocuments ? "organizationDocuments" : showRadarEngineAdmin ? "radarEngineAdmin" : showRadarSearch ? "radarSearch" : showCashflow ? "cashflow" : showCommercialProposals ? "commercialProposals" : showDeclarations ? "declarations" : showSuppliers ? "suppliers" : showUsers || (showUserProfile && isCurrentUserAdmin()) ? "users" : showQuotations ? "quotations" : showDashboard ? "dashboard" : showHome || showUserProfile ? "home" : "bids";
+  const primaryPage = showOrganizationDocuments ? "organizationDocuments" : showRadarEngineAdmin ? "radarEngineAdmin" : showRadarSearch ? "radarSearch" : showCashflow ? "cashflow" : showCommercialProposals ? "commercialProposals" : showDeclarations ? "declarations" : showSuppliers ? "suppliers" : showUsers || (showUserProfile && isCurrentUserAdmin()) ? "users" : showCompanyData || showDesignSystem ? "settings" : showQuotations ? "quotations" : showDashboard ? "dashboard" : showHome || showUserProfile ? "home" : "bids";
   const activeNavigationPage = ["companyData", "designSystem", "radarEngineAdmin"].includes(page) ? page : primaryPage;
   renderBreadcrumb(page);
   document.querySelectorAll("[data-navigation-page]").forEach((button) => {

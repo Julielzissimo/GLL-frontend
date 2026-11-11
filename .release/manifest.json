@@ -1937,7 +1937,8 @@
     {
       "id": "AUDIT-ITEM-VENCIDO-001",
       "backend_commits": [
-        "bbb11ef29d8e322d9db48f0fb0108e09c911bf32"
+        "bbb11ef29d8e322d9db48f0fb0108e09c911bf32",
+        "1f303628cf1a760a7840cfda11ec825498b9397a"
       ],
       "frontend_commits": [],
       "migrations": [
@@ -1961,7 +1962,8 @@
       "id": "FEAT-004",
       "backend_commits": [],
       "frontend_commits": [
-        "fe9ce428556c767ed51a83f600911b35794af265"
+        "fe9ce428556c767ed51a83f600911b35794af265",
+        "2f7ae5f502d5cf760d4cd5e505b98c87844ce2e9"
       ],
       "migrations": []
     },
@@ -1992,7 +1994,9 @@
       "id": "BILLING-ITEMS-LOADING-001",
       "backend_commits": [],
       "frontend_commits": [
-        "fbadb295c8a5831c46bf1390c56f71ac15ffdd39"
+        "fbadb295c8a5831c46bf1390c56f71ac15ffdd39",
+        "07d97926a8dd631e9242af50e118a1bc45fe9cdb",
+        "bbbe2bba603d96faca0d5de98d49c288b9c8791f"
       ],
       "migrations": []
     },
@@ -2011,10 +2015,14 @@
     {
       "id": "FLUXO-CAIXA-REIMPLEMENTACAO-001",
       "backend_commits": [
-        "1c5fb16adb97ea0176441e11e5ded13315873d3f"
+        "1c5fb16adb97ea0176441e11e5ded13315873d3f",
+        "cdb170f78cc917554543edf3c6243345dc7b5f50",
+        "916d8580c9cdb97c6b4990673d66e6e227df03e5"
       ],
       "frontend_commits": [
-        "792d6a2fafaec2ca15cbdfdc79e5eae61dc9adf8"
+        "792d6a2fafaec2ca15cbdfdc79e5eae61dc9adf8",
+        "34e6694dc42719c0e118adf384b9c12e3ac62a3d",
+        "a8baedd1593f1ef9f4b84d13f3fc75687d9fb9d6"
       ],
       "migrations": [
         "supabase/migrations/20261105185936_fluxo_caixa_ledger.sql"
@@ -2027,7 +2035,11 @@
         "9061d7887dc3ca62c3d28347e6e66168d017096f",
         "1afe30648fbbe2796769957242f15010c334a5ea",
         "fa55481b1c4d73adb8258037ea2fd6c0f545bc79",
-        "8bae799c14424e0e35bee21beffbb0b4b33b148b"
+        "8bae799c14424e0e35bee21beffbb0b4b33b148b",
+        "4371799c41d0f8a7819b282fd78e5524fd75b4a9",
+        "03335b441dbbf967ce8cdc51180a005685dc6593",
+        "f18ef8f83c72b644b0940819dcaaf1572a9dfb57",
+        "0c004e7de7f584aab1150f1d3adef52fb0ee3b01"
       ],
       "migrations": []
     },
@@ -2035,7 +2047,8 @@
       "id": "BILLING-SUPPLIER-COLUMN-001",
       "backend_commits": [],
       "frontend_commits": [
-        "c9728d79fd4326b5069d5a2e7aaff24c2779667e"
+        "c9728d79fd4326b5069d5a2e7aaff24c2779667e",
+        "445d708e66453ee870dc7ad33626e3506a4b8400"
       ],
       "migrations": []
     },
@@ -2043,17 +2056,20 @@
       "id": "FLUXO-CAIXA-HEADER-001",
       "backend_commits": [],
       "frontend_commits": [
-        "b2728a47a1e1721120633e672c31eb6925711a3a"
+        "b2728a47a1e1721120633e672c31eb6925711a3a",
+        "67cb31413ecbc902322b4c25ea3611bffa31f095"
       ],
       "migrations": []
     },
     {
       "id": "ISSUE-285",
       "backend_commits": [
-        "5be1a6c07d8cffcad22f80cb559660d3714c7b72"
+        "5be1a6c07d8cffcad22f80cb559660d3714c7b72",
+        "2b0274c14b6d946f688fe0d9ab8cb85f6a61160b"
       ],
       "frontend_commits": [
-        "9095792f4e2c3eda80ed203289231a339c072888"
+        "9095792f4e2c3eda80ed203289231a339c072888",
+        "9ba553453240fc1f74d3312c37bb089892c4bbb9"
       ],
       "migrations": [
         "supabase/migrations/20261106015245_cashflow_company_expense_reimbursements.sql"
@@ -2062,7 +2078,11 @@
     {
       "id": "FLUXO-CAIXA-RECEBIMENTO-SEM-NF-001",
       "backend_commits": [
-        "a53f37686529c7d259c2b0fb73d48e439eaa133c"
+        "a53f37686529c7d259c2b0fb73d48e439eaa133c",
+        "8bc3c314a152e846e61eb7403e0b4ab2212b8e55",
+        "961fd8b42fdb049a1943da2da155fdda81cad3d4",
+        "6c637eda95e05eec377e52c81bba50ee84f14e4b",
+        "de3b89bbc6fab448331ee4c6c043303a72d0ff39"
       ],
       "frontend_commits": [
         "c157ac08426ad8d3da110a04f06b8cdb8a1a1134",
@@ -2071,17 +2091,27 @@
         "d49941f067252b2108fb8ef3f95b1ee302c146a2",
         "d5e45ed6a1784ea747535e4f4b000ccdab50d8ae",
         "6d647c188b78f895b6ac5655a843c7ff42735f07",
-        "05aa962972859c55a7110f9f6547c4f0970e13ee"
+        "05aa962972859c55a7110f9f6547c4f0970e13ee",
+        "396eb85dee445a6dc8308d309c0d18f46fbe3223",
+        "be23256793bfdeb593581b5d0c239a17483b31de",
+        "27f6d8a9cb471027f973dd45d13e93054ebf26f0",
+        "bd40eb801ec07cc8e8d3eca026797365076594e9",
+        "1d8c98307c72d9389857c5f272b7c5f12cccf74c",
+        "db46bb281761640120390436f121e1a5826f02af",
+        "b954dfb635ed0215ed1ed4663312c1dff922ef88"
       ],
       "migrations": [
-        "supabase/migrations/20261106131338_fluxo_caixa_recebimentos_sem_nf.sql"
+        "supabase/migrations/20261106131338_fluxo_caixa_recebimentos_sem_nf.sql",
+        "supabase/migrations/20261111140000_cashflow_quotation_item_read_access.sql",
+        "supabase/migrations/20261111150000_cashflow_awarded_item_read_access.sql"
       ]
     },
     {
       "id": "FLUXO-CAIXA-REEMBOLSO-SITUACAO-001",
       "backend_commits": [],
       "frontend_commits": [
-        "a6e9e09dcfceb3356b25587d75d5fac00ba948ef"
+        "a6e9e09dcfceb3356b25587d75d5fac00ba948ef",
+        "7e54fe44e1f6a779593302e830a90c32478617e4"
       ],
       "migrations": []
     },
@@ -2089,7 +2119,8 @@
       "id": "FLUXO-CAIXA-CARD-SALDO-001",
       "backend_commits": [],
       "frontend_commits": [
-        "4512abf2f563ac85eb023ab0a852d7895e45ef81"
+        "4512abf2f563ac85eb023ab0a852d7895e45ef81",
+        "d69acefdf4825415d0305d9338fdd2830ac3c272"
       ],
       "migrations": []
     },
@@ -2098,7 +2129,9 @@
       "backend_commits": [],
       "frontend_commits": [
         "1484bad7344a4154e80a3c8e30a09df853dd01b7",
-        "0e0147bcf47c1afb9c4b8165966e60d73fa5c7a5"
+        "0e0147bcf47c1afb9c4b8165966e60d73fa5c7a5",
+        "b0e2ed7ab2d56eb40892d7c4ceccf62e770d0a68",
+        "0cf1464e2c0a03ed574250409f7320fad5b5b35b"
       ],
       "migrations": []
     },
@@ -2106,7 +2139,8 @@
       "id": "FLUXO-CAIXA-CONFIRMACAO-001",
       "backend_commits": [],
       "frontend_commits": [
-        "75e033d27266eee11a9c2f9972d4c7c3b7627298"
+        "75e033d27266eee11a9c2f9972d4c7c3b7627298",
+        "6130f0ed010ac75cdf9320fc9696c7902fd1e16b"
       ],
       "migrations": []
     },
@@ -2114,7 +2148,8 @@
       "id": "BILLING-DRAWER-DRAFT-001",
       "backend_commits": [],
       "frontend_commits": [
-        "dd81f05405b8536354e556beb15925f0b8a1c4d2"
+        "dd81f05405b8536354e556beb15925f0b8a1c4d2",
+        "17ecd2f3447add8dd560dd1e8a291de6b582f3e3"
       ],
       "migrations": []
     },
@@ -2122,7 +2157,8 @@
       "id": "BILLING-DRAWER-RADIUS-001",
       "backend_commits": [],
       "frontend_commits": [
-        "2941b695c905b1fd5a94f0756054669a78c2f5e9"
+        "2941b695c905b1fd5a94f0756054669a78c2f5e9",
+        "4e9ea49cf305d59e7dab9228391a29da9688c4b4"
       ],
       "migrations": []
     },
@@ -2131,7 +2167,9 @@
       "backend_commits": [],
       "frontend_commits": [
         "3e13c4770e48a876289810d4fd111b39b461ad64",
-        "8fc9ae9ec90db44b93e9bdf94890b8294ad5ecde"
+        "8fc9ae9ec90db44b93e9bdf94890b8294ad5ecde",
+        "d9120a6036cd6e114a55333579b2c7e47b120c3d",
+        "8d0e96045cdb192d5f742adf07ae74f8679e704e"
       ],
       "migrations": []
     },
@@ -2140,7 +2178,9 @@
       "backend_commits": [],
       "frontend_commits": [
         "01c94012d79489833ce6cae2a9c07da52ac11231",
-        "a716ea7be9449dce99a9e724cd0d78e973e2e410"
+        "a716ea7be9449dce99a9e724cd0d78e973e2e410",
+        "44017f209979899bb82eb0c1b3fd10d3a460c9c5",
+        "ac585ba2d1fec21a87a8f7b4eaaaed05f4e9328d"
       ],
       "migrations": []
     },
@@ -2149,11 +2189,16 @@
       "backend_commits": [
         "77211e7b28adf09450df7ed78f92be0bbca1bda2",
         "208064fa038098b6bf5e2b87ac054915b0a1cd28",
-        "f57b2241063cdcf9f84cc52876061be85b5ca804"
+        "f57b2241063cdcf9f84cc52876061be85b5ca804",
+        "d3d1be67e5f5ebe224d7267677fad56507a5a745",
+        "b74ef0918c2b01da9591f273950eaeee4fb9e35d",
+        "8fea17c1ce4cc526d645024411eb0968eb4c3191"
       ],
       "frontend_commits": [
         "97cb20201bf6980c783aa0e7a8fb66e6eaf15f31",
-        "c85853e4fde4c418db48126a53675af67b0ce667"
+        "c85853e4fde4c418db48126a53675af67b0ce667",
+        "bb3d1398d351af762a722880a1090e6c2c38f389",
+        "348ec88d3e6d1937c707fd2f279fa97df2b7c5ee"
       ],
       "migrations": [
         "supabase/migrations/20261110120000_fluxo_caixa_distribuicao_por_item.sql",
@@ -2164,7 +2209,8 @@
       "id": "FLUXO-CAIXA-RECEBIMENTO-ESTORNO-001",
       "backend_commits": [],
       "frontend_commits": [
-        "08f90cc9f7a191f5aa55aed0b1fd7cb185d9a710"
+        "08f90cc9f7a191f5aa55aed0b1fd7cb185d9a710",
+        "2291d156f7a70bf5c1e0a48d5159aef43e2b68ea"
       ],
       "migrations": []
     },
@@ -2173,7 +2219,9 @@
       "backend_commits": [],
       "frontend_commits": [
         "89598c0d13d343316b0fcdabadc8e74796bc6c11",
-        "f5116787ae5ca8cdedcf9cb1a9b20bb98c446624"
+        "f5116787ae5ca8cdedcf9cb1a9b20bb98c446624",
+        "94a6814f841bec2af15a0bbc33c34d1030be0a0d",
+        "9f3b78d764ed1d76c5909c4d6cc5fc9baef546a4"
       ],
       "migrations": []
     },
@@ -2182,7 +2230,9 @@
       "backend_commits": [],
       "frontend_commits": [
         "d099094bbfa8e11900a7fec04fe4d6db5c6805bf",
-        "42e2e4265345509148f7b8e45d271cf5f4321f7d"
+        "42e2e4265345509148f7b8e45d271cf5f4321f7d",
+        "6b2d7768f40008dd02150c201398e8b911335d52",
+        "13470f6e9c2c14601e0f802396a7c37160f09830"
       ],
       "migrations": []
     },
@@ -2191,7 +2241,9 @@
       "backend_commits": [],
       "frontend_commits": [
         "07e64ed764d6abf9b6b9d3d9cc1d921cdee9c427",
-        "60b97b1b1f8bc057010e9a5faee3ebb06b659a56"
+        "60b97b1b1f8bc057010e9a5faee3ebb06b659a56",
+        "f523437a477aee9701740a93258dc1f3f9744622",
+        "0ec1d398aab7d286bc38543d5fb8468786772b68"
       ],
       "migrations": []
     },
@@ -2199,7 +2251,8 @@
       "id": "FLUXO-CAIXA-RECEBIMENTOS-PREJUIZO-001",
       "backend_commits": [],
       "frontend_commits": [
-        "4c65e0087cb349215d69bef89464dd97b0c9df6f"
+        "4c65e0087cb349215d69bef89464dd97b0c9df6f",
+        "184b8681ec40540f60bb07f6cf7c30025165ca47"
       ],
       "migrations": []
     },
@@ -2208,7 +2261,9 @@
       "backend_commits": [],
       "frontend_commits": [
         "7008658a0c43a5e2b1d3d73d7fa97adbb188377a",
-        "67bfaaa07c96d1c71895b6306a61452547f14467"
+        "67bfaaa07c96d1c71895b6306a61452547f14467",
+        "473c5017e81e1932856746cf45a09aec83558088",
+        "a82b68b515c80fe11a5951d8c4c325c43c4e19ec"
       ],
       "migrations": []
     },
@@ -2216,7 +2271,8 @@
       "id": "FLUXO-CAIXA-REEMBOLSO-RECEBIDO-001",
       "backend_commits": [],
       "frontend_commits": [
-        "5faf7b6b06cb1dd078082619c0349b254257bf64"
+        "5faf7b6b06cb1dd078082619c0349b254257bf64",
+        "805ef9b607bcd634fa5faa9a6a8f0aba04b76ae4"
       ],
       "migrations": []
     },
@@ -2224,7 +2280,8 @@
       "id": "FLUXO-CAIXA-HISTORICO-ALTERACAO-001",
       "backend_commits": [],
       "frontend_commits": [
-        "6d7a34c5251749d3049645444964abf8840abe05"
+        "6d7a34c5251749d3049645444964abf8840abe05",
+        "28816730f0ef545e1732a91d747bca03795e5c30"
       ],
       "migrations": []
     },
@@ -2232,7 +2289,8 @@
       "id": "FLUXO-CAIXA-TABELAS-LINHAS-001",
       "backend_commits": [],
       "frontend_commits": [
-        "d288c069c8414b0ca062e34c2e18ffa3ecc1c191"
+        "d288c069c8414b0ca062e34c2e18ffa3ecc1c191",
+        "f7c8d79a687b5d1b529808be6b58195f5c047d99"
       ],
       "migrations": []
     },
@@ -2240,7 +2298,8 @@
       "id": "FLUXO-CAIXA-RETIRADA-CONFIRMACAO-001",
       "backend_commits": [],
       "frontend_commits": [
-        "0fa2db93e0d4e005aac0973f34ce577ba2df8275"
+        "0fa2db93e0d4e005aac0973f34ce577ba2df8275",
+        "a4846498067e35c028629cea877f214022bb96d8"
       ],
       "migrations": []
     },
@@ -2268,7 +2327,10 @@
       "frontend_commits": [
         "fe5dc37ceb185a8b89fbfb5311798b8785c91b38",
         "e5d02789245b5425539af7a2aab6f19fd23811db",
-        "a312c7b058c50678916027fa7e0ae5c315ff42b8"
+        "a312c7b058c50678916027fa7e0ae5c315ff42b8",
+        "75822141534cf45a1b3c7c3fd4f324df1faf0717",
+        "0afe944718c360406391da2ccea9f9b2d2bb4d61",
+        "17f01752671fff0a121a42ac8c254a275aa3aed4"
       ],
       "migrations": []
     },
@@ -2276,7 +2338,8 @@
       "id": "FLUXO-CAIXA-DESPESA-DESCARTE-001",
       "backend_commits": [],
       "frontend_commits": [
-        "a4ad48c751228ce09b2d238f677829de9ed7b922"
+        "a4ad48c751228ce09b2d238f677829de9ed7b922",
+        "0f9186913d99baf1e3f514f135a1745c5820f7d3"
       ],
       "migrations": []
     },
@@ -2295,10 +2358,12 @@
     {
       "id": "FLUXO-CAIXA-RESERVA-REEMBOLSO-002",
       "backend_commits": [
-        "229beb34b49994c3a8e10596940022bd8bfc2934"
+        "229beb34b49994c3a8e10596940022bd8bfc2934",
+        "6ac3ea244907c38056e7ea74ba84ea5eec1919db"
       ],
       "frontend_commits": [
-        "c5e552d60cbd91655e15126ba3d845eb80eb7cac"
+        "c5e552d60cbd91655e15126ba3d845eb80eb7cac",
+        "b8b50602de66db03e5c9ff5375f54682321409df"
       ],
       "migrations": [
         "supabase/migrations/20261111121308_fluxo_caixa_reserva_no_pagamento_reembolso.sql"
