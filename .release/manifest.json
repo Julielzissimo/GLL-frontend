@@ -2134,6 +2134,14 @@
       "migrations": []
     },
     {
+      "id": "FLUXO-CAIXA-FOCO-001",
+      "backend_commits": [],
+      "frontend_commits": [
+        "01c94012d79489833ce6cae2a9c07da52ac11231"
+      ],
+      "migrations": []
+    },
+    {
       "id": "FLUXO-CAIXA-DISTRIBUICAO-001",
       "backend_commits": [
         "77211e7b28adf09450df7ed78f92be0bbca1bda2",
