@@ -451,14 +451,16 @@ export function createCashflowFeature(options = {}) {
   }
 
   function withdrawalTable() {
-    const rows = filteredByDate(state.data.withdrawals || [], "withdrawn_on");
+    const sortedWithdrawals = [...(state.data.withdrawals || [])].sort((left, right) =>
+      String(right.withdrawn_on || "").localeCompare(String(left.withdrawn_on || "")));
+    const rows = filteredByDate(sortedWithdrawals, "withdrawn_on");
     if (!rows.length) return emptyState("Nenhum saque registrado", "Quando uma retirada for registrada, ela aparecerá nesta lista.");
     const users = getUsers() || [];
     const bids = accessibleBids();
-    return `<div class="cashflow-table-wrap"><table class="cashflow-table"><thead><tr><th>Autor do saque</th><th>Quem recebeu o saque</th><th>Data do saque</th><th>Nº do edital</th></tr></thead><tbody>${rows.map((withdrawal) => {
+    return `<div class="cashflow-table-wrap"><table class="cashflow-table"><thead><tr><th>Autor do saque</th><th>Quem recebeu o saque</th><th class="cashflow-number">Valor do saque</th><th>Data do saque</th><th>Nº do edital</th></tr></thead><tbody>${rows.map((withdrawal) => {
       const actor = users.find((user) => String(user.auth_user_id) === String(withdrawal.actor_id));
       const actorName = actor?.display_name || actor?.full_name || actor?.name || "Usuário do GLL";
-      return `<tr><td>${escapeHtml(actorName)}</td><td>${escapeHtml(partyName(state.data, withdrawal.participant_id))}</td><td>${formatDate(withdrawal.withdrawn_on)}</td><td>${escapeHtml(bidName(bids, withdrawal.bid_id))}</td></tr>`;
+      return `<tr><td>${escapeHtml(actorName)}</td><td>${escapeHtml(partyName(state.data, withdrawal.participant_id))}</td><td class="cashflow-number"><strong>${formatBrl(parseMoneyToCents(withdrawal.amount))}</strong></td><td>${formatDate(withdrawal.withdrawn_on)}</td><td>${escapeHtml(bidName(bids, withdrawal.bid_id))}</td></tr>`;
     }).join("")}</tbody></table></div>`;
   }
 
