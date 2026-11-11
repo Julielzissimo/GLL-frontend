@@ -2254,7 +2254,8 @@
       "id": "FLUXO-CAIXA-SAQUES-001",
       "backend_commits": [],
       "frontend_commits": [
-        "fe5dc37ceb185a8b89fbfb5311798b8785c91b38"
+        "fe5dc37ceb185a8b89fbfb5311798b8785c91b38",
+        "e5d02789245b5425539af7a2aab6f19fd23811db"
       ],
       "migrations": []
     }
