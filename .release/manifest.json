@@ -2372,7 +2372,8 @@
     {
       "id": "FLUXO-CAIXA-BID-READ-ACCESS-001",
       "backend_commits": [
-        "def12e49096874fb931e6da1bc560e2613573c97"
+        "def12e49096874fb931e6da1bc560e2613573c97",
+        "344ee13fd1fd33659a4265f4d191765674e16702"
       ],
       "frontend_commits": [],
       "migrations": [
