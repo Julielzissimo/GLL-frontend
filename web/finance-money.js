@@ -193,6 +193,15 @@ export function cashflowExpenseReimbursementDirection(expense) {
   return expense?.payer_type === "company" ? "none" : "payable";
 }
 
+export function reimbursementPaymentLimitCents({ pendingCents, fundingSource, expenseReserveBalanceCents }) {
+  const pending = Number(pendingCents);
+  const reserve = Number(expenseReserveBalanceCents);
+  if (!Number.isSafeInteger(pending) || pending < 0) throw new Error("O saldo pendente do reembolso é inválido.");
+  if (!Number.isSafeInteger(reserve)) throw new Error("O saldo da reserva para despesas é inválido.");
+  if (fundingSource === "expense_reserve") return Math.max(0, Math.min(pending, reserve));
+  return pending;
+}
+
 export function calculateCashflowMetrics(data, filters = {}) {
   const receipts = (data.receipts || []).filter(active);
   const receiptIds = new Set(receipts.map((row) => String(row.id)));
@@ -219,7 +228,11 @@ export function calculateCashflowMetrics(data, filters = {}) {
     + reimbursementsReceivedCents - companyExpensesCents - reimbursementsPaidCents - withdrawalsCents;
 
   const reservedForExpensesCents = lines.reduce((sum, row) => sum + centsFromDatabase(row.reserve_amount), 0);
-  const chargedToExpenseReserveCents = expenses.reduce((sum, row) => sum + centsFromDatabase(row.reserve_charge_amount), 0);
+  const chargedToExpenseReserveCents = reimbursements
+    .filter((row) => row.funding_source === "expense_reserve"
+      && expensesById.has(String(row.expense_id))
+      && cashflowExpenseReimbursementDirection(expensesById.get(String(row.expense_id))) === "payable")
+    .reduce((sum, row) => sum + centsFromDatabase(row.amount), 0);
   const expenseReserveBalanceCents = reservedForExpensesCents - chargedToExpenseReserveCents;
 
   const reimbursementsByExpense = new Map();
