@@ -103,6 +103,7 @@ await writeFile(
 const assetVersion = createHash("sha256")
   .update(await readFile(resolve(sourceDir, "app.js")))
   .update(await readFile(resolve(sourceDir, "file-storage.js")))
+  .update(await readFile(resolve(sourceDir, "finance.js")))
   .update(await readFile(resolve(sourceDir, "organization-chat.js")))
   .update(await readFile(resolve(sourceDir, "declarations.js")))
   .update(await readFile(resolve(sourceDir, "company-data.js")))
@@ -131,7 +132,8 @@ await writeFile(
     .replace('./commercial-proposals.js', `./commercial-proposals.js?v=${assetVersion}`)
     .replace('./organization-chat.js', `./organization-chat.js?v=${assetVersion}`)
     .replace('./app.js', `./app.js?v=${assetVersion}`)
-    .replace('./file-storage.js', `./file-storage.js?v=${assetVersion}`),
+    .replace('./file-storage.js', `./file-storage.js?v=${assetVersion}`)
+    .replace('./finance.js', `./finance.js?v=${assetVersion}`),
   "utf8",
 );
 

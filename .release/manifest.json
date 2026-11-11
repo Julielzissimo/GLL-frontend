@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "release_id": "2026-11-09-pacote-de-melhorias-4",
+  "release_id": "2026-11-11-fluxo-de-caixa",
   "environment": "production",
   "target_branch": "main",
   "items": [
@@ -1409,6 +1409,246 @@
         "4e9ea49cf305d59e7dab9228391a29da9688c4b4"
       ],
       "migrations": []
+    },
+    {
+      "id": "FLUXO-CAIXA-REIMPLEMENTACAO-001",
+      "backend_commits": [
+        "cdb170f78cc917554543edf3c6243345dc7b5f50",
+        "916d8580c9cdb97c6b4990673d66e6e227df03e5"
+      ],
+      "frontend_commits": [
+        "34e6694dc42719c0e118adf384b9c12e3ac62a3d",
+        "a8baedd1593f1ef9f4b84d13f3fc75687d9fb9d6"
+      ],
+      "migrations": [
+        "supabase/migrations/20261105185936_fluxo_caixa_ledger.sql"
+      ]
+    },
+    {
+      "id": "FLUXO-CAIXA-UX-001",
+      "backend_commits": [],
+      "frontend_commits": [
+        "4371799c41d0f8a7819b282fd78e5524fd75b4a9",
+        "03335b441dbbf967ce8cdc51180a005685dc6593",
+        "f18ef8f83c72b644b0940819dcaaf1572a9dfb57",
+        "0c004e7de7f584aab1150f1d3adef52fb0ee3b01"
+      ],
+      "migrations": []
+    },
+    {
+      "id": "FLUXO-CAIXA-HEADER-001",
+      "backend_commits": [],
+      "frontend_commits": [
+        "67cb31413ecbc902322b4c25ea3611bffa31f095"
+      ],
+      "migrations": []
+    },
+    {
+      "id": "ISSUE-285",
+      "backend_commits": [
+        "2b0274c14b6d946f688fe0d9ab8cb85f6a61160b"
+      ],
+      "frontend_commits": [
+        "9ba553453240fc1f74d3312c37bb089892c4bbb9"
+      ],
+      "migrations": [
+        "supabase/migrations/20261106015245_cashflow_company_expense_reimbursements.sql"
+      ]
+    },
+    {
+      "id": "FLUXO-CAIXA-RECEBIMENTO-SEM-NF-001",
+      "backend_commits": [
+        "8bc3c314a152e846e61eb7403e0b4ab2212b8e55",
+        "961fd8b42fdb049a1943da2da155fdda81cad3d4",
+        "6c637eda95e05eec377e52c81bba50ee84f14e4b",
+        "de3b89bbc6fab448331ee4c6c043303a72d0ff39"
+      ],
+      "frontend_commits": [
+        "396eb85dee445a6dc8308d309c0d18f46fbe3223",
+        "be23256793bfdeb593581b5d0c239a17483b31de",
+        "27f6d8a9cb471027f973dd45d13e93054ebf26f0",
+        "bd40eb801ec07cc8e8d3eca026797365076594e9",
+        "1d8c98307c72d9389857c5f272b7c5f12cccf74c",
+        "db46bb281761640120390436f121e1a5826f02af",
+        "b954dfb635ed0215ed1ed4663312c1dff922ef88"
+      ],
+      "migrations": [
+        "supabase/migrations/20261106131338_fluxo_caixa_recebimentos_sem_nf.sql",
+        "supabase/migrations/20261111140000_cashflow_quotation_item_read_access.sql",
+        "supabase/migrations/20261111150000_cashflow_awarded_item_read_access.sql"
+      ]
+    },
+    {
+      "id": "FLUXO-CAIXA-REEMBOLSO-SITUACAO-001",
+      "backend_commits": [],
+      "frontend_commits": [
+        "7e54fe44e1f6a779593302e830a90c32478617e4"
+      ],
+      "migrations": []
+    },
+    {
+      "id": "FLUXO-CAIXA-CARD-SALDO-001",
+      "backend_commits": [],
+      "frontend_commits": [
+        "d69acefdf4825415d0305d9338fdd2830ac3c272"
+      ],
+      "migrations": []
+    },
+    {
+      "id": "FLUXO-CAIXA-TABELAS-001",
+      "backend_commits": [],
+      "frontend_commits": [
+        "b0e2ed7ab2d56eb40892d7c4ceccf62e770d0a68",
+        "0cf1464e2c0a03ed574250409f7320fad5b5b35b"
+      ],
+      "migrations": []
+    },
+    {
+      "id": "FLUXO-CAIXA-CONFIRMACAO-001",
+      "backend_commits": [],
+      "frontend_commits": [
+        "6130f0ed010ac75cdf9320fc9696c7902fd1e16b"
+      ],
+      "migrations": []
+    },
+    {
+      "id": "FLUXO-CAIXA-FOCO-001",
+      "backend_commits": [],
+      "frontend_commits": [
+        "44017f209979899bb82eb0c1b3fd10d3a460c9c5",
+        "ac585ba2d1fec21a87a8f7b4eaaaed05f4e9328d"
+      ],
+      "migrations": []
+    },
+    {
+      "id": "FLUXO-CAIXA-DISTRIBUICAO-001",
+      "backend_commits": [
+        "d3d1be67e5f5ebe224d7267677fad56507a5a745",
+        "b74ef0918c2b01da9591f273950eaeee4fb9e35d",
+        "8fea17c1ce4cc526d645024411eb0968eb4c3191"
+      ],
+      "frontend_commits": [
+        "bb3d1398d351af762a722880a1090e6c2c38f389",
+        "348ec88d3e6d1937c707fd2f279fa97df2b7c5ee"
+      ],
+      "migrations": [
+        "supabase/migrations/20261110120000_fluxo_caixa_distribuicao_por_item.sql",
+        "supabase/migrations/20261110164000_cashflow_reserve_without_justification.sql"
+      ]
+    },
+    {
+      "id": "FLUXO-CAIXA-RECEBIMENTO-ESTORNO-001",
+      "backend_commits": [],
+      "frontend_commits": [
+        "2291d156f7a70bf5c1e0a48d5159aef43e2b68ea"
+      ],
+      "migrations": []
+    },
+    {
+      "id": "FLUXO-CAIXA-RECEBIMENTO-DESCARTE-001",
+      "backend_commits": [],
+      "frontend_commits": [
+        "94a6814f841bec2af15a0bbc33c34d1030be0a0d",
+        "9f3b78d764ed1d76c5909c4d6cc5fc9baef546a4"
+      ],
+      "migrations": []
+    },
+    {
+      "id": "FLUXO-CAIXA-RECEBIMENTO-ITENS-001",
+      "backend_commits": [],
+      "frontend_commits": [
+        "6b2d7768f40008dd02150c201398e8b911335d52",
+        "13470f6e9c2c14601e0f802396a7c37160f09830"
+      ],
+      "migrations": []
+    },
+    {
+      "id": "FLUXO-CAIXA-REEMBOLSO-RESERVA-001",
+      "backend_commits": [],
+      "frontend_commits": [
+        "f523437a477aee9701740a93258dc1f3f9744622",
+        "0ec1d398aab7d286bc38543d5fb8468786772b68"
+      ],
+      "migrations": []
+    },
+    {
+      "id": "FLUXO-CAIXA-RECEBIMENTOS-PREJUIZO-001",
+      "backend_commits": [],
+      "frontend_commits": [
+        "184b8681ec40540f60bb07f6cf7c30025165ca47"
+      ],
+      "migrations": []
+    },
+    {
+      "id": "FLUXO-CAIXA-ABAS-001",
+      "backend_commits": [],
+      "frontend_commits": [
+        "473c5017e81e1932856746cf45a09aec83558088",
+        "a82b68b515c80fe11a5951d8c4c325c43c4e19ec"
+      ],
+      "migrations": []
+    },
+    {
+      "id": "FLUXO-CAIXA-REEMBOLSO-RECEBIDO-001",
+      "backend_commits": [],
+      "frontend_commits": [
+        "805ef9b607bcd634fa5faa9a6a8f0aba04b76ae4"
+      ],
+      "migrations": []
+    },
+    {
+      "id": "FLUXO-CAIXA-HISTORICO-ALTERACAO-001",
+      "backend_commits": [],
+      "frontend_commits": [
+        "28816730f0ef545e1732a91d747bca03795e5c30"
+      ],
+      "migrations": []
+    },
+    {
+      "id": "FLUXO-CAIXA-TABELAS-LINHAS-001",
+      "backend_commits": [],
+      "frontend_commits": [
+        "f7c8d79a687b5d1b529808be6b58195f5c047d99"
+      ],
+      "migrations": []
+    },
+    {
+      "id": "FLUXO-CAIXA-RETIRADA-CONFIRMACAO-001",
+      "backend_commits": [],
+      "frontend_commits": [
+        "a4846498067e35c028629cea877f214022bb96d8"
+      ],
+      "migrations": []
+    },
+    {
+      "id": "FLUXO-CAIXA-SAQUES-001",
+      "backend_commits": [],
+      "frontend_commits": [
+        "75822141534cf45a1b3c7c3fd4f324df1faf0717",
+        "0afe944718c360406391da2ccea9f9b2d2bb4d61",
+        "17f01752671fff0a121a42ac8c254a275aa3aed4"
+      ],
+      "migrations": []
+    },
+    {
+      "id": "FLUXO-CAIXA-DESPESA-DESCARTE-001",
+      "backend_commits": [],
+      "frontend_commits": [
+        "0f9186913d99baf1e3f514f135a1745c5820f7d3"
+      ],
+      "migrations": []
+    },
+    {
+      "id": "FLUXO-CAIXA-RESERVA-REEMBOLSO-002",
+      "backend_commits": [
+        "6ac3ea244907c38056e7ea74ba84ea5eec1919db"
+      ],
+      "frontend_commits": [
+        "b8b50602de66db03e5c9ff5375f54682321409df"
+      ],
+      "migrations": [
+        "supabase/migrations/20261111121308_fluxo_caixa_reserva_no_pagamento_reembolso.sql"
+      ]
     }
   ]
 }
