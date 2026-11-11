@@ -180,6 +180,7 @@
   outline: 1px solid var(--gll-focus);
   outline-offset: 2px;
   border-color: var(--gll-focus);
+  box-shadow: var(--shadow-focus);
 }
 
 .cashflow-tabs {
