@@ -6,6 +6,7 @@ import {
   moneyToDecimalString,
   parseMoneyToCents,
   parseQuantityToUnits,
+  reimbursementPaymentLimitCents,
   splitCentsByParticipantRules,
   validateInvoiceReceipt,
   validateReceiptLine,
@@ -373,7 +374,7 @@ export function createCashflowFeature(options = {}) {
     const values = metrics();
     const receivedLabel = "Recebido no período";
     dashboard.innerHTML = `<article class="cashflow-metric"><span>${receivedLabel}</span><strong>${formatBrl(values.receivedInPeriodCents)}</strong><small>${values.receiptCount} recebimento(s) confirmado(s)</small></article>
-      <article class="cashflow-metric"><span>Reserva disponível para despesas</span><strong>${formatBrl(values.expenseReserveBalanceCents)}</strong><small>Reserva constituída menos valores já comprometidos</small></article>
+      <article class="cashflow-metric"><span>Reserva disponível para despesas</span><strong>${formatBrl(values.expenseReserveBalanceCents)}</strong><small>Total reservado nos recebimentos menos reembolsos pagos com a reserva</small></article>
       <article class="cashflow-metric"><span>Lucro disponível para retirada</span><strong>${formatBrl(values.profitAvailableCents)}</strong><small>Lucro reconhecido somente após crédito confirmado</small></article>
       <article class="cashflow-metric"><span>Reembolsos a receber</span><strong>${formatBrl(values.reimbursementReceivableCents)}</strong><small>Despesas da empresa ainda não reembolsadas</small></article>
       <article class="cashflow-metric"><span>Reembolsos a pagar</span><strong>${formatBrl(values.reimbursementPendingCents)}</strong><small>Valores devidos a quem antecipou despesas</small></article>`;
@@ -922,6 +923,11 @@ export function createCashflowFeature(options = {}) {
     const already = buildExpenseRefunds(state.data).get(String(expense.id)) || 0;
     const due = parseMoneyToCents(expense.amount) - already;
     const expenseReserveBalance = metrics().expenseReserveBalanceCents;
+    const initialReserveLimit = reimbursementPaymentLimitCents({
+      pendingCents: due,
+      fundingSource: "expense_reserve",
+      expenseReserveBalanceCents: expenseReserveBalance,
+    });
     const body = `<div class="cashflow-callout"><strong>${isReceivable ? "Empresa" : escapeHtml(partyName(state.data, expense.payer_party_id))}</strong><span>${escapeHtml(expense.description)} · pendente ${formatBrl(due)}</span></div>
       <div class="cashflow-form-grid"><label class="cashflow-field cashflow-field-wide">Reserva disponível para despesas<input type="text" value="${escapeHtml(formatBrl(expenseReserveBalance))}" readonly aria-readonly="true" /></label>
       <label class="cashflow-field">${isReceivable ? "Valor a receber (R$)" : "Valor a devolver (R$)"}<input name="amount" type="text" inputmode="decimal" value="${escapeHtml(amountAsInput(due))}" required /></label>
@@ -936,7 +942,46 @@ export function createCashflowFeature(options = {}) {
       isReceivable ? "Confirmar recebimento" : "Confirmar pagamento",
       "reimbursement",
     );
-    dialog.querySelector("form").dataset.expenseId = String(expense.id);
+    const form = dialog.querySelector("form");
+    form.dataset.expenseId = String(expense.id);
+    form.dataset.pendingCents = String(due);
+    form.dataset.expenseReserveBalanceCents = String(expenseReserveBalance);
+    if (!isReceivable) {
+      const limitNote = document.createElement("p");
+      limitNote.className = "cashflow-inline-note cashflow-field-wide";
+      limitNote.dataset.cfReimbursementLimitNote = "";
+      limitNote.setAttribute("role", "status");
+      form.querySelector('[name="amount"]')?.closest("label")?.after(limitNote);
+      form.elements.namedItem("amount").value = amountAsInput(initialReserveLimit);
+      updateReimbursementPaymentLimit();
+    }
+  }
+
+  function updateReimbursementPaymentLimit(resetAmount = false) {
+    if (state.drawerKind !== "reimbursement") return;
+    const form = dialog.querySelector("#cashflowDrawerForm");
+    const expense = state.data.expenses.find((row) => String(row.id) === String(form?.dataset.expenseId));
+    if (!form || !expense || cashflowExpenseReimbursementDirection(expense) !== "payable") return;
+
+    const amountInput = form.elements.namedItem("amount");
+    const fundingSource = form.elements.namedItem("funding_source")?.value || "";
+    const pendingCents = Number(form.dataset.pendingCents);
+    const expenseReserveBalanceCents = Number(form.dataset.expenseReserveBalanceCents);
+    const limitCents = reimbursementPaymentLimitCents({ pendingCents, fundingSource, expenseReserveBalanceCents });
+    const usingReserve = fundingSource === "expense_reserve";
+    const noReserve = usingReserve && limitCents <= 0;
+    const note = form.querySelector("[data-cf-reimbursement-limit-note]");
+    const submitButton = form.querySelector('[type="submit"]');
+
+    amountInput.disabled = noReserve;
+    amountInput.dataset.limitCents = String(limitCents);
+    if (resetAmount || noReserve) amountInput.value = noReserve ? "" : amountAsInput(limitCents);
+    amountInput.setCustomValidity("");
+    submitButton.disabled = noReserve || state.saving;
+    note.hidden = !usingReserve || limitCents >= pendingCents;
+    note.textContent = noReserve
+      ? "Não há reserva suficiente para efetuar este reembolso."
+      : "A reserva disponível permite pagar até " + formatBrl(limitCents) + " deste reembolso.";
   }
 
   function withdrawalDrawer(bidId, participantId) {
@@ -1096,15 +1141,26 @@ export function createCashflowFeature(options = {}) {
       const expense = state.data.expenses.find((row) => String(row.id) === formId);
       const remaining = parseMoneyToCents(expense.amount) - (buildExpenseRefunds(state.data).get(formId) || 0);
       const amountCents = parseAmount(formData.get("amount"), "Valor do reembolso");
+      const fundingSource = cashflowExpenseReimbursementDirection(expense) === "receivable"
+        ? null
+        : String(formData.get("funding_source") || "");
+      const expenseReserveBalance = metrics().expenseReserveBalanceCents;
+      const paymentLimit = reimbursementPaymentLimitCents({
+        pendingCents: remaining,
+        fundingSource,
+        expenseReserveBalanceCents: expenseReserveBalance,
+      });
+      if (fundingSource === "expense_reserve" && amountCents > paymentLimit) {
+        if (paymentLimit <= 0) throw new Error("Não há reserva suficiente para efetuar este reembolso.");
+        throw new Error("O valor supera o limite da reserva disponível. Você pode reembolsar até " + formatBrl(paymentLimit) + " agora.");
+      }
       if (amountCents <= 0 || amountCents > remaining) throw new Error(`O reembolso precisa ser maior que zero e não superar ${formatBrl(remaining)}.`);
       return state.service.recordReimbursement({
         expenseId: formId,
         amountCents,
         paidOn: String(formData.get("paid_on") || ""),
         paymentMethod: String(formData.get("payment_method") || ""),
-        fundingSource: cashflowExpenseReimbursementDirection(expense) === "receivable"
-          ? null
-          : String(formData.get("funding_source") || ""),
+        fundingSource,
         notes: String(formData.get("notes") || "").trim(),
         idempotencyKey: randomId(),
       });
@@ -1196,6 +1252,17 @@ export function createCashflowFeature(options = {}) {
       return;
     }
     trackDrawerChanges(event);
+    if (state.drawerKind === "reimbursement" && target.name === "amount") {
+      const limitCents = Number(target.dataset.limitCents);
+      try {
+        const amountCents = parseMoneyToCents(target.value);
+        target.setCustomValidity(amountCents > limitCents
+          ? "O valor supera o limite disponível para esta origem de recursos."
+          : "");
+      } catch {
+        target.setCustomValidity("");
+      }
+    }
     if (target.matches("[data-cf-amount], [data-cf-reserve], [data-cf-allocation]")) target.dataset.touched = "true";
     if (target.matches("[data-cf-quantity], [data-cf-amount], [data-cf-reserve], [data-cf-allocation]")) updateReceiptForm();
   }
@@ -1209,6 +1276,10 @@ export function createCashflowFeature(options = {}) {
       return;
     }
     trackDrawerChanges(event);
+    if (state.drawerKind === "reimbursement" && target.name === "funding_source") {
+      updateReimbursementPaymentLimit(true);
+      return;
+    }
     if (target.matches("[data-cf-line-check]")) {
       const id = target.dataset.cfLineCheck;
       const card = target.closest("[data-cf-line-card]");
