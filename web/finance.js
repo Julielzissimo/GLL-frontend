@@ -274,9 +274,23 @@ export function createCashflowFeature(options = {}) {
     dialog.setAttribute("aria-labelledby", "cashflowDrawerTitle");
     dialog.removeAttribute("aria-describedby");
     const eyebrow = kind === "expense" ? "" : '<span class="eyebrow">LANÇAMENTO FINANCEIRO</span>';
-    const discardPrompt = kind === "receipt" ? `<section id="cashflowReceiptDiscardDialog" class="cashflow-receipt-discard-view quotation-item-discard-content" aria-labelledby="cashflowReceiptDiscardTitle" aria-describedby="cashflowReceiptDiscardDescription" hidden>
-      <h2 id="cashflowReceiptDiscardTitle">Descartar alterações?</h2>
-      <p id="cashflowReceiptDiscardDescription">Há alterações não salvas no recebimento. Se você sair agora, elas serão perdidas.</p>
+    const discardConfig = {
+      receipt: {
+        id: "cashflowReceiptDiscardDialog",
+        titleId: "cashflowReceiptDiscardTitle",
+        descriptionId: "cashflowReceiptDiscardDescription",
+        description: "Há alterações não salvas no recebimento. Se você sair agora, elas serão perdidas.",
+      },
+      expense: {
+        id: "cashflowExpenseDiscardDialog",
+        titleId: "cashflowExpenseDiscardTitle",
+        descriptionId: "cashflowExpenseDiscardDescription",
+        description: "Há alterações não salvas na despesa. Se você sair agora, elas serão perdidas.",
+      },
+    }[kind];
+    const discardPrompt = discardConfig ? `<section id="${discardConfig.id}" class="cashflow-discard-view quotation-item-discard-content" aria-labelledby="${discardConfig.titleId}" aria-describedby="${discardConfig.descriptionId}" hidden>
+      <h2 id="${discardConfig.titleId}">Descartar alterações?</h2>
+      <p id="${discardConfig.descriptionId}">${escapeHtml(discardConfig.description)}</p>
       <div class="button-row end">
         <button class="quiet-action" type="button" data-cf-discard-continue>Continuar editando</button>
         <button class="danger-action" type="button" data-cf-discard-confirm>Descartar alterações</button>
