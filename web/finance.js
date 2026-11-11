@@ -6,6 +6,7 @@ import {
   moneyToDecimalString,
   parseMoneyToCents,
   parseQuantityToUnits,
+  reimbursementPaymentLimitCents,
   splitCentsByParticipantRules,
   validateInvoiceReceipt,
   validateReceiptLine,
@@ -232,6 +233,7 @@ export function createCashflowFeature(options = {}) {
     openingReceipt: false,
     receiptOpenRequest: 0,
     receiptDirty: false,
+    expenseDirty: false,
     confirmingDiscard: false,
     discardReturnFocus: null,
     dialogWide: false,
@@ -265,6 +267,7 @@ export function createCashflowFeature(options = {}) {
 
   function openDialog(title, subtitle, body, submitLabel, kind, wide = false) {
     if (!dialog.open && kind === "receipt") state.receiptDirty = false;
+    if (!dialog.open && kind === "expense") state.expenseDirty = false;
     state.drawerKind = kind;
     state.dialogWide = wide;
     state.confirmingDiscard = false;
@@ -273,7 +276,6 @@ export function createCashflowFeature(options = {}) {
     dialog.classList.remove("cashflow-dialog-confirmation");
     dialog.setAttribute("aria-labelledby", "cashflowDrawerTitle");
     dialog.removeAttribute("aria-describedby");
-    const eyebrow = kind === "expense" ? "" : '<span class="eyebrow">LANÇAMENTO FINANCEIRO</span>';
     const discardConfig = {
       receipt: {
         id: "cashflowReceiptDiscardDialog",
@@ -297,7 +299,7 @@ export function createCashflowFeature(options = {}) {
       </div>
     </section>` : "";
     dialog.innerHTML = `<form id="cashflowDrawerForm" class="cashflow-drawer-form" novalidate>
-      <header class="cashflow-drawer-header"><div>${eyebrow}<h2 id="cashflowDrawerTitle">${escapeHtml(title)}</h2><p>${escapeHtml(subtitle)}</p></div><button class="icon-button modal-close-button" type="button" data-cf-close aria-label="Fechar">×</button></header>
+      <header class="cashflow-drawer-header"><div><h2 id="cashflowDrawerTitle">${escapeHtml(title)}</h2><p>${escapeHtml(subtitle)}</p></div><button class="icon-button modal-close-button" type="button" data-cf-close aria-label="Fechar">×</button></header>
       <div class="cashflow-drawer-body">${body}<div class="cashflow-form-error" data-cf-error role="alert" aria-live="assertive"></div></div>
       <footer class="cashflow-drawer-footer"><button type="button" class="quiet-action" data-cf-close>Cancelar</button><button type="submit" class="primary-action" ${state.saving ? "disabled" : ""}>${escapeHtml(submitLabel)}</button></footer>
     </form>${discardPrompt}`;
@@ -310,6 +312,7 @@ export function createCashflowFeature(options = {}) {
     if (dialog.open) dialog.close();
     state.drawerKind = null;
     state.receiptDirty = false;
+    state.expenseDirty = false;
     state.confirmingDiscard = false;
     state.discardReturnFocus = null;
     dialog.innerHTML = "";
@@ -318,12 +321,14 @@ export function createCashflowFeature(options = {}) {
   function requestCloseDialog() {
     if (state.saving) return;
     if (state.confirmingDiscard) return;
-    if (state.drawerKind !== "receipt" || !state.receiptDirty) {
+    const hasUnsavedChanges = (state.drawerKind === "receipt" && state.receiptDirty)
+      || (state.drawerKind === "expense" && state.expenseDirty);
+    if (!hasUnsavedChanges) {
       closeDialog();
       return;
     }
     const form = dialog.querySelector("#cashflowDrawerForm");
-    const prompt = dialog.querySelector("#cashflowReceiptDiscardDialog");
+    const prompt = dialog.querySelector(`#cashflow${state.drawerKind === "receipt" ? "Receipt" : "Expense"}DiscardDialog`);
     if (!form || !prompt) return;
     state.discardReturnFocus = form.contains(document.activeElement) ? document.activeElement : null;
     state.confirmingDiscard = true;
@@ -331,15 +336,15 @@ export function createCashflowFeature(options = {}) {
     prompt.hidden = false;
     dialog.classList.remove("cashflow-dialog-wide");
     dialog.classList.add("cashflow-dialog-confirmation");
-    dialog.setAttribute("aria-labelledby", "cashflowReceiptDiscardTitle");
-    dialog.setAttribute("aria-describedby", "cashflowReceiptDiscardDescription");
+    dialog.setAttribute("aria-labelledby", prompt.querySelector("h2")?.id || "cashflowReceiptDiscardTitle");
+    dialog.setAttribute("aria-describedby", prompt.querySelector("p")?.id || "cashflowReceiptDiscardDescription");
     prompt.querySelector("[data-cf-discard-continue]")?.focus();
   }
 
-  function continueReceiptEditing() {
+  function continueDrawerEditing() {
     if (!state.confirmingDiscard) return;
     const form = dialog.querySelector("#cashflowDrawerForm");
-    const prompt = dialog.querySelector("#cashflowReceiptDiscardDialog");
+    const prompt = dialog.querySelector(`#cashflow${state.drawerKind === "receipt" ? "Receipt" : "Expense"}DiscardDialog`);
     state.confirmingDiscard = false;
     if (form) form.hidden = false;
     if (prompt) prompt.hidden = true;
@@ -353,10 +358,10 @@ export function createCashflowFeature(options = {}) {
     else form?.querySelector("input:not([type=hidden]):not([disabled]), select:not([disabled]), textarea:not([disabled])")?.focus();
   }
 
-  function trackReceiptChanges(event) {
-    if (state.drawerKind === "receipt" && event.target.closest?.("#cashflowDrawerForm")) {
-      state.receiptDirty = true;
-    }
+  function trackDrawerChanges(event) {
+    if (!event.target.closest?.("#cashflowDrawerForm")) return;
+    if (state.drawerKind === "receipt") state.receiptDirty = true;
+    if (state.drawerKind === "expense") state.expenseDirty = true;
   }
 
   function renderHeaderActions() {
@@ -369,7 +374,7 @@ export function createCashflowFeature(options = {}) {
     const values = metrics();
     const receivedLabel = "Recebido no período";
     dashboard.innerHTML = `<article class="cashflow-metric"><span>${receivedLabel}</span><strong>${formatBrl(values.receivedInPeriodCents)}</strong><small>${values.receiptCount} recebimento(s) confirmado(s)</small></article>
-      <article class="cashflow-metric"><span>Reserva disponível para despesas</span><strong>${formatBrl(values.expenseReserveBalanceCents)}</strong><small>Reserva constituída menos valores já comprometidos</small></article>
+      <article class="cashflow-metric"><span>Reserva disponível para despesas</span><strong>${formatBrl(values.expenseReserveBalanceCents)}</strong><small>Total reservado nos recebimentos menos reembolsos pagos com a reserva</small></article>
       <article class="cashflow-metric"><span>Lucro disponível para retirada</span><strong>${formatBrl(values.profitAvailableCents)}</strong><small>Lucro reconhecido somente após crédito confirmado</small></article>
       <article class="cashflow-metric"><span>Reembolsos a receber</span><strong>${formatBrl(values.reimbursementReceivableCents)}</strong><small>Despesas da empresa ainda não reembolsadas</small></article>
       <article class="cashflow-metric"><span>Reembolsos a pagar</span><strong>${formatBrl(values.reimbursementPendingCents)}</strong><small>Valores devidos a quem antecipou despesas</small></article>`;
@@ -415,7 +420,7 @@ export function createCashflowFeature(options = {}) {
         <td class="cashflow-number">${formatBrl(parseMoneyToCents(receipt.cost_total))}</td><td class="cashflow-number">${formatBrl(parseMoneyToCents(receipt.expense_reserve_amount))}</td>
         <td class="cashflow-number"><strong>${formatBrl(parseMoneyToCents(receipt.distributable_profit))}</strong></td><td><button class="text-action" type="button" data-cf-action="receipt-detail" data-id="${escapeHtml(receipt.id)}">Detalhes</button></td></tr>`;
     }).join("");
-    return `<div class="cashflow-table-wrap"><table class="cashflow-table"><thead><tr><th>Data do crédito</th><th>Edital</th><th class="cashflow-receipt-items-cell">N° DO ITEM</th><th class="cashflow-number">Recebido</th><th class="cashflow-number">Custos</th><th class="cashflow-number">Reserva</th><th class="cashflow-number">Lucro distribuído</th><th>Ações</th></tr></thead><tbody>${body}</table></div>`;
+    return `<div class="cashflow-table-wrap"><table class="cashflow-table"><thead><tr><th>Data do crédito</th><th>Edital</th><th class="cashflow-receipt-items-cell">N° DO ITEM</th><th class="cashflow-number">Recebido</th><th class="cashflow-number">Custos</th><th class="cashflow-number">Reserva</th><th class="cashflow-number">Lucro distribuído</th><th>Ações</th></tr></thead><tbody>${body}</tbody></table></div>`;
   }
 
   function expenseTable() {
@@ -918,6 +923,11 @@ export function createCashflowFeature(options = {}) {
     const already = buildExpenseRefunds(state.data).get(String(expense.id)) || 0;
     const due = parseMoneyToCents(expense.amount) - already;
     const expenseReserveBalance = metrics().expenseReserveBalanceCents;
+    const initialReserveLimit = reimbursementPaymentLimitCents({
+      pendingCents: due,
+      fundingSource: "expense_reserve",
+      expenseReserveBalanceCents: expenseReserveBalance,
+    });
     const body = `<div class="cashflow-callout"><strong>${isReceivable ? "Empresa" : escapeHtml(partyName(state.data, expense.payer_party_id))}</strong><span>${escapeHtml(expense.description)} · pendente ${formatBrl(due)}</span></div>
       <div class="cashflow-form-grid"><label class="cashflow-field cashflow-field-wide">Reserva disponível para despesas<input type="text" value="${escapeHtml(formatBrl(expenseReserveBalance))}" readonly aria-readonly="true" /></label>
       <label class="cashflow-field">${isReceivable ? "Valor a receber (R$)" : "Valor a devolver (R$)"}<input name="amount" type="text" inputmode="decimal" value="${escapeHtml(amountAsInput(due))}" required /></label>
@@ -932,7 +942,46 @@ export function createCashflowFeature(options = {}) {
       isReceivable ? "Confirmar recebimento" : "Confirmar pagamento",
       "reimbursement",
     );
-    dialog.querySelector("form").dataset.expenseId = String(expense.id);
+    const form = dialog.querySelector("form");
+    form.dataset.expenseId = String(expense.id);
+    form.dataset.pendingCents = String(due);
+    form.dataset.expenseReserveBalanceCents = String(expenseReserveBalance);
+    if (!isReceivable) {
+      const limitNote = document.createElement("p");
+      limitNote.className = "cashflow-inline-note cashflow-field-wide";
+      limitNote.dataset.cfReimbursementLimitNote = "";
+      limitNote.setAttribute("role", "status");
+      form.querySelector('[name="amount"]')?.closest("label")?.after(limitNote);
+      form.elements.namedItem("amount").value = amountAsInput(initialReserveLimit);
+      updateReimbursementPaymentLimit();
+    }
+  }
+
+  function updateReimbursementPaymentLimit(resetAmount = false) {
+    if (state.drawerKind !== "reimbursement") return;
+    const form = dialog.querySelector("#cashflowDrawerForm");
+    const expense = state.data.expenses.find((row) => String(row.id) === String(form?.dataset.expenseId));
+    if (!form || !expense || cashflowExpenseReimbursementDirection(expense) !== "payable") return;
+
+    const amountInput = form.elements.namedItem("amount");
+    const fundingSource = form.elements.namedItem("funding_source")?.value || "";
+    const pendingCents = Number(form.dataset.pendingCents);
+    const expenseReserveBalanceCents = Number(form.dataset.expenseReserveBalanceCents);
+    const limitCents = reimbursementPaymentLimitCents({ pendingCents, fundingSource, expenseReserveBalanceCents });
+    const usingReserve = fundingSource === "expense_reserve";
+    const noReserve = usingReserve && limitCents <= 0;
+    const note = form.querySelector("[data-cf-reimbursement-limit-note]");
+    const submitButton = form.querySelector('[type="submit"]');
+
+    amountInput.disabled = noReserve;
+    amountInput.dataset.limitCents = String(limitCents);
+    if (resetAmount || noReserve) amountInput.value = noReserve ? "" : amountAsInput(limitCents);
+    amountInput.setCustomValidity("");
+    submitButton.disabled = noReserve || state.saving;
+    note.hidden = !usingReserve || limitCents >= pendingCents;
+    note.textContent = noReserve
+      ? "Não há reserva suficiente para efetuar este reembolso."
+      : "A reserva disponível permite pagar até " + formatBrl(limitCents) + " deste reembolso.";
   }
 
   function withdrawalDrawer(bidId, participantId) {
@@ -1092,15 +1141,26 @@ export function createCashflowFeature(options = {}) {
       const expense = state.data.expenses.find((row) => String(row.id) === formId);
       const remaining = parseMoneyToCents(expense.amount) - (buildExpenseRefunds(state.data).get(formId) || 0);
       const amountCents = parseAmount(formData.get("amount"), "Valor do reembolso");
+      const fundingSource = cashflowExpenseReimbursementDirection(expense) === "receivable"
+        ? null
+        : String(formData.get("funding_source") || "");
+      const expenseReserveBalance = metrics().expenseReserveBalanceCents;
+      const paymentLimit = reimbursementPaymentLimitCents({
+        pendingCents: remaining,
+        fundingSource,
+        expenseReserveBalanceCents: expenseReserveBalance,
+      });
+      if (fundingSource === "expense_reserve" && amountCents > paymentLimit) {
+        if (paymentLimit <= 0) throw new Error("Não há reserva suficiente para efetuar este reembolso.");
+        throw new Error("O valor supera o limite da reserva disponível. Você pode reembolsar até " + formatBrl(paymentLimit) + " agora.");
+      }
       if (amountCents <= 0 || amountCents > remaining) throw new Error(`O reembolso precisa ser maior que zero e não superar ${formatBrl(remaining)}.`);
       return state.service.recordReimbursement({
         expenseId: formId,
         amountCents,
         paidOn: String(formData.get("paid_on") || ""),
         paymentMethod: String(formData.get("payment_method") || ""),
-        fundingSource: cashflowExpenseReimbursementDirection(expense) === "receivable"
-          ? null
-          : String(formData.get("funding_source") || ""),
+        fundingSource,
         notes: String(formData.get("notes") || "").trim(),
         idempotencyKey: randomId(),
       });
@@ -1191,7 +1251,18 @@ export function createCashflowFeature(options = {}) {
       renderWorkspace();
       return;
     }
-    trackReceiptChanges(event);
+    trackDrawerChanges(event);
+    if (state.drawerKind === "reimbursement" && target.name === "amount") {
+      const limitCents = Number(target.dataset.limitCents);
+      try {
+        const amountCents = parseMoneyToCents(target.value);
+        target.setCustomValidity(amountCents > limitCents
+          ? "O valor supera o limite disponível para esta origem de recursos."
+          : "");
+      } catch {
+        target.setCustomValidity("");
+      }
+    }
     if (target.matches("[data-cf-amount], [data-cf-reserve], [data-cf-allocation]")) target.dataset.touched = "true";
     if (target.matches("[data-cf-quantity], [data-cf-amount], [data-cf-reserve], [data-cf-allocation]")) updateReceiptForm();
   }
@@ -1204,7 +1275,11 @@ export function createCashflowFeature(options = {}) {
       renderWorkspace();
       return;
     }
-    trackReceiptChanges(event);
+    trackDrawerChanges(event);
+    if (state.drawerKind === "reimbursement" && target.name === "funding_source") {
+      updateReimbursementPaymentLimit(true);
+      return;
+    }
     if (target.matches("[data-cf-line-check]")) {
       const id = target.dataset.cfLineCheck;
       const card = target.closest("[data-cf-line-card]");
@@ -1288,12 +1363,12 @@ export function createCashflowFeature(options = {}) {
   });
   dialog.addEventListener("cancel", (event) => {
     event.preventDefault();
-    if (state.confirmingDiscard) continueReceiptEditing();
+    if (state.confirmingDiscard) continueDrawerEditing();
     else requestCloseDialog();
   });
   dialog.addEventListener("click", (event) => {
     if (event.target.closest("[data-cf-discard-continue]")) {
-      continueReceiptEditing();
+      continueDrawerEditing();
       return;
     }
     if (event.target.closest("[data-cf-discard-confirm]")) closeDialog();
