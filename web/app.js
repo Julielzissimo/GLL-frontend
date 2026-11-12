@@ -6028,6 +6028,24 @@ const BID_HISTORY_FIELD_LABELS = Object.freeze({
   quotation_id: "Orçamento vinculado",
 });
 
+const CASHFLOW_ACTIVITY_SUMMARIES = Object.freeze({
+  "Recebimento registrado": "registrou um recebimento no Fluxo de Caixa",
+  "Recebimento estornado": "estornou um recebimento no Fluxo de Caixa",
+  "Despesa registrada": "registrou uma despesa no Fluxo de Caixa",
+  "Reembolso pago": "registrou o pagamento de um reembolso no Fluxo de Caixa",
+  "Reembolso recebido": "registrou o recebimento de um reembolso no Fluxo de Caixa",
+  "Retirada de lucro registrada": "registrou uma retirada de lucro no Fluxo de Caixa",
+  "Configurações financeiras atualizadas": "atualizou as configurações financeiras no Fluxo de Caixa",
+  "Participante financeiro cadastrado": "cadastrou um participante financeiro no Fluxo de Caixa",
+  "Participante financeiro atualizado": "atualizou um participante financeiro no Fluxo de Caixa",
+  "Operação financeira registrada": "registrou uma operação financeira no Fluxo de Caixa",
+});
+
+function cashflowActivitySummary(detail) {
+  return CASHFLOW_ACTIVITY_SUMMARIES[String(detail || "")]
+    || CASHFLOW_ACTIVITY_SUMMARIES["Operação financeira registrada"];
+}
+
 function bidHistoryFieldValue(change) {
   if (!change || typeof change !== "object" || change.redacted) return "";
   return change.new ?? change.old ?? "";
@@ -6071,6 +6089,8 @@ function bidHistoryPresentation(event) {
       return { kind: "edit", icon: "pencil", summary: "editou as informações do edital.", detail: bidHistoryChangedFields(event) };
     case "bid_deleted":
       return { kind: "neutral", icon: "document", summary: "removeu o edital.", detail: "" };
+    case "cashflow_activity":
+      return { kind: "create", icon: "document", summary: `${cashflowActivitySummary(event.detail)} do edital.`, detail: "" };
     case "status_changed":
       return {
         kind: "status",
@@ -6696,6 +6716,7 @@ function bidActivityDescription(entry) {
     quotation_item_removed: `excluiu o item ${entry.detail || "—"} do orçamento do ${edital}`,
     item_won: `marcou o item ${entry.detail || "—"} como vencido no ${edital}`,
     item_unwon: `removeu a marcação de vencido do item ${entry.detail || "—"} no ${edital}`,
+    cashflow_activity: `${cashflowActivitySummary(entry.detail)} do ${edital}`,
   }[entry.event_type] || `atualizou o ${edital}`;
 }
 
