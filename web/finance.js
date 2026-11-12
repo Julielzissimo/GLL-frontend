@@ -168,9 +168,13 @@ function partyName(data, partyId) {
   return data.parties.find((row) => String(row.id) === String(partyId))?.name || "Pessoa não identificada";
 }
 
-function bidName(bids, bidId) {
+function bidInfo(bids, bidId) {
   const bid = bids.find((row) => String(row.id) === String(bidId));
-  return bid ? bidLabel(bid).title : "Edital não disponível";
+  return bid ? bidLabel(bid) : { title: "Edital não disponível", subtitle: "Órgão não informado" };
+}
+
+function bidName(bids, bidId) {
+  return bidInfo(bids, bidId).title;
 }
 
 function buildExpenseRefunds(data) {
@@ -448,9 +452,11 @@ export function createCashflowFeature(options = {}) {
 
   function receiptTable() {
     const data = state.data;
+    const bids = accessibleBids();
     const rows = filteredByDate(data.receipts.filter((row) => !row.reversed_at), "received_on");
     if (!rows.length) return emptyState("Nenhum recebimento encontrado", "Os recebimentos aparecem depois da confirmação de um crédito vinculado a um item vencido, com ou sem nota fiscal.");
     const body = rows.map((receipt) => {
+      const bid = bidInfo(bids, receipt.bid_id);
       const lines = rowsForReceipt(receipt.id);
       const itemNumbers = [...new Set(lines.map((line) => {
         const invoice = line.invoice_id == null ? null : data.allInvoices.find((row) => String(row.id) === String(line.invoice_id));
@@ -460,7 +466,7 @@ export function createCashflowFeature(options = {}) {
       }).filter(Boolean))];
       const itemText = itemNumbers.join(", ");
       const escapedItemText = escapeHtml(itemText);
-      return `<tr><td>${formatDate(receipt.received_on)}</td><td><strong>${escapeHtml(bidName(accessibleBids(), receipt.bid_id))}</strong><span class="cashflow-row-sub">${escapeHtml(receipt.payment_reference || paymentMethodLabel(receipt.payment_method))}</span></td>
+      return `<tr><td>${formatDate(receipt.received_on)}</td><td><strong>${escapeHtml(bid.title)}</strong><span class="cashflow-row-sub">Órgão comprador: ${escapeHtml(bid.subtitle)}</span><span class="cashflow-row-sub">${escapeHtml(receipt.payment_reference || paymentMethodLabel(receipt.payment_method))}</span></td>
         <td class="cashflow-receipt-items-cell"><span class="cashflow-receipt-items">${escapedItemText || "—"}</span></td><td class="cashflow-number"><strong>${formatBrl(parseMoneyToCents(receipt.gross_amount))}</strong></td>
         <td class="cashflow-number">${formatBrl(parseMoneyToCents(receipt.cost_total))}</td><td class="cashflow-number">${formatBrl(parseMoneyToCents(receipt.expense_reserve_amount))}</td>
         <td class="cashflow-number"><strong>${formatBrl(parseMoneyToCents(receipt.distributable_profit))}</strong></td><td><button class="text-action" type="button" data-cf-action="receipt-detail" data-id="${escapeHtml(receipt.id)}">Detalhes</button></td></tr>`;
@@ -1082,6 +1088,7 @@ export function createCashflowFeature(options = {}) {
   function receiptDetail(receiptId) {
     const receipt = state.data.receipts.find((row) => String(row.id) === String(receiptId));
     if (!receipt) return;
+    const bid = bidInfo(accessibleBids(), receipt.bid_id);
     const lines = rowsForReceipt(receipt.id);
     const allocationRows = state.data.allocations.filter((row) => String(row.receipt_id) === String(receipt.id));
     const lineHtml = lines.map((line) => {
@@ -1091,7 +1098,7 @@ export function createCashflowFeature(options = {}) {
       const source = invoice?.invoice_number ? `NF ${invoice.invoice_number}` : "Sem nota fiscal";
       return `<div class="cashflow-detail-row"><strong>${escapeHtml(source)} · Item ${escapeHtml(invoice?.item_number ?? item?.item_number ?? "—")}</strong><span>${escapeHtml(line.received_quantity)} un. · Recebido ${formatBrl(parseMoneyToCents(line.received_amount))} · Custo ${formatBrl(parseMoneyToCents(line.cost_amount))} · Reserva ${formatBrl(parseMoneyToCents(line.reserve_amount))}</span><span>Lucro desta linha ${formatBrl(parseMoneyToCents(line.profit_amount))} · ${line.distribution_mode === "manual" ? "Distribuição manual" : "Distribuição padrão"}</span>${allocations.map((row) => `<span>${escapeHtml(partyName(state.data, row.participant_id))}: ${formatBrl(parseMoneyToCents(row.amount))}</span>`).join("")}${line.cost_justification ? `<small>Justificativa do custo: ${escapeHtml(line.cost_justification)}</small>` : ""}${line.reserve_justification ? `<small>Justificativa da reserva: ${escapeHtml(line.reserve_justification)}</small>` : ""}</div>`;
     }).join("");
-    const body = `<div class="cashflow-callout"><strong>${escapeHtml(bidName(accessibleBids(), receipt.bid_id))}</strong><span>${formatDate(receipt.received_on)} · ${escapeHtml(paymentMethodLabel(receipt.payment_method))}${receipt.payment_reference ? ` · ${escapeHtml(receipt.payment_reference)}` : ""}</span></div>${lineHtml}<div class="cashflow-calculation"><div><span>Recebido bruto</span><strong>${formatBrl(parseMoneyToCents(receipt.gross_amount))}</strong></div><div><span>Custos</span><strong>${formatBrl(parseMoneyToCents(receipt.cost_total))}</strong></div><div><span>Prejuízo</span><strong>${formatBrl(parseMoneyToCents(receipt.loss_amount))}</strong></div><div><span>Reserva</span><strong>${formatBrl(parseMoneyToCents(receipt.expense_reserve_amount))}</strong></div><div class="cashflow-total-final"><span>Lucro distribuível</span><strong>${formatBrl(parseMoneyToCents(receipt.distributable_profit))}</strong></div></div>${receipt.notes ? `<p>${escapeHtml(receipt.notes)}</p>` : ""}`;
+    const body = `<div class="cashflow-callout"><strong>${escapeHtml(bid.title)}</strong><span>Órgão Comprador: ${escapeHtml(bid.subtitle)}</span><span>${formatDate(receipt.received_on)} · ${escapeHtml(paymentMethodLabel(receipt.payment_method))}${receipt.payment_reference ? ` · ${escapeHtml(receipt.payment_reference)}` : ""}</span></div>${lineHtml}<div class="cashflow-calculation"><div><span>Recebido bruto</span><strong>${formatBrl(parseMoneyToCents(receipt.gross_amount))}</strong></div><div><span>Custos</span><strong>${formatBrl(parseMoneyToCents(receipt.cost_total))}</strong></div><div><span>Prejuízo</span><strong>${formatBrl(parseMoneyToCents(receipt.loss_amount))}</strong></div><div><span>Reserva</span><strong>${formatBrl(parseMoneyToCents(receipt.expense_reserve_amount))}</strong></div><div class="cashflow-total-final"><span>Lucro distribuível</span><strong>${formatBrl(parseMoneyToCents(receipt.distributable_profit))}</strong></div></div>${receipt.notes ? `<p>${escapeHtml(receipt.notes)}</p>` : ""}`;
     openDialog(receipt.reversed_at ? "Recebimento estornado" : "Detalhes do recebimento", `Lançamento ${String(receipt.id).slice(0, 8)} · ${formatDate(receipt.received_on)}`, body, "Fechar", "detail");
     dialog.querySelector("[type=submit]").hidden = true;
   }
