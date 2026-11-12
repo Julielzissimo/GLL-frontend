@@ -2318,7 +2318,8 @@
       ],
       "frontend_commits": [
         "88a59efda223b01f2f57c53b3c32eaa85b18b729",
-        "8cc85c1bdc9889bf1c7466212c3ce3cfdc23300a"
+        "8cc85c1bdc9889bf1c7466212c3ce3cfdc23300a",
+        "b469ca8c48e21071480db00191cc690f6c44b09f"
       ],
       "migrations": []
     },
@@ -2418,7 +2419,8 @@
       "backend_commits": [],
       "frontend_commits": [
         "934b870dd1ebc3d9b3418d29a8ed58037f89e3f5",
-        "8cc85c1bdc9889bf1c7466212c3ce3cfdc23300a"
+        "8cc85c1bdc9889bf1c7466212c3ce3cfdc23300a",
+        "b469ca8c48e21071480db00191cc690f6c44b09f"
       ],
       "migrations": []
     },
