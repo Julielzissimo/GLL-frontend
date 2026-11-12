@@ -2419,6 +2419,18 @@
         "934b870dd1ebc3d9b3418d29a8ed58037f89e3f5"
       ],
       "migrations": []
+    },
+    {
+      "id": "FLUXO-CAIXA-DISTRIBUICAO-FATURADOS-001",
+      "backend_commits": [
+        "9e92460d69ee08c3cc24a3fdd19aa62fcd6e3c81"
+      ],
+      "frontend_commits": [
+        "8919b892395aa945189091886e55688687577da5"
+      ],
+      "migrations": [
+        "supabase/migrations/20261111222927_fluxo_caixa_distribuir_recebimentos.sql"
+      ]
     }
   ]
 }
