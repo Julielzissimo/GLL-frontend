@@ -2405,6 +2405,14 @@
       "migrations": []
     },
     {
+      "id": "FLUXO-CAIXA-RECEBIMENTO-ETIQUETA-001",
+      "backend_commits": [],
+      "frontend_commits": [
+        "f57ad51b6d2387c40455cde4449595d9dfaa7d41"
+      ],
+      "migrations": []
+    },
+    {
       "id": "FLUXO-CAIXA-RECEBIMENTO-INTEGRAL-001",
       "backend_commits": [],
       "frontend_commits": [
