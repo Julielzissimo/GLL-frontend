@@ -1283,6 +1283,24 @@ test("background refresh pauses in hidden tabs and during a save", async () => {
   assert.equal(app.appState.bids[0].buyer_agency, "Original");
 });
 
+test("returning to the billing page does not trigger a focus reconciliation", async () => {
+  const app = client(); await app.restoreSession(); await app.flush();
+  app.appState.activePage = "billing";
+  app.context.document.hidden = false;
+
+  vm.runInContext("handleLiveFocus()", app.context);
+  assert.equal(vm.runInContext("liveReconciliationPending", app.context), false);
+  vm.runInContext("handleLiveVisibility()", app.context);
+  assert.equal(vm.runInContext("liveReconciliationPending", app.context), false);
+
+  app.scheduleLiveRefresh({ resource: "bid_item_invoices" });
+  assert.deepEqual(Array.from(vm.runInContext("[...pendingLiveResources]", app.context)), ["bid_item_invoices"]);
+
+  app.appState.activePage = "items";
+  vm.runInContext("handleLiveFocus()", app.context);
+  assert.equal(vm.runInContext("liveReconciliationPending", app.context), true);
+});
+
 test("access removal closes the authenticated view", async () => {
   const app = client(); await app.restoreSession();
   app.db.users = [];
