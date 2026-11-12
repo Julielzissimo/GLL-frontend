@@ -791,7 +791,7 @@ export function createCashflowFeature(options = {}) {
           const itemInvoices = state.data.allInvoices.filter((invoice) => String(invoice.bid_id) === String(item.bid_id)
             && String(invoice.quotation_item_id) === String(item.quotation_item_id));
           const invoiceCards = itemInvoices.map((invoice) => makeReceiptLineCard(item, invoice)).join("");
-          return `<section class="cashflow-awarded-item"><header><span><strong>Item ${escapeHtml(item.item_number)} · ${escapeHtml(item.item_description)}</strong><small>${escapeHtml(item.contract_quantity)} ${escapeHtml(item.item_unit)} adjudicadas</small></span><span class="cashflow-badge warning">Vencido</span></header><div class="cashflow-item-lines">${invoiceCards}${makeReceiptLineCard(item)}</div></section>`;
+          return `<section class="cashflow-awarded-item"><header><span><strong>Item ${escapeHtml(item.item_number)} · ${escapeHtml(item.item_description)}</strong><small>${escapeHtml(item.contract_quantity)} ${escapeHtml(item.item_unit)} adjudicadas</small></span></header><div class="cashflow-item-lines">${invoiceCards}${makeReceiptLineCard(item)}</div></section>`;
         }).join("")
         : emptyState("Nenhum item marcado como vencido", "O edital precisa ter ao menos um item marcado como vencido para registrar o recebimento.");
     const body = `<div class="cashflow-form-grid"><label class="cashflow-field cashflow-field-wide">Edital obrigatório<select name="bid_id" required>${selectOptions(bidOptions, selectedBidId)}</select></label>
