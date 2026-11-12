@@ -2317,7 +2317,8 @@
         "41385051197ffc72cfebe01ee1ed981efbe5b531"
       ],
       "frontend_commits": [
-        "88a59efda223b01f2f57c53b3c32eaa85b18b729"
+        "88a59efda223b01f2f57c53b3c32eaa85b18b729",
+        "8cc85c1bdc9889bf1c7466212c3ce3cfdc23300a"
       ],
       "migrations": []
     },
@@ -2416,7 +2417,8 @@
       "id": "FLUXO-CAIXA-RECEBIMENTO-INTEGRAL-001",
       "backend_commits": [],
       "frontend_commits": [
-        "934b870dd1ebc3d9b3418d29a8ed58037f89e3f5"
+        "934b870dd1ebc3d9b3418d29a8ed58037f89e3f5",
+        "8cc85c1bdc9889bf1c7466212c3ce3cfdc23300a"
       ],
       "migrations": []
     },
