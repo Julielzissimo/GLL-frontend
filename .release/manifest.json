@@ -2485,6 +2485,14 @@
         "4b92437bc6a3cf6f90d4346c2a5a37d091cfdbcd"
       ],
       "migrations": []
+    },
+    {
+      "id": "FLUXO-CAIXA-EDITAL-DISTRIBUICAO-COMPLETA-001",
+      "backend_commits": [],
+      "frontend_commits": [
+        "0dd7b7e3c4acc54917ea791d8613942ca3037355"
+      ],
+      "migrations": []
     }
   ]
 }
