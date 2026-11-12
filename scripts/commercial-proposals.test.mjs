@@ -24,10 +24,11 @@ test("posiciona a assinatura no fim da última página e evita sobreposição co
 });
 
 test("integra a página independente, navegação e build versionado", async () => {
-  const [html, app, build] = await Promise.all([
+  const [html, app, build, finance] = await Promise.all([
     readFile(new URL("../web/index.html", import.meta.url), "utf8"),
     readFile(new URL("../web/app.js", import.meta.url), "utf8"),
     readFile(new URL("../scripts/build-web.mjs", import.meta.url), "utf8"),
+    readFile(new URL("../web/finance.js", import.meta.url), "utf8"),
   ]);
   assert.match(html, /data-navigation-page="commercialProposals"/);
   assert.match(html, /commercial-proposals\.js/);
@@ -35,6 +36,12 @@ test("integra a página independente, navegação e build versionado", async () 
   assert.match(build, /commercial-proposals\.js/);
   assert.ok(build.includes('.update(await readFile(resolve(sourceDir, "finance.js")))'));
   assert.ok(build.includes(".replace('./finance.js', `./finance.js?v=${assetVersion}`)"));
+  assert.ok(build.includes('.update(await readFile(resolve(sourceDir, "finance-service.js")))'));
+  assert.ok(build.includes('.update(await readFile(resolve(sourceDir, "finance.css")))'));
+  assert.ok(build.includes(".replace('./finance.css', `./finance.css?v=${assetVersion}`)"));
+  assert.ok(build.includes(".replace('./finance-service.js', `./finance-service.js?v=${assetVersion}`)"));
+  assert.match(build, /outputFinance\.replace\('from "\.\/finance-service\.js"'/);
+  assert.match(finance, /from "\.\/finance-service\.js"/);
   assert.match(build, /production:[\s\S]+commercialProposalsEnabled: false/);
   assert.match(build, /homolog:[\s\S]+commercialProposalsEnabled: true/);
   assert.match(app, /page === "commercialProposals" && GLL_CONFIG\.commercialProposalsEnabled === false/);
