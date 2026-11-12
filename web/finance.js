@@ -449,6 +449,10 @@ export function createCashflowFeature(options = {}) {
       && (!state.filters.to || String(row[dateKey] || "").slice(0, 10) <= state.filters.to));
   }
 
+  function newestFirst(left, right, dateKey) {
+    return String(right[dateKey] || "").slice(0, 10).localeCompare(String(left[dateKey] || "").slice(0, 10));
+  }
+
   function paginatedRows(tableId, tableLabel, rows) {
     const totalPages = Math.ceil(rows.length / CASHFLOW_PAGE_SIZE);
     const currentPage = Math.min(
@@ -502,7 +506,8 @@ export function createCashflowFeature(options = {}) {
   }
 
   function expenseTable() {
-    const rows = filteredByDate(state.data.expenses.filter((row) => !row.reversed_at), "occurred_on");
+    const rows = filteredByDate(state.data.expenses.filter((row) => !row.reversed_at), "occurred_on")
+      .sort((left, right) => newestFirst(left, right, "occurred_on"));
     if (!rows.length) return emptyState("Nenhuma despesa encontrada", "Registre despesas da empresa para acompanhar valores a receber ou antecipações de participantes para acompanhar valores a devolver.");
     const page = paginatedRows("expenses", "Despesas", rows);
     const refunds = buildExpenseRefunds(state.data);
@@ -554,7 +559,7 @@ export function createCashflowFeature(options = {}) {
   function withdrawalTable() {
     const bids = accessibleBids();
     const sortedWithdrawals = cashflowWithdrawalsForAccessibleBids(state.data.withdrawals, bids).sort((left, right) =>
-      String(right.withdrawn_on || "").localeCompare(String(left.withdrawn_on || "")));
+      newestFirst(left, right, "withdrawn_on"));
     const rows = filteredByDate(sortedWithdrawals, "withdrawn_on");
     if (!rows.length) return emptyState("Nenhum saque registrado", "Quando uma retirada for registrada, ela aparecerá nesta lista.");
     const page = paginatedRows("withdrawals", "Saques", rows);
