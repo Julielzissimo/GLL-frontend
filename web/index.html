@@ -28,7 +28,7 @@
       </section>
 
       <form id="loginForm" class="login-panel login-form">
-        <span class="eyebrow">ACESSO AO SISTEMA</span>
+        
         <h2>Bem-vindo</h2>
         <p id="environmentLabel">Entre com suas credenciais para continuar.</p>
         <label>
@@ -60,7 +60,7 @@
         <p>Confirme o endereço para liberar o acesso à sua organização.</p>
       </section>
       <section class="login-panel login-form invitation-accept-panel" aria-labelledby="signupConfirmationTitle">
-        <span class="eyebrow">CADASTRO DE ORGANIZAÇÃO</span>
+        
         <h2 id="signupConfirmationTitle">Verifique sua caixa de entrada</h2>
         <p>Se o cadastro ainda precisar de confirmação, enviaremos uma mensagem para <strong id="signupConfirmationEmail"></strong>. Abra o link recebido para ativar sua conta Administradora.</p>
         <p id="signupConfirmationMessage" class="form-error" role="status" aria-live="polite"></p>
@@ -77,7 +77,7 @@
         <p>Crie sua conta e organize o acesso da sua empresa.</p>
       </section>
       <form id="organizationSignupForm" class="login-panel login-form" novalidate>
-        <span class="eyebrow">NOVA CONTA</span>
+        
         <h2>Criar conta</h2>
         <p>Sua empresa será cadastrada e esta conta receberá o perfil Administrador.</p>
         <label for="organizationSignupName">Nome da organização
@@ -121,6 +121,16 @@
       </form>
     </main>
 
+    <dialog id="publicSignupDisabledDialog" class="quotation-item-discard-modal" aria-labelledby="publicSignupDisabledTitle" aria-describedby="publicSignupDisabledMessage">
+      <div class="quotation-item-discard-content">
+        <h2 id="publicSignupDisabledTitle">Cadastro de novas contas</h2>
+        <p id="publicSignupDisabledMessage">A funcionalidade de criar uma nova conta está temporariamente inativa. Os convites para novos usuários continuam ativos.</p>
+        <div class="button-row end">
+          <button id="closePublicSignupDisabledDialogButton" class="primary-action" type="button" autofocus>Entendi</button>
+        </div>
+      </div>
+    </dialog>
+
     <main id="invitationAcceptView" class="login-view hidden">
       <section class="login-brand" aria-label="Aceitação do convite GLL">
         <span class="brand-mark">GLL</span>
@@ -128,7 +138,7 @@
         <p>Confirme o convite para configurar seu acesso ao sistema.</p>
       </section>
       <section class="login-panel login-form invitation-accept-panel" aria-labelledby="invitationAcceptTitle">
-        <span class="eyebrow">CONVITE GLL</span>
+        
         <h2 id="invitationAcceptTitle">Continuar com segurança</h2>
         <p>O link só será validado quando você acionar este botão. Depois, você poderá configurar seu perfil e sua senha.</p>
         <p id="invitationAcceptError" class="form-error" role="alert" aria-live="assertive"></p>
@@ -144,7 +154,7 @@
         <p>Esta é a primeira entrada com uma senha provisória. Defina uma senha pessoal para continuar.</p>
       </section>
       <form id="passwordResetForm" class="login-panel login-form">
-        <span class="eyebrow">PRIMEIRO ACESSO</span>
+        
         <h2>Redefina sua senha</h2>
         <p>A senha provisória não permite acessar os dados do sistema.</p>
         <label>Login<input id="passwordResetEmail" type="email" readonly /></label>
@@ -181,9 +191,9 @@
         <p>Preencha seus dados e crie sua senha para acessar o sistema.</p>
       </section>
       <form id="firstAccessForm" class="login-panel login-form" novalidate>
-        <span class="eyebrow">PRIMEIRO ACESSO · ETAPA 1 DE 3</span>
+        
         <h2>Finalize sua configuração</h2>
-        <p id="firstAccessDescription">O convite foi validado. Seu e-mail e seu tipo de usuário vêm do convite e não podem ser alterados.</p>
+        <p id="firstAccessDescription">Etapa 1 de 3. O convite foi validado. Seu e-mail e seu tipo de usuário vêm do convite e não podem ser alterados.</p>
         <div id="firstAccessFields" class="first-access-fields">
         <label for="firstAccessEmail">E-mail vinculado<input id="firstAccessEmail" type="email" readonly aria-readonly="true" /></label>
         <label for="firstAccessRole">Tipo de usuário<input id="firstAccessRole" type="text" readonly aria-readonly="true" /></label>
@@ -531,7 +541,7 @@
             <div class="quotation-item-modal-shell">
               <div class="quotation-item-modal-header">
                 <div>
-                  <span class="eyebrow">VINCULAR ORÇAMENTO</span>
+                  
                   <h2 id="bidQuotationModalTitle">Localizar orçamento</h2>
                 </div>
                 <button id="closeBidQuotationModalButton" class="quotation-item-modal-close modal-close-button" type="button" aria-label="Fechar modal"><span data-gll-icon="close" aria-hidden="true"></span></button>
@@ -632,7 +642,7 @@
 
               <section id="bidQuotationSummary" class="section-band bid-quotation-summary hidden" aria-live="polite">
                 <div>
-                  <span class="eyebrow">ORÇAMENTO VINCULADO</span>
+                  
                   <h2 id="bidQuotationSummaryTitle">Orçamento</h2>
                   <p id="bidQuotationSummaryDescription"></p>
                 </div>
@@ -830,7 +840,7 @@
             <div id="billingPanel" class="tab-panel hidden" aria-labelledby="billingTabButton">
               <div id="billingRoot" class="billing-root">
                 <section class="billing-overview-header" aria-labelledby="billingOverviewTitle">
-                  <div><span class="eyebrow">FORNECIMENTO E FATURAMENTO</span><h2 id="billingOverviewTitle">Acompanhamento por item</h2><p id="billingOverviewDescription">Empenhos, entregas e notas fiscais dos itens do orçamento vinculado.</p></div>
+                  <div><h2 id="billingOverviewTitle">Acompanhamento por item</h2><p id="billingOverviewDescription">Empenhos, entregas e notas fiscais dos itens do orçamento vinculado.</p></div>
                   <strong class="billing-item-count"><span id="billingItemCount">0</span> itens vencidos</strong>
                 </section>
                 <section class="billing-summary-grid" aria-label="Resumo do fornecimento e faturamento">
@@ -855,7 +865,7 @@
               </div>
               <dialog id="billingDrawer" class="billing-drawer" aria-labelledby="billingDrawerTitle" aria-describedby="billingDrawerDescription">
                 <div class="billing-drawer-shell">
-                  <header class="billing-drawer-header"><div><span class="eyebrow">FATURAMENTO</span><h2 id="billingDrawerTitle">Detalhes do item</h2><p id="billingDrawerDescription">Acompanhe o que foi pedido, entregue e faturado.</p></div><button class="quiet-action" type="button" data-close-billing-drawer>Fechar</button></header>
+                  <header class="billing-drawer-header"><div><h2 id="billingDrawerTitle">Detalhes do item</h2><p id="billingDrawerDescription">Acompanhe o que foi pedido, entregue e faturado.</p></div><button class="quiet-action" type="button" data-close-billing-drawer>Fechar</button></header>
                   <div id="billingDrawerContent" class="billing-drawer-content"></div>
                 </div>
               </dialog>
@@ -1046,7 +1056,7 @@
             <div class="quotation-item-modal-shell">
               <div class="quotation-item-modal-header">
                 <div>
-                  <span class="eyebrow">ORÇAMENTO</span>
+                  
                   <h2 id="quotationItemModalTitle">Cadastrar item</h2>
                 </div>
                 <button id="closeQuotationItemModalButton" class="quotation-item-modal-close modal-close-button" type="button" aria-label="Fechar modal"><span data-gll-icon="close" aria-hidden="true"></span></button>
@@ -1245,7 +1255,7 @@
       <section id="userProfilePage" class="users-page user-profile-page hidden" aria-labelledby="userProfilePageTitle">
         <div class="page-heading user-profile-heading">
           <div>
-            <span id="userCreateEyebrow" class="eyebrow">CONVITE DE USUÁRIO</span>
+            
             <h1 id="userProfilePageTitle">Convidar usuário</h1>
             <p id="userCreateDescription" class="user-create-description">A pessoa receberá um e-mail com um link para confirmar o endereço e configurar seus dados no primeiro acesso.</p>
           </div>
@@ -1355,7 +1365,7 @@
           <form id="userAccessForm">
             <div class="modal-header">
               <div>
-                <span class="eyebrow">ACESSO DA CONTA</span>
+                
                 <h2 id="userAccessTitle">Revogar acesso</h2>
                 <p id="userAccessDescription"></p>
               </div>
@@ -1378,7 +1388,7 @@
           <form id="userAssignmentsForm" method="dialog">
             <div class="modal-header">
               <div>
-                <span class="eyebrow">CONFIGURAÇÃO DO ANALISTA</span>
+                
                 <h2 id="userAssignmentsTitle">Configurar acessos</h2>
                 <p id="userAssignmentsDescription"></p>
               </div>
@@ -1440,7 +1450,7 @@
 
         <dialog id="supplierModal" class="quotation-item-modal supplier-modal" aria-labelledby="supplierFormTitle">
           <div class="quotation-item-modal-shell">
-            <div class="quotation-item-modal-header"><div><span class="eyebrow">FORNECEDOR</span><h2 id="supplierFormTitle">Novo fornecedor</h2></div><button id="closeSupplierModalButton" class="quotation-item-modal-close modal-close-button" type="button" aria-label="Fechar modal"><span data-gll-icon="close" aria-hidden="true"></span></button></div>
+            <div class="quotation-item-modal-header"><div><h2 id="supplierFormTitle">Novo fornecedor</h2></div><button id="closeSupplierModalButton" class="quotation-item-modal-close modal-close-button" type="button" aria-label="Fechar modal"><span data-gll-icon="close" aria-hidden="true"></span></button></div>
             <form id="supplierForm" class="quotation-item-modal-form">
               <input id="supplierId" type="hidden" />
               <div class="form-grid">
@@ -1457,7 +1467,7 @@
 
         <dialog id="supplierProductModal" class="quotation-item-modal" aria-labelledby="supplierProductModalTitle">
           <div class="quotation-item-modal-shell">
-            <div class="quotation-item-modal-header"><div><span class="eyebrow">PRODUTO DO FORNECEDOR</span><h2 id="supplierProductModalTitle">Cadastrar produto</h2></div><button id="closeSupplierProductModalButton" class="quotation-item-modal-close modal-close-button" type="button" aria-label="Fechar modal"><span data-gll-icon="close" aria-hidden="true"></span></button></div>
+            <div class="quotation-item-modal-header"><div><h2 id="supplierProductModalTitle">Cadastrar produto</h2></div><button id="closeSupplierProductModalButton" class="quotation-item-modal-close modal-close-button" type="button" aria-label="Fechar modal"><span data-gll-icon="close" aria-hidden="true"></span></button></div>
             <form id="supplierProductForm" class="quotation-item-modal-form">
               <input id="supplierProductId" type="hidden" />
               <div class="form-grid supplier-product-form-grid">
@@ -1535,7 +1545,7 @@
 
             <aside class="declaration-summary-column">
               <section class="section-band declaration-summary-card">
-                <span class="eyebrow">RESUMO</span>
+                
                 <h2>Documento pronto para conferência</h2>
                 <dl><div><dt>Declarações</dt><dd id="declarationSelectedCount">0</dd></div><div><dt>Edital</dt><dd id="declarationSummaryBid">Avulsa</dd></div><div><dt>Saída</dt><dd>PDF A4</dd></div></dl>
                 <p id="declarationGeneratorStatus" class="form-error" role="alert"></p>
@@ -1580,12 +1590,12 @@
         </section>
 
         <dialog id="declarationTemplateModal" class="quotation-item-modal" aria-labelledby="declarationTemplateModalTitle">
-          <div class="quotation-item-modal-shell"><div class="quotation-item-modal-header"><div><span class="eyebrow">BIBLIOTECA</span><h2 id="declarationTemplateModalTitle">Nova declaração</h2></div><button id="closeDeclarationTemplateModalButton" class="quotation-item-modal-close modal-close-button" type="button" aria-label="Fechar"><span data-gll-icon="close" aria-hidden="true"></span></button></div>
+          <div class="quotation-item-modal-shell"><div class="quotation-item-modal-header"><div><h2 id="declarationTemplateModalTitle">Nova declaração</h2></div><button id="closeDeclarationTemplateModalButton" class="quotation-item-modal-close modal-close-button" type="button" aria-label="Fechar"><span data-gll-icon="close" aria-hidden="true"></span></button></div>
             <form id="declarationTemplateForm" class="quotation-item-modal-form"><input id="declarationTemplateId" type="hidden" /><div class="form-grid"><label class="full-field">Título *<input id="declarationTemplateTitle" maxlength="180" required /></label><label class="full-field">Escopo<select id="declarationTemplateScope"><option value="organization">Organização</option><option value="bid">Edital específico</option></select></label><label id="declarationTemplateBidField" class="full-field hidden">Edital *<select id="declarationTemplateBid"></select></label><label class="variable-editor full-field">Conteúdo *<textarea id="declarationTemplateContent" rows="10" required data-variable-editor></textarea><span class="variable-help">Digite <code>{{</code> para inserir uma variável.</span></label></div><p id="declarationTemplateError" class="form-error" role="alert"></p><div class="button-row end"><button id="deleteDeclarationTemplateButton" class="danger-action hidden" type="button">Excluir</button><button id="cancelDeclarationTemplateButton" class="quiet-action" type="button">Cancelar</button><button class="primary-action" type="submit">Salvar declaração</button></div></form>
           </div>
         </dialog>
 
-        <dialog id="declarationPreviewModal" class="declaration-preview-modal" aria-labelledby="declarationPreviewTitle"><div class="declaration-preview-shell"><div class="quotation-item-modal-header"><div><span class="eyebrow">PRÉ-VISUALIZAÇÃO A4</span><h2 id="declarationPreviewTitle">Conferir documento</h2></div><button id="closeDeclarationPreviewButton" class="quotation-item-modal-close modal-close-button" type="button" aria-label="Fechar"><span data-gll-icon="close" aria-hidden="true"></span></button></div><iframe id="declarationPreviewFrame" class="declaration-preview-frame" title="Pré-visualização do PDF"></iframe><div class="button-row end"><button id="closeDeclarationPreviewFooterButton" class="quiet-action" type="button">Voltar à edição</button><button id="generateDeclarationFromPreviewButton" class="primary-action" type="button">Gerar PDF</button></div></div></dialog>
+        <dialog id="declarationPreviewModal" class="declaration-preview-modal" aria-labelledby="declarationPreviewTitle"><div class="declaration-preview-shell"><div class="quotation-item-modal-header"><div><h2 id="declarationPreviewTitle">Conferir documento</h2></div><button id="closeDeclarationPreviewButton" class="quotation-item-modal-close modal-close-button" type="button" aria-label="Fechar"><span data-gll-icon="close" aria-hidden="true"></span></button></div><iframe id="declarationPreviewFrame" class="declaration-preview-frame" title="Pré-visualização do PDF"></iframe><div class="button-row end"><button id="closeDeclarationPreviewFooterButton" class="quiet-action" type="button">Voltar à edição</button><button id="generateDeclarationFromPreviewButton" class="primary-action" type="button">Gerar PDF</button></div></div></dialog>
 
         <dialog id="declarationValidationModal" class="quotation-item-discard-modal" aria-labelledby="declarationValidationTitle"><div class="quotation-item-discard-content"><h2 id="declarationValidationTitle">Não foi possível gerar a declaração</h2><p>Existem informações utilizadas no documento que ainda não foram preenchidas:</p><ul id="declarationMissingVariables"></ul><p>Preencha as informações indicadas antes de gerar o PDF.</p><div class="button-row end"><button id="closeDeclarationValidationButton" class="primary-action" type="button">Entendi</button></div></div></dialog>
         <div id="declarationVariableSuggestions" class="declaration-variable-suggestions hidden" role="listbox"></div>
@@ -1644,7 +1654,7 @@
       <section id="designSystemPage" class="users-page design-system-page hidden" aria-labelledby="designSystemTitle">
         <div class="page-heading">
           <div>
-            <span class="eyebrow">SISTEMA</span>
+            
             <h1 id="designSystemTitle">Design System</h1>
             <p>Catálogo oficial da identidade visual e dos componentes reutilizáveis do GLL.</p>
           </div>
@@ -1680,7 +1690,7 @@
       <section class="bid-followup-shell">
         <header class="bid-followup-header">
           <div>
-            <span class="eyebrow">ACOMPANHAMENTO DO EDITAL</span>
+            
             <h2 id="bidFollowupTitle">Atualizações</h2>
             <p id="bidFollowupSubtitle"></p>
           </div>
@@ -1705,7 +1715,7 @@
 
     <dialog id="organizationChatDialog" class="organization-chat-dialog" aria-labelledby="organizationChatTitle">
       <div class="organization-chat-shell">
-        <header class="organization-chat-header"><div><span class="eyebrow">CONVERSA EM GRUPO</span><h2 id="organizationChatTitle">Mensagens da organização</h2><p id="organizationChatSubtitle"></p></div><button id="closeOrganizationChatButton" class="icon-button modal-close-button" type="button" aria-label="Fechar mensagens"><span aria-hidden="true" data-gll-icon="close"></span></button></header>
+        <header class="organization-chat-header"><div><h2 id="organizationChatTitle">Mensagens da organização</h2><p id="organizationChatSubtitle"></p></div><button id="closeOrganizationChatButton" class="icon-button modal-close-button" type="button" aria-label="Fechar mensagens"><span aria-hidden="true" data-gll-icon="close"></span></button></header>
         <div id="organizationChatMessages" class="organization-chat-messages" role="log" aria-label="Mensagens da conversa" aria-live="polite" aria-relevant="additions text"></div>
         <div id="organizationChatTyping" class="organization-chat-typing" role="status" aria-live="polite" hidden></div>
         <p id="organizationChatError" class="form-error organization-chat-error" role="alert"></p>

@@ -110,11 +110,6 @@ textarea[aria-invalid="true"]:focus {
   color: var(--gll-ink);
 }
 
-.eyebrow,
-.workspace-kicker {
-  color: var(--gll-focus);
-}
-
 /* Main navigation and shared page header. */
 .app-sidebar {
   background: var(--gll-forest);

@@ -86,6 +86,34 @@ function createBillingFeature({ getBid, getQuotation, getBudgetItems, store, toa
     if (form && state.draft) state.draft.values = formValues(form);
   }
 
+  function captureFocusedField() {
+    const field = document.activeElement;
+    if (!field?.id || !drawerContent?.contains(field) || !field.matches("input, textarea, select")) return null;
+    const focus = { id: field.id, selectionStart: null, selectionEnd: null, selectionDirection: null };
+    try {
+      focus.selectionStart = field.selectionStart;
+      focus.selectionEnd = field.selectionEnd;
+      focus.selectionDirection = field.selectionDirection;
+    } catch {
+      // Number and date inputs do not expose a text selection range.
+    }
+    return focus;
+  }
+
+  function restoreFocusedField(focus) {
+    if (!focus) return;
+    const field = document.getElementById(focus.id);
+    if (!field || !drawerContent?.contains(field) || field.disabled) return;
+    field.focus({ preventScroll: true });
+    if (typeof focus.selectionStart === "number" && typeof field.setSelectionRange === "function") {
+      try {
+        field.setSelectionRange(focus.selectionStart, focus.selectionEnd, focus.selectionDirection || "none");
+      } catch {
+        // Keep focus even when the replacement field does not support text selection.
+      }
+    }
+  }
+
   function restoreDraft() {
     const form = drawerContent?.querySelector("[data-billing-form]");
     if (!form) return;
@@ -363,6 +391,7 @@ function createBillingFeature({ getBid, getQuotation, getBudgetItems, store, toa
   }
 
   function renderDrawer() {
+    const focusedField = captureFocusedField();
     captureDraft();
     const itemId = state.selectedItemId;
     const item = budgetItems().find((row) => Number(row.id) === Number(itemId));
@@ -371,13 +400,14 @@ function createBillingFeature({ getBid, getQuotation, getBudgetItems, store, toa
     const drawerTitle = document.getElementById("billingDrawerTitle");
     const drawerDescription = document.getElementById("billingDrawerDescription");
     if (state.activeSection) {
-      drawerContent.innerHTML = `<div class="billing-drawer-item-summary"><div><span class="eyebrow">ITEM DO ORÇAMENTO</span><h3>Item ${billingEscape(item.item_number)} · ${billingEscape(item.description || "Sem descrição")}</h3><p>${billingEscape([item.manufacturer, item.model].filter(Boolean).join(" · ") || item.unit || "")}</p></div><div class="billing-drawer-item-value"><span>Previsto</span><strong>${billingQuantity(row.planned)} un.</strong><small>${billingMoney(billingNumber(item.final_bid) * row.planned)}</small></div></div>${renderBillingSection(state.activeSection, itemId, row)}`;
+      drawerContent.innerHTML = `<div class="billing-drawer-item-summary"><div><h3>Item ${billingEscape(item.item_number)} · ${billingEscape(item.description || "Sem descrição")}</h3><p>${billingEscape([item.manufacturer, item.model].filter(Boolean).join(" · ") || item.unit || "")}</p></div><div class="billing-drawer-item-value"><span>Previsto</span><strong>${billingQuantity(row.planned)} un.</strong><small>${billingMoney(billingNumber(item.final_bid) * row.planned)}</small></div></div>${renderBillingSection(state.activeSection, itemId, row)}`;
       restoreDraft();
+      restoreFocusedField(focusedField);
       return;
     }
     drawerTitle.textContent = "Detalhes do item";
     drawerDescription.textContent = "Acompanhe o que foi pedido, entregue e faturado.";
-    drawerContent.innerHTML = `<div class="billing-drawer-item-summary"><div><span class="eyebrow">ITEM DO ORÇAMENTO</span><h3>Item ${billingEscape(item.item_number)} · ${billingEscape(item.description || "Sem descrição")}</h3><p>${billingEscape([item.manufacturer, item.model].filter(Boolean).join(" · ") || item.unit || "")}</p></div><div class="billing-drawer-item-value"><span>Previsto</span><strong>${billingQuantity(row.planned)} un.</strong><small>${billingMoney(billingNumber(item.final_bid) * row.planned)}</small></div></div>${renderBillingOverview(row, itemId)}`;
+    drawerContent.innerHTML = `<div class="billing-drawer-item-summary"><div><h3>Item ${billingEscape(item.item_number)} · ${billingEscape(item.description || "Sem descrição")}</h3><p>${billingEscape([item.manufacturer, item.model].filter(Boolean).join(" · ") || item.unit || "")}</p></div><div class="billing-drawer-item-value"><span>Previsto</span><strong>${billingQuantity(row.planned)} un.</strong><small>${billingMoney(billingNumber(item.final_bid) * row.planned)}</small></div></div>${renderBillingOverview(row, itemId)}`;
   }
 
   async function refreshData({ keepDrawer = true } = {}) {

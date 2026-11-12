@@ -198,6 +198,9 @@ const refs = {
   resendSignupFromLoginButton: $("resendSignupFromLoginButton"),
   organizationSignupView: $("organizationSignupView"),
   showOrganizationSignupButton: $("showOrganizationSignupButton"),
+  publicSignupDisabledDialog: $("publicSignupDisabledDialog"),
+  publicSignupDisabledMessage: $("publicSignupDisabledMessage"),
+  closePublicSignupDisabledDialogButton: $("closePublicSignupDisabledDialogButton"),
   organizationSignupForm: $("organizationSignupForm"),
   organizationSignupName: $("organizationSignupName"),
   organizationSignupCnpj: $("organizationSignupCnpj"),
@@ -311,7 +314,6 @@ const refs = {
   configureUserAccessButton: $("configureUserAccessButton"),
   changeUserAccessButton: $("changeUserAccessButton"),
   userCreateOpenButton: $("userCreateOpenButton"),
-  userCreateEyebrow: $("userCreateEyebrow"),
   userProfilePageTitle: $("userProfilePageTitle"),
   userCreateDescription: $("userCreateDescription"),
   userCreateSubmitButton: $("userCreateSubmitButton"),
@@ -1421,6 +1423,17 @@ class SupabaseStore {
     }
     await client.auth.signOut();
     return null;
+  }
+
+  async isPublicSignupEnabled() {
+    const client = await this.open();
+    const { data, error } = await client
+      .from("app_feature_flags")
+      .select("enabled")
+      .eq("key", "public_signup_enabled")
+      .maybeSingle();
+    assertSupabase(error);
+    return data?.enabled === true;
   }
 
   async isPasswordResetRequired() {
@@ -2608,7 +2621,7 @@ function organizationSignupErrorMessage(error) {
     return "Informe um CNPJ válido.";
   }
   if (/signups_not_allowed|signup.*disabled|signups.*disabled/i.test(details)) {
-    return "O cadastro de contas está desativado neste ambiente. Entre em contato com o suporte.";
+    return "A funcionalidade de criar uma nova conta está temporariamente inativa. Os convites para novos usuários continuam ativos.";
   }
   if (/already registered|user exists|email exists/i.test(details)) {
     return "Não foi possível criar a conta com este e-mail. Se você já tem acesso, entre pelo login.";
@@ -2696,6 +2709,31 @@ function showOrganizationSignupView() {
   refs.organizationSignupError.textContent = "";
   refs.organizationSignupView.classList.remove("hidden");
   refs.organizationSignupFullName.focus();
+}
+
+function showPublicSignupDisabledDialog(message) {
+  refs.publicSignupDisabledMessage.textContent = message;
+  if (!refs.publicSignupDisabledDialog.open) refs.publicSignupDisabledDialog.showModal();
+}
+
+async function handleShowOrganizationSignupClick() {
+  if (refs.showOrganizationSignupButton.disabled) return;
+  refs.showOrganizationSignupButton.disabled = true;
+  try {
+    if (!(store instanceof SupabaseStore) || !(await store.isPublicSignupEnabled())) {
+      showPublicSignupDisabledDialog(
+        "A funcionalidade de criar uma nova conta está temporariamente inativa. Os convites para novos usuários continuam ativos."
+      );
+      return;
+    }
+    showOrganizationSignupView();
+  } catch {
+    showPublicSignupDisabledDialog(
+      "Não foi possível verificar se a criação de contas está liberada. Tente novamente em instantes."
+    );
+  } finally {
+    refs.showOrganizationSignupButton.disabled = false;
+  }
 }
 
 function returnToLoginFromOrganizationSignup() {
@@ -2988,7 +3026,8 @@ function bindEvents() {
     pendingSignupConfirmation = null;
     showLoginView();
   });
-  refs.showOrganizationSignupButton.addEventListener("click", showOrganizationSignupView);
+  refs.showOrganizationSignupButton.addEventListener("click", handleShowOrganizationSignupClick);
+  refs.closePublicSignupDisabledDialogButton.addEventListener("click", () => refs.publicSignupDisabledDialog.close());
   refs.cancelOrganizationSignupButton.addEventListener("click", returnToLoginFromOrganizationSignup);
   refs.organizationSignupForm.addEventListener("submit", withBlockingLoading(handleOrganizationSignupSubmit, "Criando sua conta…"));
   refs.organizationSignupCnpj.addEventListener("input", () => refs.organizationSignupCnpj.setCustomValidity(""));
@@ -3557,7 +3596,6 @@ function setUserFormMode(mode, user = null) {
   refs.userCreateForm.dataset.mode = editing ? "edit" : "create";
   refs.userCreateForm.dataset.targetAuthUserId = editing ? user.auth_user_id : "";
   refs.userProfilePage.classList.toggle("is-profile-edit", editing);
-  refs.userCreateEyebrow.textContent = editing ? "PERFIL DE USUÁRIO" : "CONVITE DE USUÁRIO";
   refs.userProfilePageTitle.textContent = editing ? "Editar perfil" : "Convidar usuário";
   refs.userCreateDescription.textContent = editing
     ? "Atualize o nome e a foto usados nas páginas do GLL."
@@ -5503,6 +5541,136 @@ const BID_HISTORY_FIELD_LABELS = Object.freeze({
   quotation_id: "Orçamento vinculado",
 });
 
+const BID_HISTORY_ENTITY_ACTIONS = Object.freeze({
+  failure_history: {
+    created: "registrou uma ocorrência de falha.",
+    updated: "atualizou o registro de falha.",
+    deleted: "removeu um registro de falha.",
+  },
+  budget_models: {
+    created: "criou um modelo de orçamento.",
+    updated: "editou o modelo de orçamento.",
+    deleted: "removeu o modelo de orçamento.",
+  },
+  budget_rows: {
+    created: "adicionou uma linha ao modelo de orçamento.",
+    updated: "editou uma linha do modelo de orçamento.",
+    deleted: "removeu uma linha do modelo de orçamento.",
+  },
+  quotations: {
+    created: "criou um orçamento vinculado ao edital.",
+    updated: "editou o orçamento vinculado ao edital.",
+    deleted: "removeu o orçamento vinculado ao edital.",
+  },
+  commercial_proposals: {
+    created: "criou uma proposta comercial para o edital.",
+    updated: "editou a proposta comercial do edital.",
+    deleted: "removeu a proposta comercial do edital.",
+  },
+  commercial_proposal_items: {
+    created: "adicionou um item à proposta comercial.",
+    updated: "editou um item da proposta comercial.",
+    deleted: "removeu um item da proposta comercial.",
+  },
+  commercial_proposal_columns: {
+    created: "adicionou uma coluna à proposta comercial.",
+    updated: "editou uma coluna da proposta comercial.",
+    deleted: "removeu uma coluna da proposta comercial.",
+  },
+  commercial_proposal_custom_values: {
+    created: "preencheu um campo personalizado da proposta comercial.",
+    updated: "alterou um campo personalizado da proposta comercial.",
+    deleted: "removeu um campo personalizado da proposta comercial.",
+  },
+  commercial_proposal_sections: {
+    created: "adicionou uma seção à proposta comercial.",
+    updated: "editou uma seção da proposta comercial.",
+    deleted: "removeu uma seção da proposta comercial.",
+  },
+  commercial_proposal_generations: {
+    created: "gerou um documento da proposta comercial.",
+    updated: "atualizou o registro de geração da proposta comercial.",
+    deleted: "removeu um registro de geração da proposta comercial.",
+  },
+  commercial_proposal_price_history: {
+    created: "registrou uma alteração de preço na proposta comercial.",
+    updated: "atualizou um registro do histórico de preços da proposta comercial.",
+    deleted: "removeu um registro do histórico de preços da proposta comercial.",
+  },
+  commercial_proposal_custom_columns: {
+    created: "criou uma coluna personalizada da proposta comercial.",
+    updated: "editou uma coluna personalizada da proposta comercial.",
+    deleted: "removeu uma coluna personalizada da proposta comercial.",
+  },
+  bid_item_fulfillments: {
+    created: "registrou o acompanhamento de fornecimento de um item do edital.",
+    updated: "atualizou o acompanhamento de fornecimento de um item do edital.",
+    deleted: "removeu o acompanhamento de fornecimento de um item do edital.",
+  },
+  bid_item_commitments: {
+    created: "registrou um compromisso de fornecimento de um item do edital.",
+    updated: "atualizou um compromisso de fornecimento de um item do edital.",
+    deleted: "removeu um compromisso de fornecimento de um item do edital.",
+  },
+  bid_item_deliveries: {
+    created: "registrou uma entrega de item vinculada ao edital.",
+    updated: "atualizou uma entrega de item vinculada ao edital.",
+    deleted: "removeu uma entrega de item vinculada ao edital.",
+  },
+  bid_item_invoices: {
+    created: "registrou uma nota fiscal vinculada a um item do edital.",
+    updated: "atualizou uma nota fiscal vinculada a um item do edital.",
+    deleted: "removeu uma nota fiscal vinculada a um item do edital.",
+  },
+  declaration_documents: {
+    created: "gerou uma declaração vinculada ao edital.",
+    updated: "atualizou uma declaração vinculada ao edital.",
+    deleted: "removeu uma declaração vinculada ao edital.",
+  },
+  declaration_templates: {
+    created: "adicionou um modelo de declaração à biblioteca.",
+    updated: "editou um modelo de declaração da biblioteca.",
+    deleted: "removeu um modelo de declaração da biblioteca.",
+  },
+  radar_importacoes: {
+    created: "vinculou uma importação do Radar ao edital.",
+    updated: "atualizou o vínculo de importação do Radar com o edital.",
+    deleted: "removeu o vínculo de importação do Radar com o edital.",
+  },
+});
+
+function bidHistoryEntityPresentation(event) {
+  const operation = event.operation || ({
+    entity_created: "created",
+    entity_updated: "updated",
+    entity_deleted: "deleted",
+  }[event.event_type]);
+  const summary = BID_HISTORY_ENTITY_ACTIONS[String(event.entity_type || "")]?.[operation];
+  if (!summary) return null;
+
+  if (operation === "created") return { kind: "create", icon: "document", summary, detail: "" };
+  if (operation === "updated") return { kind: "edit", icon: "pencil", summary, detail: "" };
+  return { kind: "neutral", icon: "document", summary, detail: "" };
+}
+
+const CASHFLOW_ACTIVITY_SUMMARIES = Object.freeze({
+  "Recebimento registrado": "registrou um recebimento no Fluxo de Caixa",
+  "Recebimento estornado": "estornou um recebimento no Fluxo de Caixa",
+  "Despesa registrada": "registrou uma despesa no Fluxo de Caixa",
+  "Reembolso pago": "registrou o pagamento de um reembolso no Fluxo de Caixa",
+  "Reembolso recebido": "registrou o recebimento de um reembolso no Fluxo de Caixa",
+  "Retirada de lucro registrada": "registrou uma retirada de lucro no Fluxo de Caixa",
+  "Configurações financeiras atualizadas": "atualizou as configurações financeiras no Fluxo de Caixa",
+  "Participante financeiro cadastrado": "cadastrou um participante financeiro no Fluxo de Caixa",
+  "Participante financeiro atualizado": "atualizou um participante financeiro no Fluxo de Caixa",
+  "Operação financeira registrada": "registrou uma operação financeira no Fluxo de Caixa",
+});
+
+function cashflowActivitySummary(detail) {
+  return CASHFLOW_ACTIVITY_SUMMARIES[String(detail || "")]
+    || CASHFLOW_ACTIVITY_SUMMARIES["Operação financeira registrada"];
+}
+
 function bidHistoryFieldValue(change) {
   if (!change || typeof change !== "object" || change.redacted) return "";
   return change.new ?? change.old ?? "";
@@ -5546,6 +5714,8 @@ function bidHistoryPresentation(event) {
       return { kind: "edit", icon: "pencil", summary: "editou as informações do edital.", detail: bidHistoryChangedFields(event) };
     case "bid_deleted":
       return { kind: "neutral", icon: "document", summary: "removeu o edital.", detail: "" };
+    case "cashflow_activity":
+      return { kind: "create", icon: "document", summary: `${cashflowActivitySummary(event.detail)} do edital.`, detail: "" };
     case "status_changed":
       return {
         kind: "status",
@@ -5572,16 +5742,16 @@ function bidHistoryPresentation(event) {
     case "entity_created":
       if (entity === "items") return { kind: "new-item", icon: "add", summary: "cadastrou um novo item.", detail: itemDetail };
       if (entity === "documents") return { kind: "document", icon: "fileText", summary: "cadastrou uma documentação.", detail: "" };
-      return { kind: "create", icon: "document", summary: "registrou uma nova atividade relacionada ao edital.", detail: "" };
+      return bidHistoryEntityPresentation(event) || { kind: "create", icon: "document", summary: "registrou uma nova informação relacionada ao edital.", detail: "" };
     case "entity_updated":
       if (entity === "items") return { kind: "edit", icon: "pencil", summary: "editou as informações de um item.", detail: itemDetail };
       if (entity === "bids") return { kind: "edit", icon: "pencil", summary: "editou as informações do edital.", detail: bidHistoryChangedFields(event) };
       if (entity === "documents") return { kind: "document", icon: "fileText", summary: "editou uma documentação.", detail: "" };
-      return { kind: "edit", icon: "pencil", summary: "editou informações relacionadas ao edital.", detail: "" };
+      return bidHistoryEntityPresentation(event) || { kind: "edit", icon: "pencil", summary: "editou informações relacionadas ao edital.", detail: "" };
     case "entity_deleted":
       if (entity === "items") return { kind: "item", icon: "package", summary: "removeu um item.", detail: itemDetail };
       if (entity === "documents") return { kind: "document", icon: "fileText", summary: "removeu uma documentação.", detail: "" };
-      return { kind: "neutral", icon: "document", summary: "removeu informações relacionadas ao edital.", detail: "" };
+      return bidHistoryEntityPresentation(event) || { kind: "neutral", icon: "document", summary: "removeu informações relacionadas ao edital.", detail: "" };
     default:
       return { kind: "neutral", icon: "document", summary: "registrou uma atividade relacionada ao edital.", detail: "" };
   }
@@ -6167,6 +6337,7 @@ function bidActivityDescription(entry) {
     quotation_item_removed: `excluiu o item ${entry.detail || "—"} do orçamento do ${edital}`,
     item_won: `marcou o item ${entry.detail || "—"} como vencido no ${edital}`,
     item_unwon: `removeu a marcação de vencido do item ${entry.detail || "—"} no ${edital}`,
+    cashflow_activity: `${cashflowActivitySummary(entry.detail)} do ${edital}`,
   }[entry.event_type] || `atualizou o ${edital}`;
 }
 

@@ -71,3 +71,11 @@ test("login abre o cadastro de conta com nova organização e primeiro perfil", 
   assert.match(app, /gll_signup:\s*\{[\s\S]*?organization_name:[\s\S]*?cnpj:[\s\S]*?full_name:[\s\S]*?display_name:/);
   assert.match(app, /profile\.role !== USER_ROLES\.ADMIN/);
 });
+
+test("cadastro público consulta a flag e informa quando estiver desativado", () => {
+  assert.match(app, /async isPublicSignupEnabled\(\)[\s\S]*?from\("app_feature_flags"\)[\s\S]*?eq\("key", "public_signup_enabled"\)[\s\S]*?data\?\.enabled === true/);
+  assert.match(app, /async function handleShowOrganizationSignupClick\(\)[\s\S]*?await store\.isPublicSignupEnabled\(\)[\s\S]*?showOrganizationSignupView\(\)/);
+  assert.match(app, /addEventListener\("click", handleShowOrganizationSignupClick\)/);
+  assert.match(html, /id="publicSignupDisabledDialog"[\s\S]*?temporariamente inativa[\s\S]*?convites para novos usuários continuam ativos/);
+  assert.match(html, /id="closePublicSignupDisabledDialogButton"/);
+});
