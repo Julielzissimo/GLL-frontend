@@ -41,16 +41,26 @@ test("eligible receipt bids require an allowed status and at least one won item"
   assert.deepEqual(eligibleReceiptBids(bids, items).map((bid) => bid.id), ["supply", "invoiced"]);
 });
 
-test("distribution bid choices require an invoice for a won item", () => {
+test("distribution bid choices require an invoice with an open distributable balance", () => {
   const bids = [
     { id: "with-invoice", status: "Em Fornecimento" },
     { id: "without-invoice", status: "Faturado" },
+    { id: "fully-distributed", status: "Faturado" },
+    { id: "invoice-already-distributed", status: "Faturado" },
   ];
   const items = [
-    { bid_id: "with-invoice", quotation_item_id: 101, is_won: 1 },
+    { bid_id: "with-invoice", quotation_item_id: 101, is_won: 1, received_quantity: 0, open_quantity: 5, open_amount_cents: 50000 },
+    { bid_id: "with-invoice", quotation_item_id: 102, is_won: 1, received_quantity: 10, open_quantity: 0, open_amount_cents: 0 },
     { bid_id: "without-invoice", quotation_item_id: 202, is_won: 1 },
+    { bid_id: "fully-distributed", quotation_item_id: 303, is_won: 1, received_quantity: 10, open_quantity: 0, open_amount_cents: 0 },
+    { bid_id: "invoice-already-distributed", quotation_item_id: 404, is_won: 1, received_quantity: 5, open_quantity: 5, open_amount_cents: 50000 },
   ];
-  const invoices = [{ bid_id: "with-invoice", quotation_item_id: "101" }];
+  const invoices = [
+    { bid_id: "with-invoice", quotation_item_id: "101", open_quantity: 5, open_amount_cents: 50000, unit_sale_cents: 10000 },
+    { bid_id: "with-invoice", quotation_item_id: "102", open_quantity: 0, open_amount_cents: 0, unit_sale_cents: 10000 },
+    { bid_id: "fully-distributed", quotation_item_id: "303", open_quantity: 0, open_amount_cents: 0, unit_sale_cents: 10000 },
+    { bid_id: "invoice-already-distributed", quotation_item_id: "404", open_quantity: 0, open_amount_cents: 0, unit_sale_cents: 10000 },
+  ];
 
   assert.deepEqual(eligibleReceiptBids(bids, items, invoices).map((bid) => bid.id), ["with-invoice"]);
 });

@@ -9,13 +9,23 @@ const CASHFLOW_PROOF_BUCKET = "cashflow-proofs";
 const QUERY_PAGE_SIZE = 1000;
 const RECEIVABLE_BID_STATUSES = new Set(["Em Fornecimento", "Faturado"]);
 
+function receiptSourceCanBeDistributed(item, invoice) {
+  return !receiptItemAlreadyFullyRegistered(item)
+    && Number(item?.open_quantity || 0) > 0
+    && Number(item?.open_amount_cents || 0) > 0
+    && Number(invoice?.open_quantity || 0) > 0
+    && Number(invoice?.open_amount_cents || 0) > 0
+    && Number(invoice?.unit_sale_cents || 0) > 0;
+}
+
 export function eligibleReceiptBids(bids = [], awardedItems = [], invoices = null) {
-  const invoicedItemKeys = Array.isArray(invoices)
-    ? new Set(invoices.map((invoice) => `${invoice.bid_id}:${invoice.quotation_item_id}`))
-    : null;
-  const bidIdsWithWonItems = new Set((Array.isArray(awardedItems) ? awardedItems : [])
-    .filter((item) => Boolean(Number(item?.is_won)))
-    .filter((item) => !invoicedItemKeys || invoicedItemKeys.has(`${item.bid_id}:${item.quotation_item_id}`))
+  const wonItems = (Array.isArray(awardedItems) ? awardedItems : [])
+    .filter((item) => Boolean(Number(item?.is_won)));
+  const distributableItems = Array.isArray(invoices)
+    ? wonItems.filter((item) => receiptSourcesForAwardedItem(item, invoices)
+      .some((invoice) => receiptSourceCanBeDistributed(item, invoice)))
+    : wonItems;
+  const bidIdsWithWonItems = new Set(distributableItems
     .map((item) => String(item.bid_id)));
   return (Array.isArray(bids) ? bids : []).filter((bid) => RECEIVABLE_BID_STATUSES.has(String(bid.status))
     && bidIdsWithWonItems.has(String(bid.id)));
