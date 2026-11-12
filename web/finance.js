@@ -805,7 +805,7 @@ export function createCashflowFeature(options = {}) {
           const receiptNotice = receiptItemAlreadyFullyRegistered(item)
             ? `<p class="cashflow-inline-note" role="status">Já houve registro de faturamento deste item através da página Fluxo de Caixa.</p>`
             : "";
-          return `<section class="cashflow-awarded-item"><header><span><strong>Item ${escapeHtml(item.item_number)} · ${escapeHtml(item.item_description)}</strong><small>${escapeHtml(billedQuantity)} ${escapeHtml(item.item_unit)} faturadas · ${escapeHtml(availableQuantity)} ${escapeHtml(item.item_unit)} disponíveis para distribuir</small></span><span class="cashflow-badge success">Faturado</span></header>${receiptNotice}<div class="cashflow-item-lines">${invoiceCards}</div></section>`;
+          return `<section class="cashflow-awarded-item"><header><span><strong>Item ${escapeHtml(item.item_number)} · ${escapeHtml(item.item_description)}</strong><small>${escapeHtml(billedQuantity)} ${escapeHtml(item.item_unit)} faturadas · ${escapeHtml(availableQuantity)} ${escapeHtml(item.item_unit)} disponíveis para distribuir</small></span></header>${receiptNotice}<div class="cashflow-item-lines">${invoiceCards}</div></section>`;
         }).join("")
         : emptyState("Nenhum item faturado", "Registre o faturamento do item no edital antes de distribuir o lucro.");
     const body = `<div class="cashflow-form-grid"><label class="cashflow-field cashflow-field-wide">Edital obrigatório<select name="bid_id" required>${selectOptions(bidOptions, selectedBidId)}</select></label>
