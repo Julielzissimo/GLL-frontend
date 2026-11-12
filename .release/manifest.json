@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "release_id": "2026-11-11-pacote-melhorias-5-homolog",
+  "release_id": "2026-11-12-pacote-melhorias-6-homolog",
   "environment": "homolog",
   "target_branch": "homolog",
   "items": [
@@ -2477,6 +2477,14 @@
       "migrations": [
         "supabase/migrations/20261112140810_add_cashflow_activity_to_bid_history.sql"
       ]
+    },
+    {
+      "id": "FLUXO-CAIXA-EDITAL-DISTRIBUICAO-COMPLETA-001",
+      "backend_commits": [],
+      "frontend_commits": [
+        "0dd7b7e3c4acc54917ea791d8613942ca3037355"
+      ],
+      "migrations": []
     }
   ]
 }
