@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 globalThis.window = {};
-const { createCashflowService, eligibleReceiptBids, loadCashflowData } = await import("../web/finance-service.js");
+const { createCashflowService, eligibleReceiptBids, loadCashflowData, receiptItemAlreadyFullyRegistered } = await import("../web/finance-service.js");
 
 function makeClient(rowsByTable = {}) {
   const calls = [];
@@ -39,6 +39,18 @@ test("eligible receipt bids require an allowed status and at least one won item"
   ];
 
   assert.deepEqual(eligibleReceiptBids(bids, items).map((bid) => bid.id), ["supply", "invoiced"]);
+});
+
+test("a fully registered receipt item is no longer selectable", () => {
+  const item = {
+    received_quantity: 10,
+    open_quantity: 0,
+    open_amount_cents: 0,
+  };
+  assert.equal(receiptItemAlreadyFullyRegistered(item), true);
+  assert.equal(receiptItemAlreadyFullyRegistered({ ...item, open_quantity: 1 }), false);
+  assert.equal(receiptItemAlreadyFullyRegistered({ ...item, open_amount_cents: 1 }), false);
+  assert.equal(receiptItemAlreadyFullyRegistered({ ...item, received_quantity: 0 }), false);
 });
 
 test("cashflow data exposes a won item even when there are no invoices", async () => {

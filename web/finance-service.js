@@ -17,6 +17,12 @@ export function eligibleReceiptBids(bids = [], awardedItems = []) {
     && bidIdsWithWonItems.has(String(bid.id)));
 }
 
+export function receiptItemAlreadyFullyRegistered(item) {
+  return Number(item?.received_quantity || 0) > 0
+    && Number(item?.open_quantity) <= 0
+    && Number(item?.open_amount_cents) <= 0;
+}
+
 function assertSupabase(error) {
   if (!error) return;
   const normalized = new Error(error.message || "Não foi possível acessar o Fluxo de Caixa.");
