@@ -113,6 +113,8 @@ const assetVersion = createHash("sha256")
   .update(await readFile(resolve(sourceDir, "app.js")))
   .update(await readFile(resolve(sourceDir, "file-storage.js")))
   .update(await readFile(resolve(sourceDir, "finance.js")))
+  .update(await readFile(resolve(sourceDir, "finance-service.js")))
+  .update(await readFile(resolve(sourceDir, "finance.css")))
   .update(await readFile(resolve(sourceDir, "organization-chat.js")))
   .update(await readFile(resolve(sourceDir, "declarations.js")))
   .update(await readFile(resolve(sourceDir, "company-data.js")))
@@ -130,6 +132,13 @@ const assetVersion = createHash("sha256")
   .update(await readFile(resolve(sourceDir, "design-system", "components.js")))
   .digest("hex")
   .slice(0, 12);
+const outputFinancePath = resolve(outputDir, "finance.js");
+const outputFinance = await readFile(outputFinancePath, "utf8");
+await writeFile(
+  outputFinancePath,
+  outputFinance.replace('from "./finance-service.js"', `from "./finance-service.js?v=${assetVersion}"`),
+  "utf8",
+);
 const outputIndexPath = resolve(outputDir, "index.html");
 const outputAppPath = resolve(outputDir, "app.js");
 const outputApp = await readFile(outputAppPath, "utf8");
@@ -153,6 +162,7 @@ await writeFile(
   outputIndexPath,
   outputIndex
     .replace('./design-system/tokens.css', `./design-system/tokens.css?v=${assetVersion}`)
+    .replace('./finance.css', `./finance.css?v=${assetVersion}`)
     .replace('./styles.css', `./styles.css?v=${assetVersion}`)
     .replace('./design-system/design-system.css', `./design-system/design-system.css?v=${assetVersion}`)
     .replace('./design-system/prototype-theme.css', `./design-system/prototype-theme.css?v=${assetVersion}`)
@@ -163,6 +173,7 @@ await writeFile(
     .replace('./organization-documents.js', `./organization-documents.js?v=${assetVersion}`)
     .replace('./commercial-proposals.js', `./commercial-proposals.js?v=${assetVersion}`)
     .replace('./organization-chat.js', `./organization-chat.js?v=${assetVersion}`)
+    .replace('./finance-service.js', `./finance-service.js?v=${assetVersion}`)
     .replace('./app.js', `./app.js?v=${assetVersion}`)
     .replace('./file-storage.js', `./file-storage.js?v=${assetVersion}`)
     .replace('./finance.js', `./finance.js?v=${assetVersion}`)
