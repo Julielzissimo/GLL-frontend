@@ -11,7 +11,7 @@ import {
   validateInvoiceReceipt,
   validateReceiptLine,
 } from "./finance-money.js";
-import { createCashflowService, eligibleReceiptBids, receiptSourcesForAwardedItem } from "./finance-service.js";
+import { createCashflowService, eligibleReceiptBids, receiptItemAlreadyFullyRegistered, receiptSourcesForAwardedItem } from "./finance-service.js";
 
 const PAYMENT_METHODS = Object.freeze([
   ["pix", "Pix"],
@@ -706,9 +706,14 @@ export function createCashflowFeature(options = {}) {
     const line = invoice
       ? { ...item, unit_sale_cents: invoice.unit_sale_cents }
       : item;
+    const alreadyFullyRegistered = receiptItemAlreadyFullyRegistered(item);
     const availableQuantity = Math.max(0, Math.min(item.open_quantity, invoice?.open_quantity ?? item.open_quantity));
     const availableAmount = Math.max(0, Math.min(item.open_amount_cents, invoice?.open_amount_cents ?? item.open_amount_cents));
-    return { line, availableQuantity, availableAmount, selectable: availableQuantity > 0 && availableAmount > 0 && line.unit_sale_cents > 0 };
+    const selectable = !alreadyFullyRegistered
+      && availableQuantity > 0
+      && availableAmount > 0
+      && line.unit_sale_cents > 0;
+    return { line, availableQuantity, availableAmount, alreadyFullyRegistered, selectable };
   }
 
   function remainingReceiptLineBalance(form, card, item, invoice = null) {
@@ -733,7 +738,7 @@ export function createCashflowFeature(options = {}) {
 
   function makeReceiptLineCard(item, invoice = null) {
     const id = String(invoice ? `invoice_${invoice.id}` : `item_${item.id}`).replace(/[^a-zA-Z0-9_-]/g, "_");
-    const { line, availableQuantity, availableAmount, selectable } = receiptLineContext(item, invoice);
+    const { line, availableQuantity, availableAmount, alreadyFullyRegistered, selectable } = receiptLineContext(item, invoice);
     const defaultQuantity = selectable ? Math.min(availableQuantity, 1) : 0;
     const defaultAmount = Math.min(availableAmount, saleAmountForQuantity(line, defaultQuantity));
     const cost = defaultCostCents(line, defaultQuantity);
@@ -747,7 +752,7 @@ export function createCashflowFeature(options = {}) {
     }).join("");
     const source = invoice ? `NF ${escapeHtml(invoice.invoice_number)}` : "Sem nota fiscal";
     return `<article class="cashflow-invoice-card" data-cf-line-card="${id}" data-cf-item-id="${escapeHtml(item.id)}" data-cf-invoice-id="${escapeHtml(invoice?.id || "")}">
-      <label class="cashflow-invoice-choice"><input type="checkbox" name="receipt_line_${id}" value="${escapeHtml(invoice?.id || item.id)}" data-cf-line-check="${id}" ${selectable ? "" : "disabled"} /><span class="cashflow-invoice-choice-copy"><strong>${source}</strong><small>${invoice ? "Recebimento relacionado a esta nota" : "Recebimento relacionado diretamente ao item"}</small>${!selectable ? `<small>Sem saldo disponível para este lançamento.</small>` : ""}</span></label>
+      <label class="cashflow-invoice-choice"><input type="checkbox" name="receipt_line_${id}" value="${escapeHtml(invoice?.id || item.id)}" data-cf-line-check="${id}" ${selectable ? "" : "disabled"} /><span class="cashflow-invoice-choice-copy"><strong>${source}</strong><small>${invoice ? "Recebimento relacionado a esta nota" : "Recebimento relacionado diretamente ao item"}</small>${!selectable && !alreadyFullyRegistered ? `<small>Sem saldo disponível para este lançamento.</small>` : ""}</span></label>
       <div class="cashflow-line-details" data-cf-line-details="${id}" hidden>
         <div class="cashflow-invoice-fields"><label class="cashflow-field">Quantidade neste recebimento<input type="number" min="0" max="${escapeHtml(availableQuantity)}" step="0.0001" name="quantity_${id}" value="0" data-cf-quantity="${id}" disabled /><small data-cf-quantity-limit="${id}">Disponível: ${escapeHtml(availableQuantity)} ${escapeHtml(item.item_unit)}</small></label>
         <label class="cashflow-field">Valor recebido (R$)<input type="text" inputmode="decimal" name="amount_${id}" value="0,00" data-cf-amount="${id}" data-touched="false" disabled /><small data-cf-amount-limit="${id}">Saldo financeiro disponível: ${formatBrl(availableAmount)}.</small></label>
@@ -790,7 +795,10 @@ export function createCashflowFeature(options = {}) {
         ? items.map((item) => {
           const invoiceCards = receiptSourcesForAwardedItem(item, state.data.allInvoices)
             .map((invoice) => makeReceiptLineCard(item, invoice)).join("");
-          return `<section class="cashflow-awarded-item"><header><span><strong>Item ${escapeHtml(item.item_number)} · ${escapeHtml(item.item_description)}</strong><small>${escapeHtml(item.contract_quantity)} ${escapeHtml(item.item_unit)} adjudicadas</small></span></header><div class="cashflow-item-lines">${invoiceCards}</div></section>`;
+          const receiptNotice = receiptItemAlreadyFullyRegistered(item)
+            ? `<p class="cashflow-inline-note" role="status">Já houve registro de faturamento deste item através da página Fluxo de Caixa.</p>`
+            : "";
+          return `<section class="cashflow-awarded-item"><header><span><strong>Item ${escapeHtml(item.item_number)} · ${escapeHtml(item.item_description)}</strong><small>${escapeHtml(item.contract_quantity)} ${escapeHtml(item.item_unit)} adjudicadas</small></span></header>${receiptNotice}<div class="cashflow-item-lines">${invoiceCards}</div></section>`;
         }).join("")
         : emptyState("Nenhum item marcado como vencido", "O edital precisa ter ao menos um item marcado como vencido para registrar o recebimento.");
     const body = `<div class="cashflow-form-grid"><label class="cashflow-field cashflow-field-wide">Edital obrigatório<select name="bid_id" required>${selectOptions(bidOptions, selectedBidId)}</select></label>

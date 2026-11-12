@@ -2411,6 +2411,14 @@
         "f57ad51b6d2387c40455cde4449595d9dfaa7d41"
       ],
       "migrations": []
+    },
+    {
+      "id": "FLUXO-CAIXA-RECEBIMENTO-INTEGRAL-001",
+      "backend_commits": [],
+      "frontend_commits": [
+        "934b870dd1ebc3d9b3418d29a8ed58037f89e3f5"
+      ],
+      "migrations": []
     }
   ]
 }
