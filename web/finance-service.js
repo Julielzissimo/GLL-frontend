@@ -9,9 +9,13 @@ const CASHFLOW_PROOF_BUCKET = "cashflow-proofs";
 const QUERY_PAGE_SIZE = 1000;
 const RECEIVABLE_BID_STATUSES = new Set(["Em Fornecimento", "Faturado"]);
 
-export function eligibleReceiptBids(bids = [], awardedItems = []) {
+export function eligibleReceiptBids(bids = [], awardedItems = [], invoices = null) {
+  const invoicedItemKeys = Array.isArray(invoices)
+    ? new Set(invoices.map((invoice) => `${invoice.bid_id}:${invoice.quotation_item_id}`))
+    : null;
   const bidIdsWithWonItems = new Set((Array.isArray(awardedItems) ? awardedItems : [])
     .filter((item) => Boolean(Number(item?.is_won)))
+    .filter((item) => !invoicedItemKeys || invoicedItemKeys.has(`${item.bid_id}:${item.quotation_item_id}`))
     .map((item) => String(item.bid_id)));
   return (Array.isArray(bids) ? bids : []).filter((bid) => RECEIVABLE_BID_STATUSES.has(String(bid.status))
     && bidIdsWithWonItems.has(String(bid.id)));
@@ -24,10 +28,9 @@ export function receiptItemAlreadyFullyRegistered(item) {
 }
 
 export function receiptSourcesForAwardedItem(item, invoices = []) {
-  const linkedInvoices = (Array.isArray(invoices) ? invoices : []).filter((invoice) =>
+  return (Array.isArray(invoices) ? invoices : []).filter((invoice) =>
     String(invoice.bid_id) === String(item?.bid_id)
     && String(invoice.quotation_item_id) === String(item?.quotation_item_id));
-  return linkedInvoices.length ? linkedInvoices : [null];
 }
 
 function assertSupabase(error) {
@@ -254,7 +257,10 @@ export function createCashflowService(client) {
       return data;
     },
 
-    async recordReceipt(receipt) {
+    async distributeReceipt(receipt) {
+      if (!Array.isArray(receipt.lines) || receipt.lines.some((line) => line.invoiceId == null || String(line.invoiceId).trim() === "")) {
+        throw new Error("Selecione somente itens faturados para distribuir o recebimento.");
+      }
       const lines = receipt.lines.map((line) => ({
         invoice_id: line.invoiceId == null ? null : String(line.invoiceId),
         quotation_item_id: String(line.quotationItemId),
@@ -270,7 +276,7 @@ export function createCashflowService(client) {
           amount: moneyForApi(allocation.amountCents),
         })),
       }));
-      const { data, error } = await client.rpc("record_cashflow_receipt", {
+      const { data, error } = await client.rpc("distribute_cashflow_receipt", {
         p_bid_id: String(receipt.bidId),
         p_received_on: receipt.receivedOn,
         p_payment_method: receipt.paymentMethod,
