@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "release_id": "2026-11-11-backup-oauth-privacy-homolog",
+  "release_id": "2026-11-11-pacote-melhorias-5-homolog",
   "environment": "homolog",
   "target_branch": "homolog",
   "items": [
@@ -2393,6 +2393,14 @@
       "backend_commits": [],
       "frontend_commits": [
         "d54030392f59e6570f873c16a021167d7eb1cc9f"
+      ],
+      "migrations": []
+    },
+    {
+      "id": "FLUXO-CAIXA-RECEBIMENTO-DUPLICIDADE-001",
+      "backend_commits": [],
+      "frontend_commits": [
+        "0729e9cd610ae7baa9ff25e8c3114d596e14c363"
       ],
       "migrations": []
     },

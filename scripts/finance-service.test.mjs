@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 globalThis.window = {};
-const { createCashflowService, eligibleReceiptBids, loadCashflowData, receiptItemAlreadyFullyRegistered } = await import("../web/finance-service.js");
+const { createCashflowService, eligibleReceiptBids, loadCashflowData, receiptItemAlreadyFullyRegistered, receiptSourcesForAwardedItem } = await import("../web/finance-service.js");
 
 function makeClient(rowsByTable = {}) {
   const calls = [];
@@ -39,6 +39,24 @@ test("eligible receipt bids require an allowed status and at least one won item"
   ];
 
   assert.deepEqual(eligibleReceiptBids(bids, items).map((bid) => bid.id), ["supply", "invoiced"]);
+});
+
+test("receipt source choices do not duplicate an item that has linked invoices", () => {
+  const item = { bid_id: "bid-1", quotation_item_id: 101 };
+  const invoices = [
+    { id: "invoice-1", bid_id: "bid-1", quotation_item_id: "101" },
+    { id: "invoice-other-item", bid_id: "bid-1", quotation_item_id: 202 },
+    { id: "invoice-other-bid", bid_id: "bid-2", quotation_item_id: 101 },
+  ];
+
+  assert.deepEqual(receiptSourcesForAwardedItem(item, invoices), [invoices[0]]);
+});
+
+test("receipt source choices keep the direct item option when no invoice is linked", () => {
+  const item = { bid_id: "bid-1", quotation_item_id: 101 };
+  const invoices = [{ id: "invoice-other-item", bid_id: "bid-1", quotation_item_id: 202 }];
+
+  assert.deepEqual(receiptSourcesForAwardedItem(item, invoices), [null]);
 });
 
 test("a fully registered receipt item is no longer selectable", () => {

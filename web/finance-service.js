@@ -23,6 +23,13 @@ export function receiptItemAlreadyFullyRegistered(item) {
     && Number(item?.open_amount_cents) <= 0;
 }
 
+export function receiptSourcesForAwardedItem(item, invoices = []) {
+  const linkedInvoices = (Array.isArray(invoices) ? invoices : []).filter((invoice) =>
+    String(invoice.bid_id) === String(item?.bid_id)
+    && String(invoice.quotation_item_id) === String(item?.quotation_item_id));
+  return linkedInvoices.length ? linkedInvoices : [null];
+}
+
 function assertSupabase(error) {
   if (!error) return;
   const normalized = new Error(error.message || "Não foi possível acessar o Fluxo de Caixa.");
