@@ -2435,6 +2435,14 @@
       "migrations": [
         "supabase/migrations/20261111222927_fluxo_caixa_distribuir_recebimentos.sql"
       ]
+    },
+    {
+      "id": "BID-HISTORY-ACTIONS-001",
+      "backend_commits": [],
+      "frontend_commits": [
+        "1ef439dcae59f242b4e252962013ea29f816bf85"
+      ],
+      "migrations": []
     }
   ]
 }
