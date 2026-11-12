@@ -37,6 +37,44 @@ test("feed descreve alterações específicas do edital e do orçamento", () => 
   assert.equal(bidActivityDescription({ ...event, event_type: "item_won" }), "marcou o item 3 como vencido no edital 10/2026 de Prefeitura");
 });
 
+test("feed e histórico descrevem as operações do Fluxo de Caixa sem exibir detalhes financeiros", () => {
+  const app = client();
+  const cases = [
+    ["Recebimento registrado", "registrou um recebimento no Fluxo de Caixa"],
+    ["Recebimento estornado", "estornou um recebimento no Fluxo de Caixa"],
+    ["Despesa registrada", "registrou uma despesa no Fluxo de Caixa"],
+    ["Reembolso pago", "registrou o pagamento de um reembolso no Fluxo de Caixa"],
+    ["Reembolso recebido", "registrou o recebimento de um reembolso no Fluxo de Caixa"],
+    ["Retirada de lucro registrada", "registrou uma retirada de lucro no Fluxo de Caixa"],
+  ];
+
+  for (const [detail, summary] of cases) {
+    const event = {
+      bid_id: "bid-1",
+      edital_number: "10/2026",
+      buyer_agency: "Prefeitura",
+      entity_type: "cashflow_audit_events",
+      event_type: "cashflow_activity",
+      detail,
+    };
+    assert.equal(app.bidActivityDescription(event), `${summary} do edital 10/2026 de Prefeitura`);
+    const presentation = app.bidHistoryPresentation(event);
+    assert.equal(presentation.summary, `${summary} do edital.`);
+    assert.equal(presentation.detail, "");
+  }
+
+  const unexpectedEvent = {
+    bid_id: "bid-1",
+    edital_number: "10/2026",
+    buyer_agency: "Prefeitura",
+    event_type: "cashflow_activity",
+    detail: "Conta bancária 1234 / R$ 9.999,99",
+  };
+  const unexpectedSummary = "registrou uma operação financeira no Fluxo de Caixa";
+  assert.equal(app.bidActivityDescription(unexpectedEvent), `${unexpectedSummary} do edital 10/2026 de Prefeitura`);
+  assert.equal(app.bidHistoryPresentation(unexpectedEvent).summary, `${unexpectedSummary} do edital.`);
+});
+
 test("avatar do cabeçalho não é remontado quando o link assinado é renovado", () => {
   const app = client();
   const profile = {
@@ -492,7 +530,7 @@ function client(db = backend(), auth = { session: { user } }, config = {}) {
   });
   vm.runInContext(application, context);
   element("notificationsMenu").classList.add("hidden");
-  const api = vm.runInContext(`({ store, appState, authState, AUTH_STATUS, bidFollowupCalls, body: document.body, toast: refs.toast, showToast, main, initializeAuthStateListener, showAuthBootstrap, showAuthBootstrapError, showLoginView, showAppDataBootstrap, showAppDataBootstrapError, retryAppDataBootstrap, restoreSession, logout, reloadData, refreshInBackground, startLiveUpdates, stopLiveUpdates, resetAuthenticatedView, scheduleLiveRefresh, handleOrganizationDataChanged, verifyCurrentUserAccess, calculateBidSummary, calculateLineTotal, calculateItemProfit, calculateProfitMargin, calculateValueWithMargin, parseDecimal, parseProfitMargin, money, formatDateTime, toDateTimeInputValue, fromDateTimeInputValue, readNavigationRoute, writeNavigationRoute, resolveAuthorizedPage, normalizeBidRecord, normalizeBidAttachments, validateEditalFiles, bidDisplayNumber, bidMatchesSearch, bidActivityDescription, creatorName, creatorInitials, creatorTagMarkup, normalizeQuotationRecord, normalizeQuotationItemRecord, quotationItemToBidItem, bidItemToQuotationItem, normalizeTechnicalSpecifications, quotationSaveError, sessionPolicyStorageKey, enforceSessionPolicy, availableBidQuotations, navigationNotifications, clearAllNotifications, updateCurrentUserProfile, waitForAppData: () => pendingAppDataBootstrap, waitForSessionRestore: () => pendingSessionRestore?.promise || Promise.resolve() })`, context);
+  const api = vm.runInContext(`({ store, appState, authState, AUTH_STATUS, bidFollowupCalls, body: document.body, toast: refs.toast, showToast, main, initializeAuthStateListener, showAuthBootstrap, showAuthBootstrapError, showLoginView, showAppDataBootstrap, showAppDataBootstrapError, retryAppDataBootstrap, restoreSession, logout, reloadData, refreshInBackground, startLiveUpdates, stopLiveUpdates, resetAuthenticatedView, scheduleLiveRefresh, handleOrganizationDataChanged, verifyCurrentUserAccess, calculateBidSummary, calculateLineTotal, calculateItemProfit, calculateProfitMargin, calculateValueWithMargin, parseDecimal, parseProfitMargin, money, formatDateTime, toDateTimeInputValue, fromDateTimeInputValue, readNavigationRoute, writeNavigationRoute, resolveAuthorizedPage, normalizeBidRecord, normalizeBidAttachments, validateEditalFiles, bidDisplayNumber, bidMatchesSearch, bidActivityDescription, bidHistoryPresentation, creatorName, creatorInitials, creatorTagMarkup, normalizeQuotationRecord, normalizeQuotationItemRecord, quotationItemToBidItem, bidItemToQuotationItem, normalizeTechnicalSpecifications, quotationSaveError, sessionPolicyStorageKey, enforceSessionPolicy, availableBidQuotations, navigationNotifications, clearAllNotifications, updateCurrentUserProfile, waitForAppData: () => pendingAppDataBootstrap, waitForSessionRestore: () => pendingSessionRestore?.promise || Promise.resolve() })`, context);
   api.setActiveModal = (modal) => { activeModal = modal; };
   api.runTimers = () => {
     const callbacks = [...timers.values()];
