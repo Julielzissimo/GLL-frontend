@@ -23,8 +23,7 @@ export function eligibleReceiptBids(bids = [], awardedItems = [], invoices = nul
 
 export function receiptItemAlreadyFullyRegistered(item) {
   return Number(item?.received_quantity || 0) > 0
-    && Number(item?.open_quantity) <= 0
-    && Number(item?.open_amount_cents) <= 0;
+    && Number(item?.open_quantity) <= 0;
 }
 
 export function receiptSourcesForAwardedItem(item, invoices = []) {
