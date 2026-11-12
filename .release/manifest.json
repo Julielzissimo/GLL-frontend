@@ -2445,6 +2445,18 @@
         "1ef439dcae59f242b4e252962013ea29f816bf85"
       ],
       "migrations": []
+    },
+    {
+      "id": "FLUXO-CAIXA-HISTORICO-EDITAL-001",
+      "backend_commits": [
+        "649367bffe2d5e5489795288d01fab44de0a129d"
+      ],
+      "frontend_commits": [
+        "67b09740e403030b9ca1567f641fb7410f6b1d4b"
+      ],
+      "migrations": [
+        "supabase/migrations/20261112140810_add_cashflow_activity_to_bid_history.sql"
+      ]
     }
   ]
 }
