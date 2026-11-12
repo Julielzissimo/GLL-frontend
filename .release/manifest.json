@@ -2307,19 +2307,24 @@
       "id": "CHAT-ORGANIZACAO-SCROLLBAR-001",
       "backend_commits": [],
       "frontend_commits": [
-        "f79415fb8c93b817435f7904f4b17a78c2379283"
+        "f79415fb8c93b817435f7904f4b17a78c2379283",
+        "3753f8aa01241b0e7278b3e56b1c942c05abf3c0"
       ],
       "migrations": []
     },
     {
       "id": "DESIGN-SYSTEM-ANTETITULOS-001",
       "backend_commits": [
-        "41385051197ffc72cfebe01ee1ed981efbe5b531"
+        "41385051197ffc72cfebe01ee1ed981efbe5b531",
+        "a3db375918d38053079089adafbd201b979a7416"
       ],
       "frontend_commits": [
         "88a59efda223b01f2f57c53b3c32eaa85b18b729",
         "8cc85c1bdc9889bf1c7466212c3ce3cfdc23300a",
-        "b469ca8c48e21071480db00191cc690f6c44b09f"
+        "b469ca8c48e21071480db00191cc690f6c44b09f",
+        "e6803fac0e2740bfdcf2500073e46bb43f2fe29e",
+        "54efffa694f5906527f3964f0fcd5ebcd5c4ba1e",
+        "78a575beebd6b6ebb70d1331514fa589aa3f1e69"
       ],
       "migrations": []
     },
@@ -2348,10 +2353,12 @@
     {
       "id": "AUTH-CADASTRO-PUBLICO-001",
       "backend_commits": [
-        "6be1f5e78f4dc04f1256471c6fd2ec00727a9ae2"
+        "6be1f5e78f4dc04f1256471c6fd2ec00727a9ae2",
+        "873ca4253a5afbfc87646f9c6c67742fa2f38740"
       ],
       "frontend_commits": [
-        "8e6b03752c7bf0364f68aa61a6bc12344850f804"
+        "8e6b03752c7bf0364f68aa61a6bc12344850f804",
+        "741e68553f2b9ec793efa064baadd02e7410a7e2"
       ],
       "migrations": [
         "supabase/migrations/20261111121207_public_signup_feature_flag.sql"
@@ -2394,7 +2401,8 @@
       "id": "BILLING-DRAWER-FOCUS-001",
       "backend_commits": [],
       "frontend_commits": [
-        "d54030392f59e6570f873c16a021167d7eb1cc9f"
+        "d54030392f59e6570f873c16a021167d7eb1cc9f",
+        "792a38df1909a7718827792b4bb061d01e5b3583"
       ],
       "migrations": []
     },
@@ -2402,7 +2410,8 @@
       "id": "FLUXO-CAIXA-RECEBIMENTO-DUPLICIDADE-001",
       "backend_commits": [],
       "frontend_commits": [
-        "0729e9cd610ae7baa9ff25e8c3114d596e14c363"
+        "0729e9cd610ae7baa9ff25e8c3114d596e14c363",
+        "f84714acb444b36ee0bb71b87605cdae7d712fb4"
       ],
       "migrations": []
     },
@@ -2410,7 +2419,8 @@
       "id": "FLUXO-CAIXA-RECEBIMENTO-ETIQUETA-001",
       "backend_commits": [],
       "frontend_commits": [
-        "f57ad51b6d2387c40455cde4449595d9dfaa7d41"
+        "f57ad51b6d2387c40455cde4449595d9dfaa7d41",
+        "51d9e6f3516719e0f8b3595b8be333770f9e050b"
       ],
       "migrations": []
     },
@@ -2420,7 +2430,10 @@
       "frontend_commits": [
         "934b870dd1ebc3d9b3418d29a8ed58037f89e3f5",
         "8cc85c1bdc9889bf1c7466212c3ce3cfdc23300a",
-        "b469ca8c48e21071480db00191cc690f6c44b09f"
+        "b469ca8c48e21071480db00191cc690f6c44b09f",
+        "69c06fb5828dc7de5313af57e78ff15550042022",
+        "54efffa694f5906527f3964f0fcd5ebcd5c4ba1e",
+        "78a575beebd6b6ebb70d1331514fa589aa3f1e69"
       ],
       "migrations": []
     },
@@ -2428,11 +2441,15 @@
       "id": "FLUXO-CAIXA-DISTRIBUICAO-FATURADOS-001",
       "backend_commits": [
         "9e92460d69ee08c3cc24a3fdd19aa62fcd6e3c81",
-        "1ceaebdb6c331a75d02ead46e95bfedf4a8dbfa9"
+        "1ceaebdb6c331a75d02ead46e95bfedf4a8dbfa9",
+        "3db91c75230ab8f3bf29d651406b256fd7887aac",
+        "5c091fc4d02f7d26e7c32ade41b8f455f4384778"
       ],
       "frontend_commits": [
         "8919b892395aa945189091886e55688687577da5",
-        "37af2c148f8555e4cdc27fef9fc5fe8512fe53f9"
+        "37af2c148f8555e4cdc27fef9fc5fe8512fe53f9",
+        "a97cba62d42f7622f58f9d9f3767d59d6f4145e0",
+        "d819a38c146799a8ecd1ad3a5a750ddf511caa7b"
       ],
       "migrations": [
         "supabase/migrations/20261111222927_fluxo_caixa_distribuir_recebimentos.sql"
@@ -2442,17 +2459,20 @@
       "id": "BID-HISTORY-ACTIONS-001",
       "backend_commits": [],
       "frontend_commits": [
-        "1ef439dcae59f242b4e252962013ea29f816bf85"
+        "1ef439dcae59f242b4e252962013ea29f816bf85",
+        "f98851c7a6ae9e01f378ae048bb4ef510d961e90"
       ],
       "migrations": []
     },
     {
       "id": "FLUXO-CAIXA-HISTORICO-EDITAL-001",
       "backend_commits": [
-        "649367bffe2d5e5489795288d01fab44de0a129d"
+        "649367bffe2d5e5489795288d01fab44de0a129d",
+        "afa4cbd1b4e7b8005b145dbb6e25d24b989085e0"
       ],
       "frontend_commits": [
-        "67b09740e403030b9ca1567f641fb7410f6b1d4b"
+        "67b09740e403030b9ca1567f641fb7410f6b1d4b",
+        "8a7ddb7d63edf9cead0c7356b90700fecf75dd70"
       ],
       "migrations": [
         "supabase/migrations/20261112140810_add_cashflow_activity_to_bid_history.sql"
