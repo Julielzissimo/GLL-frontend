@@ -5541,6 +5541,118 @@ const BID_HISTORY_FIELD_LABELS = Object.freeze({
   quotation_id: "Orçamento vinculado",
 });
 
+const BID_HISTORY_ENTITY_ACTIONS = Object.freeze({
+  failure_history: {
+    created: "registrou uma ocorrência de falha.",
+    updated: "atualizou o registro de falha.",
+    deleted: "removeu um registro de falha.",
+  },
+  budget_models: {
+    created: "criou um modelo de orçamento.",
+    updated: "editou o modelo de orçamento.",
+    deleted: "removeu o modelo de orçamento.",
+  },
+  budget_rows: {
+    created: "adicionou uma linha ao modelo de orçamento.",
+    updated: "editou uma linha do modelo de orçamento.",
+    deleted: "removeu uma linha do modelo de orçamento.",
+  },
+  quotations: {
+    created: "criou um orçamento vinculado ao edital.",
+    updated: "editou o orçamento vinculado ao edital.",
+    deleted: "removeu o orçamento vinculado ao edital.",
+  },
+  commercial_proposals: {
+    created: "criou uma proposta comercial para o edital.",
+    updated: "editou a proposta comercial do edital.",
+    deleted: "removeu a proposta comercial do edital.",
+  },
+  commercial_proposal_items: {
+    created: "adicionou um item à proposta comercial.",
+    updated: "editou um item da proposta comercial.",
+    deleted: "removeu um item da proposta comercial.",
+  },
+  commercial_proposal_columns: {
+    created: "adicionou uma coluna à proposta comercial.",
+    updated: "editou uma coluna da proposta comercial.",
+    deleted: "removeu uma coluna da proposta comercial.",
+  },
+  commercial_proposal_custom_values: {
+    created: "preencheu um campo personalizado da proposta comercial.",
+    updated: "alterou um campo personalizado da proposta comercial.",
+    deleted: "removeu um campo personalizado da proposta comercial.",
+  },
+  commercial_proposal_sections: {
+    created: "adicionou uma seção à proposta comercial.",
+    updated: "editou uma seção da proposta comercial.",
+    deleted: "removeu uma seção da proposta comercial.",
+  },
+  commercial_proposal_generations: {
+    created: "gerou um documento da proposta comercial.",
+    updated: "atualizou o registro de geração da proposta comercial.",
+    deleted: "removeu um registro de geração da proposta comercial.",
+  },
+  commercial_proposal_price_history: {
+    created: "registrou uma alteração de preço na proposta comercial.",
+    updated: "atualizou um registro do histórico de preços da proposta comercial.",
+    deleted: "removeu um registro do histórico de preços da proposta comercial.",
+  },
+  commercial_proposal_custom_columns: {
+    created: "criou uma coluna personalizada da proposta comercial.",
+    updated: "editou uma coluna personalizada da proposta comercial.",
+    deleted: "removeu uma coluna personalizada da proposta comercial.",
+  },
+  bid_item_fulfillments: {
+    created: "registrou o acompanhamento de fornecimento de um item do edital.",
+    updated: "atualizou o acompanhamento de fornecimento de um item do edital.",
+    deleted: "removeu o acompanhamento de fornecimento de um item do edital.",
+  },
+  bid_item_commitments: {
+    created: "registrou um compromisso de fornecimento de um item do edital.",
+    updated: "atualizou um compromisso de fornecimento de um item do edital.",
+    deleted: "removeu um compromisso de fornecimento de um item do edital.",
+  },
+  bid_item_deliveries: {
+    created: "registrou uma entrega de item vinculada ao edital.",
+    updated: "atualizou uma entrega de item vinculada ao edital.",
+    deleted: "removeu uma entrega de item vinculada ao edital.",
+  },
+  bid_item_invoices: {
+    created: "registrou uma nota fiscal vinculada a um item do edital.",
+    updated: "atualizou uma nota fiscal vinculada a um item do edital.",
+    deleted: "removeu uma nota fiscal vinculada a um item do edital.",
+  },
+  declaration_documents: {
+    created: "gerou uma declaração vinculada ao edital.",
+    updated: "atualizou uma declaração vinculada ao edital.",
+    deleted: "removeu uma declaração vinculada ao edital.",
+  },
+  declaration_templates: {
+    created: "adicionou um modelo de declaração à biblioteca.",
+    updated: "editou um modelo de declaração da biblioteca.",
+    deleted: "removeu um modelo de declaração da biblioteca.",
+  },
+  radar_importacoes: {
+    created: "vinculou uma importação do Radar ao edital.",
+    updated: "atualizou o vínculo de importação do Radar com o edital.",
+    deleted: "removeu o vínculo de importação do Radar com o edital.",
+  },
+});
+
+function bidHistoryEntityPresentation(event) {
+  const operation = event.operation || ({
+    entity_created: "created",
+    entity_updated: "updated",
+    entity_deleted: "deleted",
+  }[event.event_type]);
+  const summary = BID_HISTORY_ENTITY_ACTIONS[String(event.entity_type || "")]?.[operation];
+  if (!summary) return null;
+
+  if (operation === "created") return { kind: "create", icon: "document", summary, detail: "" };
+  if (operation === "updated") return { kind: "edit", icon: "pencil", summary, detail: "" };
+  return { kind: "neutral", icon: "document", summary, detail: "" };
+}
+
 function bidHistoryFieldValue(change) {
   if (!change || typeof change !== "object" || change.redacted) return "";
   return change.new ?? change.old ?? "";
@@ -5610,16 +5722,16 @@ function bidHistoryPresentation(event) {
     case "entity_created":
       if (entity === "items") return { kind: "new-item", icon: "add", summary: "cadastrou um novo item.", detail: itemDetail };
       if (entity === "documents") return { kind: "document", icon: "fileText", summary: "cadastrou uma documentação.", detail: "" };
-      return { kind: "create", icon: "document", summary: "registrou uma nova atividade relacionada ao edital.", detail: "" };
+      return bidHistoryEntityPresentation(event) || { kind: "create", icon: "document", summary: "registrou uma nova informação relacionada ao edital.", detail: "" };
     case "entity_updated":
       if (entity === "items") return { kind: "edit", icon: "pencil", summary: "editou as informações de um item.", detail: itemDetail };
       if (entity === "bids") return { kind: "edit", icon: "pencil", summary: "editou as informações do edital.", detail: bidHistoryChangedFields(event) };
       if (entity === "documents") return { kind: "document", icon: "fileText", summary: "editou uma documentação.", detail: "" };
-      return { kind: "edit", icon: "pencil", summary: "editou informações relacionadas ao edital.", detail: "" };
+      return bidHistoryEntityPresentation(event) || { kind: "edit", icon: "pencil", summary: "editou informações relacionadas ao edital.", detail: "" };
     case "entity_deleted":
       if (entity === "items") return { kind: "item", icon: "package", summary: "removeu um item.", detail: itemDetail };
       if (entity === "documents") return { kind: "document", icon: "fileText", summary: "removeu uma documentação.", detail: "" };
-      return { kind: "neutral", icon: "document", summary: "removeu informações relacionadas ao edital.", detail: "" };
+      return bidHistoryEntityPresentation(event) || { kind: "neutral", icon: "document", summary: "removeu informações relacionadas ao edital.", detail: "" };
     default:
       return { kind: "neutral", icon: "document", summary: "registrou uma atividade relacionada ao edital.", detail: "" };
   }
