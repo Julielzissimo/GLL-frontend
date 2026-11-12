@@ -43,11 +43,17 @@ test("Faturamento preserva lançamentos em atualização e confirma descarte", a
   await page.locator('[data-open-billing-section="invoice"]').click();
   const number = page.locator("#billingInvoiceNumber");
   await number.fill("NF fictícia 123");
-  await page.locator("#billingInvoiceObservations").fill("Observação fictícia");
+  const observations = page.locator("#billingInvoiceObservations");
+  await observations.fill("Observação fictícia");
+  await number.evaluate((field) => {
+    field.focus();
+    field.setSelectionRange(4, 4);
+  });
   await page.evaluate(() => window.billingFeature.refresh());
-  await number.click();
   await expect(number).toHaveValue("NF fictícia 123");
-  await expect(page.locator("#billingInvoiceObservations")).toHaveValue("Observação fictícia");
+  await expect(number).toBeFocused();
+  await expect.poll(() => number.evaluate((field) => field.selectionStart)).toBe(4);
+  await expect(observations).toHaveValue("Observação fictícia");
 
   await page.locator("[data-close-billing-drawer]").click();
   await expect(page.locator("#billingDiscardDialog")).toBeVisible();
@@ -62,7 +68,11 @@ test("Faturamento preserva lançamentos em atualização e confirma descarte", a
 
   await page.getByRole("button", { name: "Acompanhar" }).click();
   await page.locator('[data-open-billing-section="delivery"]').click();
-  await page.locator("#billingDeliveryNotes").fill("Entrega fictícia");
+  const deliveryNotes = page.locator("#billingDeliveryNotes");
+  await deliveryNotes.fill("Entrega fictícia");
+  await deliveryNotes.evaluate((field) => field.setSelectionRange(5, 5));
   await page.evaluate(() => window.billingFeature.refresh());
-  await expect(page.locator("#billingDeliveryNotes")).toHaveValue("Entrega fictícia");
+  await expect(deliveryNotes).toHaveValue("Entrega fictícia");
+  await expect(deliveryNotes).toBeFocused();
+  await expect.poll(() => deliveryNotes.evaluate((field) => field.selectionStart)).toBe(5);
 });
