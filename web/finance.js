@@ -11,7 +11,7 @@ import {
   validateInvoiceReceipt,
   validateReceiptLine,
 } from "./finance-money.js";
-import { createCashflowService, eligibleReceiptBids } from "./finance-service.js";
+import { createCashflowService, eligibleReceiptBids, receiptSourcesForAwardedItem } from "./finance-service.js";
 
 const PAYMENT_METHODS = Object.freeze([
   ["pix", "Pix"],
@@ -788,10 +788,9 @@ export function createCashflowFeature(options = {}) {
       ? emptyState("Selecione um edital", "Os itens marcados como vencidos aparecerão aqui, mesmo antes do lançamento das notas fiscais.")
       : items.length
         ? items.map((item) => {
-          const itemInvoices = state.data.allInvoices.filter((invoice) => String(invoice.bid_id) === String(item.bid_id)
-            && String(invoice.quotation_item_id) === String(item.quotation_item_id));
-          const invoiceCards = itemInvoices.map((invoice) => makeReceiptLineCard(item, invoice)).join("");
-          return `<section class="cashflow-awarded-item"><header><span><strong>Item ${escapeHtml(item.item_number)} · ${escapeHtml(item.item_description)}</strong><small>${escapeHtml(item.contract_quantity)} ${escapeHtml(item.item_unit)} adjudicadas</small></span></header><div class="cashflow-item-lines">${invoiceCards}${makeReceiptLineCard(item)}</div></section>`;
+          const invoiceCards = receiptSourcesForAwardedItem(item, state.data.allInvoices)
+            .map((invoice) => makeReceiptLineCard(item, invoice)).join("");
+          return `<section class="cashflow-awarded-item"><header><span><strong>Item ${escapeHtml(item.item_number)} · ${escapeHtml(item.item_description)}</strong><small>${escapeHtml(item.contract_quantity)} ${escapeHtml(item.item_unit)} adjudicadas</small></span></header><div class="cashflow-item-lines">${invoiceCards}</div></section>`;
         }).join("")
         : emptyState("Nenhum item marcado como vencido", "O edital precisa ter ao menos um item marcado como vencido para registrar o recebimento.");
     const body = `<div class="cashflow-form-grid"><label class="cashflow-field cashflow-field-wide">Edital obrigatório<select name="bid_id" required>${selectOptions(bidOptions, selectedBidId)}</select></label>
