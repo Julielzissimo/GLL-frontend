@@ -48,13 +48,6 @@
   color: var(--gll-ink-soft);
 }
 
-.cashflow-eyebrow {
-  color: var(--gll-forest);
-  font-size: var(--gll-text-xs);
-  font-weight: 700;
-  letter-spacing: .08em;
-}
-
 .cashflow-header-actions,
 .cashflow-toolbar-actions {
   flex-wrap: wrap;
