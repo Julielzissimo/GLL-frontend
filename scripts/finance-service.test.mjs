@@ -53,6 +53,20 @@ test("a fully registered receipt item is no longer selectable", () => {
   assert.equal(receiptItemAlreadyFullyRegistered({ ...item, received_quantity: 0 }), false);
 });
 
+test("distribution bid choices require an invoice for a won item", () => {
+  const bids = [
+    { id: "with-invoice", status: "Em Fornecimento" },
+    { id: "without-invoice", status: "Faturado" },
+  ];
+  const items = [
+    { bid_id: "with-invoice", quotation_item_id: 101, is_won: 1 },
+    { bid_id: "without-invoice", quotation_item_id: 202, is_won: 1 },
+  ];
+  const invoices = [{ bid_id: "with-invoice", quotation_item_id: "101" }];
+
+  assert.deepEqual(eligibleReceiptBids(bids, items, invoices).map((bid) => bid.id), ["with-invoice"]);
+});
+
 test("receipt source choices do not duplicate an item that has linked invoices", () => {
   const item = { bid_id: "bid-1", quotation_item_id: 101 };
   const invoices = [
@@ -64,11 +78,11 @@ test("receipt source choices do not duplicate an item that has linked invoices",
   assert.deepEqual(receiptSourcesForAwardedItem(item, invoices), [invoices[0]]);
 });
 
-test("receipt source choices keep the direct item option when no invoice is linked", () => {
+test("receipt source choices omit items that have no invoice", () => {
   const item = { bid_id: "bid-1", quotation_item_id: 101 };
   const invoices = [{ id: "invoice-other-item", bid_id: "bid-1", quotation_item_id: 202 }];
 
-  assert.deepEqual(receiptSourcesForAwardedItem(item, invoices), [null]);
+  assert.deepEqual(receiptSourcesForAwardedItem(item, invoices), []);
 });
 
 test("cashflow data exposes a won item even when there are no invoices", async () => {
@@ -95,11 +109,11 @@ test("cashflow data exposes a won item even when there are no invoices", async (
   assert.equal(data.awardedItems[0].unit_cost_price, "28.7950");
 });
 
-test("receipt RPC payload allows an item line with no invoice", async () => {
+test("distribution RPC rejects an item line with no invoice", async () => {
   const client = makeClient();
   const service = createCashflowService(client);
 
-  await service.recordReceipt({
+  await assert.rejects(service.distributeReceipt({
     bidId: "bid-1",
     receivedOn: "2026-11-06",
     paymentMethod: "transfer",
@@ -113,28 +127,29 @@ test("receipt RPC payload allows an item line with no invoice", async () => {
       costCents: 4000,
       reserveCents: 600,
     }],
-  });
-
-  assert.equal(client.calls[0].name, "record_cashflow_receipt");
-  assert.equal(client.calls[0].args.p_lines[0].invoice_id, null);
-  assert.equal(client.calls[0].args.p_lines[0].quotation_item_id, "101");
+  }), /somente itens faturados/);
+  assert.equal(client.calls.length, 0);
 });
 
-test("receipt payload carries each item's distribution choice without a justification", async () => {
+test("distribution payload carries invoice, cost justification and each item's distribution choice", async () => {
   const client = makeClient();
-  await createCashflowService(client).recordReceipt({
+  await createCashflowService(client).distributeReceipt({
     bidId: "bid-1", receivedOn: "2026-11-10", paymentMethod: "pix",
     distributionMode: "manual", idempotencyKey: "key-2",
     lines: [
-      { quotationItemId: "101", receivedQuantity: 1, amountCents: 10000, costCents: 4000,
+      { invoiceId: "invoice-101", quotationItemId: "101", receivedQuantity: 1, amountCents: 10000, costCents: 4000,
         reserveCents: 600, distributionMode: "default" },
-      { quotationItemId: "102", receivedQuantity: 1, amountCents: 5000, costCents: 2000,
+      { invoiceId: "invoice-102", quotationItemId: "102", receivedQuantity: 1, amountCents: 5000, costCents: 2000,
         reserveCents: 0, distributionMode: "manual",
+        costJustification: "Correção do custo do item",
         participantAllocations: [{ participantId: "party-1", amountCents: 3000 }] },
     ],
   });
   const args = client.calls[0].args;
+  assert.equal(client.calls[0].name, "distribute_cashflow_receipt");
   assert.equal(args.p_distribution_justification, "");
+  assert.deepEqual(args.p_lines.map((line) => line.invoice_id), ["invoice-101", "invoice-102"]);
+  assert.equal(args.p_lines[1].cost_justification, "Correção do custo do item");
   assert.deepEqual(args.p_lines.map((line) => line.distribution_mode), ["default", "manual"]);
   assert.equal(args.p_lines[1].participant_allocations[0].amount, "30.00");
 });

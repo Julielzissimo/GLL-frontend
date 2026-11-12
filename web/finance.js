@@ -36,7 +36,7 @@ const HISTORY_EVENT_LABELS = Object.freeze({
   settings_updated: "Atualizou as configurações financeiras",
   party_created: "Cadastrou um participante financeiro",
   party_updated: "Editou um participante financeiro",
-  receipt_recorded: "Registrou um recebimento",
+  receipt_recorded: "Distribuiu o lucro de um recebimento",
   receipt_reversed: "Estornou um recebimento",
   expense_recorded: "Criou uma nova despesa",
   reimbursement_paid: "Pagou um reembolso",
@@ -266,7 +266,7 @@ export function createCashflowFeature(options = {}) {
     loadingPromise: null,
     saving: false,
     openingReceipt: false,
-    receiptOpenRequest: 0,
+    distributionOpenRequest: 0,
     receiptDirty: false,
     expenseDirty: false,
     confirmingDiscard: false,
@@ -326,7 +326,7 @@ export function createCashflowFeature(options = {}) {
         id: "cashflowReceiptDiscardDialog",
         titleId: "cashflowReceiptDiscardTitle",
         descriptionId: "cashflowReceiptDiscardDescription",
-        description: "Há alterações não salvas no recebimento. Se você sair agora, elas serão perdidas.",
+        description: "Há alterações não salvas na distribuição. Se você sair agora, elas serão perdidas.",
       },
       expense: {
         id: "cashflowExpenseDiscardDialog",
@@ -411,7 +411,7 @@ export function createCashflowFeature(options = {}) {
 
   function renderHeaderActions() {
     headerActions.innerHTML = isAdmin()
-      ? `<button class="quiet-action" type="button" data-cf-action="new-expense">Nova despesa</button><button class="primary-action" type="button" data-cf-action="new-receipt">Registrar recebimento</button>`
+      ? `<button class="quiet-action" type="button" data-cf-action="new-expense">Nova despesa</button><button class="primary-action" type="button" data-cf-action="new-distribution">Distribuir recebimento</button>`
       : `<span class="cashflow-read-only-note">Consulta dos lançamentos financeiros</span>`;
   }
 
@@ -690,7 +690,7 @@ export function createCashflowFeature(options = {}) {
     state.service = null;
     state.status = "idle";
     state.error = "";
-    state.receiptOpenRequest += 1;
+    state.distributionOpenRequest += 1;
     state.openingReceipt = false;
     state.activeTab = "receipts";
     state.filters = { from: "", to: "" };
@@ -739,7 +739,7 @@ export function createCashflowFeature(options = {}) {
   function makeReceiptLineCard(item, invoice = null) {
     const id = String(invoice ? `invoice_${invoice.id}` : `item_${item.id}`).replace(/[^a-zA-Z0-9_-]/g, "_");
     const { line, availableQuantity, availableAmount, alreadyFullyRegistered, selectable } = receiptLineContext(item, invoice);
-    const defaultQuantity = selectable ? Math.min(availableQuantity, 1) : 0;
+    const defaultQuantity = selectable ? availableQuantity : 0;
     const defaultAmount = Math.min(availableAmount, saleAmountForQuantity(line, defaultQuantity));
     const cost = defaultCostCents(line, defaultQuantity);
     const reserve = defaultReserveCents(defaultAmount, cost, state.data.settings.default_expense_reserve_percent);
@@ -752,11 +752,12 @@ export function createCashflowFeature(options = {}) {
     }).join("");
     const source = invoice ? `NF ${escapeHtml(invoice.invoice_number)}` : "Sem nota fiscal";
     return `<article class="cashflow-invoice-card" data-cf-line-card="${id}" data-cf-item-id="${escapeHtml(item.id)}" data-cf-invoice-id="${escapeHtml(invoice?.id || "")}">
-      <label class="cashflow-invoice-choice"><input type="checkbox" name="receipt_line_${id}" value="${escapeHtml(invoice?.id || item.id)}" data-cf-line-check="${id}" ${selectable ? "" : "disabled"} /><span class="cashflow-invoice-choice-copy"><strong>${source}</strong><small>${invoice ? "Recebimento relacionado a esta nota" : "Recebimento relacionado diretamente ao item"}</small>${!selectable && !alreadyFullyRegistered ? `<small>Sem saldo disponível para este lançamento.</small>` : ""}</span></label>
+      <label class="cashflow-invoice-choice"><input type="checkbox" name="receipt_line_${id}" value="${escapeHtml(invoice?.id || item.id)}" data-cf-line-check="${id}" ${selectable ? "" : "disabled"} /><span class="cashflow-invoice-choice-copy"><strong>${source}</strong><small>Distribuição vinculada a esta nota fiscal</small>${!selectable && !alreadyFullyRegistered ? `<small>Sem saldo disponível para distribuir.</small>` : ""}</span></label>
       <div class="cashflow-line-details" data-cf-line-details="${id}" hidden>
-        <div class="cashflow-invoice-fields"><label class="cashflow-field">Quantidade neste recebimento<input type="number" min="0" max="${escapeHtml(availableQuantity)}" step="0.0001" name="quantity_${id}" value="0" data-cf-quantity="${id}" disabled /><small data-cf-quantity-limit="${id}">Disponível: ${escapeHtml(availableQuantity)} ${escapeHtml(item.item_unit)}</small></label>
+        <div class="cashflow-invoice-fields"><label class="cashflow-field">Quantidade faturada a distribuir<input type="number" min="0" max="${escapeHtml(availableQuantity)}" step="0.0001" name="quantity_${id}" value="0" data-cf-quantity="${id}" disabled /><small data-cf-quantity-limit="${id}">Disponível: ${escapeHtml(availableQuantity)} ${escapeHtml(item.item_unit)}</small></label>
         <label class="cashflow-field">Valor recebido (R$)<input type="text" inputmode="decimal" name="amount_${id}" value="0,00" data-cf-amount="${id}" data-touched="false" disabled /><small data-cf-amount-limit="${id}">Saldo financeiro disponível: ${formatBrl(availableAmount)}.</small></label>
-        <label class="cashflow-field">Custo<input type="text" inputmode="decimal" name="cost_${id}" value="${escapeHtml(amountAsInput(cost))}" data-cf-cost="${id}" readonly aria-readonly="true" disabled /></label>
+        <label class="cashflow-field">Custo<input type="text" inputmode="decimal" name="cost_${id}" value="${escapeHtml(amountAsInput(cost))}" data-cf-cost="${id}" data-default-cents="${cost}" data-touched="false" disabled /></label>
+        <label class="cashflow-field cashflow-field-wide" data-cf-cost-justification-row="${id}" hidden>Justificativa da alteração do custo<textarea name="cost_justification_${id}" rows="2" maxlength="500" data-cf-cost-justification="${id}" disabled></textarea><small>Obrigatória quando o custo for diferente do valor calculado.</small></label>
         <label class="cashflow-field">Reserva de despesas (R$)<input type="text" inputmode="decimal" name="reserve_${id}" value="${escapeHtml(amountAsInput(reserve))}" data-cf-reserve="${id}" data-default-cents="${reserve}" data-touched="false" disabled /></label>
         <label class="cashflow-field">Lucro distribuível (R$)<input type="text" value="${escapeHtml(amountAsInput(profit))}" data-cf-profit="${id}" readonly aria-readonly="true" disabled /></label></div>
         <label class="cashflow-checkbox-field"><input type="checkbox" name="manual_${id}" data-cf-manual="${id}" disabled /><span>Distribuir o lucro deste item manualmente</span></label>
@@ -765,53 +766,59 @@ export function createCashflowFeature(options = {}) {
     </article>`;
   }
 
-  async function openReceiptDrawer(bidId = "") {
+  async function openDistributionDrawer(bidId = "") {
     if (state.openingReceipt) return;
-    const requestId = state.receiptOpenRequest + 1;
-    state.receiptOpenRequest = requestId;
+    const requestId = state.distributionOpenRequest + 1;
+    state.distributionOpenRequest = requestId;
     state.openingReceipt = true;
     try {
       const refreshedData = await showPage(true);
-      if (requestId === state.receiptOpenRequest && refreshedData) receiptDrawer(bidId);
+      if (requestId === state.distributionOpenRequest && refreshedData) distributionDrawer(bidId);
     } finally {
-      if (requestId === state.receiptOpenRequest) state.openingReceipt = false;
+      if (requestId === state.distributionOpenRequest) state.openingReceipt = false;
     }
   }
 
-  function receiptDrawer(bidId) {
+  function distributionDrawer(bidId) {
     const winningItems = state.data.awardedItems || [];
-    const bidsWithItems = eligibleReceiptBids(accessibleBids(), winningItems);
+    const allInvoices = state.data.allInvoices || [];
+    const bidsWithItems = eligibleReceiptBids(accessibleBids(), winningItems, allInvoices);
+    const invoicedItems = winningItems.filter((item) => receiptSourcesForAwardedItem(item, allInvoices).length > 0);
     const selectedBidId = bidId || "";
     const items = selectedBidId
-      ? winningItems.filter((item) => String(item.bid_id) === String(selectedBidId))
+      ? invoicedItems.filter((item) => String(item.bid_id) === String(selectedBidId))
       : [];
     const bidOptions = [["", "Selecione um edital"], ...bidsWithItems.map((bid) => {
       const label = bidLabel(bid);
       return [String(bid.id), `${label.title} · ${label.subtitle}`];
     })];
     const itemList = !selectedBidId
-      ? emptyState("Selecione um edital", "Os itens marcados como vencidos aparecerão aqui, mesmo antes do lançamento das notas fiscais.")
+      ? emptyState("Selecione um edital", "Os itens faturados aparecerão aqui para distribuir o lucro.")
       : items.length
         ? items.map((item) => {
-          const invoiceCards = receiptSourcesForAwardedItem(item, state.data.allInvoices)
+          const itemInvoices = receiptSourcesForAwardedItem(item, allInvoices);
+          const billedQuantity = itemInvoices.reduce((sum, invoice) => sum + Number(invoice.invoice_quantity || invoice.quantity || 0), 0);
+          const invoiceOpenQuantity = itemInvoices.reduce((sum, invoice) => sum + Number(invoice.open_quantity || 0), 0);
+          const availableQuantity = Math.min(item.open_quantity, invoiceOpenQuantity);
+          const invoiceCards = itemInvoices
             .map((invoice) => makeReceiptLineCard(item, invoice)).join("");
           const receiptNotice = receiptItemAlreadyFullyRegistered(item)
             ? `<p class="cashflow-inline-note" role="status">Já houve registro de faturamento deste item através da página Fluxo de Caixa.</p>`
             : "";
-          return `<section class="cashflow-awarded-item"><header><span><strong>Item ${escapeHtml(item.item_number)} · ${escapeHtml(item.item_description)}</strong><small>${escapeHtml(item.contract_quantity)} ${escapeHtml(item.item_unit)} adjudicadas</small></span></header>${receiptNotice}<div class="cashflow-item-lines">${invoiceCards}</div></section>`;
+          return `<section class="cashflow-awarded-item"><header><span><strong>Item ${escapeHtml(item.item_number)} · ${escapeHtml(item.item_description)}</strong><small>${escapeHtml(billedQuantity)} ${escapeHtml(item.item_unit)} faturadas · ${escapeHtml(availableQuantity)} ${escapeHtml(item.item_unit)} disponíveis para distribuir</small></span><span class="cashflow-badge success">Faturado</span></header>${receiptNotice}<div class="cashflow-item-lines">${invoiceCards}</div></section>`;
         }).join("")
-        : emptyState("Nenhum item marcado como vencido", "O edital precisa ter ao menos um item marcado como vencido para registrar o recebimento.");
+        : emptyState("Nenhum item faturado", "Registre o faturamento do item no edital antes de distribuir o lucro.");
     const body = `<div class="cashflow-form-grid"><label class="cashflow-field cashflow-field-wide">Edital obrigatório<select name="bid_id" required>${selectOptions(bidOptions, selectedBidId)}</select></label>
       <label class="cashflow-field">Data do crédito<input name="received_on" type="date" value="${dateInputValue()}" required /></label>
       <label class="cashflow-field">Forma de recebimento<select name="payment_method" required>${selectOptions(PAYMENT_METHODS, "transfer")}</select></label>
       <label class="cashflow-field cashflow-field-wide">Referência bancária ou do pagamento<input name="payment_reference" maxlength="120" placeholder="Opcional · ajuda a evitar duplicidade" /></label>
       <label class="cashflow-field cashflow-field-wide">Observações<textarea name="notes" rows="2" maxlength="1000"></textarea></label></div>
-      <section class="cashflow-drawer-section"><div><h3>Itens marcados como vencidos</h3><p>Para cada item, marque uma ou mais opções de recebimento e informe as quantidades correspondentes.</p></div></section>
+      <section class="cashflow-drawer-section"><div><h3>Itens faturados</h3><p>Selecione os itens e quantidades faturadas que deseja distribuir. O saldo restante poderá ser distribuído quando houver novo faturamento.</p></div></section>
       <div class="cashflow-invoice-list">${itemList}</div>
       <div class="cashflow-distribution-panel" data-cf-distribution-panel hidden>
         <p class="cashflow-inline-note" data-cf-receipt-validation role="status" aria-live="polite" hidden></p>
       </div>`;
-    openDialog("Registrar recebimento", "Vincule o crédito a um edital e aos itens marcados como vencidos.", body, "Confirmar recebimento", "receipt", true);
+    openDialog("Distribuir recebimento", "Selecione itens faturados e informe os valores para distribuir o lucro.", body, "Confirmar distribuição", "receipt", true);
     updateReceiptForm();
   }
 
@@ -824,9 +831,9 @@ export function createCashflowFeature(options = {}) {
       const item = state.data.awardedItems.find((row) => String(row.id) === String(card?.dataset.cfItemId));
       const invoiceId = card?.dataset.cfInvoiceId || "";
       const invoice = invoiceId ? state.data.allInvoices.find((row) => String(row.id) === String(invoiceId)) : null;
-      if (!item || (invoiceId && !invoice)) return null;
-      const openQuantity = Math.min(item.open_quantity, invoice?.open_quantity ?? item.open_quantity);
-      const openAmountCents = Math.min(item.open_amount_cents, invoice?.open_amount_cents ?? item.open_amount_cents);
+      if (!item || !invoice) return null;
+      const openQuantity = Math.min(item.open_quantity, invoice.open_quantity);
+      const openAmountCents = Math.min(item.open_amount_cents, invoice.open_amount_cents);
       const quantityInputValue = parseQuantity(form.querySelector(`[data-cf-quantity="${id}"]`).value, "Quantidade relacionada");
       const amountInputCents = parseAmount(form.querySelector(`[data-cf-amount="${id}"]`).value, "Valor recebido");
       const invoiceReceipt = validateInvoiceReceipt({
@@ -836,9 +843,13 @@ export function createCashflowFeature(options = {}) {
         openAmountCents,
       });
       const costCents = parseAmount(form.querySelector(`[data-cf-cost="${id}"]`).value, "Custo");
+      const costJustification = String(form.querySelector(`[data-cf-cost-justification="${id}"]`)?.value || "").trim();
+      if (costCents !== defaultCostCents(item, invoiceReceipt.quantity) && costJustification.length < 5) {
+        throw new Error("Informe uma justificativa de pelo menos 5 caracteres para alterar o custo.");
+      }
       const reserveCents = parseAmount(form.querySelector(`[data-cf-reserve="${id}"]`).value, "Reserva de despesas");
       const line = validateReceiptLine({ amountCents: invoiceReceipt.amountCents, costCents, reserveCents });
-      return { id, item, invoice, quantity: invoiceReceipt.quantity, amountCents: invoiceReceipt.amountCents, costCents, reserveCents, profitCents: line.profitCents, lossCents: line.lossCents };
+      return { id, item, invoice, quantity: invoiceReceipt.quantity, amountCents: invoiceReceipt.amountCents, costCents, costJustification, reserveCents, profitCents: line.profitCents, lossCents: line.lossCents };
     }).filter(Boolean);
     const totalsByItem = new Map();
     for (const line of lines) {
@@ -869,7 +880,7 @@ export function createCashflowFeature(options = {}) {
       card.classList.toggle("is-selected", checked);
       const manual = card.querySelector(`[data-cf-manual="${id}"]`);
       if (manual) manual.disabled = !checked;
-      for (const input of card.querySelectorAll("input, select")) {
+      for (const input of card.querySelectorAll("input, select, textarea")) {
         if (input.type !== "checkbox") input.disabled = !checked || (input.dataset.cfAllocation && !manual?.checked);
       }
       if (!checked) continue;
@@ -895,8 +906,20 @@ export function createCashflowFeature(options = {}) {
       const costInput = card.querySelector(`[data-cf-cost="${id}"]`);
       const reserveInput = card.querySelector(`[data-cf-reserve="${id}"]`);
       const nextDefaultCost = defaultCostCents(line, quantity);
-      const costCents = nextDefaultCost;
-      costInput.value = amountAsInput(nextDefaultCost);
+      if (costInput.dataset.touched !== "true") costInput.value = amountAsInput(nextDefaultCost);
+      costInput.dataset.defaultCents = String(nextDefaultCost);
+      let costCents = nextDefaultCost;
+      if (costInput.dataset.touched === "true") {
+        try { costCents = parseAmount(costInput.value, "Custo"); } catch { costCents = 0; }
+      }
+      const costChanged = costCents !== nextDefaultCost;
+      const costJustificationRow = card.querySelector(`[data-cf-cost-justification-row="${id}"]`);
+      const costJustificationInput = card.querySelector(`[data-cf-cost-justification="${id}"]`);
+      if (costJustificationRow) costJustificationRow.hidden = !costChanged;
+      if (costJustificationInput) {
+        costJustificationInput.required = costChanged;
+        costJustificationInput.disabled = !checked || !costChanged;
+      }
       const nextDefaultReserve = defaultReserveCents(amountCents, costCents, reservePercent);
       const reserveCents = reserveInput.dataset.touched !== "true"
         ? nextDefaultReserve
@@ -918,7 +941,7 @@ export function createCashflowFeature(options = {}) {
     const validation = form.querySelector("[data-cf-receipt-validation]");
     try {
       const lines = receiptFormLines();
-      let message = lines.length ? "" : "Marque ao menos uma opção de recebimento dos itens vencidos.";
+      let message = lines.length ? "" : "Marque ao menos uma nota fiscal para distribuir o lucro.";
       for (const line of lines) {
         if (!form.querySelector(`[data-cf-manual="${line.id}"]`)?.checked) continue;
         const allocationTotal = activeParticipants().reduce((sum, party) => {
@@ -1108,7 +1131,7 @@ export function createCashflowFeature(options = {}) {
       const bidId = String(formData.get("bid_id") || "");
       if (!bidId) throw new Error("Selecione um edital.");
       const selected = receiptFormLines();
-      if (!selected.length) throw new Error("Marque pelo menos um item vencido.");
+      if (!selected.length) throw new Error("Selecione pelo menos um item faturado para distribuir o lucro.");
       const distributionMode = selected.some((line) => form.querySelector(`[data-cf-manual="${line.id}"]`)?.checked) ? "manual" : "default";
       const lines = selected.map((line) => {
         const formId = line.id;
@@ -1124,19 +1147,19 @@ export function createCashflowFeature(options = {}) {
           if (total !== line.profitCents) throw new Error(`A distribuição manual do item ${line.item.item_number} precisa totalizar ${formatBrl(line.profitCents)}.`);
         }
         return {
-          invoiceId: line.invoice?.id ?? null,
+          invoiceId: line.invoice.id,
           quotationItemId: line.item.quotation_item_id,
           receivedQuantity: line.quantity,
           amountCents: line.amountCents,
           costCents: line.costCents,
-          costJustification: "",
+          costJustification: line.costJustification,
           reserveCents: line.reserveCents,
           reserveJustification: "",
           distributionMode: lineDistributionMode,
           participantAllocations,
         };
       });
-      return state.service.recordReceipt({
+      return state.service.distributeReceipt({
         bidId,
         receivedOn: String(formData.get("received_on") || ""),
         paymentMethod: String(formData.get("payment_method") || ""),
@@ -1283,7 +1306,7 @@ export function createCashflowFeature(options = {}) {
         state.activeTab = savedKind === "expense" ? "expenses" : "reimbursements";
         state.filters = { from: "", to: "" };
       }
-      const label = state.drawerKind === "receipt" ? "Recebimento registrado" : state.drawerKind === "expense" ? "Despesa registrada" : state.drawerKind === "reimbursement" ? "Reembolso registrado" : state.drawerKind === "withdrawal" ? "Retirada registrada" : state.drawerKind === "reverse-receipt" ? "Recebimento estornado" : state.drawerKind === "party" ? "Cadastro atualizado" : "Ajustes salvos";
+      const label = state.drawerKind === "receipt" ? "Distribuição do recebimento registrada" : state.drawerKind === "expense" ? "Despesa registrada" : state.drawerKind === "reimbursement" ? "Reembolso registrado" : state.drawerKind === "withdrawal" ? "Retirada registrada" : state.drawerKind === "reverse-receipt" ? "Recebimento estornado" : state.drawerKind === "party" ? "Cadastro atualizado" : "Ajustes salvos";
       closeDialog();
       onSaved();
       const refreshedData = await showPage(true);
@@ -1292,7 +1315,7 @@ export function createCashflowFeature(options = {}) {
     } catch (errorValue) {
       error.textContent = errorValue.message || "Não foi possível salvar o lançamento.";
       submitButton.disabled = false;
-      submitButton.textContent = state.drawerKind === "receipt" ? "Confirmar recebimento" : state.drawerKind === "expense" ? "Salvar despesa" : "Tentar novamente";
+      submitButton.textContent = state.drawerKind === "receipt" ? "Confirmar distribuição" : state.drawerKind === "expense" ? "Salvar despesa" : "Tentar novamente";
     } finally {
       state.saving = false;
     }
@@ -1322,8 +1345,8 @@ export function createCashflowFeature(options = {}) {
         target.setCustomValidity("");
       }
     }
-    if (target.matches("[data-cf-amount], [data-cf-reserve], [data-cf-allocation]")) target.dataset.touched = "true";
-    if (target.matches("[data-cf-quantity], [data-cf-amount], [data-cf-reserve], [data-cf-allocation]")) updateReceiptForm();
+    if (target.matches("[data-cf-cost], [data-cf-amount], [data-cf-reserve], [data-cf-allocation]")) target.dataset.touched = "true";
+    if (target.matches("[data-cf-quantity], [data-cf-cost], [data-cf-cost-justification], [data-cf-amount], [data-cf-reserve], [data-cf-allocation]")) updateReceiptForm();
   }
 
   function onChange(event) {
@@ -1351,12 +1374,16 @@ export function createCashflowFeature(options = {}) {
         const invoiceId = card.dataset.cfInvoiceId || "";
         const invoice = invoiceId ? state.data.allInvoices.find((row) => String(row.id) === String(invoiceId)) : null;
         const { line, availableQuantity, availableAmount } = remainingReceiptLineBalance(card.closest("form"), card, item, invoice);
-        const quantity = Math.min(availableQuantity, 1);
+        const quantity = availableQuantity;
         const amount = Math.min(availableAmount, saleAmountForQuantity(line, quantity));
         card.querySelector(`[data-cf-quantity="${id}"]`).value = String(quantity);
         const amountInput = card.querySelector(`[data-cf-amount="${id}"]`);
         amountInput.value = amountAsInput(amount);
         amountInput.dataset.touched = "false";
+        const costInput = card.querySelector(`[data-cf-cost="${id}"]`);
+        costInput.value = amountAsInput(defaultCostCents(line, quantity));
+        costInput.dataset.touched = "false";
+        card.querySelector(`[data-cf-cost-justification="${id}"]`).value = "";
         card.querySelector(`[data-cf-reserve="${id}"]`).dataset.touched = "false";
         for (const field of card.querySelectorAll(`[data-cf-allocation="${id}"]`)) field.dataset.touched = "false";
       }
@@ -1372,7 +1399,7 @@ export function createCashflowFeature(options = {}) {
       return;
     }
     if (target.name === "bid_id" && state.drawerKind === "receipt") {
-      receiptDrawer(target.value);
+      distributionDrawer(target.value);
       return;
     }
     if (target.name === "payer_type" && state.drawerKind === "expense") {
@@ -1393,7 +1420,7 @@ export function createCashflowFeature(options = {}) {
       return;
     }
     switch (target.dataset.cfAction) {
-      case "new-receipt": return openReceiptDrawer();
+      case "new-distribution": return openDistributionDrawer();
       case "new-expense": return expenseDrawer();
       case "new-participant": return partyDrawer();
       case "edit-party": {
