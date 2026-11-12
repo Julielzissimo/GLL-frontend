@@ -49,7 +49,7 @@ test("a fully registered receipt item is no longer selectable", () => {
   };
   assert.equal(receiptItemAlreadyFullyRegistered(item), true);
   assert.equal(receiptItemAlreadyFullyRegistered({ ...item, open_quantity: 1 }), false);
-  assert.equal(receiptItemAlreadyFullyRegistered({ ...item, open_amount_cents: 1 }), false);
+  assert.equal(receiptItemAlreadyFullyRegistered({ ...item, open_amount_cents: 1 }), true);
   assert.equal(receiptItemAlreadyFullyRegistered({ ...item, received_quantity: 0 }), false);
 });
 

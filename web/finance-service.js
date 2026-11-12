@@ -29,8 +29,7 @@ export function receiptSourcesForAwardedItem(item, invoices = []) {
 
 export function receiptItemAlreadyFullyRegistered(item) {
   return Number(item?.received_quantity || 0) > 0
-    && Number(item?.open_quantity) <= 0
-    && Number(item?.open_amount_cents) <= 0;
+    && Number(item?.open_quantity) <= 0;
 }
 
 function assertSupabase(error) {
