@@ -2427,7 +2427,8 @@
         "1ceaebdb6c331a75d02ead46e95bfedf4a8dbfa9"
       ],
       "frontend_commits": [
-        "8919b892395aa945189091886e55688687577da5"
+        "8919b892395aa945189091886e55688687577da5",
+        "37af2c148f8555e4cdc27fef9fc5fe8512fe53f9"
       ],
       "migrations": [
         "supabase/migrations/20261111222927_fluxo_caixa_distribuir_recebimentos.sql"
