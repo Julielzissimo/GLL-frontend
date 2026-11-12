@@ -2395,6 +2395,14 @@
         "d54030392f59e6570f873c16a021167d7eb1cc9f"
       ],
       "migrations": []
+    },
+    {
+      "id": "FLUXO-CAIXA-RECEBIMENTO-ETIQUETA-001",
+      "backend_commits": [],
+      "frontend_commits": [
+        "f57ad51b6d2387c40455cde4449595d9dfaa7d41"
+      ],
+      "migrations": []
     }
   ]
 }
