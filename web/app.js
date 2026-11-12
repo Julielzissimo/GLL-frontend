@@ -2693,6 +2693,11 @@ function handleSessionVisibility() {
 function handleLiveFocus() {
   void reconcileMessages();
   void verifyVisibleSession();
+  if (appState.activePage !== "billing") scheduleLiveRefresh();
+}
+
+function handleLiveVisibility() {
+  if (document.hidden || appState.activePage === "billing") return;
   scheduleLiveRefresh();
 }
 
@@ -5685,7 +5690,7 @@ async function startLiveUpdates() {
   document.addEventListener("visibilitychange", handleMessageVisibility);
   window.addEventListener("online", scheduleLiveRefresh);
   window.addEventListener("focus", handleLiveFocus);
-  document.addEventListener("visibilitychange", scheduleLiveRefresh);
+  document.addEventListener("visibilitychange", handleLiveVisibility);
 }
 
 function stopLiveUpdates() {
@@ -5714,7 +5719,7 @@ function stopLiveUpdates() {
   document.removeEventListener("visibilitychange", handleMessageVisibility);
   window.removeEventListener("online", scheduleLiveRefresh);
   window.removeEventListener("focus", handleLiveFocus);
-  document.removeEventListener("visibilitychange", scheduleLiveRefresh);
+  document.removeEventListener("visibilitychange", handleLiveVisibility);
 }
 
 async function reloadData({ background = false, initialAccessVerified = false } = {}) {
