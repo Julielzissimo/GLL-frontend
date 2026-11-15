@@ -29,7 +29,7 @@ function metricContent(report) {
 
 function statusChart(report) {
   const maximum = Math.max(1, ...report.byStatus.map((entry) => entry.value));
-  return `<section class="section-band finance-panel"><div class="panel-heading"><div><h2>Potencial por status</h2><p>Valor total dos itens vencidos, agrupado pelo status atual do edital.</p></div></div><div class="finance-bars">${report.byStatus.map((entry) => `<button class="finance-bar-row" type="button" data-dashboard-status="${escape(entry.status)}" aria-label="${escape(entry.status)}: ${money(entry.value)}, ${entry.count} itens. Filtrar por este status"><span class="finance-bar-label">${escape(entry.status)}</span><span class="finance-bar-track"><span class="finance-bar-fill" style="width:${entry.value ? Math.max(3, entry.value / maximum * 100) : 0}%"></span></span><strong>${money(entry.value)}</strong></button>`).join("")}</div></section>`;
+  return `<section class="section-band finance-panel"><div class="panel-heading"><div><h2>Faturamento estimado por status</h2><p>Valor total dos itens vencidos, agrupado pelo status atual do edital.</p></div></div><div class="finance-bars">${report.byStatus.map((entry) => `<button class="finance-bar-row" type="button" data-dashboard-status="${escape(entry.status)}" aria-label="${escape(entry.status)}: ${money(entry.value)}, ${entry.count} itens. Filtrar por este status"><span class="finance-bar-label">${escape(entry.status)}</span><span class="finance-bar-track"><span class="finance-bar-fill" style="width:${entry.value ? Math.max(3, entry.value / maximum * 100) : 0}%"></span></span><strong>${money(entry.value)}</strong></button>`).join("")}</div></section>`;
 }
 
 function invoiceChart(report) {
@@ -60,6 +60,40 @@ function detailRows(report, scope) {
   return report.rows.filter((row) => scope !== "cost" && scope !== "profit" && scope !== "margin" ? scope !== "invoice" || row.invoicedQuantity > 0 : row.costKnown);
 }
 
+function positionFinanceTooltip(root, button) {
+  const tooltip = button.nextElementSibling;
+  if (!tooltip?.matches(".finance-tooltip")) return;
+
+  const tokens = getComputedStyle(document.documentElement);
+  const tokenPixels = (name, fallback) => {
+    const value = tokens.getPropertyValue(name).trim();
+    const size = Number.parseFloat(value);
+    if (!Number.isFinite(size)) return fallback;
+    return value.endsWith("rem") ? size * (Number.parseFloat(tokens.fontSize) || 16) : size;
+  };
+  const edge = tokenPixels("--gll-space-3", 12);
+  const gap = tokenPixels("--gll-space-2", 8);
+  const maxWidth = 310;
+  const viewportWidth = document.documentElement.clientWidth || window.innerWidth;
+  const viewportHeight = document.documentElement.clientHeight || window.innerHeight;
+  const anchor = button.getBoundingClientRect();
+  const contentLeft = Math.max(edge, root.getBoundingClientRect().left);
+  const contentRight = viewportWidth - edge;
+  const rightSpace = Math.max(0, contentRight - anchor.right - gap);
+  const leftSpace = Math.max(0, anchor.left - gap - contentLeft);
+  const rightWidth = Math.min(maxWidth, rightSpace);
+  const leftWidth = Math.min(maxWidth, leftSpace);
+  const useRight = rightWidth >= maxWidth / 2 || (leftWidth < maxWidth / 2 && rightWidth >= leftWidth);
+  const availableWidth = Math.max(1, Math.floor(useRight ? rightSpace : leftSpace));
+
+  tooltip.style.width = `${Math.min(maxWidth, availableWidth)}px`;
+  tooltip.style.maxHeight = `${Math.max(1, viewportHeight - edge * 2)}px`;
+  tooltip.style.left = `${useRight ? anchor.right + gap : Math.max(contentLeft, anchor.left - gap - availableWidth)}px`;
+
+  const tooltipHeight = tooltip.getBoundingClientRect().height;
+  tooltip.style.top = `${Math.max(edge, Math.min(anchor.top, viewportHeight - edge - tooltipHeight))}px`;
+}
+
 export function createDashboardFeature({ root, getData, getTrackingData, openBid }) {
   const emptyTrackingData = () => ({ commitments: [], deliveries: [], invoices: [] });
   const state = { from: "", to: "", status: "Todos", trackingData: emptyTrackingData(), loaded: false, loading: false, error: "", scope: "potential", details: false, request: 0 };
@@ -78,6 +112,27 @@ export function createDashboardFeature({ root, getData, getTrackingData, openBid
       ${supplySection(supplyingBids, state)}
       ${report.rows.length && state.details ? `<section class="section-band finance-details" id="dashboardDetails" aria-labelledby="dashboardDetailsTitle"><div class="panel-heading"><div><h2 id="dashboardDetailsTitle">${scopeLabels[state.scope]}</h2><p>${detail.length} ${detail.length === 1 ? "item" : "itens"} no detalhamento</p></div><button class="quiet-action" type="button" data-dashboard-close>Fechar</button></div><div class="table-wrap"><table><thead><tr><th>Edital / órgão</th><th>Item</th><th>Status</th><th>Potencial</th><th>${state.scope === "invoice" ? "Com nota / valor inferido" : "Custo / lucro estimado"}</th><th>Acesso</th></tr></thead><tbody>${detail.map((row) => `<tr><td><strong>${escape(row.bidNumber)}</strong><small>${escape(row.agency)}</small></td><td><strong>${escape(row.itemNumber)}</strong><small>${escape(row.description)}</small></td><td>${escape(row.status)}</td><td>${money(row.potential)}</td><td>${state.scope === "invoice" ? `${quantity(row.invoicedQuantity)} un. · ${money(row.invoicedValue)}` : row.costKnown ? `${money(row.cost)} / ${money(row.potential - row.cost)}` : "Custo não informado"}</td><td><button class="text-action" type="button" data-dashboard-bid="${escape(row.bidId)}">Abrir edital</button></td></tr>`).join("")}</tbody></table></div></section>` : ""}
       <p class="finance-method-note">Período pela data da sessão do edital. Notas agrupadas pela data da nota fiscal. Potencial, nota fiscal e pagamento representam etapas diferentes.</p>`;
+  }
+
+  function repositionOpenFinanceTooltip() {
+    const button = root.querySelector("[data-finance-help][aria-expanded='true']")
+      || root.querySelector(".finance-help:hover > [data-finance-help]")
+      || root.querySelector(".finance-help:focus-within > [data-finance-help]");
+    if (button) positionFinanceTooltip(root, button);
+  }
+
+  root.addEventListener("pointerover", (event) => {
+    const button = event.target.closest("[data-finance-help]");
+    if (button) positionFinanceTooltip(root, button);
+  });
+  root.addEventListener("focusin", (event) => {
+    const button = event.target.closest("[data-finance-help]");
+    if (button) positionFinanceTooltip(root, button);
+  });
+  window.addEventListener("resize", repositionOpenFinanceTooltip, { passive: true });
+  document.addEventListener("scroll", repositionOpenFinanceTooltip, { capture: true, passive: true });
+  if (typeof ResizeObserver === "function") {
+    new ResizeObserver(repositionOpenFinanceTooltip).observe(root);
   }
 
   async function loadTrackingData() {
@@ -104,7 +159,12 @@ export function createDashboardFeature({ root, getData, getTrackingData, openBid
   });
   root.addEventListener("click", (event) => {
     const help = event.target.closest("[data-finance-help]");
-    if (help) { help.setAttribute("aria-expanded", String(help.getAttribute("aria-expanded") !== "true")); return; }
+    if (help) {
+      const isOpening = help.getAttribute("aria-expanded") !== "true";
+      if (isOpening) positionFinanceTooltip(root, help);
+      help.setAttribute("aria-expanded", String(isOpening));
+      return;
+    }
     if (event.target.closest("[data-dashboard-clear]")) { state.from = ""; state.to = ""; state.status = "Todos"; state.details = false; render(); return; }
     if (event.target.closest("[data-dashboard-retry]")) { void loadTrackingData(); return; }
     if (event.target.closest("[data-dashboard-close]")) { state.details = false; render(); return; }
