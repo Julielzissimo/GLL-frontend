@@ -60,6 +60,20 @@ function detailRows(report, scope) {
   return report.rows.filter((row) => scope !== "cost" && scope !== "profit" && scope !== "margin" ? scope !== "invoice" || row.invoicedQuantity > 0 : row.costKnown);
 }
 
+export function calculateFinanceTooltipPlacement({ anchorLeft, anchorRight, contentLeft, viewportWidth, edge, gap, maxWidth }) {
+  const contentRight = viewportWidth - edge;
+  const rightSpace = Math.max(0, contentRight - anchorRight - gap);
+  const leftSpace = Math.max(0, anchorLeft - gap - contentLeft);
+  const rightWidth = Math.min(maxWidth, rightSpace);
+  const leftWidth = Math.min(maxWidth, leftSpace);
+  const useRight = rightWidth >= maxWidth / 2 || (leftWidth < maxWidth / 2 && rightWidth >= leftWidth);
+  const availableWidth = Math.max(1, Math.floor(useRight ? rightSpace : leftSpace));
+  const width = Math.min(maxWidth, availableWidth);
+  const left = useRight ? anchorRight + gap : Math.max(contentLeft, anchorLeft - gap - width);
+
+  return { side: useRight ? "right" : "left", left, width };
+}
+
 function positionFinanceTooltip(root, button) {
   const tooltip = button.nextElementSibling;
   if (!tooltip?.matches(".finance-tooltip")) return;
@@ -78,17 +92,19 @@ function positionFinanceTooltip(root, button) {
   const viewportHeight = document.documentElement.clientHeight || window.innerHeight;
   const anchor = button.getBoundingClientRect();
   const contentLeft = Math.max(edge, root.getBoundingClientRect().left);
-  const contentRight = viewportWidth - edge;
-  const rightSpace = Math.max(0, contentRight - anchor.right - gap);
-  const leftSpace = Math.max(0, anchor.left - gap - contentLeft);
-  const rightWidth = Math.min(maxWidth, rightSpace);
-  const leftWidth = Math.min(maxWidth, leftSpace);
-  const useRight = rightWidth >= maxWidth / 2 || (leftWidth < maxWidth / 2 && rightWidth >= leftWidth);
-  const availableWidth = Math.max(1, Math.floor(useRight ? rightSpace : leftSpace));
+  const placement = calculateFinanceTooltipPlacement({
+    anchorLeft: anchor.left,
+    anchorRight: anchor.right,
+    contentLeft,
+    viewportWidth,
+    edge,
+    gap,
+    maxWidth,
+  });
 
-  tooltip.style.width = `${Math.min(maxWidth, availableWidth)}px`;
+  tooltip.style.width = `${placement.width}px`;
   tooltip.style.maxHeight = `${Math.max(1, viewportHeight - edge * 2)}px`;
-  tooltip.style.left = `${useRight ? anchor.right + gap : Math.max(contentLeft, anchor.left - gap - availableWidth)}px`;
+  tooltip.style.left = `${placement.left}px`;
 
   const tooltipHeight = tooltip.getBoundingClientRect().height;
   tooltip.style.top = `${Math.max(edge, Math.min(anchor.top, viewportHeight - edge - tooltipHeight))}px`;
