@@ -10491,7 +10491,7 @@ button.history-row:hover {
 .finance-supply-table-wrap table { width: 100%; min-width: 580px; border-collapse: collapse; }
 .finance-supply-table-wrap th, .finance-supply-table-wrap td { padding: var(--gll-space-3); border-bottom: 1px solid var(--gll-line); text-align: left; vertical-align: top; }
 .finance-supply-table-wrap thead th:nth-child(n + 2) { text-align: right; }
-.finance-supply-table-wrap tbody th { font-weight: 600; }
+.finance-supply-table-wrap tbody th { background: transparent; font-weight: 600; }
 .finance-supply-table-wrap tbody th small { display: block; max-width: 46ch; margin-top: var(--gll-space-1); color: var(--gll-ink-soft); font-weight: 400; }
 .finance-supply-table-wrap td.finance-supply-quantity { text-align: right; font: 500 var(--gll-text-sm) var(--gll-font-mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .finance-supply-empty-note, .finance-supply-message { margin: var(--gll-space-4) 0 0; color: var(--gll-ink-soft); font-size: var(--gll-text-sm); }
