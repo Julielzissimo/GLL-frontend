@@ -28,45 +28,45 @@
       <section class="public-hero" aria-labelledby="page-title">
         <div class="public-hero-copy">
           <h1 id="page-title">Backups do LiciGestão no Google Drive</h1>
-          <p class="public-lead">A integração foi projetada para guardar cópias de recuperação do banco Supabase do LiciGestão na conta Google autorizada pela organização.</p>
+          <p class="public-lead">A integração prepara cópias criptografadas do PostgreSQL e dos arquivos do Supabase Storage e do Cloudflare R2 para a conta Google autorizada pela organização.</p>
           <a class="public-button" href="./politica-de-privacidade.html">Leia a política de privacidade</a>
         </div>
         <aside class="public-status" aria-labelledby="availability-title">
           <h2 id="availability-title">Disponibilidade</h2>
-          <p>O backup automático está em implantação e ainda não está habilitado para rotinas operacionais do LiciGestão. A integração só deverá ser usada após a conclusão da configuração, dos testes de renovação OAuth e da validação de restauração.</p>
+          <p>O fluxo está em validação para homologação. A primeira execução ainda depende da configuração das credenciais e da confirmação de uma restauração completa em ambiente local descartável. Este workflow não acessa produção e a agenda automática ainda está desativada.</p>
         </aside>
       </section>
 
       <div class="public-content">
         <section aria-labelledby="function-title">
           <h2 id="function-title">O que a integração faz</h2>
-          <p>Quando ativada, a rotina prepara um backup lógico do banco Supabase, valida a possibilidade de restauração em ambiente local isolado, criptografa o pacote antes do envio e verifica a cópia armazenada no Google Drive.</p>
+          <p>Quando habilitada, a rotina exporta o banco PostgreSQL, os metadados do Storage e os objetos binários do Supabase Storage e do bucket R2 do ambiente. Restaura e confere esses dados numa instância Supabase local descartável, criptografa o pacote e verifica a cópia no Google Drive.</p>
           <ol class="public-steps">
-            <li><strong>Preparação e validação:</strong> o banco é exportado e a restauração é verificada em um ambiente local descartável.</li>
-            <li><strong>Criptografia:</strong> o pacote é protegido com age antes de sair do ambiente temporário de processamento.</li>
-            <li><strong>Envio e verificação:</strong> somente o pacote criptografado e seus metadados operacionais são enviados para a pasta gerenciada no Drive.</li>
+            <li><strong>Preparação e validação:</strong> banco, paths e arquivos são exportados; a restauração local confere contagens e hashes sem registrar conteúdo nos logs.</li>
+            <li><strong>Criptografia:</strong> age protege o pacote para a chave offline de recuperação e para uma chave temporária criada no runner, antes do envio.</li>
+            <li><strong>Envio e verificação:</strong> somente o pacote criptografado e metadados operacionais mínimos seguem para a pasta gerenciada no Drive.</li>
           </ol>
-          <p>O escopo inicial cobre o banco PostgreSQL. Arquivos binários armazenados no Supabase Storage não fazem parte deste backup.</p>
+          <p>A implantação inicial está limitada à homologação. Edge Functions, configurações externas, segredos de infraestrutura, tags e versões anteriores dos objetos não fazem parte do pacote.</p>
         </section>
 
         <section aria-labelledby="google-data-title">
           <h2 id="google-data-title">Acesso ao Google Drive</h2>
           <p>A autorização planejada usa o escopo OAuth <code>drive.file</code>. Ele permite trabalhar com arquivos criados pela integração ou compartilhados individualmente com ela. A rotina limita suas operações às pastas gerenciadas do LiciGestão e não solicita acesso geral aos arquivos do Drive.</p>
-          <p>O serviço consulta a identidade da conta autorizada e informações de cota necessárias para validar a conexão e acompanhar o espaço disponível. Os arquivos são organizados em <code>LiciGestao/Backups/Supabase/producao</code> e <code>LiciGestao/Backups/Supabase/homologacao</code>.</p>
+          <p>O serviço consulta a identidade da conta autorizada e informações de cota necessárias para validar a conexão e acompanhar o espaço disponível. Os arquivos ficam em pastas separadas por ambiente; o workflow atual escreve somente em <code>LiciGestao/Backups/Supabase/homologacao</code>.</p>
         </section>
 
         <section aria-labelledby="stored-data-title">
           <h2 id="stored-data-title">O que fica armazenado</h2>
           <ul>
-            <li>Um pacote <code>.tar.age</code> criptografado antes do upload.</li>
-            <li>Um manifesto e um relatório de restauração com metadados mínimos, como ambiente, horário, nome do pacote, tamanho, hash, tipo de backup, versão da ferramenta e resultado da validação.</li>
+            <li>Um pacote <code>.tar.gz.age</code> criptografado antes do upload. Ele pode incluir dados pessoais e comerciais do banco e arquivos armazenados em Supabase Storage/R2.</li>
+            <li>Um manifesto lateral e relatório agregado com ambiente, horário, nome do pacote, tamanho, hash e contagens da restauração. Paths de arquivos e conteúdo ficam dentro do pacote criptografado, não nos metadados do Drive.</li>
           </ul>
-          <p>Os metadados não contêm o conteúdo do banco. O pacote criptografado pode conter dados pessoais e comerciais que já estejam no banco Supabase do LiciGestão; seu conteúdo só pode ser recuperado com a chave de descriptografia mantida separadamente.</p>
+          <p>O conteúdo pode ser recuperado com a chave offline de recuperação mantida separadamente. A chave temporária do runner é usada somente durante a execução e removida ao final.</p>
         </section>
 
         <section aria-labelledby="retention-title">
           <h2 id="retention-title">Retenção e exclusão</h2>
-          <p>Quando a automação estiver habilitada, a política será manter os 30 backups válidos mais recentes de cada ambiente. A retenção só poderá remover cópias antigas depois que um novo upload tiver sido confirmado e verificado. Ela opera apenas nos arquivos reconhecidos como gerenciados pela integração, preserva pelo menos um backup válido e envia os arquivos excluídos à lixeira do Google Drive.</p>
+          <p>A política é manter até 30 cópias válidas por ambiente. Depois de validar o primeiro ciclo, a agenda pretendida verificará diariamente às 03:17 (horário de Brasília) e só executará quando a última cópia válida tiver pelo menos 48 horas. A agenda ainda não está ativa. A retenção remove somente cópias gerenciadas e excedentes depois que uma nova restauração e upload forem verificados, preserva a cópia mais recente e envia os arquivos antigos à lixeira do Drive.</p>
         </section>
 
         <section class="public-privacy-callout" aria-labelledby="privacy-title">
