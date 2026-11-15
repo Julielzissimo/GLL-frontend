@@ -2521,6 +2521,14 @@
         "873d9f4784e9c752811eb5cc4869b96def7033e0"
       ],
       "migrations": []
+    },
+    {
+      "id": "DASHBOARD-FORNECIMENTO-002",
+      "backend_commits": [],
+      "frontend_commits": [
+        "8aac2c093f63bc9d2284e6461a15de895b6fef5f"
+      ],
+      "migrations": []
     }
   ]
 }
