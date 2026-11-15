@@ -29,7 +29,7 @@ function metricContent(report) {
 
 function statusChart(report) {
   const maximum = Math.max(1, ...report.byStatus.map((entry) => entry.value));
-  return `<section class="section-band finance-panel"><div class="panel-heading"><div><h2>Potencial por status</h2><p>Valor total dos itens vencidos, agrupado pelo status atual do edital.</p></div></div><div class="finance-bars">${report.byStatus.map((entry) => `<button class="finance-bar-row" type="button" data-dashboard-status="${escape(entry.status)}" aria-label="${escape(entry.status)}: ${money(entry.value)}, ${entry.count} itens. Filtrar por este status"><span class="finance-bar-label">${escape(entry.status)}</span><span class="finance-bar-track"><span class="finance-bar-fill" style="width:${entry.value ? Math.max(3, entry.value / maximum * 100) : 0}%"></span></span><strong>${money(entry.value)}</strong></button>`).join("")}</div></section>`;
+  return `<section class="section-band finance-panel"><div class="panel-heading"><div><h2>Faturamento estimado por status</h2><p>Valor total dos itens vencidos, agrupado pelo status atual do edital.</p></div></div><div class="finance-bars">${report.byStatus.map((entry) => `<button class="finance-bar-row" type="button" data-dashboard-status="${escape(entry.status)}" aria-label="${escape(entry.status)}: ${money(entry.value)}, ${entry.count} itens. Filtrar por este status"><span class="finance-bar-label">${escape(entry.status)}</span><span class="finance-bar-track"><span class="finance-bar-fill" style="width:${entry.value ? Math.max(3, entry.value / maximum * 100) : 0}%"></span></span><strong>${money(entry.value)}</strong></button>`).join("")}</div></section>`;
 }
 
 function invoiceChart(report) {
