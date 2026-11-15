@@ -2359,14 +2359,26 @@ const dashboardFeature = createDashboardFeature({
     bids: appState.bids.map((bid) => ({ ...bid, session_datetime: toDateInputValue(bid.session_datetime) })),
     items: appState.items, quotationItems: appState.quotationItems,
   }),
-  getInvoices: async () => {
+  getTrackingData: async () => {
     const visibleBidIds = new Set(appState.bids.map((bid) => String(bid.id)));
-    const [invoices, fulfillments] = await Promise.all([
-      store.getAll("bid_item_invoices"), store.getAll("bid_item_fulfillments"),
+    const [fulfillments, commitments, deliveries, invoices] = await Promise.all([
+      store.getAll("bid_item_fulfillments"),
+      store.getAll("bid_item_commitments"),
+      store.getAll("bid_item_deliveries"),
+      store.getAll("bid_item_invoices"),
     ]);
-    const itemIdByFulfillment = new Map(fulfillments.map((row) => [String(row.id), row.quotation_item_id]));
-    return invoices.filter((invoice) => visibleBidIds.has(String(invoice.bid_id)))
-      .map((invoice) => ({ ...invoice, quotation_item_id: itemIdByFulfillment.get(String(invoice.fulfillment_id)) }));
+    const itemIdByFulfillment = new Map(fulfillments
+      .filter((row) => visibleBidIds.has(String(row.bid_id)))
+      .map((row) => [String(row.id), row.quotation_item_id]));
+    const linkItems = (rows) => rows
+      .filter((row) => visibleBidIds.has(String(row.bid_id)))
+      .map((row) => ({ ...row, quotation_item_id: itemIdByFulfillment.get(String(row.fulfillment_id)) }))
+      .filter((row) => row.quotation_item_id !== undefined && row.quotation_item_id !== null);
+    return {
+      commitments: linkItems(commitments),
+      deliveries: linkItems(deliveries),
+      invoices: linkItems(invoices),
+    };
   },
   openBid: (bidId) => {
     if (!bidId) { setPage("bids"); return; }
@@ -5294,7 +5306,8 @@ function visibleRealtimeResources() {
     ["bids", "items", "documents", "quotations", "quotation_items"]
       .forEach((resource) => resources.add(resource));
     if (appState.activePage === "dashboard") {
-      ["bid_item_fulfillments", "bid_item_invoices"].forEach((resource) => resources.add(resource));
+      ["bid_item_fulfillments", "bid_item_commitments", "bid_item_deliveries", "bid_item_invoices"]
+        .forEach((resource) => resources.add(resource));
     }
   } else if (appState.activePage === "quotations") {
     ["quotations", "quotation_items"].forEach((resource) => resources.add(resource));

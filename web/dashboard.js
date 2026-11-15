@@ -1,4 +1,4 @@
-import { calculateDashboard, DASHBOARD_STATUSES } from "./dashboard-metrics.js";
+import { calculateDashboard, calculateSupplyTracking, DASHBOARD_STATUSES } from "./dashboard-metrics.js";
 
 const money = (value) => new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value || 0);
 const quantity = (value) => new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 4 }).format(value || 0);
@@ -38,38 +38,58 @@ function invoiceChart(report) {
   return `<section class="section-band finance-panel finance-invoices"><div class="panel-heading"><div><span class="finance-homolog-tag">Dados de homologação</span><h2>Faturamento registrado</h2><p>Notas fiscais: quantidade registrada e valor inferido pela quantidade × valor final do item. A nota não possui valor monetário próprio neste fluxo.</p></div></div><div class="finance-invoice-summary"><strong>${quantity(report.totals.invoicedQuantity)} un.</strong><span>com nota fiscal</span><strong>${money(report.totals.invoicedValue)}</strong><span>valor inferido · nenhum pagamento confirmado</span></div>${months.length ? `<div class="finance-month-bars" role="img" aria-label="Valores inferidos das notas fiscais por mês da nota">${months.map((entry) => `<div class="finance-month"><span class="finance-month-track"><span style="height:${Math.max(4, entry.value / maximum * 100)}%"></span></span><strong>${money(entry.value)}</strong><small>${escape(entry.month.slice(5))}/${escape(entry.month.slice(0, 4))}</small></div>`).join("")}</div>` : '<p class="finance-empty-note">Nenhuma nota fiscal registrada para os itens deste recorte.</p>'}<button class="finance-card-link" type="button" data-dashboard-scope="invoice">Ver itens com nota fiscal →</button></section>`;
 }
 
+function supplySection(bids, state) {
+  let content;
+  if (state.loading || (!state.loaded && !state.error)) {
+    content = '<p class="finance-supply-message" role="status">Carregando o acompanhamento de fornecimento…</p>';
+  } else if (state.error) {
+    content = `<div class="finance-supply-message" role="alert"><p>Não foi possível carregar as quantidades de empenho, entrega e faturamento: ${escape(state.error)}</p><button class="quiet-action" type="button" data-dashboard-retry>Tentar novamente</button></div>`;
+  } else if (!bids.length) {
+    content = '<p class="finance-supply-message">Nenhum edital em fornecimento para acompanhar.</p>';
+  } else {
+    content = `<div class="finance-supply-bids">${bids.map((bid) => `<article class="finance-supply-bid"><header class="finance-supply-bid-heading"><div><h3>Edital ${escape(bid.bidNumber)}</h3><p>${escape(bid.agency || "Órgão não informado")}</p></div><span class="finance-supply-status">Em Fornecimento</span><button class="quiet-action" type="button" data-dashboard-bid="${escape(bid.bidId)}" aria-label="Abrir edital ${escape(bid.bidNumber)}">Abrir edital</button></header><div class="finance-supply-totals" role="group" aria-label="Totais por etapa do edital ${escape(bid.bidNumber)}"><div><span>Solicitado</span><strong>${quantity(bid.totals.requestedQuantity)}</strong></div><div><span>Entregue</span><strong>${quantity(bid.totals.deliveredQuantity)}</strong></div><div><span>Faturado</span><strong>${quantity(bid.totals.invoicedQuantity)}</strong></div></div>${bid.items.length ? `<div class="finance-supply-table-wrap"><table aria-label="Quantidades solicitadas, entregues e faturadas do edital ${escape(bid.bidNumber)}"><thead><tr><th scope="col">Item</th><th scope="col">Solicitado</th><th scope="col">Entregue</th><th scope="col">Faturado</th></tr></thead><tbody>${bid.items.map((item) => `<tr><th scope="row"><strong>Item ${escape(item.itemNumber)}</strong><small>${escape(item.description || "Sem descrição")}</small></th><td class="finance-supply-quantity">${quantity(item.requestedQuantity)}</td><td class="finance-supply-quantity">${quantity(item.deliveredQuantity)}</td><td class="finance-supply-quantity">${quantity(item.invoicedQuantity)}</td></tr>`).join("")}</tbody></table></div>` : '<p class="finance-supply-empty-note">Nenhum item marcado como vencido neste edital.</p>'}</article>`).join("")}</div>`;
+  }
+
+  const count = state.loaded
+    ? `${bids.length} ${bids.length === 1 ? "edital" : "editais"}`
+    : state.loading ? "Carregando…" : "Indisponível";
+  return `<section class="section-band finance-panel finance-supply" aria-labelledby="dashboardSupplyTitle"><div class="panel-heading"><div><h2 id="dashboardSupplyTitle">Acompanhamento de fornecimento</h2><p>Quantidades dos itens marcados como vencidos. Solicitado corresponde aos empenhos registrados; entrega e faturamento são somados separadamente.</p></div><span class="finance-supply-count">${count}</span></div>${content}</section>`;
+}
+
 function detailRows(report, scope) {
   return report.rows.filter((row) => scope !== "cost" && scope !== "profit" && scope !== "margin" ? scope !== "invoice" || row.invoicedQuantity > 0 : row.costKnown);
 }
 
-export function createDashboardFeature({ root, getData, getInvoices, openBid }) {
-  const state = { from: "", to: "", status: "Todos", invoices: [], loaded: false, loading: false, error: "", scope: "potential", details: false, request: 0 };
+export function createDashboardFeature({ root, getData, getTrackingData, openBid }) {
+  const emptyTrackingData = () => ({ commitments: [], deliveries: [], invoices: [] });
+  const state = { from: "", to: "", status: "Todos", trackingData: emptyTrackingData(), loaded: false, loading: false, error: "", scope: "potential", details: false, request: 0 };
   let active = false;
 
   function render() {
     if (!active) return;
-    const report = calculateDashboard({ ...getData(), invoices: state.invoices, from: state.from, to: state.to, status: state.status });
+    const data = getData();
+    const report = calculateDashboard({ ...data, invoices: state.trackingData.invoices, from: state.from, to: state.to, status: state.status });
+    const supplyingBids = calculateSupplyTracking({ ...data, ...state.trackingData });
     const scopeLabels = { potential: "Potencial de faturamento", cost: "Custo conhecido", profit: "Lucro estimado", margin: "Margem estimada", invoice: "Itens com nota fiscal" };
     const detail = detailRows(report, state.scope);
     root.innerHTML = `<form class="section-band finance-filters" id="dashboardFilters"><label>De<input type="date" name="from" value="${escape(state.from)}" aria-label="Data inicial da sessão"></label><label>Até<input type="date" name="to" value="${escape(state.to)}" aria-label="Data final da sessão"></label><label>Status<select name="status" aria-label="Status do edital"><option>Todos</option>${DASHBOARD_STATUSES.map((status) => `<option ${status === state.status ? "selected" : ""}>${escape(status)}</option>`).join("")}</select></label><button class="primary-action" type="submit">Aplicar filtros</button><button class="quiet-action" type="button" data-dashboard-clear>Limpar</button></form>
-      ${state.error ? `<p class="finance-error" role="alert">Não foi possível carregar as notas fiscais: ${escape(state.error)}. Os indicadores de notas estão indisponíveis até uma nova tentativa. <button type="button" data-dashboard-retry>Tentar novamente</button></p>` : ""}
-      ${state.loading ? '<p class="finance-loading" role="status">Carregando notas fiscais…</p>' : ""}
       <div class="finance-metrics">${metricContent(report)}</div>
-      ${report.rows.length ? `<div class="finance-charts">${statusChart(report)}${state.loaded ? invoiceChart(report) : '<section class="section-band finance-panel"><span class="finance-homolog-tag">Dados de homologação</span><h2>Faturamento registrado</h2><p>Os dados de notas fiscais estão indisponíveis no momento.</p></section>'}</div>` : '<section class="section-band finance-empty"><h2>Nenhum item vencido neste recorte</h2><p>Marque itens como vencidos em editais elegíveis ou ajuste os filtros para visualizar o potencial.</p><button class="quiet-action" type="button" data-dashboard-bids>Ver licitações</button></section>'}
+      ${report.rows.length ? `<div class="finance-charts">${statusChart(report)}${state.loaded ? invoiceChart(report) : `<section class="section-band finance-panel"><span class="finance-homolog-tag">Dados de homologação</span><h2>Faturamento registrado</h2><p>${state.loading ? "Carregando notas fiscais…" : "Os dados de notas fiscais estão indisponíveis no momento."}</p></section>`}</div>` : '<section class="section-band finance-empty"><h2>Nenhum item vencido neste recorte</h2><p>Marque itens como vencidos em editais elegíveis ou ajuste os filtros para visualizar o potencial.</p><button class="quiet-action" type="button" data-dashboard-bids>Ver licitações</button></section>'}
+      ${supplySection(supplyingBids, state)}
       ${report.rows.length && state.details ? `<section class="section-band finance-details" id="dashboardDetails" aria-labelledby="dashboardDetailsTitle"><div class="panel-heading"><div><h2 id="dashboardDetailsTitle">${scopeLabels[state.scope]}</h2><p>${detail.length} ${detail.length === 1 ? "item" : "itens"} no detalhamento</p></div><button class="quiet-action" type="button" data-dashboard-close>Fechar</button></div><div class="table-wrap"><table><thead><tr><th>Edital / órgão</th><th>Item</th><th>Status</th><th>Potencial</th><th>${state.scope === "invoice" ? "Com nota / valor inferido" : "Custo / lucro estimado"}</th><th>Acesso</th></tr></thead><tbody>${detail.map((row) => `<tr><td><strong>${escape(row.bidNumber)}</strong><small>${escape(row.agency)}</small></td><td><strong>${escape(row.itemNumber)}</strong><small>${escape(row.description)}</small></td><td>${escape(row.status)}</td><td>${money(row.potential)}</td><td>${state.scope === "invoice" ? `${quantity(row.invoicedQuantity)} un. · ${money(row.invoicedValue)}` : row.costKnown ? `${money(row.cost)} / ${money(row.potential - row.cost)}` : "Custo não informado"}</td><td><button class="text-action" type="button" data-dashboard-bid="${escape(row.bidId)}">Abrir edital</button></td></tr>`).join("")}</tbody></table></div></section>` : ""}
       <p class="finance-method-note">Período pela data da sessão do edital. Notas agrupadas pela data da nota fiscal. Potencial, nota fiscal e pagamento representam etapas diferentes.</p>`;
   }
 
-  async function loadInvoices() {
+  async function loadTrackingData() {
     const request = ++state.request;
     state.loading = true; state.error = ""; state.loaded = false; render();
     try {
-      const invoices = await getInvoices();
+      const trackingData = await getTrackingData();
       if (request !== state.request || !active) return;
-      state.invoices = invoices; state.loaded = true;
+      state.trackingData = { ...emptyTrackingData(), ...trackingData }; state.loaded = true;
     } catch (error) {
       if (request !== state.request || !active) return;
-      state.invoices = []; state.error = error.message || "erro desconhecido";
+      state.trackingData = emptyTrackingData(); state.error = error.message || "erro desconhecido";
     } finally {
       if (request === state.request) { state.loading = false; render(); }
     }
@@ -86,7 +106,7 @@ export function createDashboardFeature({ root, getData, getInvoices, openBid }) 
     const help = event.target.closest("[data-finance-help]");
     if (help) { help.setAttribute("aria-expanded", String(help.getAttribute("aria-expanded") !== "true")); return; }
     if (event.target.closest("[data-dashboard-clear]")) { state.from = ""; state.to = ""; state.status = "Todos"; state.details = false; render(); return; }
-    if (event.target.closest("[data-dashboard-retry]")) { void loadInvoices(); return; }
+    if (event.target.closest("[data-dashboard-retry]")) { void loadTrackingData(); return; }
     if (event.target.closest("[data-dashboard-close]")) { state.details = false; render(); return; }
     if (event.target.closest("[data-dashboard-bids]")) { openBid(null); return; }
     const bidButton = event.target.closest("[data-dashboard-bid]");
@@ -101,10 +121,10 @@ export function createDashboardFeature({ root, getData, getInvoices, openBid }) 
   });
 
   return {
-    showPage() { active = true; render(); void loadInvoices(); },
-    refresh() { if (active) void loadInvoices(); },
+    showPage() { active = true; render(); void loadTrackingData(); },
+    refresh() { if (active) void loadTrackingData(); },
     hide() { active = false; state.request += 1; },
-    reset() { active = false; state.request += 1; state.invoices = []; state.loaded = false; state.details = false; },
+    reset() { active = false; state.request += 1; state.trackingData = emptyTrackingData(); state.loaded = false; state.loading = false; state.error = ""; state.details = false; },
   };
 }
 
