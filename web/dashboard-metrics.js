@@ -83,3 +83,64 @@ export function calculateDashboard({ bids = [], items = [], quotationItems = [],
   }));
   return { rows, totals, byStatus, invoiceSeries: [...invoiceSeries.values()].sort((a, b) => a.month.localeCompare(b.month)) };
 }
+
+export function calculateSupplyTracking({ bids = [], items = [], quotationItems = [], commitments = [], deliveries = [], invoices = [] }) {
+  const supplyingBids = bids.filter((bid) => bid.status === "Em Fornecimento");
+  const supplyingBidIds = new Set(supplyingBids.map((bid) => String(bid.id)));
+  const itemByBidAndQuotation = new Map(items.filter((item) => supplyingBidIds.has(String(item.bid_id)))
+    .map((item) => [`${item.bid_id}:${item.quotation_item_id}`, item]));
+  const itemByBidAndNumber = new Map(items.filter((item) => supplyingBidIds.has(String(item.bid_id)))
+    .map((item) => [`${item.bid_id}:${item.item_number}`, item]));
+  const quotationItemsByQuotation = new Map();
+  for (const item of quotationItems) {
+    const key = String(item.quotation_id);
+    if (!quotationItemsByQuotation.has(key)) quotationItemsByQuotation.set(key, []);
+    quotationItemsByQuotation.get(key).push(item);
+  }
+
+  const sumByBidAndItem = (records) => {
+    const totals = new Map();
+    for (const record of records) {
+      if (!supplyingBidIds.has(String(record.bid_id))) continue;
+      const key = `${record.bid_id}:${record.quotation_item_id}`;
+      totals.set(key, (totals.get(key) || 0) + Math.max(0, number(record.quantity)));
+    }
+    return totals;
+  };
+  const requestedByItem = sumByBidAndItem(commitments);
+  const deliveredByItem = sumByBidAndItem(deliveries);
+  const invoicedByItem = sumByBidAndItem(invoices);
+
+  return supplyingBids.map((bid) => {
+    const bidId = String(bid.id);
+    const rows = (quotationItemsByQuotation.get(String(bid.quotation_id)) || [])
+      .flatMap((item) => {
+        const bidItem = itemByBidAndQuotation.get(`${bid.id}:${item.id}`)
+          || itemByBidAndNumber.get(`${bid.id}:${item.item_number}`);
+        if (!Number(bidItem?.is_won)) return [];
+        const key = `${bidId}:${item.id}`;
+        return [{
+          itemId: item.id,
+          itemNumber: item.item_number,
+          description: item.description || "",
+          requestedQuantity: requestedByItem.get(key) || 0,
+          deliveredQuantity: deliveredByItem.get(key) || 0,
+          invoicedQuantity: invoicedByItem.get(key) || 0,
+        }];
+      })
+      .sort((a, b) => number(a.itemNumber) - number(b.itemNumber) || number(a.itemId) - number(b.itemId));
+    const totals = rows.reduce((result, row) => {
+      result.requestedQuantity += row.requestedQuantity;
+      result.deliveredQuantity += row.deliveredQuantity;
+      result.invoicedQuantity += row.invoicedQuantity;
+      return result;
+    }, { requestedQuantity: 0, deliveredQuantity: 0, invoicedQuantity: 0 });
+    return {
+      bidId: bid.id,
+      bidNumber: bid.edital_number || String(bid.id),
+      agency: bid.buyer_agency || "",
+      items: rows,
+      totals,
+    };
+  });
+}
