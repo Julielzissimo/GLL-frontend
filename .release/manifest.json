@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "release_id": "2026-11-12-pacote-melhorias-5",
+  "release_id": "2026-11-16-pacote-melhorias-6",
   "environment": "production",
   "target_branch": "main",
   "items": [
@@ -1759,6 +1759,39 @@
       "migrations": [
         "supabase/migrations/20261112140810_add_cashflow_activity_to_bid_history.sql"
       ]
+    },
+    {
+      "id": "FLUXO-CAIXA-ORGAO-COMPRADOR-001",
+      "backend_commits": [],
+      "frontend_commits": [
+        "2af7468a2ac80152c509d6f715994016ab7b7d2a"
+      ],
+      "migrations": []
+    },
+    {
+      "id": "FLUXO-CAIXA-EDITAL-DISTRIBUICAO-COMPLETA-001",
+      "backend_commits": [],
+      "frontend_commits": [
+        "5ef747d3258d418aa8dfd05dd9f7a0e90895e84d"
+      ],
+      "migrations": []
+    },
+    {
+      "id": "FLUXO-CAIXA-TABELAS-PAGINACAO-001",
+      "backend_commits": [],
+      "frontend_commits": [
+        "b61170c31f3fd91a7f31ce890512767e2c4185ef",
+        "3a4a926ce0b109aa4c61721c39c1b572140742b8"
+      ],
+      "migrations": []
+    },
+    {
+      "id": "BILLING-FOCUS-REFRESH-001",
+      "backend_commits": [],
+      "frontend_commits": [
+        "25ac47046e3aefefc8b8a3b3fa29d2dadf4181ad"
+      ],
+      "migrations": []
     }
   ]
 }

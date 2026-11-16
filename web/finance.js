@@ -32,6 +32,8 @@ const TABS = Object.freeze([
   ["history", "Histórico"],
 ]);
 
+const CASHFLOW_PAGE_SIZE = 15;
+
 const HISTORY_EVENT_LABELS = Object.freeze({
   settings_updated: "Atualizou as configurações financeiras",
   party_created: "Cadastrou um participante financeiro",
@@ -168,9 +170,13 @@ function partyName(data, partyId) {
   return data.parties.find((row) => String(row.id) === String(partyId))?.name || "Pessoa não identificada";
 }
 
-function bidName(bids, bidId) {
+function bidInfo(bids, bidId) {
   const bid = bids.find((row) => String(row.id) === String(bidId));
-  return bid ? bidLabel(bid).title : "Edital não disponível";
+  return bid ? bidLabel(bid) : { title: "Edital não disponível", subtitle: "Órgão não informado" };
+}
+
+function bidName(bids, bidId) {
+  return bidInfo(bids, bidId).title;
 }
 
 function buildExpenseRefunds(data) {
@@ -260,6 +266,7 @@ export function createCashflowFeature(options = {}) {
     error: "",
     activeTab: "receipts",
     filters: { from: "", to: "" },
+    pages: {},
     data: null,
     service: null,
     drawerKind: null,
@@ -442,15 +449,45 @@ export function createCashflowFeature(options = {}) {
       && (!state.filters.to || String(row[dateKey] || "").slice(0, 10) <= state.filters.to));
   }
 
+  function newestFirst(left, right, dateKey) {
+    return String(right[dateKey] || "").slice(0, 10).localeCompare(String(left[dateKey] || "").slice(0, 10));
+  }
+
+  function paginatedRows(tableId, tableLabel, rows) {
+    const totalPages = Math.ceil(rows.length / CASHFLOW_PAGE_SIZE);
+    const currentPage = Math.min(
+      Math.max(Number(state.pages[tableId]) || 1, 1),
+      Math.max(totalPages, 1),
+    );
+    state.pages[tableId] = currentPage;
+    const startIndex = (currentPage - 1) * CASHFLOW_PAGE_SIZE;
+    const pageRows = rows.slice(startIndex, startIndex + CASHFLOW_PAGE_SIZE);
+    const firstRecord = pageRows.length ? startIndex + 1 : 0;
+    const lastRecord = startIndex + pageRows.length;
+    const pagination = totalPages > 1
+      ? `<nav class="cashflow-pagination" data-cf-pagination="${escapeHtml(tableId)}" data-cf-total-pages="${totalPages}" aria-label="Paginação da tabela ${escapeHtml(tableLabel)}">
+          <span class="cashflow-pagination-summary" aria-live="polite">Página ${currentPage} de ${totalPages} · Exibindo ${firstRecord}–${lastRecord} de ${rows.length} registros</span>
+          <div class="cashflow-pagination-actions">
+            <button class="quiet-action compact-action" type="button" data-cf-page="${currentPage - 1}" aria-label="Página anterior"${currentPage <= 1 ? " disabled" : ""}>Anterior</button>
+            <button class="quiet-action compact-action" type="button" data-cf-page="${currentPage + 1}" aria-label="Próxima página"${currentPage >= totalPages ? " disabled" : ""}>Próxima</button>
+          </div>
+        </nav>`
+      : "";
+    return { rows: pageRows, pagination };
+  }
+
   function rowsForReceipt(receiptId) {
     return (state.data.receiptLines || []).filter((line) => String(line.receipt_id) === String(receiptId));
   }
 
   function receiptTable() {
     const data = state.data;
+    const bids = accessibleBids();
     const rows = filteredByDate(data.receipts.filter((row) => !row.reversed_at), "received_on");
     if (!rows.length) return emptyState("Nenhum recebimento encontrado", "Os recebimentos aparecem depois da confirmação de um crédito vinculado a um item vencido, com ou sem nota fiscal.");
-    const body = rows.map((receipt) => {
+    const page = paginatedRows("receipts", "Recebimentos", rows);
+    const body = page.rows.map((receipt) => {
+      const bid = bidInfo(bids, receipt.bid_id);
       const lines = rowsForReceipt(receipt.id);
       const itemNumbers = [...new Set(lines.map((line) => {
         const invoice = line.invoice_id == null ? null : data.allInvoices.find((row) => String(row.id) === String(line.invoice_id));
@@ -460,19 +497,21 @@ export function createCashflowFeature(options = {}) {
       }).filter(Boolean))];
       const itemText = itemNumbers.join(", ");
       const escapedItemText = escapeHtml(itemText);
-      return `<tr><td>${formatDate(receipt.received_on)}</td><td><strong>${escapeHtml(bidName(accessibleBids(), receipt.bid_id))}</strong><span class="cashflow-row-sub">${escapeHtml(receipt.payment_reference || paymentMethodLabel(receipt.payment_method))}</span></td>
+      return `<tr><td>${formatDate(receipt.received_on)}</td><td><strong>${escapeHtml(bid.title)}</strong><span class="cashflow-row-sub">Órgão comprador: ${escapeHtml(bid.subtitle)}</span><span class="cashflow-row-sub">${escapeHtml(receipt.payment_reference || paymentMethodLabel(receipt.payment_method))}</span></td>
         <td class="cashflow-receipt-items-cell"><span class="cashflow-receipt-items">${escapedItemText || "—"}</span></td><td class="cashflow-number"><strong>${formatBrl(parseMoneyToCents(receipt.gross_amount))}</strong></td>
         <td class="cashflow-number">${formatBrl(parseMoneyToCents(receipt.cost_total))}</td><td class="cashflow-number">${formatBrl(parseMoneyToCents(receipt.expense_reserve_amount))}</td>
         <td class="cashflow-number"><strong>${formatBrl(parseMoneyToCents(receipt.distributable_profit))}</strong></td><td><button class="text-action" type="button" data-cf-action="receipt-detail" data-id="${escapeHtml(receipt.id)}">Detalhes</button></td></tr>`;
     }).join("");
-    return `<div class="cashflow-table-wrap"><table class="cashflow-table"><thead><tr><th>Data do crédito</th><th>Edital</th><th class="cashflow-receipt-items-cell">N° DO ITEM</th><th class="cashflow-number">Recebido</th><th class="cashflow-number">Custos</th><th class="cashflow-number">Reserva</th><th class="cashflow-number">Lucro distribuído</th><th>Ações</th></tr></thead><tbody>${body}</tbody></table></div>`;
+    return `<div class="cashflow-table-wrap"><table class="cashflow-table"><thead><tr><th>Data do crédito</th><th>Edital</th><th class="cashflow-receipt-items-cell">N° DO ITEM</th><th class="cashflow-number">Recebido</th><th class="cashflow-number">Custos</th><th class="cashflow-number">Reserva</th><th class="cashflow-number">Lucro distribuído</th><th>Ações</th></tr></thead><tbody>${body}</tbody></table></div>${page.pagination}`;
   }
 
   function expenseTable() {
-    const rows = filteredByDate(state.data.expenses.filter((row) => !row.reversed_at), "occurred_on");
+    const rows = filteredByDate(state.data.expenses.filter((row) => !row.reversed_at), "occurred_on")
+      .sort((left, right) => newestFirst(left, right, "occurred_on"));
     if (!rows.length) return emptyState("Nenhuma despesa encontrada", "Registre despesas da empresa para acompanhar valores a receber ou antecipações de participantes para acompanhar valores a devolver.");
+    const page = paginatedRows("expenses", "Despesas", rows);
     const refunds = buildExpenseRefunds(state.data);
-    return `<div class="cashflow-table-wrap"><table class="cashflow-table"><thead><tr><th>Data</th><th>Descrição</th><th>Categoria</th><th>Pago por</th><th class="cashflow-number">Valor</th><th>Tratamento</th><th>Situação</th><th></th></tr></thead><tbody>${rows.map((expense) => {
+    return `<div class="cashflow-table-wrap"><table class="cashflow-table"><thead><tr><th>Data</th><th>Descrição</th><th>Categoria</th><th>Pago por</th><th class="cashflow-number">Valor</th><th>Tratamento</th><th>Situação</th><th></th></tr></thead><tbody>${page.rows.map((expense) => {
       const paidBy = expense.payer_type === "company" ? "Empresa" : partyName(state.data, expense.payer_party_id);
       const refunded = refunds.get(String(expense.id)) || 0;
       const direction = cashflowExpenseReimbursementDirection(expense);
@@ -489,15 +528,17 @@ export function createCashflowFeature(options = {}) {
               : `<span class="cashflow-badge success">Sem pendência</span>`;
       const reimbursementAction = direction === "receivable" ? "Registrar recebimento" : "Reembolsar";
       return `<tr><td>${formatDate(expense.occurred_on)}</td><td><strong>${escapeHtml(expense.description)}</strong>${expense.proof_storage_path ? `<span class="cashflow-row-sub">Comprovante disponível</span>` : ""}</td><td>${escapeHtml(expense.category)}</td><td>${escapeHtml(paidBy)}</td><td class="cashflow-number"><strong>${formatBrl(parseMoneyToCents(expense.amount))}</strong></td><td>${escapeHtml(treatment)}</td><td>${status}</td><td>${expense.proof_storage_path ? `<button type="button" class="text-action" data-cf-action="view-proof" data-path="${escapeHtml(expense.proof_storage_path)}">Comprovante</button>` : ""}${remaining > 0 && isAdmin() ? ` <button type="button" class="text-action" data-cf-action="reimburse" data-id="${escapeHtml(expense.id)}">${reimbursementAction}</button>` : ""}</td></tr>`;
-    }).join("")}</tbody></table></div>`;
+    }).join("")}</tbody></table></div>${page.pagination}`;
   }
 
   function reimbursementTable() {
     const refunds = buildExpenseRefunds(state.data);
     const { expenses, payments } = reimbursementTableRows(state.data, state.filters);
     if (!expenses.length && !payments.length) return emptyState("Nenhum reembolso encontrado", "Despesas reembolsáveis e pagamentos registrados aparecem aqui conforme as datas selecionadas.");
+    const expensePage = paginatedRows("reimbursement-expenses", "Despesas de origem", expenses);
+    const paymentPage = paginatedRows("reimbursement-payments", "Lançamentos de reembolso", payments);
     const expenseById = new Map(state.data.expenses.map((expense) => [String(expense.id), expense]));
-    const expenseTable = expenses.length ? `<div class="cashflow-table-wrap"><table class="cashflow-table"><thead><tr><th>Despesa de origem</th><th>Pagador</th><th class="cashflow-number">Valor original</th><th class="cashflow-number">Já recebido / devolvido</th><th class="cashflow-number">Saldo pendente</th><th>Situação / ação</th></tr></thead><tbody>${expenses.map((expense) => {
+    const expenseTable = expenses.length ? `<div class="cashflow-table-wrap"><table class="cashflow-table"><thead><tr><th>Despesa de origem</th><th>Pagador</th><th class="cashflow-number">Valor original</th><th class="cashflow-number">Já recebido / devolvido</th><th class="cashflow-number">Saldo pendente</th><th>Situação / ação</th></tr></thead><tbody>${expensePage.rows.map((expense) => {
       const refunded = refunds.get(String(expense.id)) || 0;
       const amount = parseMoneyToCents(expense.amount);
       const remaining = Math.max(0, amount - refunded);
@@ -506,27 +547,28 @@ export function createCashflowFeature(options = {}) {
       const action = isReceivable ? "Registrar recebimento" : "Registrar pagamento";
       const status = remaining > 0 ? "Pendente" : isReceivable ? "Recebido" : "Pago";
       return `<tr><td><strong>${escapeHtml(expense.description)}</strong><span class="cashflow-row-sub">${formatDate(expense.occurred_on)}</span></td><td>${escapeHtml(payer)}</td><td class="cashflow-number">${formatBrl(amount)}</td><td class="cashflow-number">${formatBrl(refunded)}</td><td class="cashflow-number"><strong>${formatBrl(remaining)}</strong></td><td><span class="cashflow-badge ${remaining > 0 ? "warning" : "success"}">${status}</span>${remaining > 0 && isAdmin() ? ` <button type="button" class="primary-action small-action" data-cf-action="reimburse" data-id="${escapeHtml(expense.id)}">${action}</button>` : ""}</td></tr>`;
-    }).join("")}</tbody></table></div>` : "";
-    const paymentTable = payments.length ? `<h3 class="cashflow-section-title">Lançamentos de reembolso</h3><div class="cashflow-table-wrap"><table class="cashflow-table"><thead><tr><th>Data</th><th>Despesa de origem</th><th>Tipo</th><th>Forma de pagamento</th><th class="cashflow-number">Valor</th></tr></thead><tbody>${payments.map((payment) => {
+    }).join("")}</tbody></table></div>${expensePage.pagination}` : "";
+    const paymentTable = payments.length ? `<h3 class="cashflow-section-title">Lançamentos de reembolso</h3><div class="cashflow-table-wrap"><table class="cashflow-table"><thead><tr><th>Data</th><th>Despesa de origem</th><th>Tipo</th><th>Forma de pagamento</th><th class="cashflow-number">Valor</th></tr></thead><tbody>${paymentPage.rows.map((payment) => {
       const expense = expenseById.get(String(payment.expense_id));
       const type = cashflowExpenseReimbursementDirection(expense) === "receivable" ? "Recebido da empresa" : "Devolvido ao participante";
       return `<tr><td>${formatDate(payment.paid_on)}</td><td>${escapeHtml(expense.description)}</td><td>${type}</td><td>${escapeHtml(paymentMethodLabel(payment.payment_method))}</td><td class="cashflow-number"><strong>${formatBrl(parseMoneyToCents(payment.amount))}</strong></td></tr>`;
-    }).join("")}</tbody></table></div>` : "";
+    }).join("")}</tbody></table></div>${paymentPage.pagination}` : "";
     return `${expenseTable}${paymentTable}`;
   }
 
   function withdrawalTable() {
     const bids = accessibleBids();
     const sortedWithdrawals = cashflowWithdrawalsForAccessibleBids(state.data.withdrawals, bids).sort((left, right) =>
-      String(right.withdrawn_on || "").localeCompare(String(left.withdrawn_on || "")));
+      newestFirst(left, right, "withdrawn_on"));
     const rows = filteredByDate(sortedWithdrawals, "withdrawn_on");
     if (!rows.length) return emptyState("Nenhum saque registrado", "Quando uma retirada for registrada, ela aparecerá nesta lista.");
+    const page = paginatedRows("withdrawals", "Saques", rows);
     const users = getUsers() || [];
-    return `<div class="cashflow-table-wrap"><table class="cashflow-table"><thead><tr><th>Autor do saque</th><th>Quem recebeu o saque</th><th class="cashflow-number">Valor do saque</th><th>Data do saque</th><th>Nº do edital</th></tr></thead><tbody>${rows.map((withdrawal) => {
+    return `<div class="cashflow-table-wrap"><table class="cashflow-table"><thead><tr><th>Autor do saque</th><th>Quem recebeu o saque</th><th class="cashflow-number">Valor do saque</th><th>Data do saque</th><th>Nº do edital</th></tr></thead><tbody>${page.rows.map((withdrawal) => {
       const actor = users.find((user) => String(user.auth_user_id) === String(withdrawal.actor_id));
       const actorName = actor?.display_name || actor?.full_name || actor?.name || "Usuário do GLL";
       return `<tr><td>${escapeHtml(actorName)}</td><td>${escapeHtml(partyName(state.data, withdrawal.participant_id))}</td><td class="cashflow-number"><strong>${formatBrl(parseMoneyToCents(withdrawal.amount))}</strong></td><td>${formatDate(withdrawal.withdrawn_on)}</td><td>${escapeHtml(bidName(bids, withdrawal.bid_id))}</td></tr>`;
-    }).join("")}</tbody></table></div>`;
+    }).join("")}</tbody></table></div>${page.pagination}`;
   }
 
   function participantRows() {
@@ -558,10 +600,11 @@ export function createCashflowFeature(options = {}) {
 
   function participantTable() {
     const rows = participantRows();
+    const page = paginatedRows("participants", "Reservas por edital", rows);
     const participantList = activeParticipants();
     const partyTools = isAdmin() ? `<div class="cashflow-toolbar-actions"><button type="button" class="primary-action" data-cf-action="new-participant">Novo participante</button></div>` : "";
     const memberTable = participantList.length
-      ? `<div class="cashflow-table-wrap"><table class="cashflow-table"><thead><tr><th>Participante financeiro</th><th class="cashflow-number">Distribuição padrão</th><th>Edital</th><th class="cashflow-number">Reservado</th><th class="cashflow-number">Retirado</th><th class="cashflow-number">Disponível</th><th></th></tr></thead><tbody>${rows.map((row) => `<tr><td><strong>${escapeHtml(row.participant.name)}</strong></td><td class="cashflow-number">${row.participant.equal_share ? "Divisão igualitária" : `${Number(row.participant.default_share_percent || 0).toLocaleString("pt-BR", { maximumFractionDigits: 2 })}%`}</td><td>${escapeHtml(bidName(accessibleBids(), row.bid.id))}</td><td class="cashflow-number">${formatBrl(row.reservedCents)}</td><td class="cashflow-number">${formatBrl(row.withdrawnCents)}</td><td class="cashflow-number"><strong>${formatBrl(row.availableCents)}</strong></td><td>${isAdmin() && row.availableCents > 0 ? `<button type="button" class="text-action" data-cf-action="withdraw" data-bid="${escapeHtml(row.bid.id)}" data-party="${escapeHtml(row.participant.id)}">Registrar retirada</button>` : ""}</td></tr>`).join("")}</tbody></table></div>`
+      ? `<div class="cashflow-table-wrap"><table class="cashflow-table"><thead><tr><th>Participante financeiro</th><th class="cashflow-number">Distribuição padrão</th><th>Edital</th><th class="cashflow-number">Reservado</th><th class="cashflow-number">Retirado</th><th class="cashflow-number">Disponível</th><th></th></tr></thead><tbody>${page.rows.map((row) => `<tr><td><strong>${escapeHtml(row.participant.name)}</strong></td><td class="cashflow-number">${row.participant.equal_share ? "Divisão igualitária" : `${Number(row.participant.default_share_percent || 0).toLocaleString("pt-BR", { maximumFractionDigits: 2 })}%`}</td><td>${escapeHtml(bidName(accessibleBids(), row.bid.id))}</td><td class="cashflow-number">${formatBrl(row.reservedCents)}</td><td class="cashflow-number">${formatBrl(row.withdrawnCents)}</td><td class="cashflow-number"><strong>${formatBrl(row.availableCents)}</strong></td><td>${isAdmin() && row.availableCents > 0 ? `<button type="button" class="text-action" data-cf-action="withdraw" data-bid="${escapeHtml(row.bid.id)}" data-party="${escapeHtml(row.participant.id)}">Registrar retirada</button>` : ""}</td></tr>`).join("")}</tbody></table></div>${page.pagination}`
       : emptyState("Nenhuma reserva por edital", "Lucro só aparece depois do recebimento. Cadastre participantes financeiros para reconhecer reservas.");
     const partiesTable = participantList.length
       ? `<div class="cashflow-party-list"><h3>Participantes financeiros cadastrados</h3>${participantList.map((party) => `<div class="cashflow-party-row"><span><strong>${escapeHtml(party.name)}</strong><small>${party.equal_share ? "Divisão igualitária" : `${Number(party.default_share_percent || 0).toLocaleString("pt-BR", { maximumFractionDigits: 2 })}% padrão`}</small></span>${isAdmin() ? `<button type="button" class="text-action" data-cf-action="edit-party" data-id="${escapeHtml(party.id)}">Editar</button>` : ""}</div>`).join("")}</div>`
@@ -575,14 +618,15 @@ export function createCashflowFeature(options = {}) {
       return (!state.filters.from || date >= state.filters.from) && (!state.filters.to || date <= state.filters.to);
     });
     if (!rows.length) return emptyState("Nenhum evento no histórico", "Cada operação financeira e ajuste manual gera um registro de auditoria.");
+    const page = paginatedRows("history", "Histórico", rows);
     const users = getUsers() || [];
-    return `<div class="cashflow-table-wrap"><table class="cashflow-table"><thead><tr><th>Data e hora</th><th>Alteração</th><th>Edital</th><th>Autor</th><th>Detalhe</th></tr></thead><tbody>${rows.map((event) => {
+    return `<div class="cashflow-table-wrap"><table class="cashflow-table"><thead><tr><th>Data e hora</th><th>Alteração</th><th>Edital</th><th>Autor</th><th>Detalhe</th></tr></thead><tbody>${page.rows.map((event) => {
       const actor = users.find((user) => String(user.auth_user_id) === String(event.actor_id));
       const actorName = actor?.display_name || actor?.full_name || actor?.name || "Usuário do GLL";
       const details = event.details && typeof event.details === "object" ? event.details : {};
       const detail = details.description || details.reason || details.reference || (details.amount ? formatBrl(parseMoneyToCents(details.amount)) : "—");
       return `<tr><td>${escapeHtml(new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short" }).format(new Date(event.created_at)))}</td><td><strong>${escapeHtml(historyEventLabel(event.event_type))}</strong></td><td>${event.bid_id ? escapeHtml(bidName(accessibleBids(), event.bid_id)) : "Geral da empresa"}</td><td>${escapeHtml(actorName)}</td><td>${escapeHtml(detail)}</td></tr>`;
-    }).join("")}</tbody></table></div>`;
+    }).join("")}</tbody></table></div>${page.pagination}`;
   }
 
   function updateCashflowCellTooltips() {
@@ -694,6 +738,7 @@ export function createCashflowFeature(options = {}) {
     state.openingReceipt = false;
     state.activeTab = "receipts";
     state.filters = { from: "", to: "" };
+    state.pages = {};
     headerActions.innerHTML = "";
     dashboard.innerHTML = "";
     workspace.innerHTML = "";
@@ -1082,6 +1127,7 @@ export function createCashflowFeature(options = {}) {
   function receiptDetail(receiptId) {
     const receipt = state.data.receipts.find((row) => String(row.id) === String(receiptId));
     if (!receipt) return;
+    const bid = bidInfo(accessibleBids(), receipt.bid_id);
     const lines = rowsForReceipt(receipt.id);
     const allocationRows = state.data.allocations.filter((row) => String(row.receipt_id) === String(receipt.id));
     const lineHtml = lines.map((line) => {
@@ -1091,7 +1137,7 @@ export function createCashflowFeature(options = {}) {
       const source = invoice?.invoice_number ? `NF ${invoice.invoice_number}` : "Sem nota fiscal";
       return `<div class="cashflow-detail-row"><strong>${escapeHtml(source)} · Item ${escapeHtml(invoice?.item_number ?? item?.item_number ?? "—")}</strong><span>${escapeHtml(line.received_quantity)} un. · Recebido ${formatBrl(parseMoneyToCents(line.received_amount))} · Custo ${formatBrl(parseMoneyToCents(line.cost_amount))} · Reserva ${formatBrl(parseMoneyToCents(line.reserve_amount))}</span><span>Lucro desta linha ${formatBrl(parseMoneyToCents(line.profit_amount))} · ${line.distribution_mode === "manual" ? "Distribuição manual" : "Distribuição padrão"}</span>${allocations.map((row) => `<span>${escapeHtml(partyName(state.data, row.participant_id))}: ${formatBrl(parseMoneyToCents(row.amount))}</span>`).join("")}${line.cost_justification ? `<small>Justificativa do custo: ${escapeHtml(line.cost_justification)}</small>` : ""}${line.reserve_justification ? `<small>Justificativa da reserva: ${escapeHtml(line.reserve_justification)}</small>` : ""}</div>`;
     }).join("");
-    const body = `<div class="cashflow-callout"><strong>${escapeHtml(bidName(accessibleBids(), receipt.bid_id))}</strong><span>${formatDate(receipt.received_on)} · ${escapeHtml(paymentMethodLabel(receipt.payment_method))}${receipt.payment_reference ? ` · ${escapeHtml(receipt.payment_reference)}` : ""}</span></div>${lineHtml}<div class="cashflow-calculation"><div><span>Recebido bruto</span><strong>${formatBrl(parseMoneyToCents(receipt.gross_amount))}</strong></div><div><span>Custos</span><strong>${formatBrl(parseMoneyToCents(receipt.cost_total))}</strong></div><div><span>Prejuízo</span><strong>${formatBrl(parseMoneyToCents(receipt.loss_amount))}</strong></div><div><span>Reserva</span><strong>${formatBrl(parseMoneyToCents(receipt.expense_reserve_amount))}</strong></div><div class="cashflow-total-final"><span>Lucro distribuível</span><strong>${formatBrl(parseMoneyToCents(receipt.distributable_profit))}</strong></div></div>${receipt.notes ? `<p>${escapeHtml(receipt.notes)}</p>` : ""}`;
+    const body = `<div class="cashflow-callout"><strong>${escapeHtml(bid.title)}</strong><span>Órgão Comprador: ${escapeHtml(bid.subtitle)}</span><span>${formatDate(receipt.received_on)} · ${escapeHtml(paymentMethodLabel(receipt.payment_method))}${receipt.payment_reference ? ` · ${escapeHtml(receipt.payment_reference)}` : ""}</span></div>${lineHtml}<div class="cashflow-calculation"><div><span>Recebido bruto</span><strong>${formatBrl(parseMoneyToCents(receipt.gross_amount))}</strong></div><div><span>Custos</span><strong>${formatBrl(parseMoneyToCents(receipt.cost_total))}</strong></div><div><span>Prejuízo</span><strong>${formatBrl(parseMoneyToCents(receipt.loss_amount))}</strong></div><div><span>Reserva</span><strong>${formatBrl(parseMoneyToCents(receipt.expense_reserve_amount))}</strong></div><div class="cashflow-total-final"><span>Lucro distribuível</span><strong>${formatBrl(parseMoneyToCents(receipt.distributable_profit))}</strong></div></div>${receipt.notes ? `<p>${escapeHtml(receipt.notes)}</p>` : ""}`;
     openDialog(receipt.reversed_at ? "Recebimento estornado" : "Detalhes do recebimento", `Lançamento ${String(receipt.id).slice(0, 8)} · ${formatDate(receipt.received_on)}`, body, "Fechar", "detail");
     dialog.querySelector("[type=submit]").hidden = true;
   }
@@ -1325,6 +1371,7 @@ export function createCashflowFeature(options = {}) {
     const target = event.target;
     if (target.matches("[data-cf-filter]")) {
       state.filters[target.dataset.cfFilter] = target.value;
+      state.pages = {};
       renderDashboard();
       renderWorkspace();
       return;
@@ -1353,6 +1400,7 @@ export function createCashflowFeature(options = {}) {
     const target = event.target;
     if (target.matches("[data-cf-filter]")) {
       state.filters[target.dataset.cfFilter] = target.value;
+      state.pages = {};
       renderDashboard();
       renderWorkspace();
       return;
@@ -1411,9 +1459,22 @@ export function createCashflowFeature(options = {}) {
   }
 
   function onClick(event) {
-    const target = event.target.closest("[data-cf-action], [data-cf-tab], [data-cf-close]");
+    const target = event.target.closest("[data-cf-action], [data-cf-tab], [data-cf-page], [data-cf-close]");
     if (!target) return;
     if (target.hasAttribute("data-cf-close")) return requestCloseDialog();
+    if (target.hasAttribute("data-cf-page")) {
+      const pagination = target.closest("[data-cf-pagination]");
+      const tableId = pagination?.dataset.cfPagination;
+      const nextPage = Number(target.dataset.cfPage);
+      const totalPages = Number(pagination?.dataset.cfTotalPages);
+      if (!tableId || !Number.isInteger(nextPage) || nextPage < 1 || nextPage > totalPages) return;
+      state.pages[tableId] = nextPage;
+      renderWorkspace();
+      const updatedPagination = [...workspace.querySelectorAll("[data-cf-pagination]")]
+        .find((element) => element.dataset.cfPagination === tableId);
+      updatedPagination?.querySelector('[data-cf-page]:not([disabled])')?.focus();
+      return;
+    }
     if (target.dataset.cfTab) {
       state.activeTab = target.dataset.cfTab;
       renderWorkspace();
@@ -1436,6 +1497,7 @@ export function createCashflowFeature(options = {}) {
       case "refresh": return showPage(true);
       case "clear-filters":
         state.filters = { from: "", to: "" };
+        state.pages = {};
         return render();
       default: return undefined;
     }

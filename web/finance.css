@@ -222,6 +222,28 @@
   border-radius: var(--gll-radius-md);
 }
 
+.cashflow-pagination {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--gll-space-3);
+  margin-top: var(--gll-space-3);
+  color: var(--gll-ink-soft);
+  font-size: var(--gll-text-sm);
+}
+
+.cashflow-pagination-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--gll-space-2);
+}
+
+.cashflow-pagination button:focus-visible {
+  outline: 2px solid var(--gll-focus);
+  outline-offset: 2px;
+}
+
 .cashflow-table {
   width: 100%;
   border-collapse: collapse;
@@ -383,6 +405,9 @@
   .cashflow-form-grid, .cashflow-invoice-fields, .cashflow-allocation-list { grid-template-columns: 1fr; }
   .cashflow-filters { grid-template-columns: minmax(0, 1fr); align-items: stretch; }
   .cashflow-filters > button { width: 100%; }
+  .cashflow-pagination { align-items: stretch; flex-direction: column; }
+  .cashflow-pagination-actions,
+  .cashflow-pagination-actions > button { flex: 1 1 0; }
   .cashflow-dialog { width: calc(100vw - 1rem); max-height: calc(100dvh - 1rem); }
   .cashflow-drawer-form { max-height: calc(100dvh - 1rem); }
   .cashflow-drawer-header, .cashflow-drawer-body, .cashflow-drawer-footer { padding: var(--gll-space-3); }
