@@ -5,6 +5,12 @@ const quantity = (value) => new Intl.NumberFormat("pt-BR", { maximumFractionDigi
 const percent = (value) => value === null ? "—" : `${new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 1 }).format(value)}%`;
 const escape = (value) => String(value ?? "").replace(/[&<>"']/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[character]);
 const infoIcon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5m0-8h.01"/></svg>';
+const statusPresentation = Object.freeze({
+  Disputada: { modifier: "disputada", icon: "warning" },
+  Aprovada: { modifier: "aprovada", icon: "success" },
+  "Em Fornecimento": { modifier: "fornecimento", icon: "package" },
+  Faturado: { modifier: "faturado", icon: "document" },
+});
 const SUPPLY_ITEMS_PAGE_SIZE = 10;
 const explanations = {
   potential: "Soma de quantidade × valor final dos itens marcados como vencidos em editais Disputada, Aprovada, Em Fornecimento ou Faturado, dentro do período da sessão e do status escolhidos. É potencial comercial, não valor a receber confirmado nem pagamento.",
@@ -29,8 +35,28 @@ function metricContent(report) {
 }
 
 function statusChart(report) {
-  const maximum = Math.max(1, ...report.byStatus.map((entry) => entry.value));
-  return `<section class="section-band finance-panel"><div class="panel-heading"><div><h2>Faturamento estimado por status</h2><p>Valor total dos itens vencidos, agrupado pelo status atual do edital.</p></div></div><div class="finance-bars">${report.byStatus.map((entry) => `<button class="finance-bar-row" type="button" data-dashboard-status="${escape(entry.status)}" aria-label="${escape(entry.status)}: ${money(entry.value)}, ${entry.count} itens. Filtrar por este status"><span class="finance-bar-label">${escape(entry.status)}</span><span class="finance-bar-track"><span class="finance-bar-fill" style="width:${entry.value ? Math.max(3, entry.value / maximum * 100) : 0}%"></span></span><strong>${money(entry.value)}</strong></button>`).join("")}</div></section>`;
+  const total = report.byStatus.reduce((sum, entry) => sum + entry.value, 0);
+  const rows = report.byStatus.map((entry) => {
+    const presentation = statusPresentation[entry.status] || { modifier: "default", icon: "document" };
+    const share = total > 0 ? Math.min(100, Math.max(0, (entry.value / total) * 100)) : 0;
+    const displayedShare = Math.round(share * 10) / 10;
+    const shareLabel = percent(displayedShare);
+    const icon = window.GLLDesignSystem?.ICONS?.[presentation.icon] || "";
+
+    return `<button class="finance-status-row finance-status-row--${presentation.modifier}" type="button" data-dashboard-status="${escape(entry.status)}" aria-label="${escape(entry.status)}: ${money(entry.value)}, ${shareLabel} do total estimado, ${entry.count} itens. Filtrar por este status">
+      <span class="finance-status-row__identity"><span class="finance-status-row__icon" aria-hidden="true">${icon}</span><span class="finance-status-row__label">${escape(entry.status)}</span></span>
+      <span class="finance-status-row__chart"><span class="finance-status-row__track" role="progressbar" aria-label="${escape(entry.status)} como percentual do total estimado" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${displayedShare}" aria-valuetext="${shareLabel} do total estimado" style="--progress: ${share}%"><span class="finance-status-row__fill"></span></span><span class="finance-status-row__percentage">${shareLabel}</span></span>
+      <strong class="finance-status-row__amount">${money(entry.value)}</strong>
+    </button>`;
+  }).join("");
+  const headingIcon = window.GLLDesignSystem?.ICONS?.layoutDashboard || "";
+  const totalIcon = window.GLLDesignSystem?.ICONS?.quotation || "";
+
+  return `<section class="section-band finance-panel finance-status-panel" aria-labelledby="dashboardStatusTitle">
+    <div class="panel-heading finance-status-heading"><span class="finance-status-heading__icon" aria-hidden="true">${headingIcon}</span><div><h2 id="dashboardStatusTitle">Faturamento estimado por status</h2><p>Valor total dos itens vencidos, agrupado pelo status atual do edital.</p></div></div>
+    <div class="finance-status-summary" role="group" aria-label="Valor total estimado"><span class="finance-status-summary__icon" aria-hidden="true">${totalIcon}</span><span class="finance-status-summary__content"><span>Total estimado</span><strong>${money(total)}</strong></span></div>
+    <div class="finance-status-rows" role="group" aria-label="Valores por status do edital">${rows}</div>
+  </section>`;
 }
 
 function invoiceChart(report) {
