@@ -5,9 +5,13 @@ const quantity = (value) => new Intl.NumberFormat("pt-BR", { maximumFractionDigi
 const percent = (value) => value === null ? "—" : `${new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 1 }).format(value)}%`;
 const escape = (value) => String(value ?? "").replace(/[&<>"']/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[character]);
 const infoIcon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5m0-8h.01"/></svg>';
+const statusIcons = Object.freeze({
+  trophy: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3h8v8a4 4 0 0 1-8 0V3ZM8 5H4v3a4 4 0 0 0 4 4M16 5h4v3a4 4 0 0 1-4 4M12 15v4M8 21h8M9 19h6"/></svg>',
+  verified: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m12 2.5 2.8 1.8 3.3.5.8 3.2 2 2.5-1.2 3.1.1 3.4-3.2 1.2L14 20.5l-3.2-1.1-3.2.9-2.2-2.6-3.1-1.4.2-3.4-1.1-3.1 2.1-2.4 1-3.2 3.3-.4L12 2.5Z"/><path d="m8.4 11.6 2.4 2.4 4.8-4.8"/></svg>',
+});
 const statusPresentation = Object.freeze({
-  Disputada: { modifier: "disputada", icon: "warning" },
-  Aprovada: { modifier: "aprovada", icon: "success" },
+  Disputada: { modifier: "disputada", icon: "trophy" },
+  Aprovada: { modifier: "aprovada", icon: "verified" },
   "Em Fornecimento": { modifier: "fornecimento", icon: "package" },
   Faturado: { modifier: "faturado", icon: "document" },
 });
@@ -34,16 +38,18 @@ function metricContent(report) {
   ].join("");
 }
 
-function statusChart(report) {
+function statusChart(report, selectedStatus = "Todos") {
   const total = report.byStatus.reduce((sum, entry) => sum + entry.value, 0);
   const rows = report.byStatus.map((entry) => {
     const presentation = statusPresentation[entry.status] || { modifier: "default", icon: "document" };
     const share = total > 0 ? Math.min(100, Math.max(0, (entry.value / total) * 100)) : 0;
     const displayedShare = Math.round(share * 10) / 10;
     const shareLabel = percent(displayedShare);
-    const icon = window.GLLDesignSystem?.ICONS?.[presentation.icon] || "";
+    const isSelected = selectedStatus === entry.status;
+    const icon = statusIcons[presentation.icon] || window.GLLDesignSystem?.ICONS?.[presentation.icon] || "";
+    const actionLabel = isSelected ? "Desmarcar filtro de status" : "Filtrar por este status";
 
-    return `<button class="finance-status-row finance-status-row--${presentation.modifier}" type="button" data-dashboard-status="${escape(entry.status)}" aria-label="${escape(entry.status)}: ${money(entry.value)}, ${shareLabel} do total estimado, ${entry.count} itens. Filtrar por este status">
+    return `<button class="finance-status-row finance-status-row--${presentation.modifier}" type="button" data-dashboard-status="${escape(entry.status)}" aria-pressed="${isSelected}" aria-label="${escape(entry.status)}: ${money(entry.value)}, ${shareLabel} do total estimado, ${entry.count} itens. ${actionLabel}">
       <span class="finance-status-row__identity"><span class="finance-status-row__icon" aria-hidden="true">${icon}</span><span class="finance-status-row__label">${escape(entry.status)}</span></span>
       <span class="finance-status-row__chart"><span class="finance-status-row__track" role="progressbar" aria-label="${escape(entry.status)} como percentual do total estimado" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${displayedShare}" aria-valuetext="${shareLabel} do total estimado" style="--progress: ${share}%"><span class="finance-status-row__fill"></span></span><span class="finance-status-row__percentage">${shareLabel}</span></span>
       <strong class="finance-status-row__amount">${money(entry.value)}</strong>
@@ -177,7 +183,7 @@ export function createDashboardFeature({ root, getData, getTrackingData, openBid
     const detail = detailRows(report, state.scope);
     root.innerHTML = `<form class="section-band finance-filters" id="dashboardFilters"><label>De<input type="date" name="from" value="${escape(state.from)}" aria-label="Data inicial da sessão"></label><label>Até<input type="date" name="to" value="${escape(state.to)}" aria-label="Data final da sessão"></label><label>Status<select name="status" aria-label="Status do edital"><option>Todos</option>${DASHBOARD_STATUSES.map((status) => `<option ${status === state.status ? "selected" : ""}>${escape(status)}</option>`).join("")}</select></label><button class="primary-action" type="submit">Aplicar filtros</button><button class="quiet-action" type="button" data-dashboard-clear>Limpar</button></form>
       <div class="finance-metrics">${metricContent(report)}</div>
-      ${report.rows.length ? `<div class="finance-charts">${statusChart(report)}${state.loaded ? invoiceChart(report) : `<section class="section-band finance-panel"><span class="finance-homolog-tag">Dados de homologação</span><h2>Faturamento registrado</h2><p>${state.loading ? "Carregando notas fiscais…" : "Os dados de notas fiscais estão indisponíveis no momento."}</p></section>`}</div>` : '<section class="section-band finance-empty"><h2>Nenhum item vencido neste recorte</h2><p>Marque itens como vencidos em editais elegíveis ou ajuste os filtros para visualizar o potencial.</p><button class="quiet-action" type="button" data-dashboard-bids>Ver licitações</button></section>'}
+      ${report.rows.length ? `<div class="finance-charts">${statusChart(report, state.status)}${state.loaded ? invoiceChart(report) : `<section class="section-band finance-panel"><span class="finance-homolog-tag">Dados de homologação</span><h2>Faturamento registrado</h2><p>${state.loading ? "Carregando notas fiscais…" : "Os dados de notas fiscais estão indisponíveis no momento."}</p></section>`}</div>` : '<section class="section-band finance-empty"><h2>Nenhum item vencido neste recorte</h2><p>Marque itens como vencidos em editais elegíveis ou ajuste os filtros para visualizar o potencial.</p><button class="quiet-action" type="button" data-dashboard-bids>Ver licitações</button></section>'}
       ${supplySection(supplyingBids, state)}
       ${report.rows.length && state.details ? `<section class="section-band finance-details" id="dashboardDetails" aria-labelledby="dashboardDetailsTitle"><div class="panel-heading"><div><h2 id="dashboardDetailsTitle">${scopeLabels[state.scope]}</h2><p>${detail.length} ${detail.length === 1 ? "item" : "itens"} no detalhamento</p></div><button class="quiet-action" type="button" data-dashboard-close>Fechar</button></div><div class="table-wrap"><table><thead><tr><th>Edital / órgão</th><th>Item</th><th>Status</th><th>Potencial</th><th>${state.scope === "invoice" ? "Com nota / valor inferido" : "Custo / lucro estimado"}</th><th>Acesso</th></tr></thead><tbody>${detail.map((row) => `<tr><td><strong>${escape(row.bidNumber)}</strong><small>${escape(row.agency)}</small></td><td><strong>${escape(row.itemNumber)}</strong><small>${escape(row.description)}</small></td><td>${escape(row.status)}</td><td>${money(row.potential)}</td><td>${state.scope === "invoice" ? `${quantity(row.invoicedQuantity)} un. · ${money(row.invoicedValue)}` : row.costKnown ? `${money(row.cost)} / ${money(row.potential - row.cost)}` : "Custo não informado"}</td><td><button class="text-action" type="button" data-dashboard-bid="${escape(row.bidId)}">Abrir edital</button></td></tr>`).join("")}</tbody></table></div></section>` : ""}
       <p class="finance-method-note">Período pela data da sessão do edital. Notas agrupadas pela data da nota fiscal. Potencial, nota fiscal e pagamento representam etapas diferentes.</p>`;
@@ -257,7 +263,15 @@ export function createDashboardFeature({ root, getData, getTrackingData, openBid
     const bidButton = event.target.closest("[data-dashboard-bid]");
     if (bidButton) { openBid(bidButton.dataset.dashboardBid); return; }
     const statusButton = event.target.closest("[data-dashboard-status]");
-    if (statusButton) { state.status = statusButton.dataset.dashboardStatus; state.details = true; state.scope = "potential"; render(); return; }
+    if (statusButton) {
+      const status = statusButton.dataset.dashboardStatus;
+      const deselecting = state.status === status;
+      state.status = deselecting ? "Todos" : status;
+      state.details = !deselecting;
+      state.scope = "potential";
+      render();
+      return;
+    }
     const scopeButton = event.target.closest("[data-dashboard-scope]");
     if (scopeButton) { state.scope = scopeButton.dataset.dashboardScope; state.details = true; render(); root.querySelector("#dashboardDetails")?.scrollIntoView({ behavior: "smooth", block: "start" }); }
   });
