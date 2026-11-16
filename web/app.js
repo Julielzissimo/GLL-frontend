@@ -2705,11 +2705,11 @@ function handleSessionVisibility() {
 function handleLiveFocus() {
   void reconcileMessages();
   void verifyVisibleSession();
-  if (appState.activePage !== "billing") scheduleLiveRefresh();
+  if (appState.activePage !== "billing" && appState.activePage !== "dashboard") scheduleLiveRefresh();
 }
 
 function handleLiveVisibility() {
-  if (document.hidden || appState.activePage === "billing") return;
+  if (document.hidden || appState.activePage === "billing" || appState.activePage === "dashboard") return;
   scheduleLiveRefresh();
 }
 
