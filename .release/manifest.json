@@ -2486,7 +2486,8 @@
       "id": "FLUXO-CAIXA-ORGAO-COMPRADOR-001",
       "backend_commits": [],
       "frontend_commits": [
-        "4b92437bc6a3cf6f90d4346c2a5a37d091cfdbcd"
+        "4b92437bc6a3cf6f90d4346c2a5a37d091cfdbcd",
+        "2af7468a2ac80152c509d6f715994016ab7b7d2a"
       ],
       "migrations": []
     },
@@ -2494,7 +2495,8 @@
       "id": "FLUXO-CAIXA-EDITAL-DISTRIBUICAO-COMPLETA-001",
       "backend_commits": [],
       "frontend_commits": [
-        "0dd7b7e3c4acc54917ea791d8613942ca3037355"
+        "0dd7b7e3c4acc54917ea791d8613942ca3037355",
+        "5ef747d3258d418aa8dfd05dd9f7a0e90895e84d"
       ],
       "migrations": []
     },
@@ -2503,7 +2505,9 @@
       "backend_commits": [],
       "frontend_commits": [
         "659e26a4b42c4200de12dc34d46a8d3551621e30",
-        "1fc330463d78c8805954cb75aa252bab28aef171"
+        "1fc330463d78c8805954cb75aa252bab28aef171",
+        "b61170c31f3fd91a7f31ce890512767e2c4185ef",
+        "3a4a926ce0b109aa4c61721c39c1b572140742b8"
       ],
       "migrations": []
     },
@@ -2511,7 +2515,8 @@
       "id": "BILLING-FOCUS-REFRESH-001",
       "backend_commits": [],
       "frontend_commits": [
-        "8e113f906d5343868f9a41acd8980f4cedde4358"
+        "8e113f906d5343868f9a41acd8980f4cedde4358",
+        "25ac47046e3aefefc8b8a3b3fa29d2dadf4181ad"
       ],
       "migrations": []
     },
