@@ -84,7 +84,7 @@ export function calculateDashboard({ bids = [], items = [], quotationItems = [],
   return { rows, totals, byStatus, invoiceSeries: [...invoiceSeries.values()].sort((a, b) => a.month.localeCompare(b.month)) };
 }
 
-export function calculateSupplyTracking({ bids = [], items = [], quotationItems = [], commitments = [], deliveries = [], invoices = [] }) {
+export function calculateSupplyTracking({ bids = [], items = [], quotationItems = [], fulfillments = [], commitments = [], deliveries = [], invoices = [] }) {
   const supplyingBids = bids.filter((bid) => bid.status === "Em Fornecimento");
   const supplyingBidIds = new Set(supplyingBids.map((bid) => String(bid.id)));
   const itemByBidAndQuotation = new Map(items.filter((item) => supplyingBidIds.has(String(item.bid_id)))
@@ -110,6 +110,19 @@ export function calculateSupplyTracking({ bids = [], items = [], quotationItems 
   const requestedByItem = sumByBidAndItem(commitments);
   const deliveredByItem = sumByBidAndItem(deliveries);
   const invoicedByItem = sumByBidAndItem(invoices);
+  const latestTrackingUpdateByItem = new Map();
+  const recordTimestamp = (record) => {
+    const updatedAt = Date.parse(record?.updated_at || "");
+    if (Number.isFinite(updatedAt)) return updatedAt;
+    const createdAt = Date.parse(record?.created_at || "");
+    return Number.isFinite(createdAt) ? createdAt : 0;
+  };
+  for (const record of [...fulfillments, ...commitments, ...deliveries, ...invoices]) {
+    if (!supplyingBidIds.has(String(record.bid_id))) continue;
+    const key = `${record.bid_id}:${record.quotation_item_id}`;
+    const timestamp = recordTimestamp(record);
+    if (timestamp > (latestTrackingUpdateByItem.get(key) || 0)) latestTrackingUpdateByItem.set(key, timestamp);
+  }
 
   return supplyingBids.map((bid) => {
     const bidId = String(bid.id);
@@ -126,9 +139,10 @@ export function calculateSupplyTracking({ bids = [], items = [], quotationItems 
           requestedQuantity: requestedByItem.get(key) || 0,
           deliveredQuantity: deliveredByItem.get(key) || 0,
           invoicedQuantity: invoicedByItem.get(key) || 0,
+          lastUpdatedAt: Math.max(recordTimestamp(bidItem), recordTimestamp(item), latestTrackingUpdateByItem.get(key) || 0),
         }];
       })
-      .sort((a, b) => number(a.itemNumber) - number(b.itemNumber) || number(a.itemId) - number(b.itemId));
+      .sort((a, b) => b.lastUpdatedAt - a.lastUpdatedAt || number(a.itemNumber) - number(b.itemNumber) || number(a.itemId) - number(b.itemId));
     const totals = rows.reduce((result, row) => {
       result.requestedQuantity += row.requestedQuantity;
       result.deliveredQuantity += row.deliveredQuantity;

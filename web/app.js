@@ -2375,6 +2375,7 @@ const dashboardFeature = createDashboardFeature({
       .map((row) => ({ ...row, quotation_item_id: itemIdByFulfillment.get(String(row.fulfillment_id)) }))
       .filter((row) => row.quotation_item_id !== undefined && row.quotation_item_id !== null);
     return {
+      fulfillments: fulfillments.filter((row) => visibleBidIds.has(String(row.bid_id))),
       commitments: linkItems(commitments),
       deliveries: linkItems(deliveries),
       invoices: linkItems(invoices),

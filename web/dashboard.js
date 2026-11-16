@@ -5,6 +5,7 @@ const quantity = (value) => new Intl.NumberFormat("pt-BR", { maximumFractionDigi
 const percent = (value) => value === null ? "—" : `${new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 1 }).format(value)}%`;
 const escape = (value) => String(value ?? "").replace(/[&<>"']/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[character]);
 const infoIcon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5m0-8h.01"/></svg>';
+const SUPPLY_ITEMS_PAGE_SIZE = 10;
 const explanations = {
   potential: "Soma de quantidade × valor final dos itens marcados como vencidos em editais Disputada, Aprovada, Em Fornecimento ou Faturado, dentro do período da sessão e do status escolhidos. É potencial comercial, não valor a receber confirmado nem pagamento.",
   cost: "Soma de quantidade × custo unitário somente dos itens vencidos com custo informado e maior que zero. Itens sem custo ficam fora deste card, mas permanecem no potencial.",
@@ -38,6 +39,29 @@ function invoiceChart(report) {
   return `<section class="section-band finance-panel finance-invoices"><div class="panel-heading"><div><span class="finance-homolog-tag">Dados de homologação</span><h2>Faturamento registrado</h2><p>Notas fiscais: quantidade registrada e valor inferido pela quantidade × valor final do item. A nota não possui valor monetário próprio neste fluxo.</p></div></div><div class="finance-invoice-summary"><strong>${quantity(report.totals.invoicedQuantity)} un.</strong><span>com nota fiscal</span><strong>${money(report.totals.invoicedValue)}</strong><span>valor inferido · nenhum pagamento confirmado</span></div>${months.length ? `<div class="finance-month-bars" role="img" aria-label="Valores inferidos das notas fiscais por mês da nota">${months.map((entry) => `<div class="finance-month"><span class="finance-month-track"><span style="height:${Math.max(4, entry.value / maximum * 100)}%"></span></span><strong>${money(entry.value)}</strong><small>${escape(entry.month.slice(5))}/${escape(entry.month.slice(0, 4))}</small></div>`).join("")}</div>` : '<p class="finance-empty-note">Nenhuma nota fiscal registrada para os itens deste recorte.</p>'}<button class="finance-card-link" type="button" data-dashboard-scope="invoice">Ver itens com nota fiscal →</button></section>`;
 }
 
+function supplyItemsPage(bid, state) {
+  const totalItems = bid.items.length;
+  const totalPages = Math.max(1, Math.ceil(totalItems / SUPPLY_ITEMS_PAGE_SIZE));
+  const bidId = String(bid.bidId);
+  const currentPage = Math.min(Math.max(1, Number(state.supplyPages.get(bidId) || 1)), totalPages);
+  state.supplyPages.set(bidId, currentPage);
+  const firstItem = (currentPage - 1) * SUPPLY_ITEMS_PAGE_SIZE;
+  return {
+    currentPage,
+    totalPages,
+    totalItems,
+    firstItem,
+    rows: bid.items.slice(firstItem, firstItem + SUPPLY_ITEMS_PAGE_SIZE),
+  };
+}
+
+function supplyPagination(bid, page) {
+  if (page.totalPages <= 1) return "";
+  const first = page.firstItem + 1;
+  const last = Math.min(page.firstItem + SUPPLY_ITEMS_PAGE_SIZE, page.totalItems);
+  return `<nav class="finance-supply-pagination" aria-label="Paginação dos itens do edital ${escape(bid.bidNumber)}"><span class="finance-supply-pagination-summary" aria-live="polite">Página ${page.currentPage.toLocaleString("pt-BR")} de ${page.totalPages.toLocaleString("pt-BR")} · Exibindo ${first.toLocaleString("pt-BR")}–${last.toLocaleString("pt-BR")} de ${page.totalItems.toLocaleString("pt-BR")} itens</span><div class="finance-supply-pagination-actions"><button class="quiet-action compact-action" type="button" data-dashboard-supply-bid="${escape(bid.bidId)}" data-dashboard-supply-page="${page.currentPage - 1}" data-dashboard-supply-direction="previous" aria-label="Página anterior dos itens do edital ${escape(bid.bidNumber)}"${page.currentPage <= 1 ? " disabled" : ""}>Anterior</button><button class="quiet-action compact-action" type="button" data-dashboard-supply-bid="${escape(bid.bidId)}" data-dashboard-supply-page="${page.currentPage + 1}" data-dashboard-supply-direction="next" aria-label="Próxima página dos itens do edital ${escape(bid.bidNumber)}"${page.currentPage >= page.totalPages ? " disabled" : ""}>Próxima</button></div></nav>`;
+}
+
 function supplySection(bids, state) {
   let content;
   if (state.loading || (!state.loaded && !state.error)) {
@@ -47,7 +71,10 @@ function supplySection(bids, state) {
   } else if (!bids.length) {
     content = '<p class="finance-supply-message">Nenhum edital em fornecimento para acompanhar.</p>';
   } else {
-    content = `<div class="finance-supply-bids">${bids.map((bid) => `<article class="finance-supply-bid"><header class="finance-supply-bid-heading"><div><h3>Edital ${escape(bid.bidNumber)}</h3><p>${escape(bid.agency || "Órgão não informado")}</p></div><span class="finance-supply-status">Em Fornecimento</span><button class="quiet-action" type="button" data-dashboard-bid="${escape(bid.bidId)}" aria-label="Abrir edital ${escape(bid.bidNumber)}">Abrir edital</button></header><div class="finance-supply-totals" role="group" aria-label="Totais por etapa do edital ${escape(bid.bidNumber)}"><div><span>Solicitado</span><strong>${quantity(bid.totals.requestedQuantity)}</strong></div><div><span>Entregue</span><strong>${quantity(bid.totals.deliveredQuantity)}</strong></div><div><span>Faturado</span><strong>${quantity(bid.totals.invoicedQuantity)}</strong></div></div>${bid.items.length ? `<div class="finance-supply-table-wrap"><table aria-label="Quantidades solicitadas, entregues e faturadas do edital ${escape(bid.bidNumber)}"><thead><tr><th scope="col">Item</th><th scope="col">Solicitado</th><th scope="col">Entregue</th><th scope="col">Faturado</th></tr></thead><tbody>${bid.items.map((item) => `<tr><th scope="row"><strong>Item ${escape(item.itemNumber)}</strong><small>${escape(item.description || "Sem descrição")}</small></th><td class="finance-supply-quantity">${quantity(item.requestedQuantity)}</td><td class="finance-supply-quantity">${quantity(item.deliveredQuantity)}</td><td class="finance-supply-quantity">${quantity(item.invoicedQuantity)}</td></tr>`).join("")}</tbody></table></div>` : '<p class="finance-supply-empty-note">Nenhum item marcado como vencido neste edital.</p>'}</article>`).join("")}</div>`;
+    content = `<div class="finance-supply-bids">${bids.map((bid) => {
+      const page = supplyItemsPage(bid, state);
+      return `<article class="finance-supply-bid"><header class="finance-supply-bid-heading"><div><h3>Edital ${escape(bid.bidNumber)}</h3><p>${escape(bid.agency || "Órgão não informado")}</p></div><span class="finance-supply-status">Em Fornecimento</span><button class="quiet-action" type="button" data-dashboard-bid="${escape(bid.bidId)}" aria-label="Abrir edital ${escape(bid.bidNumber)}">Abrir edital</button></header><div class="finance-supply-totals" role="group" aria-label="Totais por etapa do edital ${escape(bid.bidNumber)}"><div><span>Solicitado</span><strong>${quantity(bid.totals.requestedQuantity)}</strong></div><div><span>Entregue</span><strong>${quantity(bid.totals.deliveredQuantity)}</strong></div><div><span>Faturado</span><strong>${quantity(bid.totals.invoicedQuantity)}</strong></div></div>${bid.items.length ? `<div class="finance-supply-table-wrap"><table aria-label="Quantidades solicitadas, entregues e faturadas do edital ${escape(bid.bidNumber)}"><thead><tr><th scope="col">Item</th><th scope="col">Solicitado</th><th scope="col">Entregue</th><th scope="col">Faturado</th></tr></thead><tbody>${page.rows.map((item) => `<tr><th scope="row"><strong>Item ${escape(item.itemNumber)}</strong><small>${escape(item.description || "Sem descrição")}</small></th><td class="finance-supply-quantity">${quantity(item.requestedQuantity)}</td><td class="finance-supply-quantity">${quantity(item.deliveredQuantity)}</td><td class="finance-supply-quantity">${quantity(item.invoicedQuantity)}</td></tr>`).join("")}</tbody></table></div>${supplyPagination(bid, page)}` : '<p class="finance-supply-empty-note">Nenhum item marcado como vencido neste edital.</p>'}</article>`;
+    }).join("")}</div>`;
   }
 
   const count = state.loaded
@@ -111,8 +138,8 @@ function positionFinanceTooltip(root, button) {
 }
 
 export function createDashboardFeature({ root, getData, getTrackingData, openBid }) {
-  const emptyTrackingData = () => ({ commitments: [], deliveries: [], invoices: [] });
-  const state = { from: "", to: "", status: "Todos", trackingData: emptyTrackingData(), loaded: false, loading: false, error: "", scope: "potential", details: false, request: 0 };
+  const emptyTrackingData = () => ({ fulfillments: [], commitments: [], deliveries: [], invoices: [] });
+  const state = { from: "", to: "", status: "Todos", trackingData: emptyTrackingData(), supplyPages: new Map(), loaded: false, loading: false, error: "", scope: "potential", details: false, request: 0 };
   let active = false;
 
   function render() {
@@ -174,6 +201,22 @@ export function createDashboardFeature({ root, getData, getTrackingData, openBid
     state.details = false; render();
   });
   root.addEventListener("click", (event) => {
+    const supplyPageButton = event.target.closest("[data-dashboard-supply-page]");
+    if (supplyPageButton) {
+      const bidId = String(supplyPageButton.dataset.dashboardSupplyBid);
+      const direction = supplyPageButton.dataset.dashboardSupplyDirection;
+      const page = Number(supplyPageButton.dataset.dashboardSupplyPage);
+      if (Number.isInteger(page) && page >= 1) {
+        state.supplyPages.set(bidId, page);
+        render();
+        const pageButtons = [...root.querySelectorAll("[data-dashboard-supply-bid][data-dashboard-supply-direction]")]
+          .filter((button) => button.dataset.dashboardSupplyBid === bidId);
+        const nextFocus = pageButtons.find((button) => button.dataset.dashboardSupplyDirection === direction && !button.disabled)
+          || pageButtons.find((button) => !button.disabled);
+        nextFocus?.focus();
+      }
+      return;
+    }
     const help = event.target.closest("[data-finance-help]");
     if (help) {
       const isOpening = help.getAttribute("aria-expanded") !== "true";
@@ -200,7 +243,7 @@ export function createDashboardFeature({ root, getData, getTrackingData, openBid
     showPage() { active = true; render(); void loadTrackingData(); },
     refresh() { if (active) void loadTrackingData(); },
     hide() { active = false; state.request += 1; },
-    reset() { active = false; state.request += 1; state.trackingData = emptyTrackingData(); state.loaded = false; state.loading = false; state.error = ""; state.details = false; },
+    reset() { active = false; state.request += 1; state.trackingData = emptyTrackingData(); state.supplyPages.clear(); state.loaded = false; state.loading = false; state.error = ""; state.details = false; },
   };
 }
 
