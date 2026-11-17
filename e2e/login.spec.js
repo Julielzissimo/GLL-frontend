@@ -67,6 +67,7 @@ async function validateRadarSearchPage(page) {
   await expect(platformSelect).toHaveValue("portal-de-compras-publicas");
   await expect(platformSelect).toBeDisabled();
   await expect(platformSelect.locator("option")).toHaveCount(1);
+  await expect(page.locator("#radarPlatformHelp")).toHaveCount(0);
   await expect(page.locator("#radarPlatformDetails, #radarPlatforms, #radarIncludeUnidentified")).toHaveCount(0);
   await expect(page.locator('[data-radar-action="add-tag"]')).toHaveCount(0);
   await expect(page.locator("#radarTagInput")).toHaveAttribute("placeholder", "Digite um termo e pressione Enter");
