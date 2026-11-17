@@ -2615,7 +2615,16 @@
       "id": "ISSUE-421",
       "backend_commits": [],
       "frontend_commits": [
-        "8e6154316a369ab3d4854a47753428b8ef08db5f"
+        "8e6154316a369ab3d4854a47753428b8ef08db5f",
+        "626a2eb3cdf5f79b3ebc2107bc63b536f9fb12fe"
+      ],
+      "migrations": []
+    },
+    {
+      "id": "ISSUE-422",
+      "backend_commits": [],
+      "frontend_commits": [
+        "22acd9c7fa60736afadfe863ef10d3c0a93ee068"
       ],
       "migrations": []
     }
