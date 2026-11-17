@@ -2616,14 +2616,16 @@
       "backend_commits": [],
       "frontend_commits": [
         "8e6154316a369ab3d4854a47753428b8ef08db5f",
-        "626a2eb3cdf5f79b3ebc2107bc63b536f9fb12fe"
+        "626a2eb3cdf5f79b3ebc2107bc63b536f9fb12fe",
+        "5c5b879dff4f0e855a0671eb74f1d461d2bd69d1"
       ],
       "migrations": []
     },
     {
       "id": "ISSUE-422",
       "backend_commits": [
-        "9f1c368fc69f64582a08dd94fc288562b1715dc5"
+        "9f1c368fc69f64582a08dd94fc288562b1715dc5",
+        "ffd3d7741367281f90364bb266f69451b46009cc"
       ],
       "frontend_commits": [
         "22acd9c7fa60736afadfe863ef10d3c0a93ee068",
@@ -2635,7 +2637,8 @@
       "id": "ISSUE-424",
       "backend_commits": [],
       "frontend_commits": [
-        "d549d996a52cbcb8605e132140b6e121e5540df4"
+        "d549d996a52cbcb8605e132140b6e121e5540df4",
+        "f690ef8aa63eea71fcde62a0e8d46b63ba15c40d"
       ],
       "migrations": []
     },
