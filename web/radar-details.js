@@ -74,6 +74,14 @@ function platformStatusLabel(status) {
   return "Pendente de verificação";
 }
 
+export function eligiblePortalPlatformChoices(rows) {
+  if (!Array.isArray(rows)) return [];
+  return rows.filter((item) => item
+    && typeof item.id === "string"
+    && typeof item.nome === "string"
+    && item.slug === "portal-de-compras-publicas");
+}
+
 function platformMethodLabel(method) {
   return ({
     manual_confirmed: "Confirmação manual por Administrador",
@@ -577,6 +585,7 @@ export function createRadarDetailsFeature({ getClient, getUserRole = () => null,
         ${processUrl ? `<p>Link do processo eletrônico: <a href="${escapeHtml(processUrl)}" target="_blank" rel="noopener noreferrer">Abrir processo <span aria-hidden="true">↗</span></a></p>` : ""}
         <dl class="radar-platform-metadata">
           ${platform.evidenceSource ? `<div><dt>Fonte da identificação</dt><dd>${escapeHtml(platformEvidenceSourceLabel(platform.evidenceSource))}</dd></div>` : ""}
+          <div><dt>Método de confirmação</dt><dd>${escapeHtml(platformMethodLabel(platform.method))}</dd></div>
           ${platform.classifiedAt ? `<div><dt>Identificada em</dt><dd>${escapeHtml(dateValue(platform.classifiedAt))}</dd></div>` : ""}
         </dl>
         ${platform.conflict ? '<p class="radar-platform-conflict" role="status">As fontes consultadas indicam plataformas diferentes. Confira o edital antes de usar o link.</p>' : ""}
@@ -1007,6 +1016,7 @@ export function createRadarDetailsFeature({ getClient, getUserRole = () => null,
     error.textContent = "";
     status.hidden = true;
     status.replaceChildren();
+    select.replaceChildren();
     const currentPlatform = state.data.platform;
     const currentName = currentPlatform.name || platformStatusLabel(currentPlatform.status);
     const originalLink = validatedPlatformSourceUrl(currentPlatform.sourceUrlFromPncp);
@@ -1015,19 +1025,20 @@ export function createRadarDetailsFeature({ getClient, getUserRole = () => null,
     closeButtons.forEach((button) => { button.disabled = false; });
     const urlInput = byId("radarPlatformConfirmUrl");
     if (urlInput) urlInput.value = "";
-    select.replaceChildren(new Option("Não identificada", ""));
     const submitButton = dialog.querySelector('button[type="submit"]');
     if (submitButton) submitButton.disabled = true;
     status.hidden = false;
     status.dataset.tone = "info";
-    status.textContent = "Carregando plataformas ativas…";
+    status.textContent = "Carregando o Portal de Compras Públicas…";
     try {
       const { data, error: queryError } = await getClient().from("radar_plataformas")
-        .select("id, nome")
+        .select("id, nome, slug")
         .eq("ativo", true)
+        .eq("slug", "portal-de-compras-publicas")
         .order("nome", { ascending: true });
-      if (queryError) throw new Error("Não foi possível carregar o catálogo de plataformas.");
-      state.platformChoices = (Array.isArray(data) ? data : []).filter((item) => typeof item.id === "string" && typeof item.nome === "string");
+      if (queryError) throw new Error("Não foi possível carregar o Portal de Compras Públicas.");
+      state.platformChoices = eligiblePortalPlatformChoices(data);
+      if (!state.platformChoices.length) throw new Error("O Portal de Compras Públicas não está disponível no catálogo do Radar.");
       state.platformChoices.forEach((item) => select.add(new Option(item.nome, item.id)));
       if (currentPlatform.status === "identified" && currentPlatform.id
         && state.platformChoices.some((item) => item.id === currentPlatform.id)) select.value = currentPlatform.id;
@@ -1035,7 +1046,7 @@ export function createRadarDetailsFeature({ getClient, getUserRole = () => null,
       if (submitButton) submitButton.disabled = false;
     } catch (loadError) {
       status.dataset.tone = "error";
-      status.textContent = loadError instanceof Error ? loadError.message : "Não foi possível carregar o catálogo de plataformas.";
+      status.textContent = loadError instanceof Error ? loadError.message : "Não foi possível carregar o Portal de Compras Públicas.";
     }
     if (typeof dialog.showModal === "function" && !dialog.open) dialog.showModal();
   }
@@ -1052,7 +1063,7 @@ export function createRadarDetailsFeature({ getClient, getUserRole = () => null,
     const error = byId("radarPlatformConfirmError");
     const status = byId("radarPlatformConfirmStatus");
     const submitButton = dialog?.querySelector('button[type="submit"]');
-    const platformId = String(select?.value || "") || null;
+    const platformId = String(select?.value || "");
     const sourceUrlInput = String(urlInput?.value || "").trim();
     const sourceUrl = sourceUrlInput ? validatedPlatformSourceUrl(sourceUrlInput) : null;
     error.textContent = "";
@@ -1066,8 +1077,8 @@ export function createRadarDetailsFeature({ getClient, getUserRole = () => null,
       urlInput?.focus();
       return;
     }
-    if (platformId && !state.platformChoices.some((item) => item.id === platformId)) {
-      error.textContent = "Selecione uma plataforma ativa do catálogo.";
+    if (!platformId || !state.platformChoices.some((item) => item.id === platformId && item.slug === "portal-de-compras-publicas")) {
+      error.textContent = "Confirme somente o Portal de Compras Públicas.";
       select?.focus();
       return;
     }
@@ -1085,7 +1096,7 @@ export function createRadarDetailsFeature({ getClient, getUserRole = () => null,
         action: "confirm_platform",
         numberControlPncp: currentId(),
         platformId,
-        status: platformId ? "identified" : "unidentified",
+        status: "identified",
         origin: "radar_details_ui",
         observation: "Confirmação individual no detalhamento do Radar.",
         ...(sourceUrl ? { sourceUrl } : {}),

@@ -2578,6 +2578,14 @@
       "migrations": [
         "supabase/migrations/20261117030354_radar_portal_confirmed_eligibility.sql"
       ]
+    },
+    {
+      "id": "ISSUE-413",
+      "backend_commits": [],
+      "frontend_commits": [
+        "c1244fa08c5eb8cf3381f2dbf30e596238a56200"
+      ],
+      "migrations": []
     }
   ]
 }

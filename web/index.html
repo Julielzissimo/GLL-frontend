@@ -965,7 +965,7 @@
       <section id="radarSearchPage" class="users-page radar-page hidden" aria-labelledby="radarTitle">
         <div id="radarListView">
         <div class="page-heading radar-page-heading">
-          <div><h1 id="radarTitle">Radar de Licitações</h1><p>Pesquise contratações pelo objeto, com cobertura nacional e filtros oficiais do Radar.</p></div>
+          <div><h1 id="radarTitle">Radar de Licitações</h1><p>Oportunidades confirmadas pelo GLL Radar Engine e disponíveis no Supabase.</p></div>
         </div>
         <div class="radar-view-switch" role="group" aria-label="Visualização do Radar">
           <button id="radarSearchViewButton" class="quiet-action compact-action" type="button" data-radar-action="show-search" aria-pressed="true">Pesquisar</button>
@@ -977,8 +977,13 @@
         <div id="radarWorkbench" class="radar-workbench">
           <aside id="radarFilterRail" class="radar-filter-rail" aria-label="Filtros da pesquisa">
         <form id="radarSearchForm" class="section-band radar-search-form" novalidate>
-          <div class="radar-section-heading"><div><h2>Filtros da pesquisa</h2><p>Refine oportunidades publicadas no PNCP.</p></div></div>
+          <div class="radar-section-heading"><div><h2>Filtros da pesquisa</h2><p>Refine editais sincronizados e confirmados para disputa no Portal de Compras Públicas.</p></div></div>
           <div class="radar-filter-grid">
+            <div class="radar-platform-eligibility" role="note" aria-label="Plataforma de disputa elegível">
+              <strong>Plataforma de disputa elegível</strong>
+              <span>Portal de Compras Públicas</span>
+              <small>Única plataforma exibida pelo Radar especializado; resultados confirmados pelo GLL Radar Engine.</small>
+            </div>
             <div class="radar-tag-field">
               <label for="radarTagInput">Objeto da contratação</label>
               <div class="radar-tag-entry"><ul id="radarTagList" class="radar-tag-list" aria-label="Termos adicionados à pesquisa"></ul><input id="radarTagInput" type="text" maxlength="200" autocomplete="off" placeholder="Digite um termo e pressione Enter" aria-describedby="radarTagsHelp" /></div>
@@ -991,14 +996,6 @@
               <div class="radar-modality-menu">
                 <button id="radarModalityToggle" class="quiet-action compact-action radar-modality-bulk-action" type="button" data-radar-action="toggle-modalities">Desmarcar todas</button>
                 <div id="radarModalities" class="radar-modality-list" role="group" aria-label="Modalidades ativas"></div>
-              </div>
-            </details>
-
-            <details id="radarPlatformDetails" class="radar-modality-filter">
-              <summary><span>Plataforma de disputa</span><strong id="radarPlatformSummary">Selecionar plataformas</strong></summary>
-              <div class="radar-modality-menu">
-                <div id="radarPlatforms" class="radar-modality-list" role="group" aria-label="Plataformas de disputa ativas"></div>
-                <label class="radar-modality-option"><input id="radarIncludeUnidentified" type="checkbox" /><span>Incluir licitações sem plataforma</span></label>
               </div>
             </details>
 
@@ -1099,6 +1096,14 @@
               </label>
             </div>
           </div>
+          <section id="radarOperationalSummary" class="radar-operational-summary" aria-label="Resumo operacional do Radar" hidden>
+            <article class="radar-operational-card"><span>Total de editais encontrados</span><strong id="radarTotalFound">—</strong><small id="radarTotalFoundDetail">Aguardando pesquisa.</small></article>
+            <article class="radar-operational-card"><span>Total recebendo propostas</span><strong id="radarTotalOpen">—</strong><small id="radarTotalOpenDetail">Aguardando pesquisa.</small></article>
+            <article class="radar-operational-card"><span>Última sincronização bem-sucedida</span><strong id="radarLastSuccessfulSync">—</strong><small id="radarLastSuccessfulSyncDetail">Aguardando pesquisa.</small></article>
+            <article class="radar-operational-card"><span>Estado da cobertura</span><strong id="radarCoverageValue">—</strong><small id="radarCoverageDetail">Aguardando pesquisa.</small></article>
+            <article class="radar-operational-card"><span>Fonte e método de confirmação</span><strong id="radarConfirmationValue">Portal de Compras Públicas</strong><small id="radarConfirmationDetail">Confirmação pelo GLL Radar Engine.</small></article>
+            <article id="radarUpdateState" class="radar-operational-card" data-tone="info"><span>Situação da atualização</span><strong id="radarUpdateStateValue">—</strong><small id="radarUpdateStateDetail">Aguardando pesquisa.</small></article>
+          </section>
           <div id="radarCoverageFeedback" class="radar-feedback" data-tone="info" role="status" aria-live="polite" hidden></div>
           <div id="radarResultsContent"></div>
           <nav id="radarPagination" class="radar-pagination" aria-label="Paginação dos resultados do Radar" hidden></nav>
@@ -1123,16 +1128,16 @@
         <dialog id="radarPlatformConfirmDialog" class="quotation-item-modal radar-platform-confirmation-modal" aria-labelledby="radarPlatformConfirmTitle" aria-describedby="radarPlatformConfirmSummary">
           <div class="quotation-item-modal-shell">
             <div class="quotation-item-modal-header">
-              <div><h2 id="radarPlatformConfirmTitle">Confirmar plataforma de disputa</h2></div>
+              <div><h2 id="radarPlatformConfirmTitle">Confirmar Portal de Compras Públicas</h2></div>
               <button class="quotation-item-modal-close modal-close-button" type="button" data-radar-platform-dialog-close aria-label="Fechar confirmação"><span data-gll-icon="close" aria-hidden="true"></span></button>
             </div>
             <form id="radarPlatformConfirmForm" class="radar-platform-confirmation-form">
               <p id="radarPlatformConfirmSummary" class="radar-platform-confirmation-summary"></p>
-              <label for="radarPlatformConfirmSelect">Plataforma confirmada
-                <select id="radarPlatformConfirmSelect"><option value="">Não identificada</option></select>
+              <label for="radarPlatformConfirmSelect">Plataforma elegível
+                <select id="radarPlatformConfirmSelect" required></select>
               </label>
               <label for="radarPlatformConfirmUrl">URL corrigida da disputa (opcional)
-                <input id="radarPlatformConfirmUrl" type="url" maxlength="2048" autocomplete="off" placeholder="https://plataforma.gov.br/processo" aria-describedby="radarPlatformConfirmUrlHelp" />
+                <input id="radarPlatformConfirmUrl" type="url" maxlength="2048" autocomplete="off" placeholder="URL HTTPS da disputa" aria-describedby="radarPlatformConfirmUrlHelp" />
               </label>
               <small id="radarPlatformConfirmUrlHelp">Use HTTPS. Deixe em branco para manter a URL corrigida anteriormente ou usar apenas o link informado pelo PNCP.</small>
               <p id="radarPlatformConfirmError" class="form-error" role="alert"></p>

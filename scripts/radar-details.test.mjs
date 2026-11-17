@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   createRadarFavoritesService,
+  eligiblePortalPlatformChoices,
   formatRadarContractEstimatedValue,
   formatRadarItemMoney,
   mapRadarFavoriteMetadata,
@@ -78,6 +79,16 @@ test("valida link seguro da plataforma sem substituir o link oficial do PNCP", (
   assert.equal(validatedPlatformSourceUrl("http://portal.example/processo"), null);
   assert.equal(validatedPlatformSourceUrl("javascript:alert(1)"), null);
   assert.equal(validatedOfficialPncpUrl("https://pncp.gov.br/app/editais/123"), "https://pncp.gov.br/app/editais/123");
+});
+
+test("a confirmação de plataforma no detalhe aceita somente o Portal de Compras Públicas", () => {
+  const choices = eligiblePortalPlatformChoices([
+    { id: "portal-id", nome: "Portal de Compras Públicas", slug: "portal-de-compras-publicas" },
+    { id: "other-id", nome: "Outra plataforma", slug: "outra-plataforma" },
+    { id: null, nome: "Incompleta", slug: "portal-de-compras-publicas" },
+  ]);
+  assert.deepEqual(choices, [{ id: "portal-id", nome: "Portal de Compras Públicas", slug: "portal-de-compras-publicas" }]);
+  assert.deepEqual(eligiblePortalPlatformChoices(null), []);
 });
 
 test("preserva metadados da licitação ao montar a visualização de favoritos", () => {
