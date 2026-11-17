@@ -20,6 +20,7 @@ test("a interface pública mantém os filtros solicitados e fixa o Portal como p
   assert.ok(platformSelect, "campo da plataforma de disputa presente");
   assert.match(platformSelect[1], /\bdisabled\b/u);
   assert.match(platformSelect[2], /<option value="portal-de-compras-publicas" selected>Portal de Compras Públicas<\/option>/u);
+  assert.doesNotMatch(searchForm, /radarPlatformHelp|Única plataforma exibida pelo Radar especializado; resultados confirmados pelo GLL Radar Engine\./u);
   assert.doesNotMatch(searchForm, /radar-platform-eligibility/u);
   assert.doesNotMatch(searchForm, /radarPlatformDetails|radarPlatforms|radarIncludeUnidentified/u);
   assert.doesNotMatch(detailsFeature, /new Option\(["']Não identificada["']/u);
