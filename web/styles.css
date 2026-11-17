@@ -8301,14 +8301,16 @@ button.history-row:hover {
 .radar-items-table { min-width: 86rem; }
 .radar-items-table td { max-width: 25rem; white-space: pre-wrap; }
 .radar-items-table th.radar-item-description,
-.radar-items-table td.radar-item-description { width: 26rem; min-width: 26rem; max-width: none; }
+.radar-items-table td.radar-item-description { width: auto; min-width: 0; max-width: 26rem; }
+.radar-items-table th.radar-item-unit,
+.radar-items-table td.radar-item-unit { width: 1%; min-width: 0; max-width: none; white-space: nowrap; }
 .radar-description-preview,
-.radar-description-toggle { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; overflow-wrap: anywhere; white-space: pre-wrap; }
-.radar-description-toggle { width: 100%; margin: 0; padding: 0; border: 0; border-radius: var(--radius-sm); background: transparent; color: inherit; font: inherit; line-height: inherit; text-align: left; text-overflow: ellipsis; }
+.radar-description-toggle { display: -webkit-box; width: fit-content; min-width: 0; max-width: 26rem; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; overflow-wrap: anywhere; white-space: pre-wrap; }
+.radar-description-toggle { margin: 0; padding: 0; border: 0; border-radius: var(--radius-sm); background: transparent; color: inherit; font: inherit; line-height: inherit; text-align: left; text-overflow: ellipsis; }
 .radar-description-toggle.is-expandable { cursor: pointer; transition: color 160ms ease, background-color 160ms ease, transform 160ms ease; }
 .radar-description-toggle.is-expandable:hover { transform: translateY(-1px); background: var(--color-surface-subtle); color: var(--color-primary); text-decoration: underline; text-underline-offset: 2px; }
 .radar-description-toggle.is-expandable:focus-visible { outline: 2px solid var(--gll-focus); outline-offset: 2px; }
-.radar-description-toggle[aria-expanded="true"] { display: block; -webkit-line-clamp: unset; overflow: visible; }
+.radar-description-toggle[aria-expanded="true"] { display: block; width: 100%; -webkit-line-clamp: unset; overflow: visible; }
 .radar-items-table td.numeric,
 .radar-items-table th.numeric { font-variant-numeric: tabular-nums; }
 .radar-document-list { display: grid; gap: var(--space-sm); margin: 0; padding: 0; list-style: none; }
