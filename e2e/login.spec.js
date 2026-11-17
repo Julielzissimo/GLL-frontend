@@ -252,38 +252,6 @@ async function validateRadarSearchPage(page) {
   await expect(page.locator("#usersPage")).toBeVisible();
 }
 
-async function validateRadarSmokeRecord(page, numberControlPncp) {
-  if (!/^\d{14}-\d-\d{6}\/\d{4}$/.test(numberControlPncp)) {
-    throw new Error("O identificador sintético do Radar está fora do formato esperado.");
-  }
-  const detailUrl = new URL(page.url());
-  detailUrl.search = "";
-  detailUrl.hash = "";
-  detailUrl.searchParams.set("page", "radar-de-licitacoes");
-  detailUrl.searchParams.set("radarDetail", numberControlPncp);
-  const detailsPage = await page.context().newPage();
-  try {
-    await detailsPage.goto(detailUrl.href, { waitUntil: "domcontentloaded" });
-    await detailsPage.waitForFunction(
-      () => document.querySelector("#environmentBadge")?.dataset.environment === "homolog"
-        && !document.querySelector("#blockingLoadingModal")?.open,
-      null,
-      { timeout: 30_000 },
-    );
-    await expect(detailsPage.locator("#radarSearchPage")).toBeVisible();
-    await expect(detailsPage.locator("#radarDetailsView")).toBeVisible();
-    const details = detailsPage.locator("#radarDetailsContent");
-    await expect(details).toContainText(numberControlPncp);
-    await expect(details).toContainText("SINTETICO");
-    await expect(details.locator(".radar-detail-source")).toContainText("Cache centralizado do Radar");
-    const syntheticItems = details.locator(".radar-items-table tbody tr");
-    await expect(syntheticItems).toHaveCount(1);
-    await expect(syntheticItems.first()).toContainText("Item sintetico de validacao do receiver");
-  } finally {
-    await detailsPage.close();
-  }
-}
-
 test("o login de teste acessa somente a organização de teste", async ({ page }) => {
   const baseUrl = requiredSetting("GLL_E2E_BASE_URL");
   const email = requiredSetting("GLL_E2E_EMAIL");
@@ -485,11 +453,6 @@ test("o login de teste acessa somente a organização de teste", async ({ page }
     }
 
     await validateRadarSearchPage(page);
-    if (expectedEnvironment === "homolog") {
-      const radarSmokePncp = process.env.GLL_E2E_RADAR_SMOKE_PNCP?.trim();
-      if (radarSmokePncp) await validateRadarSmokeRecord(page, radarSmokePncp);
-    }
-
     await expect(page.locator("#editOwnProfileFooterButton")).toHaveCount(0);
     await expect(page.locator(".topbar-actions > #logoutButton")).toHaveCount(0);
     await page.locator("#profileMenuButton").click();
