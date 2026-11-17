@@ -554,7 +554,7 @@ export function createRadarDetailsFeature({ getClient, getUserRole = () => null,
       ["Valor estimado", estimatedValue],
       ["Publicação no PNCP", dateValue(contract.dataPublicacaoPncp, dateFormatter)],
       ["Abertura das propostas", dateValue(contract.dataAberturaProposta)],
-      ["Encerramento das propostas", dateValue(contract.dataEncerramentoProposta)],
+      ["Limite p/ Recebimento das Propostas", dateValue(contract.dataEncerramentoProposta)],
       ["Atualização dos dados no Radar", dateValue(platform.dataUpdatedAt || contract.dataAtualizacaoGlobal || contract.dataAtualizacao)],
       ["Situação", contract.situacaoCompraNome],
     ];
