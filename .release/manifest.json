@@ -2567,6 +2567,16 @@
         "558daac8cd5241697164a18006e6f538cc03639d"
       ],
       "migrations": []
+    },
+    {
+      "id": "ISSUE-407",
+      "backend_commits": [
+        "4deb4e984d870e30961336c942dbd599860d5309"
+      ],
+      "frontend_commits": [],
+      "migrations": [
+        "supabase/migrations/20261117030354_radar_portal_confirmed_eligibility.sql"
+      ]
     }
   ]
 }
