@@ -298,6 +298,7 @@ jobs:
           GLL_E2E_EMAIL: ${{ secrets.GLL_E2E_EMAIL }}
           GLL_E2E_PASSWORD: ${{ secrets.GLL_E2E_PASSWORD }}
           GLL_E2E_EXPECTED_ENVIRONMENT: homolog
+          GLL_E2E_RADAR_SMOKE_PNCP: ${{ vars.GLL_E2E_RADAR_SMOKE_PNCP }}
         run: npm run test:e2e:login
 
       - name: Validar armazenamento R2 com arquivo sintético
