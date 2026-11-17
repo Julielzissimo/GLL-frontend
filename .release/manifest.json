@@ -1417,12 +1417,15 @@
     {
       "id": "RADAR-ENGINE-T8",
       "backend_commits": [
-        "0ed2c927c2f0a786309c9fc4c0caaf05381dad4d"
+        "0ed2c927c2f0a786309c9fc4c0caaf05381dad4d",
+        "8bf66686afe0ad36c65d5af8f5ac398cbd46597b"
       ],
       "frontend_commits": [
         "aedecf77d7ea608d34224f17f5f8195c75030dba"
       ],
-      "migrations": []
+      "migrations": [
+        "supabase/migrations/20261117004431_radar_engine_sync_diagnostics.sql"
+      ]
     },
     {
       "id": "ISSUE-123",
