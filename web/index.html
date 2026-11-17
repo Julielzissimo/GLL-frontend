@@ -979,11 +979,12 @@
         <form id="radarSearchForm" class="section-band radar-search-form" novalidate>
           <div class="radar-section-heading"><div><h2>Filtros da pesquisa</h2><p>Refine editais sincronizados e confirmados para disputa no Portal de Compras Públicas.</p></div></div>
           <div class="radar-filter-grid">
-            <div class="radar-platform-eligibility" role="note" aria-label="Plataforma de disputa elegível">
-              <strong>Plataforma de disputa elegível</strong>
-              <span>Portal de Compras Públicas</span>
-              <small>Única plataforma exibida pelo Radar especializado; resultados confirmados pelo GLL Radar Engine.</small>
-            </div>
+            <label class="radar-platform-field" for="radarPlatform">Plataforma de disputa elegível
+              <select id="radarPlatform" disabled aria-describedby="radarPlatformHelp">
+                <option value="portal-de-compras-publicas" selected>Portal de Compras Públicas</option>
+              </select>
+              <small id="radarPlatformHelp">Única plataforma exibida pelo Radar especializado; resultados confirmados pelo GLL Radar Engine.</small>
+            </label>
             <div class="radar-tag-field">
               <label for="radarTagInput">Objeto da contratação</label>
               <div class="radar-tag-entry"><ul id="radarTagList" class="radar-tag-list" aria-label="Termos adicionados à pesquisa"></ul><input id="radarTagInput" type="text" maxlength="200" autocomplete="off" placeholder="Digite um termo e pressione Enter" aria-describedby="radarTagsHelp" /></div>
