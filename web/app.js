@@ -70,6 +70,7 @@ const DEFAULT_GLL_CONFIG = {
   designSystemEnabled: true,
   radarEngineAdminEnabled: false,
   radarDetailsFallbackEnabled: false,
+  radarDocumentsFallbackEnabled: false,
   organizationDocumentsEnabled: false,
 };
 const GLL_CONFIG = {
