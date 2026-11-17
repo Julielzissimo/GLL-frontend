@@ -1430,7 +1430,8 @@
         "fc529de3fc4405a62387f8c4d666b3c8d716c452",
         "932bfee426f89763727a0417ceccb6fca39cc367",
         "ff67254f60a1b7c710d732239fbc25e681637f04",
-        "a4be4f1eae6d846db2db1bcbc6caa1c8dc3987ec"
+        "a4be4f1eae6d846db2db1bcbc6caa1c8dc3987ec",
+        "a5c586d97ae1682957445eaf34b09e4c3d6198e4"
       ],
       "migrations": [
         "supabase/migrations/20261117004431_radar_engine_sync_diagnostics.sql"
