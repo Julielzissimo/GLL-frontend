@@ -2,10 +2,14 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   buildRadarDetailsHref,
+  buildRadarOpenProposalCountPayload,
   buildRadarSearchPayload,
   parseRadarTags,
   radarDefaultPeriodDates,
   radarEmptyResultState,
+  radarLatestDisplayedSync,
+  radarOperationalStatus,
+  radarPlatformConfirmation,
   radarPlatformSummary,
   validatedPncpSourceUrl,
   validatedPlatformSourceUrl,
@@ -82,36 +86,32 @@ test("envia modalidade parcial, UF e município somente quando relacionados", ()
   assert.equal(payload.proposalReceiptState, "closed");
 });
 
-test("envia seleção múltipla de plataformas e a opção de incluir registros desconhecidos", () => {
-  const first = "10000000-0000-4000-8000-000000000001";
-  const second = "10000000-0000-4000-8000-000000000002";
-  const onePlatform = buildRadarSearchPayload({ platformIds: [first], includeUnidentified: false });
-  assert.deepEqual(onePlatform.platformIds, [first]);
-  assert.equal("includeUnidentified" in onePlatform, false);
-  const manyPlatforms = buildRadarSearchPayload({ platformIds: [first, second], includeUnidentified: true });
-  assert.deepEqual(manyPlatforms.platformIds, [first, second]);
-  assert.equal(manyPlatforms.includeUnidentified, true);
-  const unknownOnly = buildRadarSearchPayload({ platformIds: [], includeUnidentified: true });
-  assert.deepEqual(unknownOnly.platformIds, []);
-  assert.equal(unknownOnly.includeUnidentified, true);
+test("ignora seleções legadas de plataforma e nunca amplia a pesquisa pública", () => {
+  const payload = buildRadarSearchPayload({
+    tags: ["computador"],
+    platformIds: ["legacy-platform-a", "legacy-platform-b"],
+    includeUnidentified: true,
+  });
+  assert.equal("platformIds" in payload, false);
+  assert.equal("includeUnidentified" in payload, false);
+  assert.deepEqual(payload.tags, ["computador"]);
 });
 
-test("combina filtro de plataforma com os demais filtros e mantém a página selecionada", () => {
-  const platformId = "10000000-0000-4000-8000-000000000001";
+test("preserva filtros oficiais e paginação sem enviar seletor de plataforma", () => {
   const payload = buildRadarSearchPayload({
     tags: ["computador"],
     modalities: [6],
     uf: "ES",
     municipalityIbgeId: "3205309",
-    platformIds: [platformId],
+    platformIds: ["legacy-platform"],
     includeUnidentified: true,
     publishedFrom: "2026-10-01",
     publishedTo: "2026-10-10",
     proposalReceiptState: "open",
   }, { page: 3, activeModalities: [1, 6] });
   assert.equal(payload.page, 3);
-  assert.deepEqual(payload.platformIds, [platformId]);
-  assert.equal(payload.includeUnidentified, true);
+  assert.equal("platformIds" in payload, false);
+  assert.equal("includeUnidentified" in payload, false);
   assert.equal(payload.uf, "ES");
   assert.equal(payload.municipalityIbgeId, 3205309);
   assert.deepEqual(payload.tags, ["computador"]);
@@ -146,6 +146,62 @@ test("não declara ausência definitiva quando a cobertura está parcial ou não
   assert.equal(radarEmptyResultState({ status: "partial", complete: false }).kind, "partial-empty");
   assert.equal(radarEmptyResultState({ status: "not_collected", complete: false }).kind, "not-collected");
   assert.equal(radarEmptyResultState({ status: "complete", complete: true }).kind, "complete-empty");
+  assert.equal(radarEmptyResultState({ status: "failed" }).title, "Erro de sincronização");
+  assert.equal(radarEmptyResultState({ status: "stale" }).title, "Dados desatualizados");
+});
+
+test("calcula o total de editais recebendo propostas pela API para o mesmo escopo", () => {
+  const filters = {
+    tags: ["notebook"],
+    modalities: [6],
+    uf: "SP",
+    municipalityIbgeId: "3550308",
+    publishedFrom: "2026-10-01",
+    publishedTo: "2026-10-31",
+    proposalReceiptState: "all",
+    pageSize: 50,
+    sortBy: "publishedAt",
+    sortDirection: "desc",
+  };
+  const countPayload = buildRadarOpenProposalCountPayload(filters, { activeModalities: [1, 6] });
+  assert.equal(countPayload.proposalReceiptState, "open");
+  assert.equal(countPayload.page, 1);
+  assert.equal(countPayload.pageSize, 50);
+  assert.equal(countPayload.refreshCoverage, false);
+  assert.equal(countPayload.uf, "SP");
+  assert.equal(countPayload.municipalityIbgeId, 3550308);
+  assert.deepEqual(countPayload.modalities, [6]);
+  assert.equal(buildRadarOpenProposalCountPayload({ ...filters, proposalReceiptState: "open" }), null);
+});
+
+test("distingue estado vazio, coleta ativa, dados desatualizados, indisponibilidade e erro de sincronização", () => {
+  assert.equal(radarOperationalStatus({ coverage: { status: "complete" }, totalCount: 0 }).kind, "none-found");
+  assert.equal(radarOperationalStatus({ coverage: { status: "partial" }, collectionTask: { status: "running" } }).kind, "collection-running");
+  assert.equal(radarOperationalStatus({ coverage: { status: "stale" } }).kind, "stale");
+  assert.equal(radarOperationalStatus({ coverage: { status: "not_collected" } }).kind, "collection-unavailable");
+  assert.equal(radarOperationalStatus({ coverage: { status: "failed" } }).kind, "sync-error");
+  assert.equal(radarOperationalStatus({ error: { kind: "connection" } }).kind, "collection-unavailable");
+});
+
+test("apresenta o Portal e a fonte e método retornados pela sincronização", () => {
+  assert.deepEqual(radarPlatformConfirmation({
+    platformClassificationMethod: "source_domain",
+    platformEvidenceSource: "linkSistemaOrigem",
+  }), {
+    platform: "Portal de Compras Públicas",
+    method: "Domínio da URL de origem",
+    source: "Link de origem do PNCP",
+  });
+  assert.equal(radarPlatformConfirmation({}).platform, "Portal de Compras Públicas");
+});
+
+test("calcula o horário mais recente entre os editais exibidos sem inferir telemetria ausente", () => {
+  assert.equal(radarLatestDisplayedSync([
+    { dataUpdatedAt: "2026-10-10T10:00:00Z" },
+    { dataUpdatedAt: "2026-10-10T11:30:00Z" },
+    { dataUpdatedAt: null },
+  ]), "2026-10-10T11:30:00.000Z");
+  assert.equal(radarLatestDisplayedSync([]), null);
 });
 
 test("só aceita link HTTPS da origem oficial PNCP em caminho de aplicação", () => {
