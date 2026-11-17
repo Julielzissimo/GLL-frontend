@@ -373,6 +373,7 @@ export function createRadarFavoritesService({ getClient } = {}) {
 }
 
 export function createRadarDetailsFeature({ getClient, getUserRole = () => null, toast = () => {}, onFavoriteChanged = () => {}, onClassificationChanged = () => {}, onOpenBid = () => {}, fallbackEnabled = globalThis.window?.GLL_CONFIG?.radarDetailsFallbackEnabled === true } = {}) {
+  const documentsFallbackEnabled = fallbackEnabled || globalThis.window?.GLL_CONFIG?.radarDocumentsFallbackEnabled === true;
   const root = globalThis.document?.getElementById("radarSearchPage");
   const favorites = createRadarFavoritesService({ getClient });
   const preprocessed = createRadarPreprocessedService({ getClient });
@@ -744,8 +745,8 @@ export function createRadarDetailsFeature({ getClient, getUserRole = () => null,
   function renderDocuments(documentsState) {
     if (!documentsState || documentsState.status === "not_loaded") {
       return `<section class="section-band radar-detail-section" aria-labelledby="radarDocumentsTitle">
-        <div class="radar-detail-section-heading"><div><h2 id="radarDocumentsTitle">Documentos do edital</h2><p>${fallbackEnabled ? "A consulta externa de documentos está disponível como ação de contingência." : "A consulta externa de documentos está desativada nesta etapa."}</p></div></div>
-        ${fallbackEnabled ? '<button class="quiet-action compact-action" type="button" data-radar-documents-refresh>Consultar documentos no PNCP</button>' : ""}
+        <div class="radar-detail-section-heading"><div><h2 id="radarDocumentsTitle">Documentos do edital</h2><p>${documentsFallbackEnabled ? "A consulta externa de documentos está disponível como ação de contingência." : "A consulta externa de documentos está desativada nesta etapa."}</p></div></div>
+        ${documentsFallbackEnabled ? '<button class="quiet-action compact-action" type="button" data-radar-documents-refresh>Consultar documentos no PNCP</button>' : ""}
       </section>`;
     }
     if (documentsState?.status === "pending") {
@@ -756,7 +757,7 @@ export function createRadarDetailsFeature({ getClient, getUserRole = () => null,
     if (documentsState?.status === "unavailable") {
       return `<section class="section-band radar-detail-section" aria-labelledby="radarDocumentsTitle">
         <div class="radar-detail-section-heading"><div><h2 id="radarDocumentsTitle">Documentos do edital</h2><p>Não foi possível consultar os documentos agora.</p></div></div>
-        ${fallbackEnabled ? '<button class="quiet-action compact-action" type="button" data-radar-documents-refresh>Consultar novamente</button>' : ""}
+        ${documentsFallbackEnabled ? '<button class="quiet-action compact-action" type="button" data-radar-documents-refresh>Consultar novamente</button>' : ""}
       </section>`;
     }
     if (!documentsState || documentsState.status === "not_published" || !documentsState.documents?.length) {
@@ -834,7 +835,7 @@ export function createRadarDetailsFeature({ getClient, getUserRole = () => null,
   }
 
   async function loadDocuments(numberControlPncp = currentId(), detailsRequestId = state.requestId) {
-    if (!fallbackEnabled || !identityIsValid(numberControlPncp)) return;
+    if (!documentsFallbackEnabled || !identityIsValid(numberControlPncp)) return;
     const documentRequestId = ++state.documentRequestId;
     if (state.data && currentId() === numberControlPncp) {
       state.data = { ...state.data, documents: { status: "pending", documents: [], errorCode: null } };
