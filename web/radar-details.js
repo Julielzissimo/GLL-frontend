@@ -391,6 +391,7 @@ export function createRadarDetailsFeature({ getClient, getUserRole = () => null,
     documentRequestId: 0,
     historyEntry: false,
     itemsPage: 1,
+    expandedDescriptionItemKeys: new Set(),
     selectedItemNumbers: createRadarItemSelectionState(),
     importStatus: null,
     importStatusError: "",
@@ -670,20 +671,34 @@ export function createRadarDetailsFeature({ getClient, getUserRole = () => null,
   function renderItemTable(items, { selectable = false } = {}) {
     return `<div class="table-wrap radar-detail-items-wrap" role="region" tabindex="0" aria-label="Itens da contratação; use a rolagem horizontal para ver todas as colunas."><table class="radar-results-table radar-items-table">
       <caption class="sr-only">Itens da contratação armazenados no Radar</caption>
-      <thead><tr>${selectable ? '<th scope="col">Importar</th>' : ""}<th scope="col">Item</th><th scope="col" class="radar-item-description">Descrição</th><th scope="col" class="numeric">Quantidade</th><th scope="col">Unidade</th><th scope="col" class="numeric">Valor unitário estimado</th><th scope="col" class="numeric">Valor total</th><th scope="col">Situação</th><th scope="col">Critério de julgamento</th><th scope="col">Informação complementar</th></tr></thead>
+      <thead><tr>${selectable ? '<th scope="col">Importar</th>' : ""}<th scope="col">Item</th><th scope="col" class="radar-item-description">Descrição</th><th scope="col" class="numeric">Quantidade</th><th scope="col">Unidade</th><th scope="col" class="numeric">Valor unitário estimado</th><th scope="col" class="numeric">Valor total</th></tr></thead>
       <tbody>${items.map((item) => `<tr>
         ${selectable ? renderItemSelection(item) : ""}
         <td>${escapeHtml(item.number)}</td>
-        <td class="radar-item-description">${escapeHtml(item.description || "Não informado")}</td>
+        <td class="radar-item-description"><span class="radar-description-preview" data-radar-description-preview="${escapeHtml(`${currentId()}::${item.number}`)}">${escapeHtml(item.description || "Não informado")}</span></td>
         <td class="numeric">${item.quantity === null || item.quantity === undefined ? "—" : escapeHtml(quantityFormatter.format(Number(item.quantity)))}</td>
         <td>${escapeHtml(item.unit || "—")}</td>
         <td class="numeric">${escapeHtml(formatRadarItemMoney(item.unitEstimatedValue, item.budgetSecret))}</td>
         <td class="numeric">${escapeHtml(formatRadarItemMoney(item.totalValue, item.budgetSecret))}</td>
-        <td>${escapeHtml(item.situationName || "Não informado")}</td>
-        <td>${escapeHtml(item.judgmentCriterion || "Não informado")}</td>
-        <td>${escapeHtml(item.additionalInformation || "—")}</td>
       </tr>`).join("")}</tbody>
     </table></div>`;
+  }
+
+  function initializeRadarDescriptionToggles(container) {
+    for (const preview of container.querySelectorAll("[data-radar-description-preview]")) {
+      if (preview.scrollHeight <= preview.clientHeight + 1) continue;
+      const key = preview.dataset.radarDescriptionPreview || "";
+      const expanded = state.expandedDescriptionItemKeys.has(key);
+      const toggle = preview.ownerDocument.createElement("button");
+      toggle.type = "button";
+      toggle.className = "radar-description-toggle is-expandable";
+      toggle.dataset.radarDescriptionToggle = "";
+      toggle.dataset.radarDescriptionKey = key;
+      toggle.setAttribute("aria-expanded", String(expanded));
+      toggle.title = expanded ? "Clique para recolher a descrição" : "Clique para expandir a descrição completa";
+      toggle.textContent = preview.textContent || "";
+      preview.replaceWith(toggle);
+    }
   }
 
   function renderItemSelection(item) {
@@ -814,6 +829,7 @@ export function createRadarDetailsFeature({ getClient, getUserRole = () => null,
         <aside class="radar-detail-aside">${renderDocuments(state.data.documents)}${renderImportPanel(state.data.items)}</aside>
       </div>
       ${renderItems(state.data.items, state.data.itemSync)}`;
+    initializeRadarDescriptionToggles(content);
     restoreFocusedDetailsControl(content, focusTarget);
   }
 
@@ -1236,6 +1252,7 @@ export function createRadarDetailsFeature({ getClient, getUserRole = () => null,
     state.platformChoices = [];
     if (!keepSelection) {
       state.itemsPage = 1;
+      state.expandedDescriptionItemKeys.clear();
       state.selectedItemNumbers.clear();
     }
     state.opened = true;
@@ -1268,6 +1285,7 @@ export function createRadarDetailsFeature({ getClient, getUserRole = () => null,
     state.documentRequestId += 1;
     state.current = null;
     state.data = null;
+    state.expandedDescriptionItemKeys.clear();
     state.opened = false;
     state.loading = false;
     state.itemStatusCommunicationError = false;
@@ -1294,6 +1312,21 @@ export function createRadarDetailsFeature({ getClient, getUserRole = () => null,
     if (!root || root.dataset.radarDetailsBound === "true") return;
     root.dataset.radarDetailsBound = "true";
     root.addEventListener("click", (event) => {
+      const descriptionToggle = event.target.closest?.("[data-radar-description-toggle]");
+      if (descriptionToggle) {
+        const expanded = descriptionToggle.getAttribute("aria-expanded") === "true";
+        const nextExpanded = !expanded;
+        descriptionToggle.setAttribute("aria-expanded", String(nextExpanded));
+        descriptionToggle.title = nextExpanded
+          ? "Clique para recolher a descrição"
+          : "Clique para expandir a descrição completa";
+        const key = descriptionToggle.dataset.radarDescriptionKey;
+        if (key) {
+          if (nextExpanded) state.expandedDescriptionItemKeys.add(key);
+          else state.expandedDescriptionItemKeys.delete(key);
+        }
+        return;
+      }
       if (event.target.closest("[data-radar-platform-confirm]")) {
         void openPlatformConfirmation();
       } else if (event.target.closest("[data-radar-platform-dialog-close]")) {
