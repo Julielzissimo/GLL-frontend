@@ -40,6 +40,19 @@ function radarCacheResponse(context, table, numberControlPncp) {
   });
 }
 
+function radarDocumentsResponse(page, numberControlPncp) {
+  return page.waitForResponse((response) => {
+    const request = response.request();
+    if (request.method() !== "POST" || !new URL(response.url()).pathname.endsWith("/functions/v1/radar-details")) return false;
+    try {
+      const payload = request.postDataJSON();
+      return payload.action === "documents" && payload.numberControlPncp === numberControlPncp;
+    } catch {
+      return false;
+    }
+  }, { timeout: 45_000 });
+}
+
 async function submitRadarSearch(page, predicate) {
   const responsePromise = radarSearchResponse(page, predicate);
   await page.locator("#radarSearchButton").click();
@@ -187,6 +200,24 @@ async function validateRadarSearchPage(page) {
   await expect(detailsPage.locator("#radarDetailsTitle")).toBeVisible();
   await expect(detailsPage.locator("#radarDetailsContent #radarItemsTitle")).toBeVisible();
   await expect(detailsPage.locator("#radarDetailsContent #radarImportPanelTitle")).toBeVisible();
+  if (process.env.GLL_E2E_EXPECTED_ENVIRONMENT === "homolog") {
+    const documentsFallbackEnabled = await detailsPage.evaluate(() => window.GLL_CONFIG?.radarDocumentsFallbackEnabled === true);
+    if (!documentsFallbackEnabled) throw new Error("A consulta de documentos do Radar não está habilitada em homologação.");
+    const documentsRefresh = detailsPage.locator("[data-radar-documents-refresh]");
+    await expect(documentsRefresh).toBeVisible();
+    const documentsResponsePromise = radarDocumentsResponse(detailsPage, numberControlPncp);
+    await documentsRefresh.click();
+    const documentsResponse = await documentsResponsePromise;
+    if (!documentsResponse.ok()) {
+      throw new Error(`A consulta de documentos do edital retornou HTTP ${documentsResponse.status()}.`);
+    }
+    const documentsBody = await documentsResponse.json();
+    if (documentsBody.status !== "available"
+      || documentsBody.numberControlPncp !== numberControlPncp
+      || !Array.isArray(documentsBody.documents?.documents)) {
+      throw new Error("A resposta da consulta de documentos do Radar não segue o contrato esperado.");
+    }
+  }
   await expect(page.locator("#radarListView")).toBeVisible();
   await expect(page.locator("#radarDetailsView")).toBeHidden();
   const renderedItems = await detailsPage.locator("#radarDetailsContent [data-radar-select-item]").count();
