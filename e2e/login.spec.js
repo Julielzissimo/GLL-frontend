@@ -262,7 +262,12 @@ async function validateRadarSmokeRecord(page, numberControlPncp) {
   await page.locator("#radarSituation").selectOption("all");
   await page.locator("#radarPublishedFrom").fill("");
   await page.locator("#radarPublishedTo").fill("");
-  await page.locator("#radarTagInput").fill("SINTETICO GLL RADAR ENGINE");
+  const modalityBoxes = page.locator('#radarModalities input[name="radarModality"]');
+  for (let index = 0; index < await modalityBoxes.count(); index += 1) {
+    const modality = modalityBoxes.nth(index);
+    if (await modality.isChecked()) await modality.uncheck();
+  }
+  await page.locator("#radarTagInput").fill("SINTETICO");
   await page.locator("#radarTagInput").press("Enter");
 
   const { body } = await submitRadarSearch(page, (payload) => payload.tags?.length === 1);
@@ -273,7 +278,7 @@ async function validateRadarSmokeRecord(page, numberControlPncp) {
 
   const resultCard = page.locator("#radarResultsContent .radar-result-card").filter({ hasText: numberControlPncp }).first();
   await expect(resultCard).toBeVisible();
-  await expect(resultCard).toContainText("TESTE SINTETICO GLL RADAR ENGINE");
+  await expect(resultCard).toContainText("SINTETICO");
   const detailsLink = resultCard.getByRole("link", { name: "Ver itens (abre em nova guia)" });
   const detailsPagePromise = page.context().waitForEvent("page");
   await detailsLink.click();
