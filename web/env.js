@@ -12,4 +12,5 @@ window.GLL_CONFIG = {
   sessionMaxLifetimeHours: 8,
   radarEngineAdminEnabled: true,
   radarDetailsFallbackEnabled: false,
+  radarDocumentsFallbackEnabled: false,
 };
