@@ -8324,10 +8324,7 @@ button.history-row:hover {
 .radar-filter-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); align-items: start; gap: var(--space-lg); }
 .radar-filter-grid > label,
 .radar-tag-field { display: grid; min-width: 0; gap: var(--space-xs); font-weight: var(--font-weight-semibold); }
-.radar-platform-eligibility { display: grid; grid-column: 1 / -1; gap: var(--space-xs); padding: var(--space-md) var(--space-lg); border: var(--border-default); border-left: 3px solid var(--color-info); border-radius: var(--radius-sm); background: var(--color-info-surface); }
-.radar-platform-eligibility strong { color: var(--color-text-secondary); font-size: var(--font-size-xs); }
-.radar-platform-eligibility span { color: var(--color-text-primary); font-weight: var(--font-weight-semibold); }
-.radar-platform-eligibility small { color: var(--color-text-secondary); font-size: var(--font-size-xs); line-height: var(--line-height-normal); }
+.radar-platform-field { grid-column: 1 / -1; }
 .radar-filter-grid > label input,
 .radar-filter-grid > label select,
 .radar-tag-entry input,

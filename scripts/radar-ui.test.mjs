@@ -16,6 +16,11 @@ test("a interface pública mantém os filtros solicitados e fixa o Portal como p
     "radarPublishedFrom", "radarPublishedTo", "radarSituation",
   ]) assert.match(searchForm, new RegExp(`id="${id}"`, "u"));
   assert.match(searchForm, /Portal de Compras Públicas/u);
+  const platformSelect = searchForm.match(/<select id="radarPlatform"([^>]*)>([\s\S]*?)<\/select>/u);
+  assert.ok(platformSelect, "campo da plataforma de disputa presente");
+  assert.match(platformSelect[1], /\bdisabled\b/u);
+  assert.match(platformSelect[2], /<option value="portal-de-compras-publicas" selected>Portal de Compras Públicas<\/option>/u);
+  assert.doesNotMatch(searchForm, /radar-platform-eligibility/u);
   assert.doesNotMatch(searchForm, /radarPlatformDetails|radarPlatforms|radarIncludeUnidentified/u);
   assert.doesNotMatch(detailsFeature, /new Option\(["']Não identificada["']/u);
   assert.match(html, /id="radarSortBy"/u);
