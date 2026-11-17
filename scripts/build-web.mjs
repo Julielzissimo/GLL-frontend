@@ -20,7 +20,7 @@ const TARGETS = {
     commercialProposalsEnabled: true,
     designSystemEnabled: true,
     radarEngineAdminEnabled: true,
-    radarDetailsFallbackEnabled: false,
+    radarDetailsFallbackEnabled: true,
     organizationDocumentsEnabled: true,
   },
   production: {
@@ -70,7 +70,7 @@ if (configuredKey && configuredKey === otherTarget.supabaseAnonKey) {
 const storageProvider = process.env[`GLL_STORAGE_PROVIDER_${target.environment === "homolog" ? "HOMOLOG" : "PRODUCTION"}`] || "supabase";
 if (!["supabase", "r2"].includes(storageProvider)) throw new Error("Provedor de armazenamento inválido.");
 const fallbackEnvironment = target.environment === "homolog" ? "HOMOLOG" : "PRODUCTION";
-const fallbackSetting = (process.env[`GLL_RADAR_DETAILS_FALLBACK_${fallbackEnvironment}`] || "false").trim().toLowerCase();
+const fallbackSetting = (process.env[`GLL_RADAR_DETAILS_FALLBACK_${fallbackEnvironment}`] || String(target.radarDetailsFallbackEnabled)).trim().toLowerCase();
 if (!["true", "false"].includes(fallbackSetting)) throw new Error("A flag de contingência do Radar deve ser true ou false.");
 
 const scriptDir = dirname(fileURLToPath(import.meta.url));
