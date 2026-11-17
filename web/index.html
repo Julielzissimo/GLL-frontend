@@ -1031,54 +1031,6 @@
           </div>
         </form>
 
-        <details id="radarPlatformAdminSettings" class="section-band radar-default-settings radar-platform-admin-settings" hidden>
-          <summary>Gerenciar plataformas de disputa</summary>
-          <section class="radar-platform-admin" aria-labelledby="radarPlatformAdminTitle">
-            <h3 id="radarPlatformAdminTitle">Catálogo de plataformas de disputa</h3>
-            <p>A identificação considera o domínio da URL e referências explícitas nos dados do PNCP. Esses indícios não confirmam a existência de uma sessão efetiva de disputa.</p>
-            <form id="radarPlatformForm" class="radar-platform-admin-form">
-              <input id="radarPlatformId" type="hidden" />
-              <label for="radarPlatformName">Nome da plataforma
-                <input id="radarPlatformName" type="text" maxlength="120" required />
-              </label>
-              <label for="radarPlatformSlug">Slug
-                <input id="radarPlatformSlug" type="text" maxlength="120" pattern="[a-z0-9]+(-[a-z0-9]+)*" required />
-              </label>
-              <label for="radarPlatformDescription">Descrição
-                <input id="radarPlatformDescription" type="text" maxlength="500" />
-              </label>
-              <label class="radar-modality-option"><input id="radarPlatformActive" type="checkbox" checked /><span>Plataforma ativa</span></label>
-              <div class="button-row"><button class="quiet-action compact-action" type="submit">Salvar plataforma</button><button class="quiet-action compact-action" type="button" data-radar-action="reset-platform-form">Limpar</button></div>
-            </form>
-            <form id="radarPlatformDomainForm" class="radar-platform-admin-form">
-              <input id="radarPlatformDomainId" type="hidden" />
-              <label for="radarPlatformDomainPlatform">Plataforma
-                <select id="radarPlatformDomainPlatform" required></select>
-              </label>
-              <label for="radarPlatformDomainName">Domínio oficial (hostname)
-                <input id="radarPlatformDomainName" type="text" maxlength="253" placeholder="exemplo.com.br" required />
-              </label>
-              <label class="radar-modality-option"><input id="radarPlatformIncludeSubdomains" type="checkbox" /><span>Reconhecer subdomínios</span></label>
-              <label class="radar-modality-option"><input id="radarPlatformDomainActive" type="checkbox" checked /><span>Regra ativa</span></label>
-              <div class="button-row"><button class="quiet-action compact-action" type="submit">Salvar domínio</button><button class="quiet-action compact-action" type="button" data-radar-action="reset-domain-form">Limpar</button></div>
-            </form>
-            <div id="radarPlatformAdminList" class="radar-platform-admin-list"></div>
-            <h4>Reclassificação em lotes</h4>
-            <p>Links já armazenados são reavaliados sem chamadas externas. Para registros antigos sem link, habilite consultas individuais limitadas pelo coletor do PNCP.</p>
-            <div class="radar-platform-admin-form">
-              <label for="radarPlatformBatchSize">Registros por lote
-                <input id="radarPlatformBatchSize" type="number" min="1" max="500" value="250" />
-              </label>
-              <label for="radarPlatformPncpLookups">Máximo de consultas individuais do PNCP (0 a 5)
-                <input id="radarPlatformPncpLookups" type="number" min="0" max="5" value="0" />
-              </label>
-              <button id="radarPlatformReclassify" class="quiet-action compact-action" type="button" data-radar-action="reclassify-platforms">Reclassificar lote</button>
-              <button class="quiet-action compact-action" type="button" data-radar-action="refresh-platform-metrics">Atualizar métricas</button>
-            </div>
-            <p id="radarPlatformAdminStatus" class="form-error" role="status" aria-live="polite"></p>
-            <p id="radarPlatformMetrics" role="status" aria-live="polite">Métricas ainda não carregadas.</p>
-          </section>
-        </details>
           </aside>
 
         <section class="radar-results-panel" aria-labelledby="radarResultsTitle">
