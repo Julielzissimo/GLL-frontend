@@ -1425,7 +1425,8 @@
         "51bc702dfb1789386c652a09daa4af292ba0222c"
       ],
       "frontend_commits": [
-        "aedecf77d7ea608d34224f17f5f8195c75030dba"
+        "aedecf77d7ea608d34224f17f5f8195c75030dba",
+        "6d3f5ccf534f950550b932bd2a9b41f11e24985f"
       ],
       "migrations": [
         "supabase/migrations/20261117004431_radar_engine_sync_diagnostics.sql"
