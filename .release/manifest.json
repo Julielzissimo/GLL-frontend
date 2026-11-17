@@ -2622,9 +2622,12 @@
     },
     {
       "id": "ISSUE-422",
-      "backend_commits": [],
+      "backend_commits": [
+        "9f1c368fc69f64582a08dd94fc288562b1715dc5"
+      ],
       "frontend_commits": [
-        "22acd9c7fa60736afadfe863ef10d3c0a93ee068"
+        "22acd9c7fa60736afadfe863ef10d3c0a93ee068",
+        "fadb3444450273e5b0a0f79e6586498c6355b8f5"
       ],
       "migrations": []
     },
