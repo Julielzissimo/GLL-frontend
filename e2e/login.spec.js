@@ -262,11 +262,13 @@ async function validateRadarSmokeRecord(page, numberControlPncp) {
   await page.locator("#radarSituation").selectOption("all");
   await page.locator("#radarPublishedFrom").fill("");
   await page.locator("#radarPublishedTo").fill("");
-  const modalityBoxes = page.locator('#radarModalities input[name="radarModality"]');
-  for (let index = 0; index < await modalityBoxes.count(); index += 1) {
-    const modality = modalityBoxes.nth(index);
-    if (await modality.isChecked()) await modality.uncheck();
+  const modalityDetails = page.locator("#radarModalityDetails");
+  if (!(await modalityDetails.evaluate((details) => details.open))) {
+    await modalityDetails.locator("summary").click();
   }
+  const modalityToggle = page.locator("#radarModalityToggle");
+  if ((await modalityToggle.innerText()) === "Desmarcar todas") await modalityToggle.click();
+  await expect(page.locator("#radarModalitySummary")).toHaveText("Nenhuma modalidade selecionada");
   await page.locator("#radarTagInput").fill("SINTETICO");
   await page.locator("#radarTagInput").press("Enter");
 
