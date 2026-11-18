@@ -2726,6 +2726,14 @@
       "migrations": [
         "supabase/migrations/20261118010135_radar_bid_phase_search_filter.sql"
       ]
+    },
+    {
+      "id": "ISSUE-453",
+      "backend_commits": [],
+      "frontend_commits": [
+        "362588e61954c078d77662eff096a88099ef711a"
+      ],
+      "migrations": []
     }
   ]
 }
