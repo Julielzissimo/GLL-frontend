@@ -10,11 +10,19 @@ const importFeature = readFileSync(new URL("../web/radar-import.js", import.meta
 const designSystem = readFileSync(new URL("../web/design-system/components.js", import.meta.url), "utf8");
 const radarStory = readFileSync(new URL("../stories/patterns/Radar.stories.js", import.meta.url), "utf8");
 
-test("os cards do Radar exibem a abertura das propostas como Data da Disputa", () => {
+test("os cards do Radar exibem a data explícita da fase de lances como Data da Disputa", () => {
   const resultCard = searchFeature.match(/function renderResultCard\(result\) \{[\s\S]*?\n  \}/u)?.[0];
   assert.ok(resultCard, "renderizador dos cards de resultados presente");
-  assert.match(resultCard, /<dt>Data da Disputa<\/dt><dd>\$\{escapeHtml\(formatDateTime\(result\.proposalsStartAt\)\)\}<\/dd>/u);
+  assert.match(resultCard, /<dt>Data da Disputa<\/dt><dd>\$\{escapeHtml\(formatDateTime\(result\.bidPhaseStartAt\)\)\}<\/dd>/u);
   assert.doesNotMatch(resultCard, /Publicação no PNCP/u);
+});
+
+test("os detalhes exibem Data da Disputa e removem os campos operacionais antigos", () => {
+  const renderGeneral = detailsFeature.match(/function renderGeneral\(contract, sources, platform = \{\}\) \{[\s\S]*?\n  \}/u)?.[0];
+  assert.ok(renderGeneral, "renderizador dos detalhes gerais presente");
+  assert.match(renderGeneral, /\["Data da Disputa", dateValue\(contract\.dataInicioFaseLances\)\]/u);
+  assert.doesNotMatch(renderGeneral, /Atualização dos dados no Radar/u);
+  assert.doesNotMatch(renderGeneral, /\["Situação", contract\.situacaoCompraNome\]/u);
 });
 
 test("a interface pública mantém os filtros solicitados e fixa o Portal como plataforma elegível", () => {
