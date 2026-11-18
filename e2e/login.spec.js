@@ -113,14 +113,16 @@ async function validateRadarSearchPage(page) {
   await expect.poll(() => page.locator('#radarModalities input[name="radarModality"]:checked').count()).toBe(3);
   await expectDefaultRadarModalities(page);
   await expect.poll(() => page.locator("#radarUf option").count()).toBeGreaterThan(1);
+  await expect(page.locator('label[for="radarBidPhaseFrom"]')).toContainText("Fase de lances a partir de");
+  await expect(page.locator('label[for="radarBidPhaseTo"]')).toContainText("Fase de lances até");
   const defaultDates = {
-    from: await page.locator("#radarPublishedFrom").inputValue(),
-    to: await page.locator("#radarPublishedTo").inputValue(),
+    from: await page.locator("#radarBidPhaseFrom").inputValue(),
+    to: await page.locator("#radarBidPhaseTo").inputValue(),
   };
-  if (!defaultDates.from || !defaultDates.to) throw new Error("O Radar não aplicou as datas iniciais de publicação.");
+  if (!defaultDates.from || !defaultDates.to) throw new Error("O Radar não aplicou as datas iniciais da fase de lances.");
   await expect(page.locator("#radarSituation")).toHaveValue("open");
 
-  await page.locator("#radarPublishedTo").fill("");
+  await page.locator("#radarBidPhaseTo").fill("");
   await page.locator("#radarSituation").selectOption("closed");
   await page.locator("#radarUf").selectOption("ES");
   await expect.poll(() => page.locator("#radarMunicipality option").count()).toBeGreaterThan(1);
@@ -128,8 +130,8 @@ async function validateRadarSearchPage(page) {
   if (!firstMunicipality) throw new Error("O catálogo do Radar não retornou município para a UF selecionada.");
   await page.locator("#radarMunicipality").selectOption(firstMunicipality);
   await page.locator('[data-radar-action="clear"]').click();
-  await expect(page.locator("#radarPublishedFrom")).toHaveValue(defaultDates.from);
-  await expect(page.locator("#radarPublishedTo")).toHaveValue(defaultDates.to);
+  await expect(page.locator("#radarBidPhaseFrom")).toHaveValue(defaultDates.from);
+  await expect(page.locator("#radarBidPhaseTo")).toHaveValue(defaultDates.to);
   await expect(page.locator("#radarSituation")).toHaveValue("open");
   await expect(page.locator("#radarUf")).toHaveValue("");
   await expectDefaultRadarModalities(page);
@@ -163,8 +165,8 @@ async function validateRadarSearchPage(page) {
   await page.locator("#radarUf").selectOption("ES");
   await expect.poll(() => page.locator("#radarMunicipality option").count()).toBeGreaterThan(1);
   await page.locator("#radarSituation").selectOption("all");
-  await page.locator("#radarPublishedFrom").fill("");
-  await page.locator("#radarPublishedTo").fill("");
+  await page.locator("#radarBidPhaseFrom").fill("");
+  await page.locator("#radarBidPhaseTo").fill("");
   await page.locator("#radarTagInput").fill("pavimentação");
   await page.locator("#radarTagInput").press("Enter");
   await expect(page.locator("#radarTagList li")).toHaveCount(1);
@@ -305,8 +307,8 @@ async function validateRadarSearchPage(page) {
 
   await page.locator('[data-radar-action="clear"]').click();
   await page.locator("#radarSituation").selectOption("all");
-  await page.locator("#radarPublishedFrom").fill("");
-  await page.locator("#radarPublishedTo").fill("");
+  await page.locator("#radarBidPhaseFrom").fill("");
+  await page.locator("#radarBidPhaseTo").fill("");
   const firstPage = await submitRadarSearch(page, (payload) => payload.tags === undefined && payload.page === 1 && payload.proposalReceiptState === "all");
   if (!firstPage.body.pagination.hasMore) throw new Error("O conjunto de teste do Radar não oferece uma segunda página para validação.");
   const nextPageResponse = radarSearchResponse(page, (payload) => payload.page === 2);
