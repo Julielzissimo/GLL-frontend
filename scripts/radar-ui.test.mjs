@@ -13,7 +13,9 @@ const radarStory = readFileSync(new URL("../stories/patterns/Radar.stories.js", 
 test("os cards do Radar exibem a data explícita da fase de lances como Data da Disputa", () => {
   const resultCard = searchFeature.match(/function renderResultCard\(result\) \{[\s\S]*?\n  \}/u)?.[0];
   assert.ok(resultCard, "renderizador dos cards de resultados presente");
-  assert.match(resultCard, /<dt>Data da Disputa<\/dt><dd>\$\{escapeHtml\(formatDateTime\(result\.bidPhaseStartAt\)\)\}<\/dd>/u);
+  assert.match(resultCard, /<dt>Data da Disputa<\/dt>/u);
+  assert.match(resultCard, /result\.bidPhaseStartAt/u);
+  assert.match(resultCard, /Não confirmada/u);
   assert.doesNotMatch(resultCard, /Publicação no PNCP/u);
 });
 
