@@ -2659,7 +2659,7 @@
       "backend_commits": [],
       "frontend_commits": [
         "ad4b5d15941262d51d528b0db071e1b32be85356",
-        "f194cc7b62d41aa2e80b19abc0e2151f8ddd97cc"
+        "f194cc77d972767dad285978300ebb6babbae97e"
       ],
       "migrations": []
     }
