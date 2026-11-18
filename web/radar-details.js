@@ -5,6 +5,7 @@ import {
   radarItemSyncPresentation,
   retainCompleteRadarItemSnapshot,
   shouldPollRadarItemSync,
+  shouldRenderRadarItemSyncNotice,
 } from "./radar-item-sync.js";
 import { createRadarPreprocessedService } from "./radar-preprocessed.js";
 
@@ -603,10 +604,9 @@ export function createRadarDetailsFeature({ getClient, getUserRole = () => null,
     const presentation = radarItemSyncPresentation(itemsState, itemSync, {
       communicationError: state.itemStatusCommunicationError,
     });
-    const canRequestUpdate = canRequestRadarItemSyncUpdate(itemsState, itemSync);
+    const canRequestUpdate = fallbackEnabled && canRequestRadarItemSyncUpdate(itemsState, itemSync);
     const canResumePolling = state.itemPollingLimitReached && presentation.syncActive;
-    if (!presentation.message && !presentation.runningMessage && !presentation.progress
-      && !canRequestUpdate && !canResumePolling) return "";
+    if (!shouldRenderRadarItemSyncNotice(presentation, { canRequestUpdate, canResumePolling })) return "";
 
     const tone = presentation.kind === "error" ? "error" : "info";
     const showSpinner = presentation.kind === "pending" || presentation.kind === "running"
@@ -616,7 +616,7 @@ export function createRadarDetailsFeature({ getClient, getUserRole = () => null,
       ${showSpinner ? `<span class="${spinnerClass}" aria-hidden="true"></span>` : ""}
       <div role="status" aria-live="polite"><span>${escapeHtml(presentation.message)}</span>${presentation.runningMessage ? `<span>${escapeHtml(presentation.runningMessage)}</span>` : ""}${presentation.progress ? `<small>${escapeHtml(presentation.progress)}</small>` : ""}</div>
       ${canResumePolling ? '<button class="quiet-action compact-action" type="button" data-radar-item-sync-watch>Continuar acompanhamento</button>' : ""}
-      ${fallbackEnabled && canRequestUpdate ? `<button class="quiet-action compact-action" type="button" data-radar-item-sync-request ${state.loading || state.syncRequestInProgress ? "disabled" : ""}>${state.syncRequestInProgress ? "Solicitando contingência…" : "Solicitar atualização em contingência"}</button>` : ""}
+      ${canRequestUpdate ? `<button class="quiet-action compact-action" type="button" data-radar-item-sync-request ${state.loading || state.syncRequestInProgress ? "disabled" : ""}>${state.syncRequestInProgress ? "Solicitando contingência…" : "Solicitar atualização em contingência"}</button>` : ""}
     </div>`;
   }
 
@@ -642,7 +642,7 @@ export function createRadarDetailsFeature({ getClient, getUserRole = () => null,
     const page = paginateRadarItems(itemsState.items, state.itemsPage, itemsPerPage);
     state.itemsPage = page.page;
     return `<section class="section-band radar-detail-section" aria-labelledby="radarItemsTitle">
-      <div class="radar-detail-section-heading"><div><h2 id="radarItemsTitle">Itens da contratação</h2><p>${itemsState.items.length.toLocaleString("pt-BR")} ${itemsState.items.length === 1 ? "item disponível" : "itens disponíveis"} no cache do Radar.</p>${itemSync.retrievedAt ? `<small>Itens atualizados em ${escapeHtml(dateValue(itemSync.retrievedAt))}.</small>` : ""}</div></div>
+      <div class="radar-detail-section-heading"><div class="radar-item-count-heading"><h2 id="radarItemsTitle">Itens da contratação</h2><span class="supplier-tag radar-items-total">Total: ${itemsState.items.length.toLocaleString("pt-BR")} ${itemsState.items.length === 1 ? "item" : "itens"}</span></div></div>
       ${statusNotice}
       ${secretCount ? `<p class="radar-feedback" data-tone="warning" role="status"><strong>Orçamento sigiloso</strong><span>O PNCP informou orçamento sigiloso em ${secretCount.toLocaleString("pt-BR")} ${secretCount === 1 ? "item" : "itens"}; valores não serão tratados como preço.</span></p>` : ""}
       ${renderItemTable(page.items, { selectable: true })}
@@ -672,7 +672,7 @@ export function createRadarDetailsFeature({ getClient, getUserRole = () => null,
   function renderItemTable(items, { selectable = false } = {}) {
     return `<div class="table-wrap radar-detail-items-wrap" role="region" tabindex="0" aria-label="Itens da contratação; use a rolagem horizontal para ver todas as colunas."><table class="radar-results-table radar-items-table">
       <caption class="sr-only">Itens da contratação armazenados no Radar</caption>
-      <thead><tr>${selectable ? '<th scope="col">Importar</th>' : ""}<th scope="col">Item</th><th scope="col" class="radar-item-description">Descrição</th><th scope="col" class="numeric">Quantidade</th><th scope="col" class="radar-item-unit">Unidade</th><th scope="col" class="numeric">Valor unitário estimado</th><th scope="col" class="numeric">Valor total</th></tr></thead>
+      <thead><tr>${selectable ? '<th scope="col" class="radar-item-selection">Importar</th>' : ""}<th scope="col">Item</th><th scope="col" class="radar-item-description">Descrição</th><th scope="col" class="numeric">Quantidade</th><th scope="col" class="radar-item-unit">Unidade</th><th scope="col" class="numeric">Valor unitário estimado</th><th scope="col" class="numeric">Valor total</th></tr></thead>
       <tbody>${items.map((item) => `<tr>
         ${selectable ? renderItemSelection(item) : ""}
         <td>${escapeHtml(item.number)}</td>

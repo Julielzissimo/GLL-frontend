@@ -23,6 +23,12 @@ export function shouldPollRadarItemSync(itemsState, itemSync) {
     && itemsState?.status !== "not_published";
 }
 
+export function shouldRenderRadarItemSyncNotice(presentation, { canRequestUpdate = false, canResumePolling = false } = {}) {
+  const hasVisibleText = [presentation?.message, presentation?.runningMessage, presentation?.progress]
+    .some((value) => typeof value === "string" && value.trim().length > 0);
+  return hasVisibleText || canRequestUpdate || canResumePolling;
+}
+
 export function radarItemSyncProgress(itemSync = {}) {
   const processed = Number(itemSync.pagesProcessed);
   const total = itemSync.pagesTotal === null || itemSync.pagesTotal === undefined
