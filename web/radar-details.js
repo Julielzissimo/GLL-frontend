@@ -5,6 +5,7 @@ import {
   radarItemSyncPresentation,
   retainCompleteRadarItemSnapshot,
   shouldPollRadarItemSync,
+  shouldRenderRadarItemSyncNotice,
 } from "./radar-item-sync.js";
 import { createRadarPreprocessedService } from "./radar-preprocessed.js";
 
@@ -603,10 +604,9 @@ export function createRadarDetailsFeature({ getClient, getUserRole = () => null,
     const presentation = radarItemSyncPresentation(itemsState, itemSync, {
       communicationError: state.itemStatusCommunicationError,
     });
-    const canRequestUpdate = canRequestRadarItemSyncUpdate(itemsState, itemSync);
+    const canRequestUpdate = fallbackEnabled && canRequestRadarItemSyncUpdate(itemsState, itemSync);
     const canResumePolling = state.itemPollingLimitReached && presentation.syncActive;
-    if (!presentation.message && !presentation.runningMessage && !presentation.progress
-      && !canRequestUpdate && !canResumePolling) return "";
+    if (!shouldRenderRadarItemSyncNotice(presentation, { canRequestUpdate, canResumePolling })) return "";
 
     const tone = presentation.kind === "error" ? "error" : "info";
     const showSpinner = presentation.kind === "pending" || presentation.kind === "running"
@@ -616,7 +616,7 @@ export function createRadarDetailsFeature({ getClient, getUserRole = () => null,
       ${showSpinner ? `<span class="${spinnerClass}" aria-hidden="true"></span>` : ""}
       <div role="status" aria-live="polite"><span>${escapeHtml(presentation.message)}</span>${presentation.runningMessage ? `<span>${escapeHtml(presentation.runningMessage)}</span>` : ""}${presentation.progress ? `<small>${escapeHtml(presentation.progress)}</small>` : ""}</div>
       ${canResumePolling ? '<button class="quiet-action compact-action" type="button" data-radar-item-sync-watch>Continuar acompanhamento</button>' : ""}
-      ${fallbackEnabled && canRequestUpdate ? `<button class="quiet-action compact-action" type="button" data-radar-item-sync-request ${state.loading || state.syncRequestInProgress ? "disabled" : ""}>${state.syncRequestInProgress ? "Solicitando contingência…" : "Solicitar atualização em contingência"}</button>` : ""}
+      ${canRequestUpdate ? `<button class="quiet-action compact-action" type="button" data-radar-item-sync-request ${state.loading || state.syncRequestInProgress ? "disabled" : ""}>${state.syncRequestInProgress ? "Solicitando contingência…" : "Solicitar atualização em contingência"}</button>` : ""}
     </div>`;
   }
 
