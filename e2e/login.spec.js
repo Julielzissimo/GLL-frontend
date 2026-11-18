@@ -201,6 +201,9 @@ async function validateRadarSearchPage(page) {
   const detailsPagePromise = page.context().waitForEvent("page");
   await detailsLink.click();
   const detailsPage = await detailsPagePromise;
+  const documentsResponsePromise = process.env.GLL_E2E_EXPECTED_ENVIRONMENT === "homolog"
+    ? radarDocumentsResponse(detailsPage, numberControlPncp)
+    : null;
   const [procurementResponse, itemSyncResponse] = await Promise.all([
     procurementResponsePromise,
     itemSyncResponsePromise,
@@ -227,10 +230,8 @@ async function validateRadarSearchPage(page) {
   if (process.env.GLL_E2E_EXPECTED_ENVIRONMENT === "homolog") {
     const documentsFallbackEnabled = await detailsPage.evaluate(() => window.GLL_CONFIG?.radarDocumentsFallbackEnabled === true);
     if (!documentsFallbackEnabled) throw new Error("A consulta de documentos do Radar não está habilitada em homologação.");
-    const documentsRefresh = detailsPage.locator("[data-radar-documents-refresh]");
-    await expect(documentsRefresh).toBeVisible();
-    const documentsResponsePromise = radarDocumentsResponse(detailsPage, numberControlPncp);
-    await documentsRefresh.click();
+    await expect(detailsPage.locator("#radarDetailsContent #radarDocumentsTitle")).toBeVisible();
+    await expect(detailsPage.getByRole("button", { name: "Consultar documentos no PNCP" })).toHaveCount(0);
     const documentsResponse = await documentsResponsePromise;
     if (!documentsResponse.ok()) {
       throw new Error(`A consulta de documentos do edital retornou HTTP ${documentsResponse.status()}.`);
