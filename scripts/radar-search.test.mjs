@@ -163,8 +163,8 @@ test("resume o estado da plataforma nos cards de resultados sem exibir confianç
 
 test("gera período inclusivo compartilhado no fuso de São Paulo e valida limites", () => {
   assert.deepEqual(radarDefaultPeriodDates(30, "2026-10-10"), {
-    bidPhaseFrom: "2026-09-11",
-    bidPhaseTo: "2026-10-10",
+    bidPhaseFrom: "2026-10-10",
+    bidPhaseTo: "2026-11-09",
   });
   assert.throws(() => radarDefaultPeriodDates(0, "2026-10-10"), /entre 1 e 365/);
 });

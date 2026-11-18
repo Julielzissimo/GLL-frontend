@@ -1012,11 +1012,11 @@
             </label>
             <label for="radarSituation">Situação das propostas
               <select id="radarSituation">
-                <option value="open" selected>Recebendo propostas</option>
+                <option value="open">Recebendo propostas</option>
                 <option value="upcoming">Propostas futuras</option>
                 <option value="closed">Propostas encerradas</option>
                 <option value="unknown">Prazo não informado</option>
-                <option value="all">Todos os prazos</option>
+                <option value="all" selected>Todos os prazos</option>
               </select>
             </label>
           </div>
@@ -1041,10 +1041,11 @@
             </div>
             <div class="radar-results-controls">
               <label for="radarSortBy">Ordenar por
-                <select id="radarSortBy"><option value="publishedAt">Data de publicação</option><option value="proposalEndsAt">Limite p/ Recebimento das Propostas</option><option value="updatedAt">Atualização no PNCP</option><option value="estimatedValue">Valor estimado</option><option value="organizationName">Órgão responsável</option><option value="object">Objeto da contratação</option><option value="situationCode">Situação</option></select>
+                <select id="radarSortBy"><option value="bidPhaseStartAt" selected>Data da Disputa</option>
+                  <option value="publishedAt">Data de publicação</option><option value="proposalEndsAt">Limite p/ Recebimento das Propostas</option><option value="updatedAt">Atualização no PNCP</option><option value="estimatedValue">Valor estimado</option><option value="organizationName">Órgão responsável</option><option value="object">Objeto da contratação</option><option value="situationCode">Situação</option></select>
               </label>
               <label for="radarSortDirection">Direção
-                <select id="radarSortDirection"><option value="desc">Mais recente / maior primeiro</option><option value="asc">Mais antigo / menor primeiro</option></select>
+                <select id="radarSortDirection"><option value="desc">Mais recente / maior primeiro</option><option value="asc" selected>Mais antigo / menor primeiro</option></select>
               </label>
               <label for="radarPageSize">Por página
                 <select id="radarPageSize"><option value="20">20</option><option value="50" selected>50</option><option value="100">100</option></select>
