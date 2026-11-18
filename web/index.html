@@ -490,10 +490,6 @@
                 Órgão Comprador *
                 <input id="buyerAgency" required />
               </label>
-              <label class="wide">
-                Objeto do Edital
-                <textarea id="bidObject" rows="3"></textarea>
-              </label>
               <label>
                 <span id="sessionDatetimeLabel">Data e Hora da Sessão *</span>
                 <input id="sessionDatetime" type="datetime-local" required />
@@ -1037,7 +1033,13 @@
 
         <section class="radar-results-panel" aria-labelledby="radarResultsTitle">
           <div class="radar-results-heading">
-            <div><h2 id="radarResultsTitle">Resultados</h2><p id="radarResultsCount" aria-live="polite">Configure os filtros para iniciar uma pesquisa.</p></div>
+            <div class="radar-results-title">
+              <div class="radar-results-title-copy"><h2 id="radarResultsTitle">Resultados</h2><p id="radarResultsCount" aria-live="polite">Configure os filtros para iniciar uma pesquisa.</p></div>
+              <button id="radarFilterToggleButton" class="icon-button radar-filter-toggle" type="button" data-radar-action="toggle-filter-rail" aria-label="Ocultar filtros da pesquisa" title="Ocultar filtros da pesquisa" aria-controls="radarFilterRail" aria-expanded="true">
+                <span aria-hidden="true" data-gll-icon="back" data-filter-toggle-icon="collapse"></span>
+                <span aria-hidden="true" data-gll-icon="forward" data-filter-toggle-icon="expand"></span>
+              </button>
+            </div>
             <div class="radar-results-controls">
               <label for="radarSortBy">Ordenar por
                 <select id="radarSortBy"><option value="publishedAt">Data de publicação</option><option value="proposalEndsAt">Limite p/ Recebimento das Propostas</option><option value="updatedAt">Atualização no PNCP</option><option value="estimatedValue">Valor estimado</option><option value="organizationName">Órgão responsável</option><option value="object">Objeto da contratação</option><option value="situationCode">Situação</option></select>
