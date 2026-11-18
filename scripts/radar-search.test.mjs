@@ -73,6 +73,7 @@ test("envia filtros aceitos pelo motor, omite modalidades quando todas estão at
 
   assert.deepEqual(all, {
     action: "search",
+    dateFilterMode: "bid_phase",
     proposalReceiptState: "open",
     page: 2,
     pageSize: 50,
@@ -125,6 +126,7 @@ test("preserva filtros oficiais e paginação sem enviar seletor de plataforma",
     proposalReceiptState: "open",
   }, { page: 3, activeModalities: [1, 6] });
   assert.equal(payload.page, 3);
+  assert.equal(payload.dateFilterMode, "bid_phase");
   assert.equal("platformIds" in payload, false);
   assert.equal("includeUnidentified" in payload, false);
   assert.equal(payload.uf, "ES");
