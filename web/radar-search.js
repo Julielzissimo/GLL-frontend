@@ -102,7 +102,7 @@ export function radarDefaultPeriodDates(days, today = todayInSaoPaulo()) {
     throw new TypeError("A data atual é inválida.");
   }
   end.setUTCDate(end.getUTCDate() - periodDays + 1);
-  return { publishedFrom: end.toISOString().slice(0, 10), publishedTo: today };
+  return { bidPhaseFrom: end.toISOString().slice(0, 10), bidPhaseTo: today };
 }
 
 function normalizedModalityIds(values) {
@@ -136,6 +136,7 @@ export function buildRadarSearchPayload(filters, { page = 1, refreshCoverage = f
     || selectedIds.length === activeIds.length;
   const payload = {
     action: "search",
+    dateFilterMode: "bid_phase",
     proposalReceiptState: filters.proposalReceiptState || "open",
     page: Number(page),
     pageSize: Number(filters.pageSize || 20),
@@ -147,8 +148,8 @@ export function buildRadarSearchPayload(filters, { page = 1, refreshCoverage = f
   if (!useEveryActiveModality && selectedIds.length) payload.modalities = selectedIds;
   if (filters.uf) payload.uf = String(filters.uf).trim().toUpperCase();
   if (filters.municipalityIbgeId && filters.uf) payload.municipalityIbgeId = Number(filters.municipalityIbgeId);
-  if (filters.publishedFrom) payload.publishedFrom = filters.publishedFrom;
-  if (filters.publishedTo) payload.publishedTo = filters.publishedTo;
+  if (filters.bidPhaseFrom) payload.bidPhaseFrom = filters.bidPhaseFrom;
+  if (filters.bidPhaseTo) payload.bidPhaseTo = filters.bidPhaseTo;
   return payload;
 }
 
@@ -171,6 +172,13 @@ export function buildRadarDetailsHref(numberControlPncp, currentUrl) {
 }
 
 export function radarEmptyResultState(coverage) {
+  if (coverage?.status === "unconfirmed") {
+    return {
+      kind: "coverage-unconfirmed-empty",
+      title: "Fase de lances sem cobertura confirmada",
+      description: "A ausência de resultados não é definitiva: o Radar ainda não confirma a cobertura histórica para as datas da fase de lances.",
+    };
+  }
   if (coverage?.complete === true || coverage?.status === "complete") {
     return {
       kind: "complete-empty",
@@ -253,6 +261,14 @@ export function radarOperationalStatus({ coverage, collectionTask, error, totalC
       label: "Dados desatualizados",
       tone: "warning",
       description: "A cobertura está desatualizada. Os resultados armazenados continuam disponíveis.",
+    };
+  }
+  if (coverage?.status === "unconfirmed") {
+    return {
+      kind: "coverage-unconfirmed",
+      label: "Cobertura não confirmada",
+      tone: "warning",
+      description: "O Radar filtra pela data de início da fase de lances, mas ainda não mede a cobertura histórica por essa data.",
     };
   }
   if (coverage?.status === "not_collected") {
@@ -409,8 +425,8 @@ function currentFiltersFromInputs(root, tags, modalities) {
     modalities,
     uf: root.querySelector("#radarUf")?.value || "",
     municipalityIbgeId: root.querySelector("#radarMunicipality")?.value || "",
-    publishedFrom: root.querySelector("#radarPublishedFrom")?.value || "",
-    publishedTo: root.querySelector("#radarPublishedTo")?.value || "",
+    bidPhaseFrom: root.querySelector("#radarBidPhaseFrom")?.value || "",
+    bidPhaseTo: root.querySelector("#radarBidPhaseTo")?.value || "",
     proposalReceiptState: root.querySelector("#radarSituation")?.value || "open",
     pageSize: root.querySelector("#radarPageSize")?.value || 20,
     sortBy: root.querySelector("#radarSortBy")?.value || "publishedAt",
@@ -435,6 +451,8 @@ function currentFiltersFromInputs(root, tags, modalities) {
  */
 export function createRadarSearchFeature({ getClient, getUserRole = () => null, toast = () => {}, actions = {} }) {
   const root = globalThis.document?.getElementById("radarSearchPage");
+  let filterScrollFrame = null;
+  let filterScrollBound = false;
   const state = {
     bound: false,
     initialized: false,
@@ -483,6 +501,82 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
 
   function byId(id) {
     return root?.querySelector(`#${id}`) || null;
+  }
+
+  function setFilterRailCollapsed(collapsed) {
+    const workbench = byId("radarWorkbench");
+    const filterRail = byId("radarFilterRail");
+    if (!workbench || !filterRail) return;
+
+    workbench.classList.toggle("is-filter-collapsed", collapsed);
+    if (collapsed) {
+      filterRail.setAttribute("aria-hidden", "true");
+      filterRail.setAttribute("inert", "");
+    } else {
+      filterRail.removeAttribute("aria-hidden");
+      filterRail.removeAttribute("inert");
+    }
+  }
+
+  function syncFilterRailVisibility() {
+    const workbench = byId("radarWorkbench");
+    const filterRail = byId("radarFilterRail");
+    const listView = byId("radarListView");
+    const document = root?.ownerDocument;
+    const window = document?.defaultView;
+    if (!workbench || !filterRail || !window || !document) return;
+
+    const isDesktop = window.matchMedia
+      ? window.matchMedia("(min-width: 761px)").matches
+      : window.innerWidth > 760;
+    const isSearchListVisible = state.view === "search"
+      && !root.classList.contains("hidden")
+      && !listView?.hidden
+      && !filterRail.hidden;
+    if (!isDesktop || !isSearchListVisible) {
+      setFilterRailCollapsed(false);
+      return;
+    }
+
+    if (filterRail.contains(document.activeElement)) return;
+
+    const filterBottom = filterRail.getBoundingClientRect().bottom;
+    const topbarBottom = document.getElementById("appTopbar")?.getBoundingClientRect().bottom || 0;
+    const isCollapsed = workbench.classList.contains("is-filter-collapsed");
+    if (!isCollapsed && filterBottom <= topbarBottom) {
+      setFilterRailCollapsed(true);
+    } else if (isCollapsed && filterBottom > topbarBottom + 48) {
+      setFilterRailCollapsed(false);
+    }
+  }
+
+  function scheduleFilterRailVisibilitySync() {
+    const window = root?.ownerDocument?.defaultView;
+    if (!window || filterScrollFrame !== null) return;
+
+    const sync = () => {
+      filterScrollFrame = null;
+      syncFilterRailVisibility();
+    };
+    if (window.requestAnimationFrame) {
+      filterScrollFrame = window.requestAnimationFrame(sync);
+    } else {
+      filterScrollFrame = window.setTimeout(sync, 0);
+    }
+  }
+
+  function bindFilterRailVisibility() {
+    const window = root?.ownerDocument?.defaultView;
+    if (!window || filterScrollBound) return;
+    filterScrollBound = true;
+    window.addEventListener("scroll", scheduleFilterRailVisibilitySync, { passive: true });
+    window.addEventListener("resize", scheduleFilterRailVisibilitySync);
+    byId("radarFilterRail")?.addEventListener("focusout", scheduleFilterRailVisibilitySync);
+    const listView = byId("radarListView");
+    if (listView && window.MutationObserver) {
+      new window.MutationObserver(scheduleFilterRailVisibilitySync)
+        .observe(listView, { attributes: true, attributeFilter: ["hidden"] });
+    }
   }
 
   function announce(message) {
@@ -618,8 +712,8 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
 
   function applyDefaultPeriod() {
     const dates = radarDefaultPeriodDates(state.defaultPeriodDays);
-    byId("radarPublishedFrom").value = dates.publishedFrom;
-    byId("radarPublishedTo").value = dates.publishedTo;
+    byId("radarBidPhaseFrom").value = dates.bidPhaseFrom;
+    byId("radarBidPhaseTo").value = dates.bidPhaseTo;
     byId("radarDateError").textContent = "";
   }
 
@@ -679,7 +773,7 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
       renderModalityOptions();
       renderPlatformAdmin();
       renderStateOptions();
-      if (!byId("radarPublishedFrom").value && !byId("radarPublishedTo").value) applyDefaultPeriod();
+      if (!byId("radarBidPhaseFrom").value && !byId("radarBidPhaseTo").value) applyDefaultPeriod();
       await loadMunicipalities(byId("radarUf").value);
       void loadPlatformMetrics();
     } catch (error) {
@@ -719,6 +813,7 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
       target.textContent = state.error.message;
       return;
     }
+
   }
 
   function resolveModalityName(id) {
@@ -865,6 +960,7 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
     workbench?.classList.toggle("is-favorites", favoritesView);
     if (filterRail) filterRail.hidden = favoritesView;
     if (searchForm) searchForm.hidden = favoritesView;
+    syncFilterRailVisibility();
     if (platformAdminSettings) platformAdminSettings.hidden = favoritesView || getUserRole?.() !== "Administrador";
     if (resultControls) resultControls.hidden = favoritesView;
     byId("radarSearchViewButton")?.setAttribute("aria-pressed", String(!favoritesView));
@@ -982,8 +1078,8 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
   }
 
   function validateDates() {
-    const from = byId("radarPublishedFrom");
-    const to = byId("radarPublishedTo");
+    const from = byId("radarBidPhaseFrom");
+    const to = byId("radarBidPhaseTo");
     const error = byId("radarDateError");
     from.removeAttribute("aria-invalid");
     to.removeAttribute("aria-invalid");
@@ -1345,6 +1441,7 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
   function bind() {
     if (!root || state.bound) return;
     state.bound = true;
+    bindFilterRailVisibility();
     root.addEventListener("submit", (event) => {
       if (event.target?.id === "radarSearchForm") {
         event.preventDefault();
@@ -1468,6 +1565,7 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
       renderCoverage();
       renderResults();
       actions.syncDetailRoute?.();
+      syncFilterRailVisibility();
     },
     syncFavorite,
     async refreshCurrentView() {

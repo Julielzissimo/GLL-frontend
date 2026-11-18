@@ -62,8 +62,8 @@ test("envia filtros aceitos pelo motor, omite modalidades quando todas estão at
     modalities: null,
     uf: "",
     municipalityIbgeId: "",
-    publishedFrom: "2026-10-01",
-    publishedTo: "2026-10-10",
+    bidPhaseFrom: "2026-10-01",
+    bidPhaseTo: "2026-10-10",
     proposalReceiptState: "open",
     pageSize: 50,
     sortBy: "publishedAt",
@@ -72,6 +72,7 @@ test("envia filtros aceitos pelo motor, omite modalidades quando todas estão at
 
   assert.deepEqual(all, {
     action: "search",
+    dateFilterMode: "bid_phase",
     proposalReceiptState: "open",
     page: 2,
     pageSize: 50,
@@ -79,8 +80,8 @@ test("envia filtros aceitos pelo motor, omite modalidades quando todas estão at
     sortDirection: "desc",
     refreshCoverage: true,
     tags: ["ar condicionado", "mobiliário"],
-    publishedFrom: "2026-10-01",
-    publishedTo: "2026-10-10",
+    bidPhaseFrom: "2026-10-01",
+    bidPhaseTo: "2026-10-10",
   });
   assert.equal("descricao" in all, false);
 });
@@ -119,19 +120,20 @@ test("preserva filtros oficiais e paginação sem enviar seletor de plataforma",
     municipalityIbgeId: "3205309",
     platformIds: ["legacy-platform"],
     includeUnidentified: true,
-    publishedFrom: "2026-10-01",
-    publishedTo: "2026-10-10",
+    bidPhaseFrom: "2026-10-01",
+    bidPhaseTo: "2026-10-10",
     proposalReceiptState: "open",
   }, { page: 3, activeModalities: [1, 6] });
   assert.equal(payload.page, 3);
+  assert.equal(payload.dateFilterMode, "bid_phase");
   assert.equal("platformIds" in payload, false);
   assert.equal("includeUnidentified" in payload, false);
   assert.equal(payload.uf, "ES");
   assert.equal(payload.municipalityIbgeId, 3205309);
   assert.deepEqual(payload.tags, ["computador"]);
   assert.deepEqual(payload.modalities, [6]);
-  assert.equal(payload.publishedFrom, "2026-10-01");
-  assert.equal(payload.publishedTo, "2026-10-10");
+  assert.equal(payload.bidPhaseFrom, "2026-10-01");
+  assert.equal(payload.bidPhaseTo, "2026-10-10");
 });
 
 test("resume o estado da plataforma nos cards de resultados sem exibir confiança", () => {
@@ -150,8 +152,8 @@ test("resume o estado da plataforma nos cards de resultados sem exibir confianç
 
 test("gera período inclusivo compartilhado no fuso de São Paulo e valida limites", () => {
   assert.deepEqual(radarDefaultPeriodDates(30, "2026-10-10"), {
-    publishedFrom: "2026-09-11",
-    publishedTo: "2026-10-10",
+    bidPhaseFrom: "2026-09-11",
+    bidPhaseTo: "2026-10-10",
   });
   assert.throws(() => radarDefaultPeriodDates(0, "2026-10-10"), /entre 1 e 365/);
 });
@@ -159,6 +161,7 @@ test("gera período inclusivo compartilhado no fuso de São Paulo e valida limit
 test("não declara ausência definitiva quando a cobertura está parcial ou não coletada", () => {
   assert.equal(radarEmptyResultState({ status: "partial", complete: false }).kind, "partial-empty");
   assert.equal(radarEmptyResultState({ status: "not_collected", complete: false }).kind, "not-collected");
+  assert.equal(radarEmptyResultState({ status: "unconfirmed", complete: false }).kind, "coverage-unconfirmed-empty");
   assert.equal(radarEmptyResultState({ status: "complete", complete: true }).kind, "complete-empty");
   assert.equal(radarEmptyResultState({ status: "failed" }).title, "Erro de sincronização");
   assert.equal(radarEmptyResultState({ status: "stale" }).title, "Dados desatualizados");
@@ -170,8 +173,8 @@ test("calcula o total de editais recebendo propostas pela API para o mesmo escop
     modalities: [6],
     uf: "SP",
     municipalityIbgeId: "3550308",
-    publishedFrom: "2026-10-01",
-    publishedTo: "2026-10-31",
+    bidPhaseFrom: "2026-10-01",
+    bidPhaseTo: "2026-10-31",
     proposalReceiptState: "all",
     pageSize: 50,
     sortBy: "publishedAt",
@@ -193,6 +196,7 @@ test("distingue estado vazio, coleta ativa, dados desatualizados, indisponibilid
   assert.equal(radarOperationalStatus({ coverage: { status: "partial" }, collectionTask: { status: "running" } }).kind, "collection-running");
   assert.equal(radarOperationalStatus({ coverage: { status: "stale" } }).kind, "stale");
   assert.equal(radarOperationalStatus({ coverage: { status: "not_collected" } }).kind, "collection-unavailable");
+  assert.equal(radarOperationalStatus({ coverage: { status: "unconfirmed" } }).kind, "coverage-unconfirmed");
   assert.equal(radarOperationalStatus({ coverage: { status: "failed" } }).kind, "sync-error");
   assert.equal(radarOperationalStatus({ error: { kind: "connection" } }).kind, "collection-unavailable");
 });

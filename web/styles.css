@@ -8568,6 +8568,15 @@ button.history-row:hover {
   grid-template-columns: minmax(0, 1fr);
 }
 
+.radar-workbench.is-filter-collapsed .radar-filter-rail {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.radar-workbench.is-filter-collapsed .radar-results-panel {
+  grid-column: 1 / -1;
+}
+
 .radar-filter-rail {
   display: grid;
   min-width: 0;
