@@ -2682,11 +2682,13 @@
     {
       "id": "ISSUE-434",
       "backend_commits": [
-        "b97bc59ac6acbde5b419b54406685ab806923755"
+        "b97bc59ac6acbde5b419b54406685ab806923755",
+        "a3d49460ef2cbe5976bb12b090b1656b6252769a"
       ],
       "frontend_commits": [
         "2fdd9df1ab4dcde5e15424bb419848bc18dbc9d9",
-        "b55b85a1523c47094336b7d8f008e389eaafc217"
+        "b55b85a1523c47094336b7d8f008e389eaafc217",
+        "f18302b11205a7336901d156dbd42af60886b79b"
       ],
       "migrations": [
         "supabase/migrations/20261118010135_radar_bid_phase_search_filter.sql"
