@@ -18,6 +18,42 @@ export function normalizeSelectedRadarItemNumbers(values) {
   return result;
 }
 
+function positiveCount(value) {
+  const number = Number(value);
+  return Number.isSafeInteger(number) && number > 0 ? number : 0;
+}
+
+export function formatRadarImportDocumentFeedback(value) {
+  const status = String(value?.status || "");
+  if (!status) return { message: "", tone: "success" };
+  if (status === "unavailable") {
+    return { message: "Os itens foram importados, mas não foi possível anexar os documentos do edital.", tone: "warning" };
+  }
+  if (status === "none") {
+    return { message: "Não foram encontrados documentos publicados para anexar.", tone: "warning" };
+  }
+
+  const attached = positiveCount(value?.attached_count);
+  const alreadyAttached = positiveCount(value?.already_attached_count);
+  const failed = positiveCount(value?.failed_count);
+  const ignored = positiveCount(value?.ignored_count);
+  const capacitySkipped = positiveCount(value?.capacity_skipped_count);
+  const messages = [];
+  if (attached) messages.push(`${attached} ${attached === 1 ? "documento do edital anexado" : "documentos do edital anexados"}.`);
+  if (alreadyAttached) messages.push(`${alreadyAttached} ${alreadyAttached === 1 ? "documento já estava" : "documentos já estavam"} anexado${alreadyAttached === 1 ? "" : "s"}.`);
+  if (failed) messages.push(`${failed} ${failed === 1 ? "documento não pôde" : "documentos não puderam"} ser anexado${failed === 1 ? "" : "s"}.`);
+  if (capacitySkipped) messages.push(attached || alreadyAttached
+    ? "O limite de quatro arquivos foi atingido."
+    : "O edital já atingiu o limite de quatro arquivos.");
+  if (ignored) messages.push("Os documentos além dos quatro primeiros foram ignorados.");
+  if (status === "limit_reached" && !messages.length) messages.push("O edital já atingiu o limite de quatro arquivos.");
+
+  const tone = status === "partial" || status === "limit_reached" || failed > 0 || capacitySkipped > 0
+    ? "warning"
+    : "success";
+  return { message: messages.join(" "), tone };
+}
+
 export function createRadarImportService({ getClient } = {}) {
   function client() {
     const value = getClient?.();
@@ -81,7 +117,22 @@ export function createRadarImportService({ getClient } = {}) {
     return data;
   }
 
-  return Object.freeze({ loadImportStatus, importSelected });
+  async function attachDocuments(numberControlPncp) {
+    const identifier = String(numberControlPncp || "").trim();
+    if (!identifier) throw new TypeError("Identificador PNCP inválido.");
+    const { data, error } = await client().functions.invoke("radar-import", {
+      body: { action: "attach-documents", numberControlPncp: identifier },
+    });
+    if (error) {
+      let responseBody = null;
+      try { responseBody = await error.context?.json?.(); } catch { /* The invocation may already have consumed the body. */ }
+      throw new Error(responseBody?.error || "Não foi possível anexar os documentos do edital.");
+    }
+    if (!data?.ok) throw new Error("A importação não confirmou o anexo dos documentos do edital.");
+    return data.document_attachments || null;
+  }
+
+  return Object.freeze({ loadImportStatus, importSelected, attachDocuments });
 }
 
 if (typeof window !== "undefined") {

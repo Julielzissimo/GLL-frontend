@@ -7,6 +7,7 @@ import {
   shouldPollRadarItemSync,
 } from "./radar-item-sync.js";
 import { createRadarPreprocessedService } from "./radar-preprocessed.js";
+import { formatRadarImportDocumentFeedback } from "./radar-import.js";
 
 const FAVORITE_METADATA_FIELDS = [
   "numero_controle_pncp",
@@ -1237,7 +1238,12 @@ export function createRadarDetailsFeature({ getClient, getUserRole = () => null,
     state.importFeedback = "";
     render();
     try {
-      const result = await imports.importSelected(procurementId, selected);
+      let result = await imports.importSelected(procurementId, selected);
+      try {
+        result = { ...result, document_attachments: await imports.attachDocuments(procurementId) };
+      } catch {
+        result = { ...result, document_attachments: { status: "unavailable" } };
+      }
       if (currentId() !== procurementId) {
         toast("A importação foi concluída. Abra novamente os detalhes para consultar o edital.", "success");
         return;
@@ -1252,8 +1258,9 @@ export function createRadarDetailsFeature({ getClient, getUserRole = () => null,
         : `Importação complementada com ${importedCount} ${importedCount === 1 ? "novo item" : "novos itens"}.`;
       const repeated = existingCount ? ` ${existingCount} ${existingCount === 1 ? "item já estava importado" : "itens já estavam importados"}.` : "";
       const conflicted = conflicts.length ? ` ${conflicts.length} ${conflicts.length === 1 ? "item não foi incluído porque já existe no edital ou no orçamento vinculado" : "itens não foram incluídos porque já existem no edital ou no orçamento vinculado"}; nenhum dado manual foi alterado.` : "";
-      state.importFeedback = `${summary}${repeated}${conflicted}`;
-      state.importFeedbackTone = conflicts.length ? "warning" : "success";
+      const documentFeedback = formatRadarImportDocumentFeedback(result.document_attachments);
+      state.importFeedback = [summary, repeated.trim(), conflicted.trim(), documentFeedback.message].filter(Boolean).join(" ");
+      state.importFeedbackTone = conflicts.length || documentFeedback.tone === "warning" ? "warning" : "success";
       try {
         state.importStatus = await imports.loadImportStatus(procurementId);
         state.importStatusError = "";
