@@ -8572,11 +8572,27 @@ button.history-row:hover {
   grid-template-columns: minmax(0, 1fr);
 }
 
-.radar-workbench.is-filter-search-collapsed {
-  position: relative;
-  grid-template-columns: minmax(0, 1fr);
+@media (min-width: 761px) {
+  .radar-workbench:not(.is-favorites) {
+    transition: grid-template-columns 460ms cubic-bezier(0.22, 0.61, 0.36, 1), column-gap 460ms ease;
+  }
+
+  .radar-workbench.is-filter-collapsed:not(.is-favorites) {
+    position: relative;
+    grid-template-columns: minmax(0, 0px) minmax(0, 1fr);
+    column-gap: 0;
+  }
+
+  .radar-workbench.is-filter-collapsed:not(.is-favorites) .radar-results-panel {
+    grid-column: 2;
+  }
 }
 
+.radar-workbench.is-filter-search-collapsed {
+  position: relative;
+}
+
+.radar-workbench.is-filter-collapsed:not(.is-favorites) .radar-filter-rail,
 .radar-workbench.is-filter-search-collapsed .radar-filter-rail {
   position: absolute;
   z-index: 1;
@@ -8603,10 +8619,11 @@ button.history-row:hover {
   gap: var(--space-md);
   opacity: 1;
   transform: translateY(0);
-  transition: opacity 320ms ease, transform 320ms ease, visibility 320ms;
+  transition: opacity 460ms cubic-bezier(0.22, 0.61, 0.36, 1), transform 460ms cubic-bezier(0.22, 0.61, 0.36, 1), visibility 460ms;
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .radar-workbench:not(.is-favorites),
   .radar-filter-rail { transition: none; }
 }
 
