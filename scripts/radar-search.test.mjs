@@ -111,6 +111,7 @@ test("ignora seleções legadas de plataforma e nunca amplia a pesquisa pública
   assert.equal("includeUnidentified" in payload, false);
   assert.deepEqual(payload.tags, ["computador"]);
   assert.deepEqual(payload.modalities, [6, 8, 9]);
+  assert.equal(payload.pageSize, 50);
 });
 
 test("não amplia pesquisas com modalidades externas ou nenhuma modalidade selecionada", () => {
