@@ -15,6 +15,10 @@ test("a interface pública mantém os filtros solicitados e fixa o Portal como p
     "radarTagInput", "radarModalityDetails", "radarUf", "radarMunicipality",
     "radarBidPhaseFrom", "radarBidPhaseTo", "radarSituation",
   ]) assert.match(searchForm, new RegExp(`id="${id}"`, "u"));
+  assert.match(searchForm, /id="radarModalityHelp"/u);
+  assert.match(searchForm, /id="radarModalityError"/u);
+  assert.match(searchFeature, /name="radarModality"[^>]* disabled/u);
+  assert.match(searchFeature, /if \(!availableIds\.has\(modalityId\)\)/u);
   assert.match(searchForm, /<label for="radarBidPhaseFrom">Fase de lances a partir de/u);
   assert.match(searchForm, /<label for="radarBidPhaseTo">Fase de lances até/u);
   assert.match(searchForm, /Portal de Compras Públicas/u);

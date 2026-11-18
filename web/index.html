@@ -992,10 +992,12 @@
             </div>
 
             <details id="radarModalityDetails" class="radar-modality-filter">
-              <summary><span>Modalidades</span><strong id="radarModalitySummary">Todas as modalidades ativas</strong></summary>
+              <summary><span>Modalidades</span><strong id="radarModalitySummary">Todas as modalidades disponíveis</strong></summary>
               <div class="radar-modality-menu">
-                <button id="radarModalityToggle" class="quiet-action compact-action radar-modality-bulk-action" type="button" data-radar-action="toggle-modalities">Desmarcar todas</button>
-                <div id="radarModalities" class="radar-modality-list" role="group" aria-label="Modalidades ativas"></div>
+                <button id="radarModalityToggle" class="quiet-action compact-action radar-modality-bulk-action" type="button" data-radar-action="toggle-modalities">Desmarcar disponíveis</button>
+                <div id="radarModalities" class="radar-modality-list" role="group" aria-label="Modalidades disponíveis" aria-describedby="radarModalityHelp"></div>
+                <small id="radarModalityHelp">Somente Pregão - Eletrônico, Dispensa e Inexigibilidade estão disponíveis para pesquisa.</small>
+                <p id="radarModalityError" class="form-error" role="alert"></p>
               </div>
             </details>
 

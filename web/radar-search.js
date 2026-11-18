@@ -50,11 +50,7 @@ const SEARCH_SORTS = Object.freeze({
   object: "Objeto da contratação",
   situationCode: "Situação",
 });
-const DEFAULT_RADAR_MODALITY_NAMES = new Set([
-  "pregao eletronico",
-  "dispensa",
-  "inexigibilidade",
-]);
+const ALLOWED_RADAR_MODALITY_IDS = Object.freeze([6, 8, 9]);
 
 const escapeHtml = (value) => String(value ?? "")
   .replaceAll("&", "&amp;")
@@ -111,29 +107,23 @@ function normalizedModalityIds(values) {
     .filter((value) => Number.isSafeInteger(value) && value > 0))];
 }
 
-function modalityNameIdentity(value) {
-  return String(value ?? "")
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/gu, "")
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/gu, " ")
-    .trim();
-}
-
 export function defaultRadarModalityIds(modalities) {
-  return normalizedModalityIds((Array.isArray(modalities) ? modalities : [])
-    .filter((modality) => DEFAULT_RADAR_MODALITY_NAMES.has(modalityNameIdentity(modality?.name)))
-    .map((modality) => modality?.pncp_id));
+  const catalogIds = new Set(normalizedModalityIds(
+    (Array.isArray(modalities) ? modalities : []).map((modality) => modality?.pncp_id),
+  ));
+  return ALLOWED_RADAR_MODALITY_IDS.filter((id) => catalogIds.has(id));
 }
 
 export function buildRadarSearchPayload(filters, { page = 1, refreshCoverage = false, activeModalities = [] } = {}) {
   const tags = parseRadarTags(filters.tags);
-  const activeIds = normalizedModalityIds(activeModalities);
-  const selectedIds = filters.modalities === null
-    ? []
-    : normalizedModalityIds(filters.modalities);
-  const useEveryActiveModality = filters.modalities === null
-    || selectedIds.length === activeIds.length;
+  const allowedIds = new Set(ALLOWED_RADAR_MODALITY_IDS);
+  const activeIds = normalizedModalityIds(activeModalities).filter((id) => allowedIds.has(id));
+  const availableIds = activeIds.length ? activeIds : ALLOWED_RADAR_MODALITY_IDS;
+  const availableIdSet = new Set(availableIds);
+  const selectedIds = filters.modalities == null
+    ? [...availableIds]
+    : normalizedModalityIds(filters.modalities).filter((id) => availableIdSet.has(id));
+  if (!selectedIds.length) throw new TypeError("Selecione ao menos uma modalidade.");
   const payload = {
     action: "search",
     dateFilterMode: "bid_phase",
@@ -145,7 +135,7 @@ export function buildRadarSearchPayload(filters, { page = 1, refreshCoverage = f
     refreshCoverage: refreshCoverage === true,
   };
   if (tags.length) payload.tags = tags;
-  if (!useEveryActiveModality && selectedIds.length) payload.modalities = selectedIds;
+  payload.modalities = selectedIds;
   if (filters.uf) payload.uf = String(filters.uf).trim().toUpperCase();
   if (filters.municipalityIbgeId && filters.uf) payload.municipalityIbgeId = Number(filters.municipalityIbgeId);
   if (filters.bidPhaseFrom) payload.bidPhaseFrom = filters.bidPhaseFrom;
@@ -606,32 +596,43 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
   function renderModalityOptions() {
     const list = byId("radarModalities");
     if (!list) return;
-    const selected = state.selectedModalities === null
-      ? new Set(state.modalities.map((item) => Number(item.pncp_id)))
-      : new Set(state.selectedModalities);
-    list.innerHTML = state.modalities.map((item) => `
-      <label class="radar-modality-option">
-        <input type="checkbox" name="radarModality" value="${escapeHtml(item.pncp_id)}"${selected.has(Number(item.pncp_id)) ? " checked" : ""} />
-        <span>${escapeHtml(item.name)}</span>
-      </label>`).join("");
+    const allowedIds = new Set(defaultRadarModalityIds(state.modalities));
+    const selected = new Set((state.selectedModalities ?? [...allowedIds])
+      .filter((id) => allowedIds.has(Number(id))));
+    list.innerHTML = state.modalities.map((item) => {
+      const modalityId = Number(item.pncp_id);
+      const enabled = allowedIds.has(modalityId);
+      return `
+        <label class="radar-modality-option">
+          <input type="checkbox" name="radarModality" value="${escapeHtml(item.pncp_id)}"${selected.has(modalityId) ? " checked" : ""}${enabled ? "" : " disabled"} aria-describedby="radarModalityHelp" />
+          <span>${escapeHtml(item.name)}</span>
+        </label>`;
+    }).join("");
     updateModalitySummary();
   }
 
   function updateModalitySummary() {
     const summary = byId("radarModalitySummary");
+    const availableIds = defaultRadarModalityIds(state.modalities);
+    const availableIdSet = new Set(availableIds);
     const selectedCount = state.selectedModalities === null
-      ? state.modalities.length
-      : state.selectedModalities.length;
-    const allSelected = state.modalities.length > 0 && selectedCount === state.modalities.length;
-    if (summary) summary.textContent = allSelected
-      ? `Todas as modalidades ativas (${state.modalities.length})`
-      : selectedCount === 0
-        ? "Nenhuma modalidade selecionada"
-        : `${selectedCount} de ${state.modalities.length} selecionadas`;
+      ? availableIds.length
+      : state.selectedModalities.filter((id) => availableIdSet.has(Number(id))).length;
+    const allSelected = availableIds.length > 0 && selectedCount === availableIds.length;
+    if (summary) summary.textContent = availableIds.length === 0
+      ? "Nenhuma modalidade disponível"
+      : allSelected
+        ? `Todas as modalidades disponíveis (${availableIds.length})`
+        : selectedCount === 0
+          ? "Nenhuma modalidade selecionada"
+          : `${selectedCount} de ${availableIds.length} disponíveis`;
+    if (selectedCount > 0 && byId("radarModalityError")) {
+      byId("radarModalityError").textContent = "";
+    }
     const toggle = byId("radarModalityToggle");
     if (toggle) {
-      toggle.textContent = allSelected ? "Desmarcar todas" : "Marcar todas";
-      toggle.disabled = state.modalities.length === 0;
+      toggle.textContent = allSelected ? "Desmarcar disponíveis" : "Marcar disponíveis";
+      toggle.disabled = availableIds.length === 0;
     }
   }
 
@@ -1191,17 +1192,28 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
       if (!state.catalogsLoaded) return;
     }
     if (!collectPendingTags() || !validateDates()) return;
+    const allowedIds = new Set(defaultRadarModalityIds(state.modalities));
+    const selectedModalities = (state.selectedModalities ?? [...allowedIds])
+      .filter((id) => allowedIds.has(Number(id)));
+    if (!selectedModalities.length) {
+      byId("radarModalityError").textContent = "Selecione ao menos uma modalidade.";
+      return;
+    }
     const filters = readForm();
     let payload;
     try {
       payload = buildRadarSearchPayload(filters, {
         page,
         refreshCoverage,
-        activeModalities: state.modalities.map((item) => item.pncp_id),
+        activeModalities: defaultRadarModalityIds(state.modalities),
       });
     } catch (error) {
-      const tagError = byId("radarTagsError");
-      tagError.textContent = error.message;
+      if (error instanceof Error && error.message === "Selecione ao menos uma modalidade.") {
+        byId("radarModalityError").textContent = error.message;
+      } else {
+        const tagError = byId("radarTagsError");
+        tagError.textContent = error.message;
+      }
       return;
     }
     state.searching = true;
@@ -1214,7 +1226,7 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
     try {
       const activeClient = client();
       const countPayload = buildRadarOpenProposalCountPayload(filters, {
-        activeModalities: state.modalities.map((item) => item.pncp_id),
+        activeModalities: defaultRadarModalityIds(state.modalities),
       });
       const [searchResult, openCountResult] = await Promise.all([
         activeClient.functions.invoke("radar-search", { body: payload }),
@@ -1422,6 +1434,7 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
     state.hasSearched = false;
     state.error = null;
     if (byId("radarTagInput")) byId("radarTagInput").value = "";
+    if (byId("radarModalityError")) byId("radarModalityError").textContent = "";
     if (byId("radarUf")) byId("radarUf").value = "";
     if (byId("radarSituation")) byId("radarSituation").value = "open";
     if (byId("radarPageSize")) byId("radarPageSize").value = "20";
@@ -1476,10 +1489,11 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
         state.catalogsLoaded = false;
         void loadCatalogs();
       } else if (target.dataset.radarAction === "toggle-modalities") {
-        const selectedCount = state.selectedModalities === null
-          ? state.modalities.length
-          : state.selectedModalities.length;
-        state.selectedModalities = selectedCount === state.modalities.length ? [] : null;
+        const availableIds = defaultRadarModalityIds(state.modalities);
+        const currentSelection = state.selectedModalities ?? availableIds;
+        const allSelected = availableIds.length > 0
+          && currentSelection.length === availableIds.length;
+        state.selectedModalities = allSelected ? [] : availableIds;
         renderModalityOptions();
       } else if (target.dataset.radarAction === "reset-platform-form") {
         resetPlatformForm();
@@ -1515,13 +1529,17 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
       if (event.target?.id === "radarUf") {
         void loadMunicipalities(event.target.value);
       } else if (event.target?.matches('input[name="radarModality"]')) {
-        const selected = state.selectedModalities === null
-          ? new Set(state.modalities.map((item) => Number(item.pncp_id)))
-          : new Set(state.selectedModalities);
+        const availableIds = new Set(defaultRadarModalityIds(state.modalities));
+        const selected = new Set((state.selectedModalities ?? [...availableIds])
+          .filter((id) => availableIds.has(Number(id))));
         const modalityId = Number(event.target.value);
+        if (!availableIds.has(modalityId)) {
+          event.target.checked = false;
+          return;
+        }
         if (event.target.checked) selected.add(modalityId);
         else selected.delete(modalityId);
-        state.selectedModalities = selected.size === state.modalities.length ? null : [...selected];
+        state.selectedModalities = [...selected];
         updateModalitySummary();
       } else if (event.target?.id === "radarPageSize" && state.hasSearched) {
         void runSearch({ page: 1 });
