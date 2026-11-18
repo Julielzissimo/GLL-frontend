@@ -209,11 +209,20 @@ async function validateRadarSearchPage(page) {
   await page.locator("#radarSituation").selectOption("all");
   await page.locator("#radarBidPhaseFrom").fill("");
   await page.locator("#radarBidPhaseTo").fill("");
-  await page.locator("#radarTagInput").fill("pavimentação");
+  const availableProcurements = await submitRadarSearch(page, (payload) => payload.tags === undefined && payload.page === 1 && payload.proposalReceiptState === "all");
+  const knownProcurement = availableProcurements.body.results[0];
+  if (!knownProcurement?.numberControlPncp || !knownProcurement.object) {
+    throw new Error("A busca pelas modalidades permitidas não retornou um edital para o teste do Radar.");
+  }
+  const searchableTerm = knownProcurement.object.match(/[\p{L}\p{N}]{4,}/u)?.[0];
+  if (!searchableTerm) throw new Error("O edital disponível não contém um termo de objeto pesquisável.");
+  await page.locator("#radarTagInput").fill(searchableTerm);
   await page.locator("#radarTagInput").press("Enter");
   await expect(page.locator("#radarTagList li")).toHaveCount(1);
   const simple = await submitRadarSearch(page, (payload) => payload.tags?.length === 1 && payload.proposalReceiptState === "all", { verifyScrollRestore: true });
-  if (simple.body.results.length === 0) throw new Error("A busca real por pavimentação no Espírito Santo não retornou registros conhecidos.");
+  if (!simple.body.results.some((result) => result.numberControlPncp === knownProcurement.numberControlPncp)) {
+    throw new Error("A busca por um termo do edital disponível não retornou o edital esperado.");
+  }
   if (simple.body.results.some((result) => result.platformName !== "Portal de Compras Públicas")) {
     throw new Error("A pesquisa do Radar retornou uma plataforma diferente do Portal de Compras Públicas.");
   }
@@ -346,7 +355,7 @@ async function validateRadarSearchPage(page) {
   await page.locator("#radarTagInput").fill("aquisição");
   await page.locator("#radarTagInput").press("Enter");
   const multiple = await submitRadarSearch(page, (payload) => payload.tags?.length === 2 && payload.proposalReceiptState === "all");
-  await expect(multiple.payload.tags).toEqual(["pavimentação", "aquisição"]);
+  await expect(multiple.payload.tags).toEqual([searchableTerm, "aquisição"]);
   if (multiple.body.results.length === 0) throw new Error("A pesquisa OR do Radar não retornou resultados para os termos de teste.");
 
   await page.locator('[data-radar-action="clear"]').click();
