@@ -55,6 +55,14 @@ test("detalhes, favoritos e importação usam o cliente Supabase e preservam os 
   assert.match(preprocessedFeature, /from\("radar_itens_sync"\)/u);
 });
 
+test("detalhes consultam documentos automaticamente e ocultam somente o título genérico Edital", () => {
+  assert.match(detailsFeature, /await Promise\.all\(\[favoriteLoad, detailLoad\]\);\s*if \(state\.opened && currentId\(\) === id && state\.data\?\.documents\?\.status === "not_loaded"\) \{\s*void loadDocuments\(id\);/u);
+  assert.doesNotMatch(detailsFeature, /data-radar-documents-refresh>Consultar documentos no PNCP/u);
+  assert.match(detailsFeature, /data-radar-documents-refresh>Consultar novamente/u);
+  assert.match(detailsFeature, /title\.trim\(\)\.toLocaleLowerCase\("pt-BR"\) === "edital" \? "" : `<strong>\$\{escapeHtml\(title\)\}<\/strong>`/u);
+  assert.match(detailsFeature, /document\.publishedAt \? `<small>Publicado em/u);
+});
+
 test("pesquisa e detalhes não chamam diretamente PNCP, localhost ou IP privado", () => {
   const browserFlows = [searchFeature, detailsFeature, preprocessedFeature, importFeature].join("\n");
   assert.doesNotMatch(browserFlows, /fetch\s*\(\s*["'`]https?:\/\/(?:localhost|127\.0\.0\.1|10\.|192\.168\.|172\.(?:1[6-9]|2\d|3[01])\.)/iu);
