@@ -218,13 +218,15 @@ async function validateRadarSearchPage(page) {
   const resultCard = page.locator("#radarResultsContent .radar-result-card").first();
   await expect(resultCard).toBeVisible();
   await expect(resultCard).toContainText("Município - UF");
-  await expect(resultCard).toContainText("Abertura das propostas");
+  await expect(resultCard).toContainText("Data da Disputa");
+  await expect(resultCard).not.toContainText("Abertura das propostas");
+  await expect(resultCard).not.toContainText("Publicação no PNCP");
   await expect(resultCard).toContainText("Limite p/ Recebimento das Propostas");
   await expect(resultCard).toContainText("Órgão responsável");
   await expect(resultCard).toContainText("Modalidade");
   await expect(resultCard).toContainText("Plataforma");
   await expect(resultCard).toContainText("Método:");
-  await expect(resultCard.locator(".radar-result-fields > div")).toHaveCount(7);
+  await expect(resultCard.locator(".radar-result-fields > div")).toHaveCount(6);
   await expect(resultCard.locator(".radar-result-number")).toContainText("PNCP");
   await expect(resultCard.locator(".radar-result-value")).toContainText("Valor estimado");
   await expect(resultCard).toContainText("Ver itens");
