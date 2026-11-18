@@ -8,6 +8,13 @@ const detailsFeature = readFileSync(new URL("../web/radar-details.js", import.me
 const preprocessedFeature = readFileSync(new URL("../web/radar-preprocessed.js", import.meta.url), "utf8");
 const importFeature = readFileSync(new URL("../web/radar-import.js", import.meta.url), "utf8");
 
+test("os cards do Radar exibem a abertura das propostas como Data da Disputa", () => {
+  const resultCard = searchFeature.match(/function renderResultCard\(result\) \{[\s\S]*?\n  \}/u)?.[0];
+  assert.ok(resultCard, "renderizador dos cards de resultados presente");
+  assert.match(resultCard, /<dt>Data da Disputa<\/dt><dd>\$\{escapeHtml\(formatDateTime\(result\.proposalsStartAt\)\)\}<\/dd>/u);
+  assert.doesNotMatch(resultCard, /Publicação no PNCP/u);
+});
+
 test("a interface pública mantém os filtros solicitados e fixa o Portal como plataforma elegível", () => {
   const searchForm = html.match(/<form id="radarSearchForm"[\s\S]*?<\/form>/u)?.[0];
   assert.ok(searchForm, "formulário de pesquisa do Radar presente");

@@ -930,9 +930,8 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
         <div><dt>Órgão responsável</dt><dd>${escapeHtml(result.agencyName || result.administrativeUnitName || "Órgão não informado")}${administrative}</dd></div>
         <div><dt>Modalidade</dt><dd>${escapeHtml(resolveModalityName(result.modalityId))}</dd></div>
         <div><dt>Plataforma</dt><dd>${escapeHtml(platform.platform || platform.label)}${platform.source ? `<small class="radar-platform-card-note">Fonte: ${escapeHtml(platform.source)} · Método: ${escapeHtml(platform.method)}</small>` : platform.note ? `<small class="radar-platform-card-note">${escapeHtml(platform.note)}</small>` : ""}</dd></div>
-        <div><dt>Abertura das propostas</dt><dd>${escapeHtml(formatDateTime(result.proposalsStartAt))}</dd></div>
+        <div><dt>Data da Disputa</dt><dd>${escapeHtml(formatDateTime(result.proposalsStartAt))}</dd></div>
         <div><dt>Limite p/ Recebimento das Propostas</dt><dd>${escapeHtml(formatDateTime(result.proposalsEndAt))}</dd></div>
-        <div><dt>Publicação no PNCP</dt><dd>${escapeHtml(formatDate(result.publishedAt))}</dd></div>
       </dl>
       <div class="radar-result-card-footer"><div class="radar-result-value"><small>Valor estimado</small><strong>${escapeHtml(formatMoney(result.estimatedValue))}</strong></div>${renderResultActions(result)}</div>
     </article>`;
