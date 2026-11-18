@@ -86,6 +86,7 @@ async function submitRadarSearch(page, predicate, { verifyScrollRestore = false 
   if (!Array.isArray(body.results) || !body.pagination || !body.coverage) {
     throw new Error("A pesquisa real do Radar retornou uma resposta incompatível.");
   }
+  await expect(page.locator("#radarSearchButton")).toBeEnabled();
   const filterRail = page.locator("#radarFilterRail");
   const filterToggle = page.locator("#radarFilterToggleButton");
   await expect(filterRail).toHaveAttribute("aria-hidden", "true");
@@ -114,7 +115,23 @@ async function submitRadarSearch(page, predicate, { verifyScrollRestore = false 
       document.documentElement.style.scrollBehavior = "";
     });
   } else {
-    await filterToggle.click();
+    const previousScrollBehavior = await page.evaluate(() => document.documentElement.style.scrollBehavior);
+    await page.evaluate(() => {
+      document.documentElement.style.scrollBehavior = "auto";
+      window.scrollTo(0, 0);
+    });
+    await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0);
+    await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+    try {
+      if (await filterRail.getAttribute("aria-hidden") === "true") {
+        await expect(filterToggle).toBeVisible();
+        await filterToggle.click();
+      }
+    } finally {
+      await page.evaluate((scrollBehavior) => {
+        document.documentElement.style.scrollBehavior = scrollBehavior;
+      }, previousScrollBehavior);
+    }
     await expect(filterRail).not.toHaveAttribute("aria-hidden", "true");
     await expect(filterRail).toBeVisible();
     await expect(filterToggle).toBeHidden();
@@ -123,6 +140,7 @@ async function submitRadarSearch(page, predicate, { verifyScrollRestore = false 
 }
 
 async function validateRadarSearchPage(page) {
+  await page.emulateMedia({ reducedMotion: "reduce" });
   await page.locator("#navRadarSearchButton").click();
   await expect(page.locator("#radarSearchPage")).toBeVisible();
   await expect(page.locator("#radarWorkbench")).toBeVisible();
