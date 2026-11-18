@@ -450,7 +450,6 @@ const refs = {
   bidForm: $("bidForm"),
   bidId: $("bidId"),
   buyerAgency: $("buyerAgency"),
-  bidObject: $("bidObject"),
   sessionDatetime: $("sessionDatetime"),
   sessionDatetimeLabel: $("sessionDatetimeLabel"),
   sessionDatetimeHelp: $("sessionDatetimeHelp"),
@@ -6807,7 +6806,6 @@ function loadBid(bidId, options = {}) {
   appState.bidQuotationCreating = false;
   refs.bidId.value = bidDisplayNumber(bid);
   refs.buyerAgency.value = bid.buyer_agency || "";
-  refs.bidObject.value = bid.bid_object || "";
   refs.sessionDatetime.value = toDateTimeInputValue(bid.session_datetime);
   refs.sessionDatetime.required = Boolean(bid.session_datetime);
   refs.proposalDeadline.value = toDateTimeInputValue(bid.proposal_deadline);
@@ -7432,7 +7430,6 @@ function collectBidData() {
     id: appState.originalBidId || crypto.randomUUID(),
     edital_number: refs.bidId.value.trim(),
     buyer_agency: refs.buyerAgency.value.trim(),
-    bid_object: refs.bidObject.value.trim(),
     session_datetime: fromDateTimeInputValue(refs.sessionDatetime.value),
     delivery_place: refs.deliveryPlace.value.trim(),
     bid_type: bidType,
