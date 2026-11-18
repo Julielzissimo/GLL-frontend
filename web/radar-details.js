@@ -809,8 +809,7 @@ export function createRadarDetailsFeature({ getClient, getUserRole = () => null,
   function renderDocuments(documentsState) {
     if (!documentsState || documentsState.status === "not_loaded") {
       return `<section class="section-band radar-detail-section" aria-labelledby="radarDocumentsTitle">
-        <div class="radar-detail-section-heading"><div><h2 id="radarDocumentsTitle">Documentos do edital</h2><p>${documentsFallbackEnabled ? "A consulta externa de documentos está disponível como ação de contingência." : "A consulta externa de documentos está desativada nesta etapa."}</p></div></div>
-        ${documentsFallbackEnabled ? '<button class="quiet-action compact-action" type="button" data-radar-documents-refresh>Consultar documentos no PNCP</button>' : ""}
+        <div class="radar-detail-section-heading"><div><h2 id="radarDocumentsTitle">Documentos do edital</h2><p>${documentsFallbackEnabled ? "A consulta dos documentos começa automaticamente ao abrir os detalhes." : "A consulta externa de documentos está desativada nesta etapa."}</p></div></div>
       </section>`;
     }
     if (documentsState?.status === "pending") {
@@ -833,7 +832,9 @@ export function createRadarDetailsFeature({ getClient, getUserRole = () => null,
       <div class="radar-detail-section-heading"><div><h2 id="radarDocumentsTitle">Documentos do edital</h2></div></div>
       <ul class="radar-document-list">${documentsState.documents.map((document) => {
         const officialUrl = validatedOfficialPncpUrl(document.url);
-        return `<li><div><strong>${escapeHtml(document.title || "Documento sem título")}</strong><span>${escapeHtml(document.type || "Tipo não informado")}</span>${document.publishedAt ? `<small>Publicado em ${escapeHtml(dateValue(document.publishedAt, dateFormatter))}</small>` : ""}</div>${officialUrl ? `<a class="quiet-action compact-action" href="${escapeHtml(officialUrl)}" target="_blank" rel="noopener noreferrer">Baixar <span aria-hidden="true">↗</span></a>` : `<span class="radar-document-url">${escapeHtml(document.url || "URL não informada")}</span>`}</li>`;
+        const title = String(document.title || "Documento sem título");
+        const titleMarkup = title.trim().toLocaleLowerCase("pt-BR") === "edital" ? "" : `<strong>${escapeHtml(title)}</strong>`;
+        return `<li><div>${titleMarkup}<span>${escapeHtml(document.type || "Tipo não informado")}</span>${document.publishedAt ? `<small>Publicado em ${escapeHtml(dateValue(document.publishedAt, dateFormatter))}</small>` : ""}</div>${officialUrl ? `<a class="quiet-action compact-action" href="${escapeHtml(officialUrl)}" target="_blank" rel="noopener noreferrer">Baixar <span aria-hidden="true">↗</span></a>` : `<span class="radar-document-url">${escapeHtml(document.url || "URL não informada")}</span>`}</li>`;
       }).join("")}</ul>
     </section>`;
   }
@@ -899,8 +900,8 @@ export function createRadarDetailsFeature({ getClient, getUserRole = () => null,
     restoreFocusedDetailsControl(content, focusTarget);
   }
 
-  async function loadDocuments(numberControlPncp = currentId(), detailsRequestId = state.requestId) {
-    if (!documentsFallbackEnabled || !identityIsValid(numberControlPncp)) return;
+  async function loadDocuments(numberControlPncp = currentId()) {
+    if (!documentsFallbackEnabled || !state.opened || currentId() !== numberControlPncp || !identityIsValid(numberControlPncp)) return;
     const documentRequestId = ++state.documentRequestId;
     if (state.data && currentId() === numberControlPncp) {
       state.data = { ...state.data, documents: { status: "pending", documents: [], errorCode: null } };
@@ -911,7 +912,7 @@ export function createRadarDetailsFeature({ getClient, getUserRole = () => null,
       const { data, error } = await getClient().functions.invoke("radar-details", {
         body: { action: "documents", numberControlPncp },
       });
-      if (detailsRequestId !== state.requestId || documentRequestId !== state.documentRequestId) return;
+      if (documentRequestId !== state.documentRequestId || !state.opened || currentId() !== numberControlPncp) return;
       if (error) {
         let responseBody = null;
         try { responseBody = await error.context?.json?.(); } catch { /* Response bodies may already be consumed. */ }
@@ -924,7 +925,7 @@ export function createRadarDetailsFeature({ getClient, getUserRole = () => null,
     } catch {
       documentsState = { status: "unavailable", documents: [], errorCode: "DOCUMENTS_UPSTREAM_UNAVAILABLE" };
     }
-    if (detailsRequestId !== state.requestId || documentRequestId !== state.documentRequestId || !state.data) return;
+    if (documentRequestId !== state.documentRequestId || !state.opened || currentId() !== numberControlPncp || !state.data) return;
     state.data = { ...state.data, documents: documentsState };
     render();
   }
@@ -1275,6 +1276,7 @@ export function createRadarDetailsFeature({ getClient, getUserRole = () => null,
   function closeView({ updateHistory = true } = {}) {
     itemStatusPoller.stop();
     state.itemStatusRequestId += 1;
+    state.documentRequestId += 1;
     state.opened = false;
     state.loading = false;
     state.itemPollingLimitReached = false;
@@ -1300,6 +1302,7 @@ export function createRadarDetailsFeature({ getClient, getUserRole = () => null,
     }
     itemStatusPoller.stop();
     state.itemStatusRequestId += 1;
+    state.documentRequestId += 1;
     state.itemStatusCommunicationError = false;
     state.itemPollingLimitReached = false;
     state.syncRequestInProgress = false;
@@ -1330,6 +1333,9 @@ export function createRadarDetailsFeature({ getClient, getUserRole = () => null,
     });
     const detailLoad = refresh();
     await Promise.all([favoriteLoad, detailLoad]);
+    if (state.opened && currentId() === id && state.data?.documents?.status === "not_loaded") {
+      void loadDocuments(id);
+    }
     render();
   }
 
@@ -1402,7 +1408,7 @@ export function createRadarDetailsFeature({ getClient, getUserRole = () => null,
       } else if (event.target.closest("#radarDetailsContingencyButton")) {
         void runDetailsFallback();
       } else if (event.target.closest("[data-radar-documents-refresh]")) {
-        void loadDocuments(currentId(), state.requestId);
+        void loadDocuments(currentId());
       } else if (event.target.closest("[data-radar-item-sync-request]")) {
         void requestItemSync();
       } else if (event.target.closest("[data-radar-item-sync-watch]")) {
