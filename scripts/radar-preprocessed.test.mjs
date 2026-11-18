@@ -248,9 +248,15 @@ test("sinaliza incompatibilidade entre o contador publicado e as linhas visívei
 });
 
 test("mapeia plataforma sem confirmação e mantém orçamento sigiloso dos itens", () => {
-  const mapped = mapRadarPreprocessedContract(sampleProcurement({ plataforma_id: null, plataforma_status: "pending_verification" }));
+  const sessionStart = "2026-10-08T11:00:00Z";
+  const mapped = mapRadarPreprocessedContract(sampleProcurement({
+    plataforma_id: null,
+    plataforma_status: "pending_verification",
+    data_inicio_fase_lances: sessionStart,
+  }));
   assert.equal(mapped.platform.status, "unidentified");
   assert.equal(mapped.platform.name, null);
+  assert.equal(mapped.contract.dataInicioFaseLances, sessionStart);
   const item = mapRadarPreprocessedItem(sampleItems()[1]);
   assert.equal(item.budgetSecret, true);
   assert.equal(item.totalValue, 0);

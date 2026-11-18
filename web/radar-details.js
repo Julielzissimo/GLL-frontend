@@ -24,6 +24,7 @@ const FAVORITE_METADATA_FIELDS = [
   "valor_estimado",
   "data_publicacao",
   "data_inicio_propostas",
+  "data_inicio_fase_lances",
   "data_fim_propostas",
   "situacao_codigo",
   "situacao_nome",
@@ -255,6 +256,7 @@ export function mapRadarFavoriteMetadata(row, platformNames = new Map()) {
     estimatedValue: row?.valor_estimado ?? null,
     publishedAt: row?.data_publicacao || null,
     proposalsStartAt: row?.data_inicio_propostas || null,
+    bidPhaseStartAt: row?.data_inicio_fase_lances || null,
     proposalsEndAt: row?.data_fim_propostas || null,
     administrativeSituationCode: row?.situacao_codigo || "",
     administrativeSituationName: row?.situacao_nome || "",
@@ -579,10 +581,9 @@ export function createRadarDetailsFeature({ getClient, getUserRole = () => null,
       ["Objeto da contratação", contract.objetoCompra],
       ["Valor estimado", estimatedValue],
       ["Publicação no PNCP", dateValue(contract.dataPublicacaoPncp, dateFormatter)],
+      ["Data da Disputa", dateValue(contract.dataInicioFaseLances)],
       ["Abertura das propostas", dateValue(contract.dataAberturaProposta)],
       ["Limite p/ Recebimento das Propostas", dateValue(contract.dataEncerramentoProposta)],
-      ["Atualização dos dados no Radar", dateValue(platform.dataUpdatedAt || contract.dataAtualizacaoGlobal || contract.dataAtualizacao)],
-      ["Situação", contract.situacaoCompraNome],
     ];
     const officialUrl = validatedOfficialPncpUrl(sources?.official);
     const platformStatus = platform.status === "identified" && platform.name
