@@ -9609,23 +9609,28 @@ function normalizeBidAttachments(record) {
     const path = String(file?.path || file?.edital_file_path || "").trim();
     if (!path || paths.has(path)) return [];
     paths.add(path);
+    const radarDocumentId = Number(file.radar_document_id);
     return [{
       path,
       name: String(file.name || file.edital_file_name || "edital"),
       type: String(file.type || file.edital_file_type || "application/octet-stream"),
       size: Number(file.size || file.edital_file_size || 0),
       ...(file.blob ? { blob: file.blob } : {}),
+      ...(Number.isSafeInteger(radarDocumentId) && radarDocumentId > 0 ? { radar_document_id: radarDocumentId } : {}),
     }];
   });
 }
 
 function attachmentMetadata(attachment) {
-  return {
+  const metadata = {
     path: attachment.path,
     name: attachment.name,
     type: attachment.type,
     size: Number(attachment.size || 0),
   };
+  const radarDocumentId = Number(attachment.radar_document_id);
+  if (Number.isSafeInteger(radarDocumentId) && radarDocumentId > 0) metadata.radar_document_id = radarDocumentId;
+  return metadata;
 }
 
 function bidDisplayNumber(bid) {
