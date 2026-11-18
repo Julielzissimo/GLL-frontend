@@ -32,16 +32,19 @@ test("a interface pública mantém os filtros solicitados e fixa o Portal como p
   assert.match(html, /id="radarPagination"/u);
 });
 
-test("a interface apresenta os indicadores de sincronização, cobertura, confirmação e resultado", () => {
+test("a interface omite o resumo operacional e não exibe o aviso normal de cobertura", () => {
   for (const id of [
     "radarOperationalSummary", "radarTotalFound", "radarTotalOpen",
     "radarLastSuccessfulSync", "radarCoverageValue", "radarConfirmationValue",
     "radarUpdateStateValue",
-  ]) assert.match(html, new RegExp(`id="${id}"`, "u"));
-  assert.match(searchFeature, /O contrato atual não expõe o horário do último lote do Engine/u);
-  assert.match(searchFeature, /Coleta em andamento/u);
-  assert.match(searchFeature, /Dados desatualizados/u);
-  assert.match(searchFeature, /Erro de sincronização/u);
+  ]) assert.doesNotMatch(html, new RegExp(`id="${id}"`, "u"));
+  assert.doesNotMatch(html, /radar-operational-summary|radar-operational-card/u);
+  assert.doesNotMatch(searchFeature, /function renderOperationalSummary/u);
+  const coverageRenderer = searchFeature.match(/function renderCoverage\(\) \{[\s\S]*?\n  \}/u)?.[0];
+  assert.ok(coverageRenderer, "o feedback de pesquisa continua implementado");
+  assert.match(coverageRenderer, /state\.searching/u);
+  assert.match(coverageRenderer, /state\.error/u);
+  assert.doesNotMatch(coverageRenderer, /radarOperationalStatus|coverageTime|state\.coverage/u);
   assert.match(searchFeature, /Nenhum edital encontrado/u);
 });
 
@@ -69,11 +72,4 @@ test("pesquisa e detalhes não chamam diretamente PNCP, localhost ou IP privado"
   const browserFlows = [searchFeature, detailsFeature, preprocessedFeature, importFeature].join("\n");
   assert.doesNotMatch(browserFlows, /fetch\s*\(\s*["'`]https?:\/\/(?:localhost|127\.0\.0\.1|10\.|192\.168\.|172\.(?:1[6-9]|2\d|3[01])\.)/iu);
   assert.doesNotMatch(browserFlows, /fetch\s*\(\s*["'`]https?:\/\/(?:www\.)?pncp\.gov\.br/iu);
-});
-
-test("o layout do resumo operacional se adapta a tablet e celular", () => {
-  const styles = readFileSync(new URL("../web/styles.css", import.meta.url), "utf8");
-  assert.match(styles, /\.radar-operational-summary\s*\{[^}]*repeat\(3/u);
-  assert.match(styles, /\.radar-operational-summary\s*\{[^}]*repeat\(2/u);
-  assert.match(styles, /\.radar-operational-summary\s*\{[^}]*minmax\(0,\s*1fr\)/u);
 });
