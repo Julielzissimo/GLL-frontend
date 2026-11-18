@@ -2856,7 +2856,9 @@
         "464f2de73405e8264763f69ccad06317b37fa28e",
         "c844c75dad3b833fd530d37f0b6a4606281d3430"
       ],
-      "frontend_commits": [],
+      "frontend_commits": [
+        "5aae7231d237cfec4075a63b11b9f86d88e23bcd"
+      ],
       "migrations": []
     }
   ]
