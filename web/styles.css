@@ -8292,13 +8292,16 @@ button.history-row:hover {
 .radar-import-confirmation { display: grid; gap: var(--space-md); padding: var(--space-md); border: var(--border-default); border-radius: var(--radius-sm); }
 .radar-import-confirmation p { margin: 0; line-height: var(--line-height-normal); }
 .radar-item-selection { min-width: 7rem; text-align: center; }
+.radar-item-count-heading { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-sm); }
+.radar-item-count-heading h2 { margin: 0; }
 .radar-item-selection label { display: inline-flex; align-items: center; justify-content: center; min-width: 2.75rem; min-height: 2.75rem; cursor: pointer; }
 .radar-item-selection input { width: 1.125rem; height: 1.125rem; }
 .radar-item-selection small { display: block; color: var(--color-text-secondary); font-size: var(--font-size-xs); }
 .radar-item-pagination { justify-content: center; margin-top: var(--space-sm); }
 .radar-official-link { justify-self: start; text-decoration: none; }
 .radar-detail-items-wrap { max-height: min(68vh, 52rem); overflow: auto; overscroll-behavior: contain; }
-.radar-items-table { min-width: 86rem; }
+.radar-results-table.radar-items-table { width: max-content; min-width: 0; }
+.radar-items-table .radar-item-selection { width: 1%; min-width: 0; white-space: nowrap; }
 .radar-items-table td { max-width: 25rem; white-space: pre-wrap; }
 .radar-items-table th.radar-item-description,
 .radar-items-table td.radar-item-description { width: auto; min-width: 0; max-width: 26rem; }
