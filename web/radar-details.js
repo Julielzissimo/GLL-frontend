@@ -672,7 +672,7 @@ export function createRadarDetailsFeature({ getClient, getUserRole = () => null,
   function renderItemTable(items, { selectable = false } = {}) {
     return `<div class="table-wrap radar-detail-items-wrap" role="region" tabindex="0" aria-label="Itens da contratação; use a rolagem horizontal para ver todas as colunas."><table class="radar-results-table radar-items-table">
       <caption class="sr-only">Itens da contratação armazenados no Radar</caption>
-      <thead><tr>${selectable ? '<th scope="col">Importar</th>' : ""}<th scope="col">Item</th><th scope="col" class="radar-item-description">Descrição</th><th scope="col" class="numeric">Quantidade</th><th scope="col" class="radar-item-unit">Unidade</th><th scope="col" class="numeric">Valor unitário estimado</th><th scope="col" class="numeric">Valor total</th></tr></thead>
+      <thead><tr>${selectable ? '<th scope="col">Importar</th>' : ""}<th scope="col">Item</th><th scope="col" class="radar-item-description">Descrição</th><th scope="col" class="numeric">Quantidade</th><th scope="col" class="radar-item-unit">Unidade</th><th scope="col" class="numeric">VALOR ESTIMADO</th><th scope="col" class="numeric">Valor total</th></tr></thead>
       <tbody>${items.map((item) => `<tr>
         ${selectable ? renderItemSelection(item) : ""}
         <td>${escapeHtml(item.number)}</td>
