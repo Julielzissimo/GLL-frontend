@@ -102,7 +102,7 @@ export function radarDefaultPeriodDates(days, today = todayInSaoPaulo()) {
     throw new TypeError("A data atual é inválida.");
   }
   end.setUTCDate(end.getUTCDate() - periodDays + 1);
-  return { publishedFrom: end.toISOString().slice(0, 10), publishedTo: today };
+  return { bidPhaseFrom: end.toISOString().slice(0, 10), bidPhaseTo: today };
 }
 
 function normalizedModalityIds(values) {
@@ -136,6 +136,7 @@ export function buildRadarSearchPayload(filters, { page = 1, refreshCoverage = f
     || selectedIds.length === activeIds.length;
   const payload = {
     action: "search",
+    dateFilterMode: "bid_phase",
     proposalReceiptState: filters.proposalReceiptState || "open",
     page: Number(page),
     pageSize: Number(filters.pageSize || 20),
@@ -147,8 +148,8 @@ export function buildRadarSearchPayload(filters, { page = 1, refreshCoverage = f
   if (!useEveryActiveModality && selectedIds.length) payload.modalities = selectedIds;
   if (filters.uf) payload.uf = String(filters.uf).trim().toUpperCase();
   if (filters.municipalityIbgeId && filters.uf) payload.municipalityIbgeId = Number(filters.municipalityIbgeId);
-  if (filters.publishedFrom) payload.publishedFrom = filters.publishedFrom;
-  if (filters.publishedTo) payload.publishedTo = filters.publishedTo;
+  if (filters.bidPhaseFrom) payload.bidPhaseFrom = filters.bidPhaseFrom;
+  if (filters.bidPhaseTo) payload.bidPhaseTo = filters.bidPhaseTo;
   return payload;
 }
 
@@ -171,6 +172,13 @@ export function buildRadarDetailsHref(numberControlPncp, currentUrl) {
 }
 
 export function radarEmptyResultState(coverage) {
+  if (coverage?.status === "unconfirmed") {
+    return {
+      kind: "coverage-unconfirmed-empty",
+      title: "Fase de lances sem cobertura confirmada",
+      description: "A ausência de resultados não é definitiva: o Radar ainda não confirma a cobertura histórica para as datas da fase de lances.",
+    };
+  }
   if (coverage?.complete === true || coverage?.status === "complete") {
     return {
       kind: "complete-empty",
@@ -253,6 +261,14 @@ export function radarOperationalStatus({ coverage, collectionTask, error, totalC
       label: "Dados desatualizados",
       tone: "warning",
       description: "A cobertura está desatualizada. Os resultados armazenados continuam disponíveis.",
+    };
+  }
+  if (coverage?.status === "unconfirmed") {
+    return {
+      kind: "coverage-unconfirmed",
+      label: "Cobertura não confirmada",
+      tone: "warning",
+      description: "O Radar filtra pela data de início da fase de lances, mas ainda não mede a cobertura histórica por essa data.",
     };
   }
   if (coverage?.status === "not_collected") {
@@ -415,8 +431,8 @@ function currentFiltersFromInputs(root, tags, modalities) {
     modalities,
     uf: root.querySelector("#radarUf")?.value || "",
     municipalityIbgeId: root.querySelector("#radarMunicipality")?.value || "",
-    publishedFrom: root.querySelector("#radarPublishedFrom")?.value || "",
-    publishedTo: root.querySelector("#radarPublishedTo")?.value || "",
+    bidPhaseFrom: root.querySelector("#radarBidPhaseFrom")?.value || "",
+    bidPhaseTo: root.querySelector("#radarBidPhaseTo")?.value || "",
     proposalReceiptState: root.querySelector("#radarSituation")?.value || "open",
     pageSize: root.querySelector("#radarPageSize")?.value || 20,
     sortBy: root.querySelector("#radarSortBy")?.value || "publishedAt",
@@ -702,8 +718,8 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
 
   function applyDefaultPeriod() {
     const dates = radarDefaultPeriodDates(state.defaultPeriodDays);
-    byId("radarPublishedFrom").value = dates.publishedFrom;
-    byId("radarPublishedTo").value = dates.publishedTo;
+    byId("radarBidPhaseFrom").value = dates.bidPhaseFrom;
+    byId("radarBidPhaseTo").value = dates.bidPhaseTo;
     byId("radarDateError").textContent = "";
   }
 
@@ -763,7 +779,7 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
       renderModalityOptions();
       renderPlatformAdmin();
       renderStateOptions();
-      if (!byId("radarPublishedFrom").value && !byId("radarPublishedTo").value) applyDefaultPeriod();
+      if (!byId("radarBidPhaseFrom").value && !byId("radarBidPhaseTo").value) applyDefaultPeriod();
       await loadMunicipalities(byId("radarUf").value);
       void loadPlatformMetrics();
     } catch (error) {
@@ -842,12 +858,14 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
     const expectedScopes = Number(coverage.expectedScopes);
     const completeScopes = Number(coverage.completeScopes);
     const knownScopes = Number(coverage.knownScopes);
-    const scopeCountAvailable = Number.isFinite(expectedScopes) && Number.isFinite(completeScopes);
+    const scopeCountAvailable = coverage.status !== "unconfirmed"
+      && Number.isFinite(expectedScopes) && Number.isFinite(completeScopes);
     const coverageLabel = coverage.status === "complete" ? "Completa"
       : coverage.status === "partial" ? "Parcial"
         : coverage.status === "stale" ? "Desatualizada"
           : coverage.status === "failed" ? "Com falha"
-            : coverage.status === "not_collected" ? "Não coletada" : "Não informada";
+            : coverage.status === "not_collected" ? "Não coletada"
+              : coverage.status === "unconfirmed" ? "Não confirmada" : "Não informada";
     const setText = (id, value) => {
       const element = byId(id);
       if (element) element.textContent = value;
@@ -856,7 +874,9 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
     if (updateCard) updateCard.dataset.tone = status.tone;
     setText("radarTotalFound", totalCount === null ? "Não confirmado" : totalCount.toLocaleString("pt-BR"));
     setText("radarTotalFoundDetail", totalCount === null
-      ? "O total depende da cobertura informada pelo backend."
+      ? coverage.status === "unconfirmed"
+        ? "A cobertura histórica para as datas da fase de lances ainda não é confirmada."
+        : "O total depende da cobertura informada pelo backend."
       : state.error
         ? "Total da última consulta bem-sucedida; os filtros atuais não foram aplicados."
         : "Total para os filtros da pesquisa atual.");
@@ -874,6 +894,8 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
     setText("radarCoverageValue", coverageLabel);
     setText("radarCoverageDetail", scopeCountAvailable
       ? `${state.error ? "Última pesquisa bem-sucedida: " : ""}${completeScopes.toLocaleString("pt-BR")} de ${expectedScopes.toLocaleString("pt-BR")} escopos completos · ${Number.isFinite(knownScopes) ? knownScopes.toLocaleString("pt-BR") : "—"} com dados`
+      : coverage.status === "unconfirmed"
+        ? "A cobertura histórica não é acompanhada pelas datas da fase de lances; o total pode estar incompleto."
       : "A API não informou a quantidade de escopos.");
     setText("radarConfirmationValue", confirmation.platform);
     setText("radarConfirmationDetail", state.results.length
@@ -1147,8 +1169,8 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
   }
 
   function validateDates() {
-    const from = byId("radarPublishedFrom");
-    const to = byId("radarPublishedTo");
+    const from = byId("radarBidPhaseFrom");
+    const to = byId("radarBidPhaseTo");
     const error = byId("radarDateError");
     from.removeAttribute("aria-invalid");
     to.removeAttribute("aria-invalid");
