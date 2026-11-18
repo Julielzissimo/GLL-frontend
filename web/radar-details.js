@@ -793,11 +793,11 @@ export function createRadarDetailsFeature({ getClient, getUserRole = () => null,
     return `<div class="radar-import-controls">
       <p>${title}</p>
       <div class="radar-import-toolbar"><strong aria-live="polite">${count.toLocaleString("pt-BR")} ${count === 1 ? "item selecionado" : "itens selecionados"}</strong><div class="radar-import-actions">
-        <button class="quiet-action compact-action" type="button" data-radar-select-all ${!eligibleItems.length || state.importing ? "disabled" : ""}>${imported ? "Selecionar itens ainda não importados" : "Selecionar todos os itens carregados"}</button>
+        <button class="quiet-action compact-action" type="button" data-radar-select-all ${!eligibleItems.length || state.importing ? "disabled" : ""}>${imported ? "Selecionar itens ainda não importados" : "Selecionar todos os itens"}</button>
         <button class="quiet-action compact-action" type="button" data-radar-select-none ${!count || state.importing ? "disabled" : ""}>Desmarcar seleção</button>
       </div></div>
       ${statusWarning}${feedback}${confirmation}
-      ${!state.confirmingImport ? `<div class="radar-import-actions"><button class="primary-action compact-action" type="button" data-radar-import-start ${!count || state.importing ? "disabled" : ""}>${state.importing ? "Importando…" : imported ? "Complementar importação" : "Importar para o GLL"}</button>${openBidId ? `<button class="quiet-action compact-action" type="button" data-radar-open-bid="${escapeHtml(openBidId)}">Abrir edital no GLL</button>` : ""}</div>` : ""}
+      ${!state.confirmingImport ? `<div class="radar-import-actions"><button class="primary-action compact-action" type="button" data-radar-import-start ${!count || state.importing ? "disabled" : ""}>${state.importing ? "Importando…" : imported ? "Complementar importação" : "Cadastrar Edital"}</button>${openBidId ? `<button class="quiet-action compact-action" type="button" data-radar-open-bid="${escapeHtml(openBidId)}">Abrir edital no GLL</button>` : ""}</div>` : ""}
     </div>`;
   }
 
