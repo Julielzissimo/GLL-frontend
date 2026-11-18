@@ -785,7 +785,8 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
       : coverage.status === "partial" ? "Parcial"
         : coverage.status === "stale" ? "Desatualizada"
           : coverage.status === "failed" ? "Com falha"
-            : coverage.status === "not_collected" ? "Não coletada" : "Não informada";
+            : coverage.status === "not_collected" ? "Não coletada"
+              : coverage.status === "unconfirmed" ? "Não confirmada" : "Não informada";
     const setText = (id, value) => {
       const element = byId(id);
       if (element) element.textContent = value;
@@ -794,7 +795,9 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
     if (updateCard) updateCard.dataset.tone = status.tone;
     setText("radarTotalFound", totalCount === null ? "Não confirmado" : totalCount.toLocaleString("pt-BR"));
     setText("radarTotalFoundDetail", totalCount === null
-      ? "O total depende da cobertura informada pelo backend."
+      ? coverage.status === "unconfirmed"
+        ? "A cobertura histórica para as datas da fase de lances ainda não é confirmada."
+        : "O total depende da cobertura informada pelo backend."
       : state.error
         ? "Total da última consulta bem-sucedida; os filtros atuais não foram aplicados."
         : "Total para os filtros da pesquisa atual.");
