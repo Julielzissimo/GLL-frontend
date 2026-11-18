@@ -2849,6 +2849,14 @@
       "migrations": [
         "supabase/migrations/20261118200057_radar_future_disputes_catalog.sql"
       ]
+    },
+    {
+      "id": "ISSUE-481",
+      "backend_commits": [
+        "464f2de73405e8264763f69ccad06317b37fa28e"
+      ],
+      "frontend_commits": [],
+      "migrations": []
     }
   ]
 }
