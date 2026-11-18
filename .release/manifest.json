@@ -2670,6 +2670,18 @@
         "dd57238022cc8144a38b3e209e03fffb24544861"
       ],
       "migrations": []
+    },
+    {
+      "id": "ISSUE-434",
+      "backend_commits": [
+        "b97bc59ac6acbde5b419b54406685ab806923755"
+      ],
+      "frontend_commits": [
+        "2fdd9df1ab4dcde5e15424bb419848bc18dbc9d9"
+      ],
+      "migrations": [
+        "supabase/migrations/20261118010135_radar_bid_phase_search_filter.sql"
+      ]
     }
   ]
 }
