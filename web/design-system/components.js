@@ -65,6 +65,7 @@
     { id: "declarationTemplateModal", area: "Declarações", title: "Nova declaração", description: "Biblioteca de declarações com escopo, edital opcional, título e conteúdo com variáveis.", actions: ["Excluir", "Cancelar", "Salvar declaração"] },
     { id: "declarationPreviewModal", area: "Declarações", title: "Conferir documento", description: "Pré-visualização do documento PDF A4.", actions: ["Voltar à edição", "Gerar PDF"] },
     { id: "declarationValidationModal", area: "Validação", title: "Não foi possível gerar a declaração", description: "Lista as informações usadas no documento que ainda não foram preenchidas.", actions: ["Entendi"] },
+    { id: "radarImportConfirmDialog", area: "Radar", title: "Cadastrar edital?", description: "Confirma a importação dos itens selecionados para um novo edital ou complementa um edital existente.", actions: ["Cancelar", "Confirmar importação"] },
     { id: "deleteBidModal", area: "Confirmação", title: "Excluir edital?", description: "O edital deixará de aparecer no sistema, mas os dados permanecerão preservados.", actions: ["Cancelar", "Excluir Edital"] },
     { id: "deleteBidAttachmentModal", area: "Confirmação", title: "Remover arquivo?", description: "Deseja remover este arquivo do edital? Esta ação não poderá ser desfeita.", actions: ["Cancelar", "Remover arquivo"] },
     { id: "blockingLoadingModal", area: "Processamento", title: "Processando…", description: "Aguarde a conclusão da operação. Não feche nem atualize esta página.", actions: [] },

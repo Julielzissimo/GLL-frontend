@@ -399,7 +399,6 @@ export function createRadarDetailsFeature({ getClient, getUserRole = () => null,
     importStatusError: "",
     importFeedback: "",
     importFeedbackTone: "success",
-    confirmingImport: false,
     importing: false,
     syncRequestInProgress: false,
     itemStatusCommunicationError: false,
@@ -475,6 +474,32 @@ export function createRadarDetailsFeature({ getClient, getUserRole = () => null,
 
   function byId(id) {
     return root?.querySelector(`#${id}`) || null;
+  }
+
+  function openImportConfirmationDialog() {
+    const dialog = byId("radarImportConfirmDialog");
+    const title = byId("radarImportConfirmTitle");
+    const summary = byId("radarImportConfirmSummary");
+    const count = state.selectedItemNumbers.size;
+    if (!dialog || typeof dialog.showModal !== "function" || !count) return;
+
+    const selectedCount = `${count.toLocaleString("pt-BR")} ${count === 1 ? "item selecionado" : "itens selecionados"}`;
+    const imported = state.importStatus;
+    title.textContent = imported ? "Complementar importação?" : "Cadastrar edital?";
+    summary.textContent = imported
+      ? `Deseja importar ${selectedCount} para o edital ${imported.editalNumber}${imported.buyerAgency ? `, de ${imported.buyerAgency}` : ""}? Os itens já importados serão preservados.`
+      : `Deseja importar ${selectedCount} para criar um novo edital? Dados que o PNCP não informa poderão ser preenchidos no formulário do edital.`;
+
+    if (!dialog.open) dialog.showModal();
+    dialog.querySelector("[data-radar-import-cancel]")?.focus({ preventScroll: true });
+  }
+
+  function closeImportConfirmationDialog({ restoreFocus = false } = {}) {
+    const dialog = byId("radarImportConfirmDialog");
+    if (dialog?.open) dialog.close();
+    if (restoreFocus) {
+      byId("radarDetailsContent")?.querySelector("[data-radar-import-start]")?.focus({ preventScroll: true });
+    }
   }
 
   function currentId() {
@@ -781,13 +806,13 @@ export function createRadarDetailsFeature({ getClient, getUserRole = () => null,
       : "Selecione somente os itens que deseja levar para o edital do GLL.";
     const count = state.selectedItemNumbers.size;
     const feedback = state.importFeedback
-      ? `<p class="radar-feedback" data-tone="${escapeHtml(state.importFeedbackTone)}" role="status" aria-live="polite">${escapeHtml(state.importFeedback)}</p>`
+      ? `<p class="radar-feedback" data-tone="${escapeHtml(state.importFeedbackTone)}" role="status" aria-live="polite" tabindex="-1" data-radar-import-feedback>${escapeHtml(state.importFeedback)}</p>`
+      : "";
+    const progress = state.importing
+      ? `<p class="radar-feedback" data-tone="info" role="status" aria-live="polite" tabindex="-1" data-radar-import-status>Importando os itens selecionados…</p>`
       : "";
     const statusWarning = state.importStatusError
       ? `<p class="radar-feedback" data-tone="warning" role="status">O estado anterior da importação não pôde ser consultado. A gravação continuará protegida contra duplicidades.</p>`
-      : "";
-    const confirmation = state.confirmingImport
-      ? `<div class="radar-import-confirmation" role="group" aria-label="Confirmar importação"><p>Confirme a importação de <strong>${count.toLocaleString("pt-BR")} ${count === 1 ? "item" : "itens"}</strong>${imported ? ` para o edital ${escapeHtml(imported.editalNumber)}` : " para um novo edital"}. Dados que o PNCP não fornece poderão ser completados no formulário do edital.</p><div class="radar-import-actions"><button class="primary-action compact-action" type="button" data-radar-import-confirm ${state.importing ? "disabled" : ""}>Confirmar importação</button><button class="quiet-action compact-action" type="button" data-radar-import-cancel ${state.importing ? "disabled" : ""}>Cancelar</button></div></div>`
       : "";
     const openBidId = state.lastImport?.bid_id || imported?.bidId;
     return `<div class="radar-import-controls">
@@ -796,8 +821,8 @@ export function createRadarDetailsFeature({ getClient, getUserRole = () => null,
         <button class="quiet-action compact-action" type="button" data-radar-select-all ${!eligibleItems.length || state.importing ? "disabled" : ""}>${imported ? "Selecionar itens ainda não importados" : "Selecionar todos os itens"}</button>
         <button class="quiet-action compact-action" type="button" data-radar-select-none ${!count || state.importing ? "disabled" : ""}>Desmarcar seleção</button>
       </div></div>
-      ${statusWarning}${feedback}${confirmation}
-      ${!state.confirmingImport ? `<div class="radar-import-actions"><button class="primary-action compact-action" type="button" data-radar-import-start ${!count || state.importing ? "disabled" : ""}>${state.importing ? "Importando…" : imported ? "Complementar importação" : "Cadastrar Edital"}</button>${openBidId ? `<button class="quiet-action compact-action" type="button" data-radar-open-bid="${escapeHtml(openBidId)}">Abrir edital no GLL</button>` : ""}</div>` : ""}
+      ${statusWarning}${feedback}${progress}
+      <div class="radar-import-actions"><button class="primary-action compact-action" type="button" data-radar-import-start ${!count || state.importing ? "disabled" : ""}>${state.importing ? "Importando…" : imported ? "Complementar importação" : "Cadastrar Edital"}</button>${openBidId ? `<button class="quiet-action compact-action" type="button" data-radar-open-bid="${escapeHtml(openBidId)}">Abrir edital no GLL</button>` : ""}</div>
     </div>`;
   }
 
@@ -1223,19 +1248,21 @@ export function createRadarDetailsFeature({ getClient, getUserRole = () => null,
   }
 
   async function executeImport() {
+    closeImportConfirmationDialog();
     if (!imports || !isCompleteRadarItemSnapshot(state.data?.items) || !state.data.items.items.length) {
       state.importFeedback = "Aguarde a sincronização completa dos itens no Radar antes de importar.";
       state.importFeedbackTone = "warning";
       render();
+      byId("radarDetailsContent")?.querySelector("[data-radar-import-feedback]")?.focus({ preventScroll: true });
       return;
     }
     const procurementId = currentId();
     const selected = state.selectedItemNumbers.values();
     if (!selected.length) return;
     state.importing = true;
-    state.confirmingImport = false;
     state.importFeedback = "";
     render();
+    byId("radarDetailsContent")?.querySelector("[data-radar-import-status]")?.focus({ preventScroll: true });
     try {
       const result = await imports.importSelected(procurementId, selected);
       if (currentId() !== procurementId) {
@@ -1269,11 +1296,13 @@ export function createRadarDetailsFeature({ getClient, getUserRole = () => null,
       if (currentId() === procurementId) {
         state.importing = false;
         render();
+        byId("radarDetailsContent")?.querySelector("[data-radar-import-feedback]")?.focus({ preventScroll: true });
       }
     }
   }
 
   function closeView({ updateHistory = true } = {}) {
+    closeImportConfirmationDialog();
     itemStatusPoller.stop();
     state.itemStatusRequestId += 1;
     state.documentRequestId += 1;
@@ -1295,6 +1324,7 @@ export function createRadarDetailsFeature({ getClient, getUserRole = () => null,
   }
 
   async function open(result, { pushHistory = true } = {}) {
+    closeImportConfirmationDialog();
     const id = typeof result === "string" ? result : String(result?.numberControlPncp || "");
     if (!identityIsValid(id)) {
       toast("Esta contratação não tem um identificador PNCP válido.", "error");
@@ -1315,7 +1345,6 @@ export function createRadarDetailsFeature({ getClient, getUserRole = () => null,
     state.importStatus = null;
     state.importStatusError = "";
     state.importFeedback = "";
-    state.confirmingImport = false;
     state.importing = false;
     state.lastImport = null;
     state.platformChoices = [];
@@ -1351,6 +1380,7 @@ export function createRadarDetailsFeature({ getClient, getUserRole = () => null,
   }
 
   function reset() {
+    closeImportConfirmationDialog();
     itemStatusPoller.stop();
     state.requestId += 1;
     state.itemStatusRequestId += 1;
@@ -1369,7 +1399,6 @@ export function createRadarDetailsFeature({ getClient, getUserRole = () => null,
     state.importStatus = null;
     state.importStatusError = "";
     state.importFeedback = "";
-    state.confirmingImport = false;
     state.importing = false;
     state.lastImport = null;
     state.selectedItemNumbers.clear();
@@ -1437,18 +1466,14 @@ export function createRadarDetailsFeature({ getClient, getUserRole = () => null,
         render();
       } else if (event.target.closest("[data-radar-select-none]")) {
         state.selectedItemNumbers.clear();
-        state.confirmingImport = false;
+        closeImportConfirmationDialog();
         render();
       } else if (event.target.closest("[data-radar-import-start]")) {
-        state.confirmingImport = true;
-        render();
-        byId("radarDetailsContent")?.querySelector("[data-radar-import-confirm]")?.focus();
+        openImportConfirmationDialog();
       } else if (event.target.closest("[data-radar-import-confirm]")) {
         void executeImport();
       } else if (event.target.closest("[data-radar-import-cancel]")) {
-        state.confirmingImport = false;
-        render();
-        byId("radarDetailsContent")?.querySelector("[data-radar-import-start]")?.focus();
+        closeImportConfirmationDialog({ restoreFocus: true });
       } else if (event.target.closest("[data-radar-open-bid]")) {
         const bidId = event.target.closest("[data-radar-open-bid]").dataset.radarOpenBid;
         if (bidId) Promise.resolve(onOpenBid(bidId)).catch((error) => {
