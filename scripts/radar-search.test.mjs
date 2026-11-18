@@ -4,6 +4,7 @@ import {
   buildRadarDetailsHref,
   buildRadarOpenProposalCountPayload,
   buildRadarSearchPayload,
+  defaultRadarModalityIds,
   parseRadarTags,
   radarDefaultPeriodDates,
   radarEmptyResultState,
@@ -39,6 +40,20 @@ test("normaliza termos de objeto, remove duplicatas sem acentos e mantém frases
 test("respeita os limites documentados de tags da pesquisa", () => {
   assert.throws(() => parseRadarTags(Array.from({ length: 26 }, (_, index) => `termo ${index}`).join(",")), /no máximo 25/);
   assert.throws(() => parseRadarTags("x".repeat(201)), /até 200 caracteres/);
+});
+
+test("seleciona por padrão apenas pregão eletrônico, dispensa e inexigibilidade do catálogo ativo", () => {
+  assert.deepEqual(defaultRadarModalityIds([
+    { pncp_id: 310, name: "Concorrência" },
+    { pncp_id: 210, name: "Pregão - Eletrônico" },
+    { pncp_id: 220, name: "Dispensa" },
+    { pncp_id: 230, name: "Inexigibilidade" },
+    { pncp_id: 211, name: "Pregão Presencial" },
+    { pncp_id: 221, name: "Dispensa Eletrônica" },
+  ]), [210, 220, 230]);
+  assert.deepEqual(defaultRadarModalityIds([
+    { pncp_id: 310, name: "Pregão Eletrônico" },
+  ]), [310]);
 });
 
 test("envia filtros aceitos pelo motor, omite modalidades quando todas estão ativas e preserva paginação e atualização", () => {
