@@ -8,7 +8,6 @@ import {
   parseRadarTags,
   radarDefaultPeriodDates,
   radarEmptyResultState,
-  radarLatestDisplayedSync,
   radarOperationalStatus,
   radarPlatformConfirmation,
   radarPlatformSummary,
@@ -208,15 +207,6 @@ test("apresenta o Portal e a fonte e método retornados pela sincronização", (
     source: "Link de origem do PNCP",
   });
   assert.equal(radarPlatformConfirmation({}).platform, "Portal de Compras Públicas");
-});
-
-test("calcula o horário mais recente entre os editais exibidos sem inferir telemetria ausente", () => {
-  assert.equal(radarLatestDisplayedSync([
-    { dataUpdatedAt: "2026-10-10T10:00:00Z" },
-    { dataUpdatedAt: "2026-10-10T11:30:00Z" },
-    { dataUpdatedAt: null },
-  ]), "2026-10-10T11:30:00.000Z");
-  assert.equal(radarLatestDisplayedSync([]), null);
 });
 
 test("só aceita link HTTPS da origem oficial PNCP em caminho de aplicação", () => {

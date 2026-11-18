@@ -305,12 +305,6 @@ export function radarPlatformConfirmation(result = {}) {
   };
 }
 
-export function radarLatestDisplayedSync(results = []) {
-  const timestamps = results.map((result) => Date.parse(result?.dataUpdatedAt || ""))
-    .filter((value) => Number.isFinite(value));
-  return timestamps.length ? new Date(Math.max(...timestamps)).toISOString() : null;
-}
-
 export function validatedPncpSourceUrl(value) {
   if (typeof value !== "string" || !value.trim()) return null;
   try {
@@ -708,12 +702,11 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
   function renderCoverage() {
     const target = byId("radarCoverageFeedback");
     if (!target) return;
-    if (state.view === "favorites") {
+    if (state.view === "favorites" || (!state.searching && !state.error)) {
       target.hidden = true;
       target.replaceChildren();
       return;
     }
-    const coverage = state.coverage;
     if (state.searching) {
       target.hidden = false;
       target.dataset.tone = "info";
@@ -726,84 +719,6 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
       target.textContent = state.error.message;
       return;
     }
-    if (!state.hasSearched) {
-      target.hidden = true;
-      target.replaceChildren();
-      return;
-    }
-    const operational = radarOperationalStatus({
-      coverage,
-      collectionTask: state.collectionTask,
-      totalCount: state.pagination?.totalCount,
-    });
-    const coverageTime = coverage?.updatedAt ? ` Última cobertura: ${formatDateTime(coverage.updatedAt)}.` : "";
-    target.hidden = false;
-    target.dataset.tone = operational.tone;
-    target.innerHTML = `<strong>${escapeHtml(operational.label)}</strong><span>${escapeHtml(operational.description + coverageTime)}</span>`;
-  }
-
-  function renderOperationalSummary() {
-    const target = byId("radarOperationalSummary");
-    if (!target) return;
-    if (state.view === "favorites" || (!state.hasSearched && !state.error)) {
-      target.hidden = true;
-      return;
-    }
-    const totalCount = Number.isSafeInteger(state.pagination?.totalCount) ? state.pagination.totalCount : null;
-    const latestRecordSync = radarLatestDisplayedSync(state.results);
-    const latestSync = state.dataUpdatedAt || latestRecordSync;
-    const status = radarOperationalStatus({
-      coverage: state.coverage,
-      collectionTask: state.collectionTask,
-      error: state.error,
-      totalCount,
-    });
-    const firstResult = state.results.find((result) => result && typeof result === "object") || {};
-    const confirmation = radarPlatformConfirmation(firstResult);
-    const coverage = state.coverage || {};
-    const expectedScopes = Number(coverage.expectedScopes);
-    const completeScopes = Number(coverage.completeScopes);
-    const knownScopes = Number(coverage.knownScopes);
-    const scopeCountAvailable = Number.isFinite(expectedScopes) && Number.isFinite(completeScopes);
-    const coverageLabel = coverage.status === "complete" ? "Completa"
-      : coverage.status === "partial" ? "Parcial"
-        : coverage.status === "stale" ? "Desatualizada"
-          : coverage.status === "failed" ? "Com falha"
-            : coverage.status === "not_collected" ? "Não coletada" : "Não informada";
-    const setText = (id, value) => {
-      const element = byId(id);
-      if (element) element.textContent = value;
-    };
-    const updateCard = byId("radarUpdateState");
-    if (updateCard) updateCard.dataset.tone = status.tone;
-    setText("radarTotalFound", totalCount === null ? "Não confirmado" : totalCount.toLocaleString("pt-BR"));
-    setText("radarTotalFoundDetail", totalCount === null
-      ? "O total depende da cobertura informada pelo backend."
-      : state.error
-        ? "Total da última consulta bem-sucedida; os filtros atuais não foram aplicados."
-        : "Total para os filtros da pesquisa atual.");
-    const openCount = state.openProposalCount;
-    setText("radarTotalOpen", Number.isSafeInteger(openCount) ? openCount.toLocaleString("pt-BR") : "Não confirmado");
-    setText("radarTotalOpenDetail", state.error
-      ? "Último total disponível; a pesquisa atual não foi concluída."
-      : "Editais com propostas abertas no mesmo escopo geográfico e período.");
-    setText("radarLastSuccessfulSync", latestSync ? formatDateTime(latestSync) : "Não informado");
-    setText("radarLastSuccessfulSyncDetail", latestSync
-      ? state.dataUpdatedAt
-        ? "Última coleta bem-sucedida nos escopos desta busca; a API não expõe o horário do lote global do Engine."
-        : "Sincronização mais recente entre os editais exibidos; a API não expõe o horário do lote global do Engine."
-      : "O contrato atual não expõe o horário do último lote do Engine.");
-    setText("radarCoverageValue", coverageLabel);
-    setText("radarCoverageDetail", scopeCountAvailable
-      ? `${state.error ? "Última pesquisa bem-sucedida: " : ""}${completeScopes.toLocaleString("pt-BR")} de ${expectedScopes.toLocaleString("pt-BR")} escopos completos · ${Number.isFinite(knownScopes) ? knownScopes.toLocaleString("pt-BR") : "—"} com dados`
-      : "A API não informou a quantidade de escopos.");
-    setText("radarConfirmationValue", confirmation.platform);
-    setText("radarConfirmationDetail", state.results.length
-      ? `${state.error ? "Pesquisa anterior · " : ""}Primeiro edital exibido · Fonte: ${confirmation.source} · Método: ${confirmation.method}`
-      : "A API não retornou edital para detalhar fonte e método de confirmação.");
-    setText("radarUpdateStateValue", status.label);
-    setText("radarUpdateStateDetail", status.description);
-    target.hidden = false;
   }
 
   function resolveModalityName(id) {
@@ -947,7 +862,6 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
     const filterRail = byId("radarFilterRail");
     const platformAdminSettings = byId("radarPlatformAdminSettings");
     const resultControls = root?.querySelector(".radar-results-controls");
-    renderOperationalSummary();
     workbench?.classList.toggle("is-favorites", favoritesView);
     if (filterRail) filterRail.hidden = favoritesView;
     if (searchForm) searchForm.hidden = favoritesView;
