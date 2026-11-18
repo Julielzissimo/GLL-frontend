@@ -689,7 +689,7 @@ export function createRadarDetailsFeature({ getClient, getUserRole = () => null,
               ? "Os itens estão temporariamente indisponíveis no cache do Radar."
               : "A importação ficará disponível após a sincronização completa dos itens."}</p>`;
     return `<section class="section-band radar-detail-section" aria-labelledby="radarImportPanelTitle">
-      <div class="radar-detail-section-heading"><div><h2 id="radarImportPanelTitle">Importação para o GLL</h2><p>Selecione os itens do edital para importar.</p></div></div>
+      <div class="radar-detail-section-heading"><div><h2 id="radarImportPanelTitle">Cadastrar edital</h2><p>Selecione os itens do edital para importar.</p></div></div>
       ${body}
     </section>`;
   }
@@ -795,14 +795,14 @@ export function createRadarDetailsFeature({ getClient, getUserRole = () => null,
     const number = String(item.number);
     const imported = Boolean(state.importStatus?.itemNumbers?.has(number));
     const selected = state.selectedItemNumbers.has(number);
-    return `<td class="radar-item-selection"><label><input type="checkbox" data-radar-select-item="${escapeHtml(number)}" aria-label="Selecionar item ${escapeHtml(number)} para importar" ${selected ? "checked" : ""} ${imported || state.importing ? "disabled" : ""}/><span class="sr-only">Selecionar item ${escapeHtml(number)}</span></label>${imported ? '<small>Já no GLL</small>' : ""}</td>`;
+    return `<td class="radar-item-selection"><label><input type="checkbox" data-radar-select-item="${escapeHtml(number)}" aria-label="Selecionar item ${escapeHtml(number)} para importar" ${selected ? "checked" : ""} ${imported || state.importing ? "disabled" : ""}/><span class="sr-only">Selecionar item ${escapeHtml(number)}</span></label>${imported ? '<small>Já cadastrado</small>' : ""}</td>`;
   }
 
   function renderImportControls(items) {
     const eligibleItems = items.filter((item) => !state.importStatus?.itemNumbers?.has(String(item.number)));
     const imported = state.importStatus;
     const title = imported
-      ? `Esta contratação já está vinculada ao edital ${escapeHtml(imported.editalNumber)}${imported.buyerAgency ? ` — ${escapeHtml(imported.buyerAgency)}` : ""}. Selecione outros itens para complementar sem alterar os que já estão no GLL.`
+      ? `Esta contratação já está vinculada ao edital ${escapeHtml(imported.editalNumber)}${imported.buyerAgency ? ` — ${escapeHtml(imported.buyerAgency)}` : ""}. Selecione outros itens para complementar sem alterar os que já estão no Licigestão.`
       : "Selecione somente os itens que deseja levar para o edital do GLL.";
     const count = state.selectedItemNumbers.size;
     const feedback = state.importFeedback

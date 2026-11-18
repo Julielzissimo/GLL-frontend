@@ -2803,6 +2803,14 @@
         "eaf524e9c7e4d690a24d21ba0bcea0a57b3c28a4"
       ],
       "migrations": []
+    },
+    {
+      "id": "ISSUE-473",
+      "backend_commits": [],
+      "frontend_commits": [
+        "cbbe3d0ec1f176213549ee25a72f904faf0841a2"
+      ],
+      "migrations": []
     }
   ]
 }
