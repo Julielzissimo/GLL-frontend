@@ -73,7 +73,7 @@ function radarDocumentsResponse(page, numberControlPncp) {
   }, { timeout: 45_000 });
 }
 
-async function submitRadarSearch(page, predicate) {
+async function submitRadarSearch(page, predicate, { verifyScrollRestore = false } = {}) {
   const responsePromise = radarSearchResponse(page, predicate);
   await page.locator("#radarSearchButton").click();
   const response = await responsePromise;
@@ -85,6 +85,39 @@ async function submitRadarSearch(page, predicate) {
   }
   if (!Array.isArray(body.results) || !body.pagination || !body.coverage) {
     throw new Error("A pesquisa real do Radar retornou uma resposta incompatível.");
+  }
+  const filterRail = page.locator("#radarFilterRail");
+  const filterToggle = page.locator("#radarFilterToggleButton");
+  await expect(filterRail).toHaveAttribute("aria-hidden", "true");
+  await expect(filterToggle).toBeVisible();
+  await expect(filterToggle).toHaveAttribute("aria-expanded", "false");
+  await expect(filterToggle).toHaveAccessibleName("Exibir filtros da pesquisa");
+  await expect(filterToggle.locator('[data-gll-icon="slidersHorizontal"]')).toHaveCount(1);
+
+  if (verifyScrollRestore) {
+    await page.evaluate(() => {
+      const spacer = document.createElement("div");
+      spacer.id = "radarFilterScrollTestSpacer";
+      spacer.style.height = "1200px";
+      document.body.append(spacer);
+      document.documentElement.style.scrollBehavior = "auto";
+      window.scrollTo(0, document.body.scrollHeight);
+    });
+    await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(0);
+    await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+    await page.evaluate(() => window.scrollTo(0, 0));
+    await expect(filterRail).not.toHaveAttribute("aria-hidden", "true");
+    await expect(filterRail).toBeVisible();
+    await expect(filterToggle).toBeHidden();
+    await page.evaluate(() => {
+      document.querySelector("#radarFilterScrollTestSpacer")?.remove();
+      document.documentElement.style.scrollBehavior = "";
+    });
+  } else {
+    await filterToggle.click();
+    await expect(filterRail).not.toHaveAttribute("aria-hidden", "true");
+    await expect(filterRail).toBeVisible();
+    await expect(filterToggle).toBeHidden();
   }
   return { payload, body };
 }
@@ -110,18 +143,10 @@ async function validateRadarSearchPage(page) {
     throw new Error("Os filtros do Radar não estão posicionados ao lado dos resultados como no protótipo.");
   }
   const filterToggle = page.locator("#radarFilterToggleButton");
+  await expect(filterToggle).toBeHidden();
   await expect(filterToggle).toHaveAttribute("aria-expanded", "true");
-  await expect(filterToggle).toHaveAccessibleName("Ocultar filtros da pesquisa");
-  await filterToggle.click();
-  await expect(filterToggle).toHaveAttribute("aria-expanded", "false");
-  await expect(page.locator("#radarWorkbench")).toHaveClass(/is-filter-manually-collapsed/);
-  await expect(page.locator("#radarFilterRail")).toHaveAttribute("aria-hidden", "true");
-  await expect.poll(() => page.locator("#radarFilterRail").evaluate((rail) => getComputedStyle(rail).visibility)).toBe("hidden");
-  await page.getByRole("button", { name: "Exibir filtros da pesquisa" }).click();
-  await expect(filterToggle).toHaveAttribute("aria-expanded", "true");
-  await expect(page.locator("#radarFilterRail")).not.toHaveAttribute("aria-hidden", "true");
-  await expect(page.locator("#radarFilterRail")).toBeVisible();
-  await expect(page.locator("#radarWorkbench")).not.toHaveClass(/is-filter-manually-collapsed/);
+  await expect(filterToggle).toHaveAttribute("aria-label", "Exibir filtros da pesquisa");
+  await expect(filterToggle.locator('[data-gll-icon="slidersHorizontal"]')).toHaveCount(1);
   await expect.poll(() => page.locator('#radarModalities input[name="radarModality"]').count()).toBeGreaterThan(0);
   await expect.poll(() => page.locator('#radarModalities input[name="radarModality"]:checked').count()).toBe(3);
   await expectDefaultRadarModalities(page);
@@ -183,7 +208,7 @@ async function validateRadarSearchPage(page) {
   await page.locator("#radarTagInput").fill("pavimentação");
   await page.locator("#radarTagInput").press("Enter");
   await expect(page.locator("#radarTagList li")).toHaveCount(1);
-  const simple = await submitRadarSearch(page, (payload) => payload.tags?.length === 1 && payload.proposalReceiptState === "all");
+  const simple = await submitRadarSearch(page, (payload) => payload.tags?.length === 1 && payload.proposalReceiptState === "all", { verifyScrollRestore: true });
   if (simple.body.results.length === 0) throw new Error("A busca real por pavimentação no Espírito Santo não retornou registros conhecidos.");
   if (simple.body.results.some((result) => result.platformName !== "Portal de Compras Públicas")) {
     throw new Error("A pesquisa do Radar retornou uma plataforma diferente do Portal de Compras Públicas.");
