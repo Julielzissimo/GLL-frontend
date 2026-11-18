@@ -128,6 +128,7 @@ async function validateRadarSearchPage(page) {
   await expect(page.locator("#radarWorkbench")).toBeVisible();
   await expect(page.locator("#radarFilterRail")).toBeVisible();
   await expect(page.locator(".radar-results-panel")).toBeVisible();
+  await expect(page.locator("#radarPageSize")).toHaveValue("50");
   await expect(page.locator("#radarSearchPage")).toHaveCSS("max-width", "none");
   const platformSelect = page.locator("#radarPlatform");
   await expect(platformSelect).toHaveValue("portal-de-compras-publicas");
@@ -362,9 +363,13 @@ async function validateRadarSearchPage(page) {
   await page.locator("#radarSituation").selectOption("all");
   await page.locator("#radarBidPhaseFrom").fill("");
   await page.locator("#radarBidPhaseTo").fill("");
+  await page.locator("#radarPageSize").selectOption("20");
   const firstPage = await submitRadarSearch(page, (payload) => payload.tags === undefined && payload.page === 1 && payload.proposalReceiptState === "all");
   if (!firstPage.body.pagination.hasMore) throw new Error("O conjunto de teste do Radar não oferece uma segunda página para validação.");
   const nextPageResponse = radarSearchResponse(page, (payload) => payload.page === 2);
+  await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+  const scrollBeforePageChange = await page.evaluate(() => window.scrollY);
+  if (scrollBeforePageChange <= 0) throw new Error("A página do Radar não rolou para validar o retorno ao início dos resultados.");
   await page.locator('#radarPagination [data-radar-page="2"]').click();
   const nextPage = await nextPageResponse;
   if (!nextPage.ok()) throw new Error(`A segunda página do Radar retornou HTTP ${nextPage.status()}.`);
@@ -372,6 +377,13 @@ async function validateRadarSearchPage(page) {
   if (nextPageBody.pagination?.page !== 2 || !Array.isArray(nextPageBody.results)) {
     throw new Error("A paginação do Radar não carregou a segunda página do serviço.");
   }
+  const resultsOffsetFromTopbar = () => page.evaluate(() => {
+    const titleTop = document.querySelector("#radarResultsTitle")?.getBoundingClientRect().top ?? Number.POSITIVE_INFINITY;
+    const topbarBottom = document.querySelector("#appTopbar")?.getBoundingClientRect().bottom ?? 0;
+    return titleTop - topbarBottom;
+  });
+  await expect.poll(resultsOffsetFromTopbar).toBeGreaterThanOrEqual(8);
+  await expect.poll(resultsOffsetFromTopbar).toBeLessThanOrEqual(48);
 
   await page.locator("#navUsersButton").click();
   await expect(page.locator("#usersPage")).toBeVisible();

@@ -129,7 +129,7 @@ export function buildRadarSearchPayload(filters, { page = 1, refreshCoverage = f
     dateFilterMode: "bid_phase",
     proposalReceiptState: filters.proposalReceiptState || "open",
     page: Number(page),
-    pageSize: Number(filters.pageSize || 20),
+    pageSize: Number(filters.pageSize || 50),
     sortBy: filters.sortBy || "publishedAt",
     sortDirection: filters.sortDirection || "desc",
     refreshCoverage: refreshCoverage === true,
@@ -418,7 +418,7 @@ function currentFiltersFromInputs(root, tags, modalities) {
     bidPhaseFrom: root.querySelector("#radarBidPhaseFrom")?.value || "",
     bidPhaseTo: root.querySelector("#radarBidPhaseTo")?.value || "",
     proposalReceiptState: root.querySelector("#radarSituation")?.value || "open",
-    pageSize: root.querySelector("#radarPageSize")?.value || 20,
+    pageSize: root.querySelector("#radarPageSize")?.value || 50,
     sortBy: root.querySelector("#radarSortBy")?.value || "publishedAt",
     sortDirection: root.querySelector("#radarSortDirection")?.value || "desc",
   };
@@ -1027,7 +1027,7 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
     }
     const page = Number(state.pagination.page || 1);
     const totalCount = Number.isSafeInteger(state.pagination.totalCount) ? state.pagination.totalCount : null;
-    const pages = totalCount === null ? null : Math.max(1, Math.ceil(totalCount / Number(state.pagination.pageSize || 20)));
+    const pages = totalCount === null ? null : Math.max(1, Math.ceil(totalCount / Number(state.pagination.pageSize || 50)));
     const label = pages === null ? `Página ${page}` : `Página ${page} de ${pages}`;
     const more = totalCount === null
       ? (state.pagination.hasMore ? "Há mais resultados indexados." : "Fim dos resultados indexados.")
@@ -1280,7 +1280,19 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
     renderResults();
   }
 
-  async function runSearch({ page = 1, refreshCoverage = false } = {}) {
+  function scrollToResultsStart() {
+    const title = byId("radarResultsTitle");
+    const window = root?.ownerDocument?.defaultView;
+    if (!title || !window) return;
+
+    const topbarBottom = root.ownerDocument.getElementById("appTopbar")?.getBoundingClientRect().bottom || 0;
+    const top = Math.max(0, window.scrollY + title.getBoundingClientRect().top - topbarBottom - 16);
+    const prefersReducedMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    title.focus({ preventScroll: true });
+    window.scrollTo({ top, behavior: prefersReducedMotion ? "auto" : "smooth" });
+  }
+
+  async function runSearch({ page = 1, refreshCoverage = false, scrollToResults = false } = {}) {
     if (!state.catalogsLoaded) {
       await loadCatalogs();
       if (!state.catalogsLoaded) return;
@@ -1373,6 +1385,7 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
       updateSearchAvailability();
       renderCoverage();
       renderResults();
+      if (scrollToResults && !state.error && state.hasSearched) scrollToResultsStart();
     }
   }
 
@@ -1532,7 +1545,7 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
     if (byId("radarModalityError")) byId("radarModalityError").textContent = "";
     if (byId("radarUf")) byId("radarUf").value = "";
     if (byId("radarSituation")) byId("radarSituation").value = "open";
-    if (byId("radarPageSize")) byId("radarPageSize").value = "20";
+    if (byId("radarPageSize")) byId("radarPageSize").value = "50";
     if (byId("radarSortBy")) byId("radarSortBy").value = "publishedAt";
     if (byId("radarSortDirection")) byId("radarSortDirection").value = "desc";
     renderTags();
@@ -1576,7 +1589,7 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
         byId("radarTagInput").focus();
       } else if (target.dataset.radarPage !== undefined) {
         const page = Number(target.dataset.radarPage);
-        if (page >= 1 && page !== Number(state.pagination?.page)) void runSearch({ page });
+        if (page >= 1 && page !== Number(state.pagination?.page)) void runSearch({ page, scrollToResults: true });
       } else if (target.dataset.radarFavoritesPage !== undefined) {
         const page = Number(target.dataset.radarFavoritesPage);
         if (page >= 1 && page !== state.favoritesPage) void loadFavoritesPage(page);

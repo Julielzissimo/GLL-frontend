@@ -2826,6 +2826,14 @@
       ],
       "frontend_commits": [],
       "migrations": []
+    },
+    {
+      "id": "ISSUE-480",
+      "backend_commits": [],
+      "frontend_commits": [
+        "9f5636c1babd9acaf61052463f2b024da36fb551"
+      ],
+      "migrations": []
     }
   ]
 }
