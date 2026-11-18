@@ -914,9 +914,7 @@ export function createRadarDetailsFeature({ getClient, getUserRole = () => null,
       return;
     }
     const focusTarget = captureFocusedDetailsControl(content);
-    const loadedAt = dateValue(state.data.retrievedAt || state.data.dataUpdatedAt);
-    content.innerHTML = `<p class="radar-detail-source">Fonte: Cache centralizado do Radar · Edital atualizado em ${escapeHtml(loadedAt)}.</p>
-      <div class="radar-detail-layout">
+    content.innerHTML = `<div class="radar-detail-layout">
         <main class="radar-detail-main">${renderGeneral(state.data.contract, state.data.sources, state.data.platform)}</main>
         <aside class="radar-detail-aside">${renderDocuments(state.data.documents)}${renderImportPanel(state.data.items)}</aside>
       </div>

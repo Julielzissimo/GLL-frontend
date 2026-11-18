@@ -8270,8 +8270,6 @@ button.history-row:hover {
 .radar-details-view { display: grid; min-width: 0; gap: var(--space-lg); }
 .radar-detail-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: var(--space-sm); }
 .radar-details-content { display: grid; min-width: 0; gap: var(--space-lg); }
-.radar-detail-source { margin: 0; color: var(--color-text-secondary); font-size: var(--font-size-sm); }
-.radar-detail-source a { color: var(--color-primary); }
 .radar-detail-section { display: grid; min-width: 0; gap: var(--space-lg); }
 .radar-detail-section-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--space-md); }
 .radar-detail-section-heading h2 { margin: 0 0 var(--space-xs); }
