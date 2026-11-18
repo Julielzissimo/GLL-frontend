@@ -453,6 +453,7 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
   const root = globalThis.document?.getElementById("radarSearchPage");
   let filterScrollFrame = null;
   let filterScrollBound = false;
+  let filterRailExpansionScrollPending = false;
   const state = {
     bound: false,
     initialized: false,
@@ -509,6 +510,13 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
     if (!workbench || !filterRail) return;
 
     workbench.classList.toggle("is-filter-collapsed", collapsed);
+    const toggleButton = byId("radarFilterToggleButton");
+    if (toggleButton) {
+      const label = collapsed ? "Exibir filtros da pesquisa" : "Ocultar filtros da pesquisa";
+      toggleButton.setAttribute("aria-expanded", String(!collapsed));
+      toggleButton.setAttribute("aria-label", label);
+      toggleButton.setAttribute("title", label);
+    }
     if (collapsed) {
       filterRail.setAttribute("aria-hidden", "true");
       filterRail.setAttribute("inert", "");
@@ -516,6 +524,38 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
       filterRail.removeAttribute("aria-hidden");
       filterRail.removeAttribute("inert");
     }
+  }
+
+  function toggleFilterRailManually() {
+    const workbench = byId("radarWorkbench");
+    const filterRail = byId("radarFilterRail");
+    const window = root?.ownerDocument?.defaultView;
+    if (!workbench || !filterRail || !window) return;
+
+    const isCollapsed = workbench.classList.contains("is-filter-collapsed");
+    if (!isCollapsed) {
+      workbench.classList.add("is-filter-manually-collapsed");
+      filterRailExpansionScrollPending = false;
+      setFilterRailCollapsed(true);
+      announce("Filtros da pesquisa ocultados.");
+      return;
+    }
+
+    const railBounds = filterRail.getBoundingClientRect();
+    const topbarBottom = root.ownerDocument.getElementById("appTopbar")?.getBoundingClientRect().bottom || 0;
+    const shouldScrollToFilters = railBounds.top < topbarBottom + 16;
+    const scrollTop = Math.max(0, window.scrollY + railBounds.top - topbarBottom - 16);
+    workbench.classList.remove("is-filter-manually-collapsed");
+    setFilterRailCollapsed(false);
+    if (shouldScrollToFilters) {
+      filterRailExpansionScrollPending = true;
+      const prefersReducedMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+      window.scrollTo({ top: scrollTop, behavior: prefersReducedMotion ? "auto" : "smooth" });
+    } else {
+      filterRailExpansionScrollPending = false;
+      syncFilterRailVisibility();
+    }
+    announce("Filtros da pesquisa exibidos.");
   }
 
   function syncFilterRailVisibility() {
@@ -533,7 +573,22 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
       && !root.classList.contains("hidden")
       && !listView?.hidden
       && !filterRail.hidden;
-    if (!isDesktop || !isSearchListVisible) {
+    const toggleButton = byId("radarFilterToggleButton");
+    if (toggleButton) toggleButton.hidden = !isSearchListVisible;
+    if (!isSearchListVisible) {
+      workbench.classList.remove("is-filter-manually-collapsed");
+      filterRailExpansionScrollPending = false;
+      setFilterRailCollapsed(false);
+      return;
+    }
+
+    if (workbench.classList.contains("is-filter-manually-collapsed")) {
+      setFilterRailCollapsed(true);
+      return;
+    }
+
+    if (!isDesktop) {
+      filterRailExpansionScrollPending = false;
       setFilterRailCollapsed(false);
       return;
     }
@@ -542,6 +597,10 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
 
     const filterBottom = filterRail.getBoundingClientRect().bottom;
     const topbarBottom = document.getElementById("appTopbar")?.getBoundingClientRect().bottom || 0;
+    if (filterRailExpansionScrollPending) {
+      if (filterBottom > topbarBottom + 48) filterRailExpansionScrollPending = false;
+      else return;
+    }
     const isCollapsed = workbench.classList.contains("is-filter-collapsed");
     if (!isCollapsed && filterBottom <= topbarBottom) {
       setFilterRailCollapsed(true);
@@ -1459,6 +1518,8 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
         const expanded = target.getAttribute("aria-expanded") === "true";
         target.setAttribute("aria-expanded", String(!expanded));
         target.classList.toggle("is-truncated", expanded);
+      } else if (target.dataset.radarAction === "toggle-filter-rail") {
+        toggleFilterRailManually();
       } else if (target.dataset.radarRemoveTag !== undefined) {
         const index = Number(target.dataset.radarRemoveTag);
         state.tags.splice(index, 1);
@@ -1574,6 +1635,9 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
     },
     reset() {
       state.initialized = false;
+      filterRailExpansionScrollPending = false;
+      byId("radarWorkbench")?.classList.remove("is-filter-manually-collapsed");
+      setFilterRailCollapsed(false);
       state.catalogsLoaded = false;
       state.loadingCatalogs = false;
       state.catalogsError = "";

@@ -109,6 +109,19 @@ async function validateRadarSearchPage(page) {
   if (!filterBounds || !resultsBounds || resultsBounds.x <= filterBounds.x + filterBounds.width) {
     throw new Error("Os filtros do Radar não estão posicionados ao lado dos resultados como no protótipo.");
   }
+  const filterToggle = page.locator("#radarFilterToggleButton");
+  await expect(filterToggle).toHaveAttribute("aria-expanded", "true");
+  await expect(filterToggle).toHaveAccessibleName("Ocultar filtros da pesquisa");
+  await filterToggle.click();
+  await expect(filterToggle).toHaveAttribute("aria-expanded", "false");
+  await expect(page.locator("#radarWorkbench")).toHaveClass(/is-filter-manually-collapsed/);
+  await expect(page.locator("#radarFilterRail")).toHaveAttribute("aria-hidden", "true");
+  await expect.poll(() => page.locator("#radarFilterRail").evaluate((rail) => getComputedStyle(rail).visibility)).toBe("hidden");
+  await page.getByRole("button", { name: "Exibir filtros da pesquisa" }).click();
+  await expect(filterToggle).toHaveAttribute("aria-expanded", "true");
+  await expect(page.locator("#radarFilterRail")).not.toHaveAttribute("aria-hidden", "true");
+  await expect(page.locator("#radarFilterRail")).toBeVisible();
+  await expect(page.locator("#radarWorkbench")).not.toHaveClass(/is-filter-manually-collapsed/);
   await expect.poll(() => page.locator('#radarModalities input[name="radarModality"]').count()).toBeGreaterThan(0);
   await expect.poll(() => page.locator('#radarModalities input[name="radarModality"]:checked').count()).toBe(3);
   await expectDefaultRadarModalities(page);
