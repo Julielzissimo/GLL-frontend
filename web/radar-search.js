@@ -1017,7 +1017,7 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
         return;
       }
       if (count) count.textContent = "Configure os filtros para iniciar uma pesquisa.";
-      target.innerHTML = '<div class="empty-state radar-empty-state"><span class="radar-empty-icon" aria-hidden="true">⌕</span><strong>Pesquise editais do Portal de Compras Públicas</strong><p>O Radar mostra oportunidades confirmadas pelo GLL Radar Engine e armazenadas no Supabase. Informe um ou mais termos; qualquer termo pode corresponder.</p></div>';
+      target.innerHTML = "";
       renderPagination();
       renderCoverage();
       return;
@@ -1039,8 +1039,12 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
     }
     if (!rows.length) {
       const empty = radarEmptyResultState(state.coverage);
-      if (count) count.textContent = "Nenhum registro nesta página.";
-      target.innerHTML = `<div class="empty-state radar-empty-state" data-empty-kind="${empty.kind}"><span class="radar-empty-icon" aria-hidden="true">◇</span><strong>${escapeHtml(empty.title)}</strong><p>${escapeHtml(empty.description)}</p></div>`;
+      if (count) {
+        count.textContent = empty.kind === "partial-empty"
+          ? "Nenhum edital nesta página; cobertura parcial."
+          : `${empty.title}.`;
+      }
+      target.innerHTML = "";
       renderPagination();
       renderCoverage();
       return;
