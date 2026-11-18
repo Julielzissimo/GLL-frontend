@@ -457,6 +457,8 @@ function currentFiltersFromInputs(root, tags, modalities) {
  */
 export function createRadarSearchFeature({ getClient, getUserRole = () => null, toast = () => {}, actions = {} }) {
   const root = globalThis.document?.getElementById("radarSearchPage");
+  let filterScrollFrame = null;
+  let filterScrollBound = false;
   const state = {
     bound: false,
     initialized: false,
@@ -505,6 +507,82 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
 
   function byId(id) {
     return root?.querySelector(`#${id}`) || null;
+  }
+
+  function setFilterRailCollapsed(collapsed) {
+    const workbench = byId("radarWorkbench");
+    const filterRail = byId("radarFilterRail");
+    if (!workbench || !filterRail) return;
+
+    workbench.classList.toggle("is-filter-collapsed", collapsed);
+    if (collapsed) {
+      filterRail.setAttribute("aria-hidden", "true");
+      filterRail.setAttribute("inert", "");
+    } else {
+      filterRail.removeAttribute("aria-hidden");
+      filterRail.removeAttribute("inert");
+    }
+  }
+
+  function syncFilterRailVisibility() {
+    const workbench = byId("radarWorkbench");
+    const filterRail = byId("radarFilterRail");
+    const listView = byId("radarListView");
+    const document = root?.ownerDocument;
+    const window = document?.defaultView;
+    if (!workbench || !filterRail || !window || !document) return;
+
+    const isDesktop = window.matchMedia
+      ? window.matchMedia("(min-width: 761px)").matches
+      : window.innerWidth > 760;
+    const isSearchListVisible = state.view === "search"
+      && !root.classList.contains("hidden")
+      && !listView?.hidden
+      && !filterRail.hidden;
+    if (!isDesktop || !isSearchListVisible) {
+      setFilterRailCollapsed(false);
+      return;
+    }
+
+    if (filterRail.contains(document.activeElement)) return;
+
+    const filterBottom = filterRail.getBoundingClientRect().bottom;
+    const topbarBottom = document.getElementById("appTopbar")?.getBoundingClientRect().bottom || 0;
+    const isCollapsed = workbench.classList.contains("is-filter-collapsed");
+    if (!isCollapsed && filterBottom <= topbarBottom) {
+      setFilterRailCollapsed(true);
+    } else if (isCollapsed && filterBottom > topbarBottom + 48) {
+      setFilterRailCollapsed(false);
+    }
+  }
+
+  function scheduleFilterRailVisibilitySync() {
+    const window = root?.ownerDocument?.defaultView;
+    if (!window || filterScrollFrame !== null) return;
+
+    const sync = () => {
+      filterScrollFrame = null;
+      syncFilterRailVisibility();
+    };
+    if (window.requestAnimationFrame) {
+      filterScrollFrame = window.requestAnimationFrame(sync);
+    } else {
+      filterScrollFrame = window.setTimeout(sync, 0);
+    }
+  }
+
+  function bindFilterRailVisibility() {
+    const window = root?.ownerDocument?.defaultView;
+    if (!window || filterScrollBound) return;
+    filterScrollBound = true;
+    window.addEventListener("scroll", scheduleFilterRailVisibilitySync, { passive: true });
+    window.addEventListener("resize", scheduleFilterRailVisibilitySync);
+    byId("radarFilterRail")?.addEventListener("focusout", scheduleFilterRailVisibilitySync);
+    const listView = byId("radarListView");
+    if (listView && window.MutationObserver) {
+      new window.MutationObserver(scheduleFilterRailVisibilitySync)
+        .observe(listView, { attributes: true, attributeFilter: ["hidden"] });
+    }
   }
 
   function announce(message) {
@@ -973,6 +1051,7 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
     workbench?.classList.toggle("is-favorites", favoritesView);
     if (filterRail) filterRail.hidden = favoritesView;
     if (searchForm) searchForm.hidden = favoritesView;
+    syncFilterRailVisibility();
     if (platformAdminSettings) platformAdminSettings.hidden = favoritesView || getUserRole?.() !== "Administrador";
     if (resultControls) resultControls.hidden = favoritesView;
     byId("radarSearchViewButton")?.setAttribute("aria-pressed", String(!favoritesView));
@@ -1453,6 +1532,7 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
   function bind() {
     if (!root || state.bound) return;
     state.bound = true;
+    bindFilterRailVisibility();
     root.addEventListener("submit", (event) => {
       if (event.target?.id === "radarSearchForm") {
         event.preventDefault();
@@ -1576,6 +1656,7 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
       renderCoverage();
       renderResults();
       actions.syncDetailRoute?.();
+      syncFilterRailVisibility();
     },
     syncFavorite,
     async refreshCurrentView() {
