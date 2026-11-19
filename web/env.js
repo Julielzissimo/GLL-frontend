@@ -10,7 +10,6 @@ window.GLL_CONFIG = {
   supabaseAnonKey: "",
   sessionIdleTimeoutMinutes: 30,
   sessionMaxLifetimeHours: 8,
-  radarEngineAdminEnabled: true,
   radarDetailsFallbackEnabled: false,
   radarDocumentsFallbackEnabled: false,
 };
