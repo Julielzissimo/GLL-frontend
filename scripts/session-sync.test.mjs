@@ -9,10 +9,6 @@ const styles = await readFile(new URL("../web/styles.css", import.meta.url), "ut
 const classicSource = source
   .replace(/^\uFEFF/, "")
   .replace(
-    /^import \{ createRadarEngineAdminFeature \} from "\.\/radar-engine-admin\.js";\r?\n/m,
-    "",
-  )
-  .replace(
     /^import \{ createBidFollowupFeature \} from "\.\/bid-followup\.js";\r?\n/m,
     "",
   )
@@ -505,7 +501,6 @@ function client(db = backend(), auth = { session: { user } }, config = {}) {
   const context = vm.createContext({
     console, URL, URLSearchParams, Intl, Date,
     GLLDesignSystem: { ICONS: { close: "close", success: "success", warning: "warning", error: "error", info: "info" } },
-    createRadarEngineAdminFeature: () => ({ showPage() {}, hide() {}, reset() {} }),
     bidFollowupCalls, toastCalls,
     createBidFollowupFeature: (options = {}) => {
       bidFollowupCalls.onNotificationsChanged = options.onNotificationsChanged;

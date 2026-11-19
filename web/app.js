@@ -1,4 +1,3 @@
-import { createRadarEngineAdminFeature } from "./radar-engine-admin.js";
 import { createBidFollowupFeature } from "./bid-followup.js";
 import { formatCnpj, isValidCnpj } from "./company-data.js";
 
@@ -68,7 +67,6 @@ const DEFAULT_GLL_CONFIG = {
   suppliersEnabled: true,
   commercialProposalsEnabled: true,
   designSystemEnabled: true,
-  radarEngineAdminEnabled: false,
   radarDetailsFallbackEnabled: false,
   radarDocumentsFallbackEnabled: false,
   organizationDocumentsEnabled: false,
@@ -150,7 +148,6 @@ const PAGE_ROUTE_NAMES = {
   userProfile: "perfil",
   companyData: "configuracoes/dados-da-empresa",
   designSystem: "configuracoes/design-system",
-  radarEngineAdmin: "administracao/radar-engine",
 };
 const ROUTE_PAGE_NAMES = Object.fromEntries(Object.entries(PAGE_ROUTE_NAMES).map(([page, route]) => [route, page]));
 
@@ -301,7 +298,6 @@ const refs = {
   navDeclarationsButton: $("navDeclarationsButton"),
   navOrganizationDocumentsButton: $("navOrganizationDocumentsButton"),
   navUsersButton: $("navUsersButton"),
-  navRadarEngineAdminButton: $("navRadarEngineAdminButton"),
   navSettingsButton: $("navSettingsButton"),
   settingsNavigationItems: $("settingsNavigationItems"),
   navDesignSystemButton: $("navDesignSystemButton"),
@@ -398,7 +394,6 @@ const refs = {
   companyDataPage: $("companyDataPage"),
   organizationDocumentsPage: $("organizationDocumentsPage"),
   designSystemPage: $("designSystemPage"),
-  radarEngineAdminPage: $("radarEngineAdminPage"),
   designSystemCatalog: $("designSystemCatalog"),
   suppliersPage: $("suppliersPage"),
   declarationsPage: $("declarationsPage"),
@@ -635,8 +630,6 @@ const refs = {
   toastMessage: $("toastMessage"),
   toastDismissButton: $("toastDismissButton"),
 };
-
-const radarEngineAdminFeature = createRadarEngineAdminFeature({ container: refs.radarEngineAdminPage });
 
 const userAvatarUrlCache = new Map();
 const currentUserAvatarRefreshAttempts = new Set();
@@ -5010,8 +5003,6 @@ function resolveAuthorizedPage(page) {
   if (page === "suppliers" && GLL_CONFIG.suppliersEnabled === false) return "home";
   if (page === "commercialProposals" && GLL_CONFIG.commercialProposalsEnabled === false) return "home";
   if (page === "designSystem" && GLL_CONFIG.designSystemEnabled === false) return "home";
-  if (page === "radarEngineAdmin" && GLL_CONFIG.radarEngineAdminEnabled !== true) return "home";
-  if (page === "radarEngineAdmin" && !isCurrentUserAdmin()) return "home";
   if (page === "cashflow" && !isCurrentUserAdmin()) return "home";
   if (page === "users" && !isCurrentUserAdmin()) return "home";
   if (page === "userProfile" && refs.userCreateForm.dataset.mode === "create" && !isCurrentUserAdmin()) return "home";
@@ -5034,7 +5025,6 @@ function breadcrumbItems(page) {
     companyData: "Dados da Empresa",
     organizationDocuments: "Kit de Documentos",
     designSystem: "Design System",
-    radarEngineAdmin: "Processamento do Radar",
   };
 
   if (["items", "documents", "billing", "failures"].includes(page)) {
@@ -5095,7 +5085,6 @@ function breadcrumbItems(page) {
     cashflow: "Fluxo de Caixa",
     users: "Usuários",
     designSystem: "Design System",
-    radarEngineAdmin: "Processamento do Radar",
     organizationDocuments: "Kit de Documentos",
   };
   if (compact || page === "home") return [{ label: topLevelLabels[page] || topLevelLabels.home }];
@@ -5167,7 +5156,6 @@ function creatorTagMarkup(record) {
 function updateAccessInterface() {
   const showUserManagement = isCurrentUserAdmin();
   const showDesignSystemAccess = showUserManagement && GLL_CONFIG.designSystemEnabled !== false;
-  const showRadarEngineAdmin = showUserManagement && GLL_CONFIG.radarEngineAdminEnabled === true;
   refs.navUsersButton.classList.toggle("hidden", !showUserManagement);
   refs.navUsersButton.disabled = !showUserManagement;
   refs.navUsersButton.setAttribute("aria-hidden", String(!showUserManagement));
@@ -5175,10 +5163,6 @@ function updateAccessInterface() {
   refs.navDesignSystemButton.disabled = !showDesignSystemAccess;
   refs.navDesignSystemButton.setAttribute("aria-hidden", String(!showDesignSystemAccess));
   refs.navDesignSystemButton.setAttribute("aria-disabled", String(!showDesignSystemAccess));
-  refs.navRadarEngineAdminButton.classList.toggle("hidden", !showRadarEngineAdmin);
-  refs.navRadarEngineAdminButton.disabled = !showRadarEngineAdmin;
-  refs.navRadarEngineAdminButton.setAttribute("aria-hidden", String(!showRadarEngineAdmin));
-  refs.navRadarEngineAdminButton.setAttribute("aria-disabled", String(!showRadarEngineAdmin));
   updateWorkspaceSummary();
 }
 
@@ -5953,7 +5937,6 @@ function setPage(page, options = {}) {
   const showCompanyData = page === "companyData";
   const showOrganizationDocuments = page === "organizationDocuments";
   const showDesignSystem = page === "designSystem";
-  const showRadarEngineAdmin = page === "radarEngineAdmin";
   const showSuppliers = page === "suppliers";
   const showDeclarations = declarationPages.includes(page);
   const showCommercialProposals = page === "commercialProposals";
@@ -5968,7 +5951,7 @@ function setPage(page, options = {}) {
   const showCatalog = page === "bids";
   const showEditor = page === "edit";
   const showDetail = detailPages.includes(page);
-  refs.bidsPage.classList.toggle("hidden", showUsers || showUserProfile || showCompanyData || showOrganizationDocuments || showDesignSystem || showRadarEngineAdmin || showQuotations || showSuppliers || showDeclarations || showCommercialProposals || showRadarSearch || showCashflow);
+  refs.bidsPage.classList.toggle("hidden", showUsers || showUserProfile || showCompanyData || showOrganizationDocuments || showDesignSystem || showQuotations || showSuppliers || showDeclarations || showCommercialProposals || showRadarSearch || showCashflow);
   refs.cashflowPage.classList.toggle("hidden", !showCashflow);
   refs.radarSearchPage.classList.toggle("hidden", !showRadarSearch);
   refs.usersPage.classList.toggle("hidden", !showUsers);
@@ -5976,7 +5959,6 @@ function setPage(page, options = {}) {
   refs.companyDataPage.classList.toggle("hidden", !showCompanyData);
   refs.organizationDocumentsPage.classList.toggle("hidden", !showOrganizationDocuments);
   refs.designSystemPage.classList.toggle("hidden", !showDesignSystem);
-  refs.radarEngineAdminPage.classList.toggle("hidden", !showRadarEngineAdmin);
   refs.quotationsPage.classList.toggle("hidden", !showQuotations);
   refs.homePage.classList.toggle("hidden", !showHome);
   refs.dashboardPage.classList.toggle("hidden", !showDashboard);
@@ -5990,7 +5972,7 @@ function setPage(page, options = {}) {
   refs.bidHistoryPanel.classList.toggle("hidden", page !== "history");
   refs.billingPanel.classList.toggle("hidden", page !== "billing");
   refs.failuresPanel.classList.toggle("hidden", page !== "failures");
-  refs.appView.classList.toggle("users-active", showUsers || showUserProfile || showCompanyData || showOrganizationDocuments || showDesignSystem || showRadarEngineAdmin || showQuotations || showSuppliers || showDeclarations || showCommercialProposals || showRadarSearch || showCashflow);
+  refs.appView.classList.toggle("users-active", showUsers || showUserProfile || showCompanyData || showOrganizationDocuments || showDesignSystem || showQuotations || showSuppliers || showDeclarations || showCommercialProposals || showRadarSearch || showCashflow);
   refs.itemsTabButton.classList.toggle("active", page === "items");
   refs.documentsTabButton.classList.toggle("active", page === "documents");
   refs.bidHistoryTabButton.classList.toggle("active", page === "history");
@@ -6003,8 +5985,8 @@ function setPage(page, options = {}) {
   refs.failuresTabButton.classList.toggle("active", page === "failures");
   refs.failuresTabButton.setAttribute("aria-selected", String(page === "failures"));
   refs.failuresTabButton.classList.toggle("hidden", !shouldShowFailureHistory());
-  const primaryPage = showOrganizationDocuments ? "organizationDocuments" : showRadarEngineAdmin ? "radarEngineAdmin" : showRadarSearch ? "radarSearch" : showCashflow ? "cashflow" : showCommercialProposals ? "commercialProposals" : showDeclarations ? "declarations" : showSuppliers ? "suppliers" : showUsers || (showUserProfile && isCurrentUserAdmin()) ? "users" : showCompanyData || showDesignSystem ? "settings" : showQuotations ? "quotations" : showDashboard ? "dashboard" : showHome || showUserProfile ? "home" : "bids";
-  const activeNavigationPage = ["companyData", "designSystem", "radarEngineAdmin"].includes(page) ? page : primaryPage;
+  const primaryPage = showOrganizationDocuments ? "organizationDocuments" : showRadarSearch ? "radarSearch" : showCashflow ? "cashflow" : showCommercialProposals ? "commercialProposals" : showDeclarations ? "declarations" : showSuppliers ? "suppliers" : showUsers || (showUserProfile && isCurrentUserAdmin()) ? "users" : showCompanyData || showDesignSystem ? "settings" : showQuotations ? "quotations" : showDashboard ? "dashboard" : showHome || showUserProfile ? "home" : "bids";
+  const activeNavigationPage = ["companyData", "designSystem"].includes(page) ? page : primaryPage;
   renderBreadcrumb(page);
   document.querySelectorAll("[data-navigation-page]").forEach((button) => {
     button.classList.toggle("active", button.dataset.navigationPage === activeNavigationPage);
@@ -6030,7 +6012,6 @@ function setPage(page, options = {}) {
   if (showOrganizationDocuments) void organizationDocumentsFeature.showPage();
   if (showRadarSearch) void radarSearchFeature.showPage().catch((error) => showToast(error.message, "error"));
   if (showDesignSystem) window.GLLDesignSystem?.mountCatalog(refs.designSystemCatalog);
-  if (showRadarEngineAdmin) void radarEngineAdminFeature.showPage();
   writeNavigationRoute(page, options.history || "push");
   if (page === "history") void loadBidHistoryPage(bidHistoryState.page);
   if (liveChannel || chatBroadcastChannel) scheduleLiveRefresh();

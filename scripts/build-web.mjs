@@ -19,7 +19,6 @@ const TARGETS = {
     suppliersEnabled: true,
     commercialProposalsEnabled: true,
     designSystemEnabled: true,
-    radarEngineAdminEnabled: true,
     radarDetailsFallbackEnabled: false,
     radarDocumentsFallbackEnabled: true,
     organizationDocumentsEnabled: true,
@@ -39,7 +38,6 @@ const TARGETS = {
     suppliersEnabled: false,
     commercialProposalsEnabled: false,
     designSystemEnabled: false,
-    radarEngineAdminEnabled: false,
     radarDetailsFallbackEnabled: false,
     radarDocumentsFallbackEnabled: false,
     organizationDocumentsEnabled: true,
@@ -102,7 +100,6 @@ const runtimeConfig = {
   suppliersEnabled: target.suppliersEnabled,
   commercialProposalsEnabled: target.commercialProposalsEnabled,
   designSystemEnabled: target.designSystemEnabled,
-  radarEngineAdminEnabled: target.radarEngineAdminEnabled,
   radarDetailsFallbackEnabled: fallbackSetting === "true",
   radarDocumentsFallbackEnabled: documentsFallbackSetting === "true",
   organizationDocumentsEnabled: target.organizationDocumentsEnabled,
@@ -128,7 +125,6 @@ const assetVersion = createHash("sha256")
   .update(await readFile(resolve(sourceDir, "radar-details.js")))
   .update(await readFile(resolve(sourceDir, "radar-preprocessed.js")))
   .update(await readFile(resolve(sourceDir, "radar-item-sync.js")))
-  .update(await readFile(resolve(sourceDir, "radar-engine-admin.js")))
   .update(await readFile(resolve(sourceDir, "billing.js")))
   .update(await readFile(resolve(sourceDir, "styles.css")))
   .update(await readFile(resolve(sourceDir, "design-system", "tokens.css")))
@@ -145,14 +141,6 @@ await writeFile(
   "utf8",
 );
 const outputIndexPath = resolve(outputDir, "index.html");
-const outputAppPath = resolve(outputDir, "app.js");
-const outputApp = await readFile(outputAppPath, "utf8");
-await writeFile(
-  outputAppPath,
-  outputApp
-    .replace('from "./radar-engine-admin.js"', `from "./radar-engine-admin.js?v=${assetVersion}"`),
-  "utf8",
-);
 const outputDetailsPath = resolve(outputDir, "radar-details.js");
 const outputDetails = await readFile(outputDetailsPath, "utf8");
 await writeFile(
