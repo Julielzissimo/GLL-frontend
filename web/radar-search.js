@@ -132,7 +132,7 @@ export function buildRadarSearchPayload(filters, { page = 1, refreshCoverage = f
     page: Number(page),
     pageSize: Number(filters.pageSize || 50),
     sortBy: filters.sortBy || "bidPhaseStartAt",
-    sortDirection: filters.sortDirection || "asc",
+    sortDirection: filters.sortDirection || "desc",
     refreshCoverage: refreshCoverage === true,
   };
   if (tags.length) payload.tags = tags;
@@ -421,7 +421,7 @@ function currentFiltersFromInputs(root, tags, modalities) {
     proposalReceiptState: root.querySelector("#radarSituation")?.value || "all",
     pageSize: root.querySelector("#radarPageSize")?.value || 50,
     sortBy: root.querySelector("#radarSortBy")?.value || "bidPhaseStartAt",
-    sortDirection: root.querySelector("#radarSortDirection")?.value || "asc",
+    sortDirection: root.querySelector("#radarSortDirection")?.value || "desc",
   };
 }
 
@@ -954,6 +954,7 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
     const municipality = `${escapeHtml(resolveMunicipalityName(result))}${result.uf ? ` - ${escapeHtml(result.uf)}` : ""}`;
     const administrative = result.administrativeUnitName && result.administrativeUnitName !== result.agencyName
       ? `<small>${escapeHtml(result.administrativeUnitName)}</small>` : "";
+    const organization = `${escapeHtml(result.agencyName || result.administrativeUnitName || "Órgão não informado")}${administrative}`;
     const platform = state.view === "search"
       ? radarPlatformConfirmation(result)
       : radarPlatformSummary(result);
@@ -964,9 +965,9 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
       </div>
       <dl class="radar-result-fields">
         <div><dt>Município - UF</dt><dd>${municipality}</dd></div>
-        <div><dt>Órgão responsável</dt><dd>${escapeHtml(result.agencyName || result.administrativeUnitName || "Órgão não informado")}${administrative}</dd></div>
+        <div><dt>Órgão responsável</dt><dd><div class="radar-organization-field">${organization}</div></dd></div>
         <div><dt>Modalidade</dt><dd>${escapeHtml(resolveModalityName(result.modalityId))}</dd></div>
-        <div><dt>Plataforma</dt><dd>${escapeHtml(platform.platform || platform.label)}${platform.source ? `<small class="radar-platform-card-note">Fonte: ${escapeHtml(platform.source)} · Método: ${escapeHtml(platform.method)}</small>` : platform.note ? `<small class="radar-platform-card-note">${escapeHtml(platform.note)}</small>` : ""}</dd></div>
+        <div><dt>Plataforma</dt><dd>${escapeHtml(platform.platform || platform.label)}</dd></div>
         <div><dt>Data da Disputa</dt><dd>${escapeHtml(result.bidPhaseStartAt ? formatDateTime(result.bidPhaseStartAt) : "Não confirmada")}${result.bidPhaseStartAt && result.bidPhaseDateStatus === "failed" ? "<small>Revalidação pendente</small>" : ""}</dd></div>
         <div><dt>Limite p/ Recebimento das Propostas</dt><dd>${escapeHtml(formatDateTime(result.proposalsEndAt))}</dd></div>
       </dl>
@@ -998,6 +999,32 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
       disclosure.setAttribute("aria-expanded", "false");
       disclosure.textContent = objectText;
       heading.replaceChildren(disclosure);
+    });
+  }
+
+  function updateOrganizationDisclosures() {
+    root?.querySelectorAll(".radar-organization-field").forEach((field) => {
+      const toggle = field.querySelector(".radar-organization-toggle");
+      if (toggle) toggle.classList.remove("is-truncated");
+      const measuredText = toggle || field;
+      const style = window.getComputedStyle(measuredText);
+      const lineHeight = Number.parseFloat(style.lineHeight) || Number.parseFloat(style.fontSize) * 1.4;
+      const shouldTruncate = measuredText.scrollHeight > lineHeight * 5 + 1;
+      if (!shouldTruncate) {
+        if (toggle) field.replaceChildren(...Array.from(toggle.childNodes));
+        return;
+      }
+      if (toggle) {
+        toggle.classList.toggle("is-truncated", toggle.getAttribute("aria-expanded") !== "true");
+        return;
+      }
+      const disclosure = document.createElement("button");
+      disclosure.type = "button";
+      disclosure.className = "radar-organization-toggle is-truncated";
+      disclosure.dataset.radarOrganizationToggle = "";
+      disclosure.setAttribute("aria-expanded", "false");
+      disclosure.replaceChildren(...Array.from(field.childNodes));
+      field.replaceChildren(disclosure);
     });
   }
 
@@ -1089,6 +1116,7 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
       if (count) count.textContent = `${total.toLocaleString("pt-BR")} licitações favoritas nesta conta.`;
       target.innerHTML = `<div class="radar-result-list">${rows.map(renderResultCard).join("")}</div>`;
       updateResultObjectDisclosures();
+      updateOrganizationDisclosures();
       renderPagination();
       renderCoverage();
       return;
@@ -1144,6 +1172,7 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
     }
     target.innerHTML = `<div class="radar-result-list">${rows.map(renderResultCard).join("")}</div>`;
     updateResultObjectDisclosures();
+    updateOrganizationDisclosures();
     renderPagination();
     renderCoverage();
   }
@@ -1548,7 +1577,7 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
     if (byId("radarSituation")) byId("radarSituation").value = "all";
     if (byId("radarPageSize")) byId("radarPageSize").value = "50";
     if (byId("radarSortBy")) byId("radarSortBy").value = "bidPhaseStartAt";
-    if (byId("radarSortDirection")) byId("radarSortDirection").value = "asc";
+    if (byId("radarSortDirection")) byId("radarSortDirection").value = "desc";
     renderTags();
     renderModalityOptions();
     renderStateOptions();
@@ -1575,9 +1604,9 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
       }
     });
     root.addEventListener("click", (event) => {
-      const target = event.target.closest("[data-radar-object-toggle], [data-radar-action], [data-radar-remove-tag], [data-radar-page], [data-radar-favorites-page], [data-radar-favorite], [data-platform-edit], [data-platform-toggle], [data-domain-edit], [data-domain-toggle]");
+      const target = event.target.closest("[data-radar-object-toggle], [data-radar-organization-toggle], [data-radar-action], [data-radar-remove-tag], [data-radar-page], [data-radar-favorites-page], [data-radar-favorite], [data-platform-edit], [data-platform-toggle], [data-domain-edit], [data-domain-toggle]");
       if (!target) return;
-      if (target.dataset.radarObjectToggle !== undefined) {
+      if (target.dataset.radarObjectToggle !== undefined || target.dataset.radarOrganizationToggle !== undefined) {
         const expanded = target.getAttribute("aria-expanded") === "true";
         target.setAttribute("aria-expanded", String(!expanded));
         target.classList.toggle("is-truncated", expanded);
@@ -1664,6 +1693,7 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
       resultDisclosureFrame = window.requestAnimationFrame(() => {
         resultDisclosureFrame = 0;
         updateResultObjectDisclosures();
+        updateOrganizationDisclosures();
       });
     });
     byId("radarTagInput")?.addEventListener("keydown", (event) => {
