@@ -2899,7 +2899,8 @@
       "id": "FEAT-005",
       "backend_commits": [],
       "frontend_commits": [
-        "56b92f2e769784fb4a21d717eceb6b9ab1def31f"
+        "56b92f2e769784fb4a21d717eceb6b9ab1def31f",
+        "823b874ede933ffe3c944cc5442465514cfd5b2c"
       ],
       "migrations": []
     }
