@@ -2592,6 +2592,8 @@ radarSearchFeature = createRadarSearchFeature({
     isFavorite: (identifier) => radarDetailsFeature.isFavorite(identifier),
     syncDetailRoute: () => radarDetailsFeature.syncRoute(),
     resetDetails: () => radarDetailsFeature.reset(),
+    openCard: (result, view, card) => radarDetailsFeature.openCard(result, view, card),
+    beforeResultsRender: () => radarDetailsFeature.detachCard(),
   },
 });
 

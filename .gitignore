@@ -8,3 +8,7 @@ storybook-static/
 !.env.example
 
 .netlify/
+
+# Local browser test evidence (fictitious data only).
+/test-results/
+/playwright-report/

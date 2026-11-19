@@ -204,3 +204,9 @@ O catálogo dentro do GLL segue a autenticação e a autorização de Administra
 ## Inventário e inconsistências
 
 O levantamento detalhado está em [inconsistencias-design.md](./inconsistencias-design.md). Inconsistências ainda não decididas devem ser registradas ali e não normalizadas arbitrariamente.
+
+### Radar — cartões compactos (FEAT-005)
+
+O Radar organiza filtros acima dos resultados, com chips de termos e um diálogo pequeno para seleção transacional de modalidades. O catálogo completo permanece visível e somente modalidades elegíveis podem ser selecionadas. Os cartões usam seis campos, ações no rodapé e o mesmo controlador de detalhes/importação para exibir todos os itens no expansor, sem paginação interna. A seleção permanece por contratação enquanto a sessão está aberta. Dados, Plataforma e Documentos usam diálogos; a confirmação de cadastro mostra somente os itens selecionados, com os valores do snapshot existente.
+
+A story `CartaoCompacto` utiliza o HTML e os controladores reais com dados fictícios de `stories/fixtures/radar-fixture.js`. `npm run test:e2e:radar` valida esses fluxos em navegador, usando servidor local de fixtures, sem credenciais ou acesso ao banco. A leitura em lotes do cache continua necessária para obter todos os itens além do limite de resposta da API; isso não introduz paginação funcional.

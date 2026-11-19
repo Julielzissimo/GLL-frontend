@@ -986,15 +986,20 @@
               <p id="radarTagsError" class="form-error" role="alert"></p>
             </div>
 
-            <details id="radarModalityDetails" class="radar-modality-filter">
-              <summary><span>Modalidades</span><strong id="radarModalitySummary">Todas as modalidades disponíveis</strong></summary>
-              <div class="radar-modality-menu">
+            <div id="radarModalityDetails" class="radar-modality-field">
+              <label for="radarModalityOpen">Modalidades</label>
+              <button id="radarModalityOpen" class="quiet-action" type="button" data-radar-action="open-modalities" aria-haspopup="dialog" aria-controls="radarModalityDialog"><span id="radarModalitySummary">Todas as modalidades disponíveis</span></button>
+              <p id="radarModalityError" class="form-error" role="alert"></p>
+            </div>
+            <dialog id="radarModalityDialog" class="quotation-item-discard-modal radar-modality-dialog" aria-labelledby="radarModalityTitle">
+              <div class="quotation-item-discard-content">
+                <h2 id="radarModalityTitle">Modalidades</h2>
                 <button id="radarModalityToggle" class="quiet-action compact-action radar-modality-bulk-action" type="button" data-radar-action="toggle-modalities">Desmarcar disponíveis</button>
                 <div id="radarModalities" class="radar-modality-list" role="group" aria-label="Modalidades disponíveis" aria-describedby="radarModalityHelp"></div>
                 <small id="radarModalityHelp">Somente Pregão - Eletrônico, Dispensa e Inexigibilidade estão disponíveis para pesquisa.</small>
-                <p id="radarModalityError" class="form-error" role="alert"></p>
+                <div class="button-row end"><button class="quiet-action" type="button" data-radar-action="cancel-modalities">Cancelar</button><button class="primary-action" type="button" data-radar-action="apply-modalities">Aplicar</button></div>
               </div>
-            </details>
+            </dialog>
 
             <label for="radarUf">Estado
               <select id="radarUf"><option value="">Brasil inteiro</option></select>
@@ -1064,18 +1069,24 @@
             <div class="radar-detail-actions">
               <button id="radarDetailsBackButton" class="quiet-action" type="button">Voltar</button>
               <button id="radarDetailsFavoriteButton" class="quiet-action" type="button" aria-pressed="false" disabled>Favoritar</button>
-              <button id="radarDetailsRefreshButton" class="primary-action" type="button"><span aria-hidden="true">↻</span> Atualizar dados do Radar</button>
-              <button id="radarDetailsContingencyButton" class="quiet-action" type="button" hidden>Contingência PNCP</button>
             </div>
           </div>
           <p id="radarDetailsFeedback" class="radar-feedback" data-tone="info" role="status" aria-live="polite" hidden></p>
           <div id="radarDetailsContent" class="radar-details-content"></div>
         </div>
 
-        <dialog id="radarImportConfirmDialog" class="quotation-item-discard-modal" aria-labelledby="radarImportConfirmTitle" aria-describedby="radarImportConfirmSummary">
+        <dialog id="radarCardDialog" class="quotation-item-modal radar-card-dialog" aria-labelledby="radarCardDialogTitle">
+          <div class="quotation-item-modal-shell">
+            <div class="quotation-item-modal-header"><h2 id="radarCardDialogTitle">Dados do edital</h2><button class="quotation-item-modal-close modal-close-button" type="button" data-radar-card-dialog-close aria-label="Fechar">×</button></div>
+            <div id="radarCardDialogContent" class="radar-card-dialog-content"></div>
+          </div>
+        </dialog>
+
+        <dialog id="radarImportConfirmDialog" class="quotation-item-discard-modal radar-import-confirm-dialog" aria-labelledby="radarImportConfirmTitle" aria-describedby="radarImportConfirmSummary">
           <div class="quotation-item-discard-content">
-            <h2 id="radarImportConfirmTitle">Cadastrar edital?</h2>
+            <h2 id="radarImportConfirmTitle">Confirmar cadastro</h2>
             <p id="radarImportConfirmSummary">Deseja importar os itens selecionados para um novo edital?</p>
+            <div id="radarImportConfirmItems"></div>
             <div class="button-row end">
               <button class="quiet-action" type="button" data-radar-import-cancel>Cancelar</button>
               <button class="primary-action" type="button" data-radar-import-confirm>Confirmar importação</button>

@@ -188,18 +188,6 @@ export function createRadarItemSelectionState() {
   });
 }
 
-export function paginateRadarItems(items, page = 1, pageSize = 20) {
-  const allItems = Array.isArray(items) ? items : [];
-  const size = Math.max(1, Math.floor(Number(pageSize) || 20));
-  const pageCount = Math.max(1, Math.ceil(allItems.length / size));
-  const currentPage = Math.min(pageCount, Math.max(1, Math.floor(Number(page) || 1)));
-  return {
-    items: allItems.slice((currentPage - 1) * size, currentPage * size),
-    page: currentPage,
-    pageCount,
-  };
-}
-
 export function radarContractBudgetIsSecret(contract) {
   const code = Number(contract?.orcamentoSigilosoCodigo);
   if (code === 2 || code === 3) return true;
@@ -381,7 +369,11 @@ export function createRadarDetailsFeature({ getClient, getUserRole = () => null,
   const favorites = createRadarFavoritesService({ getClient });
   const preprocessed = createRadarPreprocessedService({ getClient });
   const imports = globalThis.window?.GLLRadarImport?.createRadarImportService({ getClient }) || null;
-  const itemsPerPage = 20;
+  const selections = new Map();
+  let inlineCard = null;
+  let inlineExpanded = false;
+  let modalView = null;
+  const detailViewNode = root?.querySelector("#radarDetailsView");
   const state = {
     current: null,
     data: null,
@@ -394,7 +386,6 @@ export function createRadarDetailsFeature({ getClient, getUserRole = () => null,
     itemStatusRequestId: 0,
     documentRequestId: 0,
     historyEntry: false,
-    itemsPage: 1,
     expandedDescriptionItemKeys: new Set(),
     selectedItemNumbers: createRadarItemSelectionState(),
     importStatus: null,
@@ -445,7 +436,6 @@ export function createRadarDetailsFeature({ getClient, getUserRole = () => null,
     if (active.id) return { type: "id", value: active.id };
     for (const attribute of [
       "data-radar-select-item",
-      "data-radar-items-page",
       "data-radar-select-all",
       "data-radar-select-none",
       "data-radar-import-start",
@@ -467,9 +457,7 @@ export function createRadarDetailsFeature({ getClient, getUserRole = () => null,
     else {
       replacement = [...container.querySelectorAll(`[${focusTarget.attribute}]`)]
         .find((element) => element.getAttribute(focusTarget.attribute) === focusTarget.value)
-        || (focusTarget.attribute === "data-radar-items-page"
-          ? container.querySelector("[data-radar-items-page]")
-          : null);
+;
     }
     if (replacement && !replacement.disabled) replacement.focus({ preventScroll: true });
   }
@@ -482,16 +470,21 @@ export function createRadarDetailsFeature({ getClient, getUserRole = () => null,
     const dialog = byId("radarImportConfirmDialog");
     const title = byId("radarImportConfirmTitle");
     const summary = byId("radarImportConfirmSummary");
-    const count = state.selectedItemNumbers.size;
-    if (!dialog || typeof dialog.showModal !== "function" || !count) return;
+    state.selectedItemNumbers.retain(state.data?.items?.items, state.importStatus?.itemNumbers || new Set());
+    const selectedItems = (state.data?.items?.items || []).filter((item) => state.selectedItemNumbers.has(item.number));
+    const count = selectedItems.length;
+    if (!dialog || state.loading || state.importing || typeof dialog.showModal !== "function" || !count) return;
 
     const selectedCount = `${count.toLocaleString("pt-BR")} ${count === 1 ? "item selecionado" : "itens selecionados"}`;
     const imported = state.importStatus;
-    title.textContent = imported ? "Complementar importação?" : "Cadastrar edital?";
+    title.textContent = imported ? "Complementar importação?" : "Confirmar cadastro";
     summary.textContent = imported
       ? `Deseja importar ${selectedCount} para o edital ${imported.editalNumber}${imported.buyerAgency ? `, de ${imported.buyerAgency}` : ""}? Os itens já importados serão preservados.`
       : `Deseja importar ${selectedCount} para criar um novo edital? Dados que o PNCP não informa poderão ser preenchidos no formulário do edital.`;
 
+    const contract = state.data?.contract || {};
+    summary.textContent = `Edital ${contract.numeroCompra || currentId()} — ${contract.orgaoEntidade?.razaoSocial || contract.nomeOrgao || "Órgão não informado"}. ${summary.textContent}`;
+    byId("radarImportConfirmItems").innerHTML = renderConfirmationItems(selectedItems);
     if (!dialog.open) dialog.showModal();
     dialog.querySelector("[data-radar-import-cancel]")?.focus({ preventScroll: true });
   }
@@ -630,7 +623,7 @@ export function createRadarDetailsFeature({ getClient, getUserRole = () => null,
     const presentation = radarItemSyncPresentation(itemsState, itemSync, {
       communicationError: state.itemStatusCommunicationError,
     });
-    const canRequestUpdate = fallbackEnabled && canRequestRadarItemSyncUpdate(itemsState, itemSync);
+    const canRequestUpdate = false;
     const canResumePolling = state.itemPollingLimitReached && presentation.syncActive;
     if (!shouldRenderRadarItemSyncNotice(presentation, { canRequestUpdate, canResumePolling })) return "";
 
@@ -642,7 +635,6 @@ export function createRadarDetailsFeature({ getClient, getUserRole = () => null,
       ${showSpinner ? `<span class="${spinnerClass}" aria-hidden="true"></span>` : ""}
       <div role="status" aria-live="polite"><span>${escapeHtml(presentation.message)}</span>${presentation.runningMessage ? `<span>${escapeHtml(presentation.runningMessage)}</span>` : ""}${presentation.progress ? `<small>${escapeHtml(presentation.progress)}</small>` : ""}</div>
       ${canResumePolling ? '<button class="quiet-action compact-action" type="button" data-radar-item-sync-watch>Continuar acompanhamento</button>' : ""}
-      ${canRequestUpdate ? `<button class="quiet-action compact-action" type="button" data-radar-item-sync-request ${state.loading || state.syncRequestInProgress ? "disabled" : ""}>${state.syncRequestInProgress ? "Solicitando contingência…" : "Solicitar atualização em contingência"}</button>` : ""}
     </div>`;
   }
 
@@ -665,14 +657,11 @@ export function createRadarDetailsFeature({ getClient, getUserRole = () => null,
     }
 
     const secretCount = itemsState.items.filter((item) => item.budgetSecret).length;
-    const page = paginateRadarItems(itemsState.items, state.itemsPage, itemsPerPage);
-    state.itemsPage = page.page;
     return `<section class="section-band radar-detail-section" aria-labelledby="radarItemsTitle">
       <div class="radar-detail-section-heading"><div class="radar-item-count-heading"><h2 id="radarItemsTitle">Itens da contratação</h2><span class="supplier-tag radar-items-total">Total: ${itemsState.items.length.toLocaleString("pt-BR")} ${itemsState.items.length === 1 ? "item" : "itens"}</span></div></div>
       ${statusNotice}
       ${secretCount ? `<p class="radar-feedback" data-tone="warning" role="status"><strong>Orçamento sigiloso</strong><span>O PNCP informou orçamento sigiloso em ${secretCount.toLocaleString("pt-BR")} ${secretCount === 1 ? "item" : "itens"}; valores não serão tratados como preço.</span></p>` : ""}
-      ${renderItemTable(page.items, { selectable: true })}
-      ${renderItemPagination(page.pageCount)}
+      ${renderItemTable(itemsState.items, { selectable: true })}
     </section>`;
   }
 
@@ -796,7 +785,7 @@ export function createRadarDetailsFeature({ getClient, getUserRole = () => null,
     const number = String(item.number);
     const imported = Boolean(state.importStatus?.itemNumbers?.has(number));
     const selected = state.selectedItemNumbers.has(number);
-    return `<td class="radar-item-selection"><label><input type="checkbox" data-radar-select-item="${escapeHtml(number)}" aria-label="Selecionar item ${escapeHtml(number)} para importar" ${selected ? "checked" : ""} ${imported || state.importing ? "disabled" : ""}/><span class="sr-only">Selecionar item ${escapeHtml(number)}</span></label>${imported ? '<small>Já cadastrado</small>' : ""}</td>`;
+    return `<td class="radar-item-selection"><label><input type="checkbox" data-radar-select-item="${escapeHtml(number)}" aria-label="Selecionar item ${escapeHtml(number)} para importar" ${selected ? "checked" : ""} ${imported || state.loading || state.importing ? "disabled" : ""}/><span class="sr-only">Selecionar item ${escapeHtml(number)}</span></label>${imported ? '<small>Já cadastrado</small>' : ""}</td>`;
   }
 
   function renderImportControls(items) {
@@ -819,17 +808,44 @@ export function createRadarDetailsFeature({ getClient, getUserRole = () => null,
     return `<div class="radar-import-controls">
       <p>${title}</p>
       <div class="radar-import-toolbar"><strong aria-live="polite">${count.toLocaleString("pt-BR")} ${count === 1 ? "item selecionado" : "itens selecionados"}</strong><div class="radar-import-actions">
-        <button class="quiet-action compact-action" type="button" data-radar-select-all ${!eligibleItems.length || state.importing ? "disabled" : ""}>${imported ? "Selecionar itens ainda não importados" : "Selecionar todos os itens"}</button>
-        <button class="quiet-action compact-action" type="button" data-radar-select-none ${!count || state.importing ? "disabled" : ""}>Desmarcar seleção</button>
+        <button class="quiet-action compact-action" type="button" data-radar-select-all ${!eligibleItems.length || state.loading || state.importing ? "disabled" : ""}>${imported ? "Selecionar itens ainda não importados" : "Selecionar todos os itens"}</button>
+        <button class="quiet-action compact-action" type="button" data-radar-select-none ${!count || state.loading || state.importing ? "disabled" : ""}>Desmarcar seleção</button>
       </div></div>
       ${statusWarning}${feedback}${progress}
-      <div class="radar-import-actions"><button class="primary-action compact-action" type="button" data-radar-import-start ${!count || state.importing ? "disabled" : ""}>${state.importing ? "Importando…" : imported ? "Complementar importação" : "Cadastrar Edital"}</button>${openBidId ? `<button class="quiet-action compact-action" type="button" data-radar-open-bid="${escapeHtml(openBidId)}">Abrir edital no GLL</button>` : ""}</div>
+      <div class="radar-import-actions"><button class="primary-action compact-action" type="button" data-radar-import-start ${!count || state.loading || state.importing ? "disabled" : ""}>${state.importing ? "Importando…" : imported ? "Complementar importação" : "Cadastrar Edital"}</button>${openBidId ? `<button class="quiet-action compact-action" type="button" data-radar-open-bid="${escapeHtml(openBidId)}">Abrir edital no GLL</button>` : ""}</div>
     </div>`;
   }
 
-  function renderItemPagination(pageCount) {
-    if (pageCount <= 1) return "";
-    return `<nav class="radar-item-pagination" aria-label="Paginação dos itens da contratação"><button class="quiet-action compact-action" type="button" data-radar-items-page="${state.itemsPage - 1}" ${state.itemsPage <= 1 ? "disabled" : ""}>Anterior</button><span>Página ${state.itemsPage.toLocaleString("pt-BR")} de ${pageCount.toLocaleString("pt-BR")}</span><button class="quiet-action compact-action" type="button" data-radar-items-page="${state.itemsPage + 1}" ${state.itemsPage >= pageCount ? "disabled" : ""}>Próxima</button></nav>`;
+  function renderConfirmationItems(items) {
+    return `<div class="table-wrap radar-confirm-items-wrap" role="region" tabindex="0" aria-label="Itens selecionados para cadastro"><table class="radar-results-table">
+      <caption class="sr-only">Itens que serão incluídos no edital</caption>
+      <thead><tr><th scope="col">Item</th><th scope="col">Descrição</th><th scope="col">Unidade</th><th scope="col">Quantidade</th><th scope="col">Valor estimado unitário</th><th scope="col">Valor total</th></tr></thead>
+      <tbody>${items.map((item) => `<tr><td>${escapeHtml(item.number)}</td><td>${escapeHtml(item.description || "Não informado")}</td><td>${escapeHtml(item.unit || "—")}</td><td>${item.quantity == null ? "—" : escapeHtml(quantityFormatter.format(Number(item.quantity)))}</td><td>${escapeHtml(formatRadarItemMoney(item.unitEstimatedValue, item.budgetSecret))}</td><td>${escapeHtml(formatRadarItemMoney(item.totalValue, item.budgetSecret))}</td></tr>`).join("")}</tbody>
+    </table></div>`;
+  }
+
+  function renderCardModal() {
+    const content = byId("radarCardDialogContent");
+    if (!modalView || !content) return;
+    const focus = captureFocusedDetailsControl(content);
+    if (!state.data) {
+      content.innerHTML = byId("radarDetailsFeedback")?.innerHTML || "";
+      return;
+    }
+    if (modalView === "documents") content.innerHTML = renderDocuments(state.data.documents);
+    else {
+      const general = document.createElement("div");
+      general.innerHTML = renderGeneral(state.data.contract, state.data.sources, state.data.platform);
+      const platform = general.querySelector(".radar-platform-detail");
+      if (modalView === "platform") {
+        content.replaceChildren(platform);
+        if (getUserRole() === "Administrador") content.insertAdjacentHTML("beforeend", '<button class="quiet-action" type="button" data-radar-platform-confirm>Confirmar plataforma</button>');
+      } else {
+        platform?.remove();
+        content.replaceChildren(...general.childNodes);
+      }
+    }
+    restoreFocusedDetailsControl(content, focus);
   }
 
   function renderDocuments(documentsState) {
@@ -870,12 +886,11 @@ export function createRadarDetailsFeature({ getClient, getUserRole = () => null,
     const detailView = byId("radarDetailsView");
     const content = byId("radarDetailsContent");
     const back = byId("radarDetailsBackButton");
-    const refresh = byId("radarDetailsRefreshButton");
-    const contingency = byId("radarDetailsContingencyButton");
     const favorite = byId("radarDetailsFavoriteButton");
     if (!detailView || !content) return;
-    detailView.hidden = !state.opened;
-    if (listView) listView.hidden = state.opened;
+    detailView.hidden = !state.opened || Boolean(inlineCard && !inlineExpanded);
+    detailView.classList.toggle("radar-inline-details", Boolean(inlineCard));
+    if (listView) listView.hidden = state.opened && !inlineCard;
     if (!state.opened) return;
 
     const id = currentId();
@@ -884,17 +899,6 @@ export function createRadarDetailsFeature({ getClient, getUserRole = () => null,
       ? `Detalhes — ${state.data.contract.numeroCompra}`
       : "Detalhes da contratação";
     if (back) back.disabled = state.loading && !state.data;
-    if (refresh) {
-      refresh.disabled = state.loading;
-      refresh.innerHTML = state.loading
-        ? '<span class="radar-spinner" aria-hidden="true"></span> Atualizando…'
-        : '<span aria-hidden="true">↻</span> Atualizar dados do Radar';
-    }
-    if (contingency) {
-      contingency.hidden = !fallbackEnabled;
-      contingency.disabled = state.loading || state.syncRequestInProgress;
-      contingency.textContent = state.syncRequestInProgress ? "Solicitando contingência…" : "Contingência PNCP";
-    }
     if (favorite) {
       const isFavorite = favorites.isFavorite(id);
       favorite.textContent = isFavorite ? "Desfavoritar" : "Favoritar";
@@ -902,6 +906,7 @@ export function createRadarDetailsFeature({ getClient, getUserRole = () => null,
       favorite.disabled = state.favoriteError || !id || (state.loading && !state.data);
     }
     renderFeedback();
+    renderCardModal();
 
     if (state.notFound) {
       content.innerHTML = "";
@@ -914,11 +919,17 @@ export function createRadarDetailsFeature({ getClient, getUserRole = () => null,
       return;
     }
     const focusTarget = captureFocusedDetailsControl(content);
-    content.innerHTML = `<div class="radar-detail-layout">
+    content.innerHTML = inlineCard
+      ? `${renderImportPanel(state.data.items)}${renderItems(state.data.items, state.data.itemSync)}`
+      : `<div class="radar-detail-layout">
         <main class="radar-detail-main">${renderGeneral(state.data.contract, state.data.sources, state.data.platform)}</main>
         <aside class="radar-detail-aside">${renderDocuments(state.data.documents)}${renderImportPanel(state.data.items)}</aside>
-      </div>
-      ${renderItems(state.data.items, state.data.itemSync)}`;
+      </div>${renderItems(state.data.items, state.data.itemSync)}`;
+    if (inlineCard) {
+      const button = inlineCard.querySelector('[data-radar-card-view="items"]');
+      const count = isCompleteRadarItemSnapshot(state.data.items) ? state.data.items.items.length : state.data.itemSync?.expectedItemCount;
+      if (button) button.textContent = Number.isSafeInteger(count) ? `Itens (${count.toLocaleString("pt-BR")})` : "Itens";
+    }
     initializeRadarDescriptionToggles(content);
     fitRadarItemTableColumns(content);
     restoreFocusedDetailsControl(content, focusTarget);
@@ -1039,10 +1050,13 @@ export function createRadarDetailsFeature({ getClient, getUserRole = () => null,
       render();
       if (imports) {
         try {
-          state.importStatus = await imports.loadImportStatus(id);
+          const importStatus = await imports.loadImportStatus(id);
+          if (requestId !== state.requestId) return;
+          state.importStatus = importStatus;
           state.importStatusError = "";
           state.selectedItemNumbers.retain(state.data?.items?.items, state.importStatus?.itemNumbers || new Set());
         } catch {
+          if (requestId !== state.requestId) return;
           state.importStatus = null;
           state.importStatusError = "Não foi possível consultar o estado anterior da importação.";
         }
@@ -1247,6 +1261,7 @@ export function createRadarDetailsFeature({ getClient, getUserRole = () => null,
   }
 
   async function executeImport() {
+    if (state.importing || state.loading) return;
     closeImportConfirmationDialog();
     if (!imports || !isCompleteRadarItemSnapshot(state.data?.items) || !state.data.items.items.length) {
       state.importFeedback = "Aguarde a sincronização completa dos itens no Radar antes de importar.";
@@ -1256,6 +1271,7 @@ export function createRadarDetailsFeature({ getClient, getUserRole = () => null,
       return;
     }
     const procurementId = currentId();
+    state.selectedItemNumbers.retain(state.data.items.items, state.importStatus?.itemNumbers || new Set());
     const selected = state.selectedItemNumbers.values();
     if (!selected.length) return;
     state.importing = true;
@@ -1322,7 +1338,7 @@ export function createRadarDetailsFeature({ getClient, getUserRole = () => null,
     render();
   }
 
-  async function open(result, { pushHistory = true } = {}) {
+  async function open(result, { pushHistory = true, card = null } = {}) {
     closeImportConfirmationDialog();
     const id = typeof result === "string" ? result : String(result?.numberControlPncp || "");
     if (!identityIsValid(id)) {
@@ -1335,6 +1351,9 @@ export function createRadarDetailsFeature({ getClient, getUserRole = () => null,
     state.itemStatusCommunicationError = false;
     state.itemPollingLimitReached = false;
     state.syncRequestInProgress = false;
+    if (currentId()) selections.set(currentId(), state.selectedItemNumbers);
+    inlineCard = card;
+    if (!card && detailViewNode) root.append(detailViewNode);
     const keepSelection = currentId() === id;
     state.current = typeof result === "string" ? id : result;
     state.data = null;
@@ -1348,16 +1367,15 @@ export function createRadarDetailsFeature({ getClient, getUserRole = () => null,
     state.lastImport = null;
     state.platformChoices = [];
     if (!keepSelection) {
-      state.itemsPage = 1;
       state.expandedDescriptionItemKeys.clear();
-      state.selectedItemNumbers.clear();
+      state.selectedItemNumbers = selections.get(id) || createRadarItemSelectionState();
     }
     state.opened = true;
     state.historyEntry = pushHistory;
     if (pushHistory) updateUrl(id, { push: true });
     render();
     const favoriteLoad = favorites.loadFavoriteIds([id]).catch(() => {
-      state.favoriteError = true;
+      if (currentId() === id) state.favoriteError = true;
     });
     const detailLoad = refresh();
     await Promise.all([favoriteLoad, detailLoad]);
@@ -1367,18 +1385,49 @@ export function createRadarDetailsFeature({ getClient, getUserRole = () => null,
     render();
   }
 
+  function detachCard() {
+    if (!inlineCard) return;
+    const button = inlineCard.querySelector('[data-radar-card-view="items"]');
+    button?.setAttribute("aria-expanded", "false");
+    if (currentId()) selections.set(currentId(), state.selectedItemNumbers);
+    if (detailViewNode) root.append(detailViewNode);
+    byId("radarCardDialog")?.close();
+    closeView({ updateHistory: false });
+    inlineCard = null;
+    inlineExpanded = false;
+  }
+
+  async function openCard(result, view, card) {
+    if (!card || state.importing) return;
+    const sameCard = inlineCard === card && currentId() === result.numberControlPncp;
+    if (!sameCard) detachCard();
+    if (view === "items") {
+      inlineExpanded = sameCard ? !inlineExpanded : true;
+      card.querySelector('[data-radar-card-view="items"]')?.setAttribute("aria-expanded", String(inlineExpanded));
+    } else {
+      modalView = view;
+      byId("radarCardDialogTitle").textContent = { data: "Dados do edital", platform: "Plataforma de disputa", documents: "Documentos do edital" }[view];
+      if (!byId("radarCardDialog").open) byId("radarCardDialog").showModal();
+    }
+    card.append(detailViewNode);
+    if (!sameCard) await open(result, { pushHistory: false, card });
+    else render();
+  }
+
   function syncRoute() {
     if (typeof window === "undefined") return;
     const id = new URL(window.location.href).searchParams.get("radarDetail");
     if (id) {
       if (state.opened && currentId() === id) return;
       void open(id, { pushHistory: false });
-    } else if (state.opened) {
+    } else if (state.opened && !inlineCard) {
       closeView({ updateHistory: false });
     }
   }
 
   function reset() {
+    detachCard();
+    selections.clear();
     closeImportConfirmationDialog();
     itemStatusPoller.stop();
     state.requestId += 1;
@@ -1401,7 +1450,6 @@ export function createRadarDetailsFeature({ getClient, getUserRole = () => null,
     state.importing = false;
     state.lastImport = null;
     state.selectedItemNumbers.clear();
-    state.itemsPage = 1;
     state.historyEntry = false;
     favorites.reset();
     removeDetailFromUrl();
@@ -1411,6 +1459,7 @@ export function createRadarDetailsFeature({ getClient, getUserRole = () => null,
   function bind() {
     if (!root || root.dataset.radarDetailsBound === "true") return;
     root.dataset.radarDetailsBound = "true";
+    byId("radarCardDialog")?.addEventListener("close", () => { modalView = null; });
     root.addEventListener("click", (event) => {
       const descriptionToggle = event.target.closest?.("[data-radar-description-toggle]");
       if (descriptionToggle) {
@@ -1427,7 +1476,9 @@ export function createRadarDetailsFeature({ getClient, getUserRole = () => null,
         }
         return;
       }
-      if (event.target.closest("[data-radar-platform-confirm]")) {
+      if (event.target.closest("[data-radar-card-dialog-close]")) {
+        byId("radarCardDialog")?.close();
+      } else if (event.target.closest("[data-radar-platform-confirm]")) {
         void openPlatformConfirmation();
       } else if (event.target.closest("[data-radar-platform-dialog-close]")) {
         byId("radarPlatformConfirmDialog")?.close();
@@ -1478,19 +1529,15 @@ export function createRadarDetailsFeature({ getClient, getUserRole = () => null,
         if (bidId) Promise.resolve(onOpenBid(bidId)).catch((error) => {
           toast(error instanceof Error ? error.message : "Não foi possível abrir o edital no GLL.", "error");
         });
-      } else if (event.target.closest("[data-radar-items-page]")) {
-        const nextPage = Number(event.target.closest("[data-radar-items-page]").dataset.radarItemsPage);
-        state.itemsPage = paginateRadarItems(state.data?.items?.items, nextPage, itemsPerPage).page;
-        render();
-        const pageCount = Math.ceil((state.data?.items?.items || []).length / itemsPerPage);
-        const focusPage = state.itemsPage < pageCount ? state.itemsPage + 1 : state.itemsPage - 1;
-        byId("radarDetailsContent")?.querySelector(`[data-radar-items-page="${focusPage}"]`)?.focus();
+
       }
     });
     root.addEventListener("change", (event) => {
       const checkbox = event.target.closest?.("[data-radar-select-item]");
       if (!checkbox) return;
       const number = String(checkbox.dataset.radarSelectItem || "");
+      if (checkbox.disabled || state.importing || state.importStatus?.itemNumbers?.has(number)
+        || !state.data?.items?.items?.some((item) => String(item.number) === number)) return;
       if (checkbox.checked) state.selectedItemNumbers.add(number);
       else state.selectedItemNumbers.delete(number);
       render();
@@ -1507,6 +1554,8 @@ export function createRadarDetailsFeature({ getClient, getUserRole = () => null,
   bind();
   return Object.freeze({
     open,
+    openCard,
+    detachCard,
     refresh,
     close: closeView,
     syncRoute,

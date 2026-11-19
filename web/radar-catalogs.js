@@ -87,11 +87,11 @@ export function createRadarCatalogsService(client, options = {}) {
 
   return Object.freeze({
     /** @returns {Promise<RadarCatalogModality[]>} */
-    async listModalities() {
-      const result = await client.from("radar_catalog_modalities")
-        .select("pncp_id, name, description, is_active, irp, source_updated_at, synced_at")
-        .eq("is_active", true)
-        .order("name", { ascending: true });
+    async listModalities({ includeInactive = false } = {}) {
+      let query = client.from("radar_catalog_modalities")
+        .select("pncp_id, name, description, is_active, irp, source_updated_at, synced_at");
+      if (!includeInactive) query = query.eq("is_active", true);
+      const result = await query.order("name", { ascending: true });
       return resultOrThrow(result, "Não foi possível consultar as modalidades do Radar.");
     },
 
