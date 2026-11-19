@@ -114,6 +114,12 @@ test("ignora seleções legadas de plataforma e nunca amplia a pesquisa pública
   assert.equal(payload.pageSize, 50);
 });
 
+test("usa a data da disputa e a ordem decrescente como classificação inicial", () => {
+  const payload = buildRadarSearchPayload({ modalities: [6] });
+  assert.equal(payload.sortBy, "bidPhaseStartAt");
+  assert.equal(payload.sortDirection, "desc");
+});
+
 test("não amplia pesquisas com modalidades externas ou nenhuma modalidade selecionada", () => {
   assert.throws(() => buildRadarSearchPayload({
     modalities: [7],
