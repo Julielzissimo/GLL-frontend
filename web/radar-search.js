@@ -442,13 +442,9 @@ function currentFiltersFromInputs(root, tags, modalities) {
  */
 export function createRadarSearchFeature({ getClient, getUserRole = () => null, toast = () => {}, actions = {} }) {
   const root = globalThis.document?.getElementById("radarSearchPage");
-  let filterScrollFrame = null;
-  let filterScrollBound = false;
-  let filterRailExpansionScrollPending = false;
+  let filterRailSyncFrame = null;
+  let filterRailSyncBound = false;
   let filterRailSearchCollapsed = false;
-  let filterRailSearchHasScrolledDown = false;
-  let filterRailSearchCollapseScrollY = 0;
-  let lastFilterScrollY = 0;
   const state = {
     bound: false,
     initialized: false,
@@ -526,17 +522,12 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
   function collapseFilterRailAfterSearch() {
     const workbench = byId("radarWorkbench");
     const filterRail = byId("radarFilterRail");
-    const window = root?.ownerDocument?.defaultView;
-    if (!workbench || !filterRail || !window) return;
+    if (!workbench || !filterRail) return;
 
     if (filterRail.contains(root.ownerDocument.activeElement)) {
       byId("radarResultsTitle")?.focus({ preventScroll: true });
     }
     filterRailSearchCollapsed = true;
-    filterRailSearchCollapseScrollY = Number(window.scrollY) || 0;
-    filterRailSearchHasScrolledDown = filterRailSearchCollapseScrollY > 2;
-    lastFilterScrollY = filterRailSearchCollapseScrollY;
-    filterRailExpansionScrollPending = false;
     workbench.classList.add("is-filter-search-collapsed");
     setFilterRailCollapsed(true);
   }
@@ -552,18 +543,13 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
     const shouldScrollToFilters = railBounds.top < topbarBottom + 16;
     const scrollTop = Math.max(0, window.scrollY + railBounds.top - topbarBottom - 16);
     filterRailSearchCollapsed = false;
-    filterRailSearchHasScrolledDown = false;
-    filterRailExpansionScrollPending = false;
     workbench.classList.remove("is-filter-search-collapsed");
     setFilterRailCollapsed(false);
     if (shouldScrollToFilters) {
-      filterRailExpansionScrollPending = true;
       const prefersReducedMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
       window.scrollTo({ top: scrollTop, behavior: prefersReducedMotion ? "auto" : "smooth" });
-    } else {
-      filterRailExpansionScrollPending = false;
-      syncFilterRailVisibility();
     }
+    syncFilterRailVisibility();
     announce("Filtros da pesquisa exibidos.");
   }
 
@@ -571,91 +557,44 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
     const workbench = byId("radarWorkbench");
     const filterRail = byId("radarFilterRail");
     const listView = byId("radarListView");
-    const document = root?.ownerDocument;
-    const window = document?.defaultView;
-    if (!workbench || !filterRail || !window || !document) return;
+    if (!workbench || !filterRail) return;
 
-    const isDesktop = window.matchMedia
-      ? window.matchMedia("(min-width: 761px)").matches
-      : window.innerWidth > 760;
     const isSearchListVisible = state.view === "search"
       && !root.classList.contains("hidden")
       && !listView?.hidden
       && !filterRail.hidden;
     const toggleButton = byId("radarFilterToggleButton");
-    const scrollY = Number(window.scrollY) || 0;
-    const isScrollingDown = scrollY > lastFilterScrollY;
-    const isScrollingUp = scrollY < lastFilterScrollY;
-    lastFilterScrollY = scrollY;
     if (!isSearchListVisible) {
       filterRailSearchCollapsed = false;
-      filterRailSearchHasScrolledDown = false;
       workbench.classList.remove("is-filter-search-collapsed");
-      filterRailExpansionScrollPending = false;
       setFilterRailCollapsed(false);
       if (toggleButton) toggleButton.hidden = true;
       return;
     }
 
-    const railBounds = filterRail.getBoundingClientRect();
-    const topbarBottom = document.getElementById("appTopbar")?.getBoundingClientRect().bottom || 0;
-    if (filterRailSearchCollapsed) {
-      if (isScrollingDown && scrollY > filterRailSearchCollapseScrollY + 2) {
-        filterRailSearchHasScrolledDown = true;
-      }
-      if (filterRailSearchHasScrolledDown && isScrollingUp && railBounds.top >= topbarBottom + 8) {
-        filterRailSearchCollapsed = false;
-        filterRailSearchHasScrolledDown = false;
-        workbench.classList.remove("is-filter-search-collapsed");
-        setFilterRailCollapsed(false);
-        return;
-      }
-      setFilterRailCollapsed(true);
-      return;
-    }
-
-    if (!isDesktop) {
-      filterRailExpansionScrollPending = false;
-      setFilterRailCollapsed(false);
-      return;
-    }
-
-    if (filterRail.contains(document.activeElement)) return;
-
-    const filterBottom = railBounds.bottom;
-    if (filterRailExpansionScrollPending) {
-      if (filterBottom > topbarBottom + 48) filterRailExpansionScrollPending = false;
-      else return;
-    }
-    const isCollapsed = workbench.classList.contains("is-filter-collapsed");
-    if (!isCollapsed && filterBottom <= topbarBottom) {
-      setFilterRailCollapsed(true);
-    } else if (isCollapsed && filterBottom > topbarBottom + 48) {
-      setFilterRailCollapsed(false);
-    }
+    workbench.classList.toggle("is-filter-search-collapsed", filterRailSearchCollapsed);
+    setFilterRailCollapsed(filterRailSearchCollapsed);
   }
 
   function scheduleFilterRailVisibilitySync() {
     const window = root?.ownerDocument?.defaultView;
-    if (!window || filterScrollFrame !== null) return;
+    if (!window || filterRailSyncFrame !== null) return;
 
     const sync = () => {
-      filterScrollFrame = null;
+      filterRailSyncFrame = null;
       syncFilterRailVisibility();
     };
     if (window.requestAnimationFrame) {
-      filterScrollFrame = window.requestAnimationFrame(sync);
+      filterRailSyncFrame = window.requestAnimationFrame(sync);
     } else {
-      filterScrollFrame = window.setTimeout(sync, 0);
+      filterRailSyncFrame = window.setTimeout(sync, 0);
     }
   }
 
   function bindFilterRailVisibility() {
     const window = root?.ownerDocument?.defaultView;
-    if (!window || filterScrollBound) return;
-    filterScrollBound = true;
-    lastFilterScrollY = Number(window.scrollY) || 0;
-    window.addEventListener("scroll", scheduleFilterRailVisibilitySync, { passive: true });
+    if (!window || filterRailSyncBound) return;
+    filterRailSyncBound = true;
     window.addEventListener("resize", scheduleFilterRailVisibilitySync);
     byId("radarFilterRail")?.addEventListener("focusout", scheduleFilterRailVisibilitySync);
     const listView = byId("radarListView");
@@ -1733,11 +1672,7 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
     },
     reset() {
       state.initialized = false;
-      filterRailExpansionScrollPending = false;
       filterRailSearchCollapsed = false;
-      filterRailSearchHasScrolledDown = false;
-      filterRailSearchCollapseScrollY = 0;
-      lastFilterScrollY = Number(root?.ownerDocument?.defaultView?.scrollY) || 0;
       byId("radarWorkbench")?.classList.remove("is-filter-search-collapsed");
       setFilterRailCollapsed(false);
       state.catalogsLoaded = false;
