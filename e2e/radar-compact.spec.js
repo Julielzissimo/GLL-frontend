@@ -1,0 +1,201 @@
+import { test, expect } from '@playwright/test';
+
+const base = process.env.GLL_RADAR_FIXTURE_URL || 'http://127.0.0.1:4187';
+async function setup(page, options = {}) {
+  const errors = [];
+  page.on('pageerror', (error) => errors.push(error.message));
+  await page.goto(base);
+  await page.evaluate(async (options) => {
+    const html = await (await fetch('/web/index.html')).text();
+    const parsed = new DOMParser().parseFromString(html, 'text/html');
+    document.body.replaceChildren(parsed.querySelector('#radarSearchPage'));
+    document.body.style.padding = 'var(--space-lg)';
+    for (const href of ['/web/design-system/tokens.css', '/web/styles.css', '/web/design-system/prototype-theme.css']) {
+      const link = document.createElement('link'); link.rel = 'stylesheet'; link.href = href; document.head.append(link);
+    }
+    const { mountRadarFixture } = await import('/stories/fixtures/radar-fixture.js');
+    window.fixture = await mountRadarFixture(document.querySelector('#radarSearchPage'), options);
+    await document.fonts.ready;
+  }, options);
+  await expect(page.locator('#radarSearchButton')).toBeEnabled();
+  return errors;
+}
+async function search(page) {
+  await page.locator('#radarSearchButton').click();
+  await expect(page.locator('.radar-result-card')).toHaveCount(2);
+}
+
+test('chips, modalidades transacionais, UF e contrato OU', async ({ page }) => {
+  const errors = await setup(page);
+  const input = page.locator('#radarTagInput');
+  await input.fill('Material'); await input.press('Enter');
+  await input.fill('material'); await input.press('Enter');
+  await expect(page.locator('.radar-tag')).toHaveCount(1);
+  await input.fill('papel'); await input.press(','); await input.press('Backspace');
+  await expect(page.locator('.radar-tag')).toHaveCount(1);
+  await page.locator('#radarModalityOpen').click();
+  await expect(page.locator('#radarModalities input')).toHaveCount(5);
+  await expect(page.locator('#radarModalities input:disabled')).toHaveCount(2);
+  await page.locator('#radarModalities input[value="6"]').uncheck();
+  await page.getByRole('button', { name: 'Cancelar', exact: true }).click();
+  await page.locator('#radarModalityOpen').click();
+  await expect(page.locator('#radarModalities input[value="6"]')).toBeChecked();
+  await page.locator('#radarModalities input[value="6"]').uncheck();
+  await page.getByRole('button', { name: 'Aplicar', exact: true }).click();
+  await expect(page.locator('#radarModalitySummary')).toHaveText('2 selecionadas');
+  await page.locator('#radarUf').selectOption('ES');
+  await expect(page.locator('#radarMunicipality')).toBeEnabled();
+  await page.locator('#radarMunicipality').selectOption('1');
+  await search(page);
+  const payload = await page.evaluate(() => window.fixture.calls.find((c) => c.name === 'radar-search').body);
+  expect(payload.tags).toEqual(['Material']); expect(payload.modalities).toEqual([8, 9]);
+  expect(payload.municipalityIbgeId).toBe(1);
+  expect(errors).toEqual([]);
+});
+
+test('itens completos, seleção persistente, modais e importação real pelo serviço', async ({ page }) => {
+  const errors = await setup(page);
+  await search(page);
+  const cards = page.locator('.radar-result-card');
+  await expect(cards.nth(1).locator('.radar-receipt-status')).toHaveCount(0);
+  for (const card of [cards.first(), cards.nth(1)]) {
+    const object = card.locator('[data-radar-object-toggle]');
+    await object.focus(); await object.press('Enter'); await expect(object).toHaveAttribute('aria-expanded', 'true');
+    await object.press('Space'); await expect(object).toHaveAttribute('aria-expanded', 'false');
+    await card.locator('[data-radar-organization-toggle]').click();
+    await expect(object).toHaveAttribute('aria-expanded', 'false');
+  }
+  const first = cards.first();
+  await expect(first.locator('[data-radar-card-view="items"]')).toHaveText("Itens (45)");
+  await first.locator('[data-radar-card-view="items"]').click();
+  await expect(first.locator('[data-radar-select-item]')).toHaveCount(45);
+  await expect(page.locator('[data-radar-items-page]')).toHaveCount(0);
+  await expect(first.locator('[data-radar-select-item="4"]')).toBeDisabled();
+  await first.locator('[data-radar-select-item="45"]').check();
+  await first.locator('[data-radar-card-view="data"]').click();
+  await expect(page.locator('#radarCardDialog')).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(first.locator('[data-radar-select-item="45"]')).toBeChecked();
+  await first.locator('[data-radar-card-view="items"]').click();
+  await first.locator('[data-radar-card-view="items"]').click();
+  await expect(first.locator('[data-radar-select-item="45"]')).toBeChecked();
+  await first.locator('[data-radar-import-start]').click();
+  await expect(page.locator('#radarImportConfirmItems tbody tr')).toHaveCount(1);
+  await expect(page.locator('#radarImportConfirmItems')).toContainText('30,85');
+  await expect(page.locator('#radarImportConfirmItems th')).toHaveText(['Item', 'Descrição', 'Unidade', 'Quantidade', 'Valor estimado unitário', 'Valor total']);
+  await page.locator('[data-radar-import-cancel]').click();
+  await expect(first.locator('[data-radar-select-item="45"]')).toBeChecked();
+  await cards.nth(1).locator('[data-radar-card-view="items"]').click();
+  await expect(cards.nth(1).locator('[data-radar-select-item="45"]')).not.toBeChecked();
+  await first.locator('[data-radar-card-view="items"]').click();
+  await expect(first.locator('[data-radar-select-item="45"]')).toBeChecked();
+  await first.locator('[data-radar-import-start]').click();
+  await page.locator('[data-radar-import-confirm]').click();
+  await expect(first.locator('[data-radar-select-item="45"]')).toBeDisabled();
+  const calls = await page.evaluate(() => window.fixture.calls.filter((c) => c.name === 'radar-import'));
+  expect(calls).toHaveLength(1); expect(calls[0].body.selectedItemNumbers).toEqual(['45']);
+  await page.locator('[data-radar-page="2"]').click();
+  await expect(page.locator('#radarPagination')).toContainText('Página 2');
+  expect(errors).toEqual([]);
+});
+
+for (const width of [1440, 1024, 768, 390]) {
+  test(`layout, teclado e overflow em ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 1000 });
+    const errors = await setup(page);
+    await search(page);
+    await page.locator('#radarFilterToggleButton').click();
+    const filters = await page.locator('#radarFilterRail').boundingBox();
+    const results = await page.locator('.radar-results-panel').boundingBox();
+    expect(filters.y + filters.height).toBeLessThanOrEqual(results.y);
+    await page.screenshot({ path: `test-results/radar-${width}.png`, fullPage: true });
+    await page.locator('[data-radar-card-view="items"]').first().click();
+    await expect(page.locator('[data-radar-select-item]')).toHaveCount(45);
+    await page.locator('[data-radar-select-all]').click();
+    await expect(page.locator('[data-radar-select-item]:checked')).toHaveCount(44);
+    await page.locator('[data-radar-import-start]').click();
+    await expect(page.locator('#radarImportConfirmItems tbody tr')).toHaveCount(44);
+    const overflow = await page.evaluate(() => [...document.querySelectorAll('body *')].filter((e) => {
+      const r = e.getBoundingClientRect();
+      return r.width && r.right > innerWidth && !e.closest('.table-wrap');
+    }).map((e) => ({ tag: e.tagName, id: e.id, className: e.className, right: e.getBoundingClientRect().right })));
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), JSON.stringify(overflow)).toBe(true);
+    await page.screenshot({ path: `test-results/radar-confirm-${width}.png`, fullPage: false });
+    await page.keyboard.press('Escape');
+    await page.locator('[data-radar-select-none]').click();
+    await expect(page.locator('[data-radar-import-start]')).toBeDisabled();
+    expect(errors).toEqual([]);
+  });
+}
+
+test('sincronização informativa e permissões do Analista', async ({ page }) => {
+  const errors = await setup(page, { role: 'Analista', pending: true });
+  await search(page);
+  await page.locator('[data-radar-card-view="items"]').first().click();
+  await expect(page.locator('#radarDetailsContent')).toContainText('sincronização');
+  await expect(page.locator('[data-radar-select-item]')).toHaveCount(0);
+  await expect(page.getByRole('button', { name: /Atualizar dados do Radar|Solicitar atualização|Contingência PNCP/ })).toHaveCount(0);
+  await page.locator('[data-radar-card-view="platform"]').first().click();
+  await expect(page.locator('#radarCardDialog')).toBeVisible();
+  await expect(page.locator('[data-radar-platform-confirm]')).toHaveCount(0);
+  expect(errors).toEqual([]);
+});
+
+test('limite de 25 termos, remoção, Escape e limpeza preservam regras', async ({ page }) => {
+  await setup(page);
+  const input = page.locator('#radarTagInput');
+  for (let i = 0; i < 25; i++) { await input.fill(`termo ${i}`); await input.press('Enter'); }
+  await input.fill('termo excedente'); await input.press('Enter');
+  await expect(page.locator('.radar-tag')).toHaveCount(25);
+  await expect(page.locator('#radarTagsError')).not.toBeEmpty();
+  await page.locator('[data-radar-remove-tag]').first().click();
+  await expect(page.locator('.radar-tag')).toHaveCount(24);
+  await page.locator('#radarModalityOpen').click();
+  await page.locator('#radarModalities input[value="6"]').uncheck();
+  await page.keyboard.press('Escape');
+  await expect(page.locator('#radarModalityOpen')).toBeFocused();
+  await page.locator('#radarModalityOpen').click();
+  await expect(page.locator('#radarModalities input[value="6"]')).toBeChecked();
+  await page.keyboard.press('Escape');
+  await page.locator('[data-radar-action="clear"]').click();
+  await expect(page.locator('.radar-tag')).toHaveCount(0);
+  await expect(input).toHaveValue('');
+  await expect(page.locator('#radarMunicipality')).toBeDisabled();
+});
+
+test('documentos permitem nova consulta após erro e plataforma mantém confirmação administrativa', async ({ page }) => {
+  const errors = await setup(page);
+  await page.evaluate(() => window.fixture.failDocuments());
+  await search(page);
+  await page.locator('[data-radar-card-view="documents"]').first().click();
+  await expect(page.locator('#radarCardDialog')).toBeVisible();
+  await expect(page.locator('[data-radar-documents-refresh]')).toBeVisible();
+  await page.evaluate(() => window.fixture.failDocuments(false));
+  await page.locator('[data-radar-documents-refresh]').click();
+  await expect(page.locator('#radarCardDialog a')).toHaveAttribute('href', 'https://pncp.gov.br/documento-teste.pdf');
+  await page.keyboard.press('Escape');
+  await page.locator('[data-radar-card-view="platform"]').first().click();
+  await expect(page.locator('[data-radar-platform-confirm]')).toBeVisible();
+  await page.locator('[data-radar-platform-confirm]').click();
+  await expect(page.locator('#radarPlatformConfirmDialog')).toBeVisible();
+  await page.keyboard.press('Escape');
+  await page.keyboard.press('Escape');
+  await page.locator('[data-radar-favorite]').first().click();
+  await expect(page.locator('[data-radar-favorite]').first()).toHaveAttribute('aria-pressed', 'true');
+  await page.locator('[data-radar-action="show-favorites"]').click();
+  await expect(page.locator('.radar-result-card')).toHaveCount(1);
+  expect(errors).toEqual([]);
+});
+
+test('novo cadastro confirma apenas os itens selecionados', async ({ page }) => {
+  await setup(page, { previousImport: false });
+  await search(page);
+  await page.locator('[data-radar-card-view="items"]').first().click();
+  await page.locator('[data-radar-select-item="2"]').check();
+  await page.locator('[data-radar-import-start]').click();
+  await expect(page.locator('#radarImportConfirmTitle')).toHaveText('Confirmar cadastro');
+  await expect(page.locator('#radarImportConfirmItems tbody tr')).toHaveCount(1);
+  await expect(page.locator('#radarImportConfirmItems td').first()).toHaveText('2');
+  await page.keyboard.press('Escape');
+  await expect(page.locator('[data-radar-select-item="2"]')).toBeChecked();
+});

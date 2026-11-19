@@ -8334,7 +8334,7 @@ button.history-row:hover {
 .radar-filter-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); align-items: start; gap: var(--space-lg); }
 .radar-filter-grid > label,
 .radar-tag-field { display: grid; min-width: 0; gap: var(--space-xs); font-weight: var(--font-weight-semibold); }
-.radar-platform-field { grid-column: 1 / -1; }
+.radar-platform-field { grid-column: auto; }
 .radar-filter-grid > label input,
 .radar-filter-grid > label select,
 .radar-tag-entry input,
@@ -8564,29 +8564,13 @@ button.history-row:hover {
 
 .radar-workbench {
   display: grid;
-  grid-template-columns: minmax(16.25rem, 18.75rem) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr);
   align-items: start;
   gap: var(--space-lg);
 }
 
 .radar-workbench.is-favorites {
   grid-template-columns: minmax(0, 1fr);
-}
-
-@media (min-width: 761px) {
-  .radar-workbench:not(.is-favorites) {
-    transition: grid-template-columns 460ms cubic-bezier(0.22, 0.61, 0.36, 1), column-gap 460ms ease;
-  }
-
-  .radar-workbench.is-filter-collapsed:not(.is-favorites) {
-    position: relative;
-    grid-template-columns: minmax(0, 0px) minmax(0, 1fr);
-    column-gap: 0;
-  }
-
-  .radar-workbench.is-filter-collapsed:not(.is-favorites) .radar-results-panel {
-    grid-column: 2;
-  }
 }
 
 .radar-workbench.is-filter-search-collapsed {
@@ -8599,7 +8583,7 @@ button.history-row:hover {
   z-index: 1;
   inset-block-start: 0;
   inset-inline-start: 0;
-  width: min(18.75rem, 100%);
+  width: 100%;
 }
 
 .radar-workbench.is-filter-collapsed .radar-filter-rail {
@@ -8643,20 +8627,18 @@ button.history-row:hover {
 }
 
 .radar-filter-grid {
-  grid-template-columns: minmax(0, 1fr);
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: var(--space-md);
+  align-items: start;
 }
 
-.radar-tag-field {
-  grid-column: auto;
-}
+.radar-tag-field { grid-column: span 2; }
 
 .radar-tag-entry {
   display: flex;
   min-height: var(--control-height-md);
-  flex-direction: column;
-  flex-wrap: nowrap;
-  align-items: stretch;
+  flex-wrap: wrap;
+  align-items: center;
   gap: var(--space-xs);
   padding: var(--space-xs) var(--space-sm);
   border: var(--border-default);
@@ -8669,10 +8651,11 @@ button.history-row:hover {
   box-shadow: var(--shadow-focus);
 }
 
-.radar-tag-entry input {
-  width: 100%;
+#radarSearchPage .radar-tag-entry input {
+  width: auto;
   min-height: 2rem;
-  flex: 0 0 auto;
+  flex: 1 1 var(--control-height-lg);
+  min-width: 0;
   padding-inline: var(--space-xs);
   border: 0;
   border-radius: 0;
@@ -8680,15 +8663,15 @@ button.history-row:hover {
   box-shadow: none;
 }
 
-.radar-tag-entry input:focus {
+#radarSearchPage .radar-tag-entry input:focus {
   border: 0;
   outline: 0;
   box-shadow: none;
 }
 
 .radar-tag-list {
-  width: 100%;
-  flex: 0 0 auto;
+  width: auto;
+  flex: 0 1 auto;
   max-width: 100%;
   gap: var(--space-xs);
 }
@@ -8700,7 +8683,7 @@ button.history-row:hover {
 .radar-filter-actions {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  width: 100%;
+  width: auto;
 }
 
 .radar-filter-actions > button {
@@ -10322,3 +10305,45 @@ button.history-row:hover {
   .finance-supply-pagination-actions,
   .finance-supply-pagination-actions > button { flex: 1 1 0; }
 }
+
+/* FEAT-005: compact cards use the existing Radar and dialog components. */
+.radar-modality-field { display: grid; min-width: 0; gap: var(--space-xs); }
+.radar-modality-field > label { font-size: var(--font-size-sm); font-weight: var(--font-weight-semibold); }
+.radar-modality-field > button { min-height: var(--control-height-md); justify-content: space-between; text-align: left; }
+.radar-modality-dialog { width: min(var(--dialog-width-sm), calc(100vw - var(--space-2xl))); }
+.radar-modality-dialog .radar-modality-list { max-height: 50vh; overflow-y: auto; }
+.radar-modality-option { flex-wrap: wrap; }
+.radar-modality-option small { color: var(--color-text-secondary); font-size: var(--font-size-xs); }
+.radar-tag { max-width: 100%; overflow-wrap: anywhere; }
+.radar-card-dialog, .radar-import-confirm-dialog { width: min(var(--dialog-width-lg), calc(100vw - var(--space-2xl))); max-height: calc(100dvh - var(--space-2xl)); overflow: auto; }
+.radar-card-dialog-content { min-width: 0; padding: var(--space-lg); }
+.radar-card-dialog-content .radar-platform-detail { border: 0; padding: 0; }
+.radar-confirm-items-wrap { max-width: 100%; overflow-x: auto; }
+.radar-confirm-items-wrap table { min-width: var(--dialog-width-md); }
+.radar-inline-details { min-width: 0; border-top: var(--border-default); padding-top: var(--space-lg); }
+.radar-inline-details > .radar-page-heading { display: none; }
+.radar-inline-details .radar-detail-section { min-width: 0; padding-inline: 0; border: 0; box-shadow: none; }
+.radar-result-object-toggle, .radar-organization-toggle { overflow-wrap: anywhere; }
+.radar-organization-toggle.is-truncated { -webkit-line-clamp: 2; }
+.radar-result-card .radar-row-actions { flex-wrap: wrap; }
+@media (max-width: 1100px) {
+  .radar-filter-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 640px) {
+  .radar-filter-grid { grid-template-columns: minmax(0, 1fr); }
+  .radar-tag-field { grid-column: auto; }
+  .radar-tag-entry { flex-direction: row; }
+  .radar-result-card .radar-row-actions { flex-direction: row; align-items: center; }
+  .radar-result-card .radar-row-actions > * { width: auto; }
+}
+
+.radar-search-form .form-error:empty { display: none; }
+.radar-import-confirm-dialog .radar-confirm-items-wrap { max-height: 50vh; overflow: auto; margin-bottom: var(--space-lg); }
+.radar-modality-dialog .quotation-item-discard-content { display: grid; gap: var(--space-lg); }
+.radar-modality-field > button { min-width: 0; max-width: 100%; white-space: normal; }
+.radar-inline-details .radar-detail-section-heading,
+.radar-inline-details .radar-import-controls,
+.radar-inline-details .radar-import-actions { min-width: 0; }
+.radar-inline-details .radar-import-actions > button { max-width: 100%; white-space: normal; }
+
+@media (max-width: 1100px) { .radar-platform-field { grid-column: 1 / -1; } }

@@ -110,7 +110,7 @@ function normalizedModalityIds(values) {
 
 export function defaultRadarModalityIds(modalities) {
   const catalogIds = new Set(normalizedModalityIds(
-    (Array.isArray(modalities) ? modalities : []).map((modality) => modality?.pncp_id),
+    (Array.isArray(modalities) ? modalities : []).filter((modality) => modality?.is_active !== false).map((modality) => modality?.pncp_id),
   ));
   return ALLOWED_RADAR_MODALITY_IDS.filter((id) => catalogIds.has(id));
 }
@@ -460,8 +460,10 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
     platformDomains: [],
     platformCatalogVersion: 1,
     municipalityNames: new Map(),
+    itemCounts: new Map(),
     municipalityLoadId: 0,
     selectedModalities: null,
+    draftModalities: null,
     tags: [],
     results: [],
     favoriteIds: new Set(),
@@ -632,7 +634,7 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
     const list = byId("radarModalities");
     if (!list) return;
     const allowedIds = new Set(defaultRadarModalityIds(state.modalities));
-    const selected = new Set((state.selectedModalities ?? [...allowedIds])
+    const selected = new Set((state.draftModalities ?? state.selectedModalities ?? [...allowedIds])
       .filter((id) => allowedIds.has(Number(id))));
     list.innerHTML = state.modalities.map((item) => {
       const modalityId = Number(item.pncp_id);
@@ -640,7 +642,7 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
       return `
         <label class="radar-modality-option">
           <input type="checkbox" name="radarModality" value="${escapeHtml(item.pncp_id)}"${selected.has(modalityId) ? " checked" : ""}${enabled ? "" : " disabled"} aria-describedby="radarModalityHelp" />
-          <span>${escapeHtml(item.name)}</span>
+          <span>${escapeHtml(item.name)}</span>${enabled ? "" : `<small>${item.is_active === false ? "Indisponível — modalidade inativa" : "Bloqueada para pesquisa no Radar"}</small>`}
         </label>`;
     }).join("");
     updateModalitySummary();
@@ -650,17 +652,16 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
     const summary = byId("radarModalitySummary");
     const availableIds = defaultRadarModalityIds(state.modalities);
     const availableIdSet = new Set(availableIds);
-    const selectedCount = state.selectedModalities === null
-      ? availableIds.length
-      : state.selectedModalities.filter((id) => availableIdSet.has(Number(id))).length;
+    const selection = state.draftModalities ?? state.selectedModalities ?? availableIds;
+    const selectedCount = selection.filter((id) => availableIdSet.has(Number(id))).length;
     const allSelected = availableIds.length > 0 && selectedCount === availableIds.length;
-    if (summary) summary.textContent = availableIds.length === 0
+    if (summary && state.draftModalities === null) summary.textContent = availableIds.length === 0
       ? "Nenhuma modalidade disponível"
       : allSelected
         ? `Todas as modalidades disponíveis (${availableIds.length})`
         : selectedCount === 0
           ? "Nenhuma modalidade selecionada"
-          : `${selectedCount} de ${availableIds.length} disponíveis`;
+          : `${selectedCount} selecionadas`;
     if (selectedCount > 0 && byId("radarModalityError")) {
       byId("radarModalityError").textContent = "";
     }
@@ -782,7 +783,7 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
       const currentClient = client();
       const service = window.GLLRadarCatalogs.createRadarCatalogsService(currentClient);
       const [modalitiesResult, statesResult, settingsResult, platformCatalogResult] = await Promise.allSettled([
-        service.listModalities(),
+        service.listModalities({ includeInactive: true }),
         service.listStates(),
         currentClient.from("radar_configuracoes")
           .select("busca_periodo_padrao_dias")
@@ -867,6 +868,7 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
 
   function renderResultActions(result) {
     const buttons = [];
+    const itemCount = state.itemCounts.get(result.numberControlPncp);
     if (typeof actions.setFavorite === "function") {
       const favorite = state.favoriteIds.has(result.numberControlPncp);
       const updating = state.favoriteUpdatingIds.has(result.numberControlPncp);
@@ -879,8 +881,9 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
     const sourceUrl = validatedPncpSourceUrl(result.sourceUrl);
     if (sourceUrl) buttons.push(`<a class="quiet-action compact-action radar-source-link" href="${escapeHtml(sourceUrl)}" target="_blank" rel="noopener noreferrer">PNCP <span aria-hidden="true">↗</span></a>`);
     if (actions.detailsEnabled === true) {
-      const detailHref = buildRadarDetailsHref(result.numberControlPncp, globalThis.window.location.href);
-      buttons.push(`<a class="primary-action compact-action radar-detail-link" href="${escapeHtml(detailHref)}" target="_blank" rel="noopener noreferrer" aria-label="Ver itens (abre em nova guia)">Ver itens</a>`);
+      for (const [view, label] of [["data", "Dados"], ["platform", "Plataforma"], ["documents", "Documentos"], ["items", "Itens"]]) {
+        buttons.push(`<button class="${view === "items" ? "primary-action" : "quiet-action"} compact-action" type="button" data-radar-card-view="${view}" data-radar-id="${escapeHtml(result.numberControlPncp)}"${view === "items" ? ' aria-expanded="false" aria-controls="radarDetailsView"' : ' aria-haspopup="dialog"'}>${view === "items" && Number.isSafeInteger(itemCount) ? `Itens (${itemCount.toLocaleString("pt-BR")})` : label}</button>`);
+      }
     }
     return buttons.length ? `<div class="radar-row-actions">${buttons.join("")}</div>` : '<span class="radar-no-actions" aria-label="Ações disponíveis na Fase 6">Disponível na Fase 6</span>';
   }
@@ -897,14 +900,14 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
     const platform = state.view === "search"
       ? radarPlatformConfirmation(result)
       : radarPlatformSummary(result);
-    return `<article class="radar-result-card">
+    return `<article class="radar-result-card" data-radar-card="${escapeHtml(result.numberControlPncp)}">
       <div class="radar-result-card-heading">
-        <div><p class="radar-result-number"><strong>Edital ${escapeHtml(number)}${year}</strong><span>PNCP ${escapeHtml(result.numberControlPncp || "—")}</span></p><h3 class="radar-result-object"><span class="radar-result-object-text">${escapeHtml(object)}</span></h3></div>
-        <span class="radar-receipt-status" data-status="${escapeHtml(result.proposalReceiptStatus || "unknown")}">${escapeHtml(receipt)}</span>
+        <div><p class="radar-result-number"><strong>Edital ${escapeHtml(number)}${year}</strong><span>PNCP ${escapeHtml(result.numberControlPncp || "—")}</span></p><h3 class="radar-result-object"><button type="button" class="radar-result-object-toggle is-truncated" data-radar-object-toggle aria-expanded="false">${escapeHtml(object)}</button></h3></div>
+        ${result.proposalReceiptStatus === "upcoming" ? "" : `<span class="radar-receipt-status" data-status="${escapeHtml(result.proposalReceiptStatus || "unknown")}">${escapeHtml(receipt)}</span>`}
       </div>
       <dl class="radar-result-fields">
         <div><dt>Município - UF</dt><dd>${municipality}</dd></div>
-        <div><dt>Órgão responsável</dt><dd><div class="radar-organization-field">${organization}</div></dd></div>
+        <div><dt>Órgão responsável</dt><dd><div class="radar-organization-field"><button type="button" class="radar-organization-toggle is-truncated" data-radar-organization-toggle aria-expanded="false">${organization}</button></div></dd></div>
         <div><dt>Modalidade</dt><dd>${escapeHtml(resolveModalityName(result.modalityId))}</dd></div>
         <div><dt>Plataforma</dt><dd>${escapeHtml(platform.platform || platform.label)}</dd></div>
         <div><dt>Data da Disputa</dt><dd>${escapeHtml(result.bidPhaseStartAt ? formatDateTime(result.bidPhaseStartAt) : "Não confirmada")}${result.bidPhaseStartAt && result.bidPhaseDateStatus === "failed" ? "<small>Revalidação pendente</small>" : ""}</dd></div>
@@ -912,59 +915,6 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
       </dl>
       <div class="radar-result-card-footer"><div class="radar-result-value"><small>Valor estimado</small><strong>${escapeHtml(formatMoney(result.estimatedValue))}</strong></div>${renderResultActions(result)}</div>
     </article>`;
-  }
-
-  function updateResultObjectDisclosures() {
-    root?.querySelectorAll(".radar-result-object").forEach((heading) => {
-      const toggle = heading.querySelector(".radar-result-object-toggle");
-      const objectText = toggle?.textContent || heading.textContent || "";
-      if (toggle) toggle.classList.remove("is-truncated");
-      const measuredText = toggle || heading.querySelector(".radar-result-object-text") || heading;
-      const style = window.getComputedStyle(measuredText);
-      const lineHeight = Number.parseFloat(style.lineHeight) || Number.parseFloat(style.fontSize) * 1.4;
-      const shouldTruncate = measuredText.scrollHeight > lineHeight * 2 + 1;
-      if (!shouldTruncate) {
-        if (toggle) heading.replaceChildren(document.createTextNode(objectText));
-        return;
-      }
-      if (toggle) {
-        toggle.classList.toggle("is-truncated", toggle.getAttribute("aria-expanded") !== "true");
-        return;
-      }
-      const disclosure = document.createElement("button");
-      disclosure.type = "button";
-      disclosure.className = "radar-result-object-toggle is-truncated";
-      disclosure.dataset.radarObjectToggle = "";
-      disclosure.setAttribute("aria-expanded", "false");
-      disclosure.textContent = objectText;
-      heading.replaceChildren(disclosure);
-    });
-  }
-
-  function updateOrganizationDisclosures() {
-    root?.querySelectorAll(".radar-organization-field").forEach((field) => {
-      const toggle = field.querySelector(".radar-organization-toggle");
-      if (toggle) toggle.classList.remove("is-truncated");
-      const measuredText = toggle || field;
-      const style = window.getComputedStyle(measuredText);
-      const lineHeight = Number.parseFloat(style.lineHeight) || Number.parseFloat(style.fontSize) * 1.4;
-      const shouldTruncate = measuredText.scrollHeight > lineHeight * 5 + 1;
-      if (!shouldTruncate) {
-        if (toggle) field.replaceChildren(...Array.from(toggle.childNodes));
-        return;
-      }
-      if (toggle) {
-        toggle.classList.toggle("is-truncated", toggle.getAttribute("aria-expanded") !== "true");
-        return;
-      }
-      const disclosure = document.createElement("button");
-      disclosure.type = "button";
-      disclosure.className = "radar-organization-toggle is-truncated";
-      disclosure.dataset.radarOrganizationToggle = "";
-      disclosure.setAttribute("aria-expanded", "false");
-      disclosure.replaceChildren(...Array.from(field.childNodes));
-      field.replaceChildren(disclosure);
-    });
   }
 
   function renderPagination() {
@@ -1009,6 +959,7 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
   }
 
   function renderResults() {
+    actions.beforeResultsRender?.();
     const target = byId("radarResultsContent");
     const count = byId("radarResultsCount");
     if (!target) return;
@@ -1054,8 +1005,7 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
       const total = Number(state.favoritesPagination?.totalCount ?? rows.length);
       if (count) count.textContent = `${total.toLocaleString("pt-BR")} licitações favoritas nesta conta.`;
       target.innerHTML = `<div class="radar-result-list">${rows.map(renderResultCard).join("")}</div>`;
-      updateResultObjectDisclosures();
-      updateOrganizationDisclosures();
+
       renderPagination();
       renderCoverage();
       return;
@@ -1110,8 +1060,7 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
         : countLabel;
     }
     target.innerHTML = `<div class="radar-result-list">${rows.map(renderResultCard).join("")}</div>`;
-    updateResultObjectDisclosures();
-    updateOrganizationDisclosures();
+
     renderPagination();
     renderCoverage();
   }
@@ -1177,6 +1126,26 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
     }
   }
 
+  async function loadItemCounts(results) {
+    const ids = results.map((result) => result.numberControlPncp).filter(Boolean);
+    if (!ids.length) return;
+    try {
+      const { data, error } = await client().from("radar_itens_sync")
+        .select("numero_controle_pncp, quantidade_itens, quantidade_itens_esperada, versao_sincronizacao, disponibilidade_origem")
+        .in("numero_controle_pncp", ids);
+      if (error) return;
+      for (const row of data || []) {
+        const count = row.disponibilidade_origem === "no_items_confirmed" ? 0
+          : row.versao_sincronizacao ? row.quantidade_itens : row.quantidade_itens_esperada;
+        if (count !== null && count !== undefined && Number.isSafeInteger(Number(count)) && Number(count) >= 0) {
+          state.itemCounts.set(row.numero_controle_pncp, Number(count));
+        }
+      }
+    } catch {
+      // The card still opens when the cached count is temporarily unavailable.
+    }
+  }
+
   async function loadFavoritesPage(page = 1) {
     state.view = "favorites";
     state.favoritesPage = Math.max(1, Number(page) || 1);
@@ -1189,6 +1158,7 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
       }
       const result = await actions.loadFavoritesPage({ page: state.favoritesPage, pageSize: 20 });
       state.favoritesResults = Array.isArray(result?.results) ? result.results : [];
+      await loadItemCounts(state.favoritesResults);
       state.favoriteIds = new Set(Array.isArray(result?.favoriteIds) ? result.favoriteIds : []);
       state.favoritesPagination = {
         page: Number(result?.page || state.favoritesPage),
@@ -1328,7 +1298,7 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
       state.queriedAt = data.metadata?.queriedAt || null;
       state.dataUpdatedAt = data.metadata?.dataUpdatedAt || data.coverage.updatedAt || null;
       state.hasSearched = true;
-      await loadMunicipalityLabels(state.results);
+      await Promise.all([loadMunicipalityLabels(state.results), loadItemCounts(state.results)]);
       if (typeof actions.loadFavoriteIds === "function") {
         state.favoriteState = "loading";
         renderResults();
@@ -1543,9 +1513,12 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
       }
     });
     root.addEventListener("click", (event) => {
-      const target = event.target.closest("[data-radar-object-toggle], [data-radar-organization-toggle], [data-radar-action], [data-radar-remove-tag], [data-radar-page], [data-radar-favorites-page], [data-radar-favorite], [data-platform-edit], [data-platform-toggle], [data-domain-edit], [data-domain-toggle]");
+      const target = event.target.closest("[data-radar-card-view], [data-radar-object-toggle], [data-radar-organization-toggle], [data-radar-action], [data-radar-remove-tag], [data-radar-page], [data-radar-favorites-page], [data-radar-favorite], [data-platform-edit], [data-platform-toggle], [data-domain-edit], [data-domain-toggle]");
       if (!target) return;
-      if (target.dataset.radarObjectToggle !== undefined || target.dataset.radarOrganizationToggle !== undefined) {
+      if (target.dataset.radarCardView) {
+        const result = [...state.results, ...state.favoritesResults].find((item) => item.numberControlPncp === target.dataset.radarId);
+        if (result) void actions.openCard?.(result, target.dataset.radarCardView, target.closest("[data-radar-card]"));
+      } else if (target.dataset.radarObjectToggle !== undefined || target.dataset.radarOrganizationToggle !== undefined) {
         const expanded = target.getAttribute("aria-expanded") === "true";
         target.setAttribute("aria-expanded", String(!expanded));
         target.classList.toggle("is-truncated", expanded);
@@ -1567,12 +1540,19 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
       } else if (target.dataset.radarAction === "reload-catalogs") {
         state.catalogsLoaded = false;
         void loadCatalogs();
+      } else if (target.dataset.radarAction === "open-modalities") {
+        state.draftModalities = [...(state.selectedModalities ?? defaultRadarModalityIds(state.modalities))];
+        renderModalityOptions();
+        byId("radarModalityDialog").showModal();
+      } else if (["cancel-modalities", "apply-modalities"].includes(target.dataset.radarAction)) {
+        if (target.dataset.radarAction === "apply-modalities") state.selectedModalities = [...state.draftModalities];
+        byId("radarModalityDialog").close();
       } else if (target.dataset.radarAction === "toggle-modalities") {
         const availableIds = defaultRadarModalityIds(state.modalities);
-        const currentSelection = state.selectedModalities ?? availableIds;
+        const currentSelection = state.draftModalities ?? state.selectedModalities ?? availableIds;
         const allSelected = availableIds.length > 0
           && currentSelection.length === availableIds.length;
-        state.selectedModalities = allSelected ? [] : availableIds;
+        state.draftModalities = allSelected ? [] : availableIds;
         renderModalityOptions();
       } else if (target.dataset.radarAction === "reset-platform-form") {
         resetPlatformForm();
@@ -1609,7 +1589,7 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
         void loadMunicipalities(event.target.value);
       } else if (event.target?.matches('input[name="radarModality"]')) {
         const availableIds = new Set(defaultRadarModalityIds(state.modalities));
-        const selected = new Set((state.selectedModalities ?? [...availableIds])
+        const selected = new Set((state.draftModalities ?? state.selectedModalities ?? [...availableIds])
           .filter((id) => availableIds.has(Number(id))));
         const modalityId = Number(event.target.value);
         if (!availableIds.has(modalityId)) {
@@ -1618,7 +1598,7 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
         }
         if (event.target.checked) selected.add(modalityId);
         else selected.delete(modalityId);
-        state.selectedModalities = [...selected];
+        state.draftModalities = [...selected];
         updateModalitySummary();
       } else if (event.target?.id === "radarPageSize" && state.hasSearched) {
         void runSearch({ page: 1 });
@@ -1626,17 +1606,13 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
         void runSearch({ page: 1 });
       }
     });
-    let resultDisclosureFrame = 0;
-    window.addEventListener("resize", () => {
-      if (resultDisclosureFrame) window.cancelAnimationFrame(resultDisclosureFrame);
-      resultDisclosureFrame = window.requestAnimationFrame(() => {
-        resultDisclosureFrame = 0;
-        updateResultObjectDisclosures();
-        updateOrganizationDisclosures();
-      });
+    byId("radarModalityDialog")?.addEventListener("close", () => {
+      state.draftModalities = null;
+      renderModalityOptions();
+      byId("radarModalityOpen")?.focus({ preventScroll: true });
     });
     byId("radarTagInput")?.addEventListener("keydown", (event) => {
-      if (event.key === "Enter") {
+      if ((event.key === "Enter" || event.key === ",") && !event.isComposing) {
         event.preventDefault();
         collectPendingTags();
       } else if (event.key === "Backspace" && !event.target.value && state.tags.length) {
@@ -1671,6 +1647,8 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
       if (state.hasSearched) return await runSearch({ page: Number(state.pagination?.page || 1) });
     },
     reset() {
+      byId("radarModalityDialog")?.close();
+      state.draftModalities = null;
       state.initialized = false;
       filterRailSearchCollapsed = false;
       byId("radarWorkbench")?.classList.remove("is-filter-search-collapsed");
@@ -1686,6 +1664,7 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
       state.platformDomains = [];
       state.platformCatalogVersion = 1;
       state.municipalityNames.clear();
+      state.itemCounts.clear();
       state.municipalityLoadId += 1;
       state.selectedModalities = null;
       state.tags = [];

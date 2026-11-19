@@ -30,9 +30,9 @@ test("a listagem ordena pelas disputas mais recentes e permite expandir o órgã
   assert.match(searchFeature, /byId\("radarSortDirection"\)\.value = "desc"/u);
   assert.match(resultCard, /class="radar-organization-field"/u);
   assert.match(searchFeature, /data-radar-organization-toggle/u);
-  assert.match(searchFeature, /shouldTruncate = measuredText\.scrollHeight > lineHeight \* 5/u);
-  assert.match(searchFeature, /aria-expanded", "false"/u);
-  assert.match(styles, /\.radar-organization-toggle\.is-truncated[^}]*-webkit-line-clamp: 5/u);
+  assert.match(resultCard, /data-radar-organization-toggle aria-expanded="false"/u);
+  assert.match(searchFeature, /aria-expanded="false"/u);
+  assert.match(styles, /\.radar-organization-toggle\.is-truncated[^}]*-webkit-line-clamp: 2/u);
   assert.doesNotMatch(resultCard, /platform\.(?:source|method|note)|radar-platform-card-note/u);
 });
 
@@ -89,7 +89,7 @@ test("a interface omite o resumo operacional e não exibe o aviso normal de cobe
 });
 
 test("detalhes, favoritos e importação usam o cliente Supabase e preservam os controles da tela", () => {
-  for (const id of ["radarDetailsView", "radarDetailsFavoriteButton", "radarDetailsRefreshButton", "radarDetailsContent"]) {
+  for (const id of ["radarDetailsView", "radarDetailsFavoriteButton", "radarDetailsContent"]) {
     assert.match(html, new RegExp(`id="${id}"`, "u"));
   }
   assert.match(detailsFeature, /functions\.invoke\("radar-details"/u);
