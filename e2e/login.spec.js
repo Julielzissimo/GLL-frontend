@@ -73,7 +73,7 @@ function radarDocumentsResponse(page, numberControlPncp) {
   }, { timeout: 45_000 });
 }
 
-async function submitRadarSearch(page, predicate, { verifyScrollRestore = false } = {}) {
+async function submitRadarSearch(page, predicate, { verifyScrollPersistence = false } = {}) {
   const responsePromise = radarSearchResponse(page, predicate);
   await page.locator("#radarSearchButton").click();
   const response = await responsePromise;
@@ -95,7 +95,8 @@ async function submitRadarSearch(page, predicate, { verifyScrollRestore = false 
   await expect(filterToggle).toHaveAccessibleName("Exibir filtros da pesquisa");
   await expect(filterToggle.locator('[data-gll-icon="slidersHorizontal"]')).toHaveCount(1);
 
-  if (verifyScrollRestore) {
+  if (verifyScrollPersistence) {
+    const previousScrollBehavior = await page.evaluate(() => document.documentElement.style.scrollBehavior);
     await page.evaluate(() => {
       const spacer = document.createElement("div");
       spacer.id = "radarFilterScrollTestSpacer";
@@ -104,16 +105,28 @@ async function submitRadarSearch(page, predicate, { verifyScrollRestore = false 
       document.documentElement.style.scrollBehavior = "auto";
       window.scrollTo(0, document.body.scrollHeight);
     });
-    await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(0);
-    await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
-    await page.evaluate(() => window.scrollTo(0, 0));
-    await expect(filterRail).not.toHaveAttribute("aria-hidden", "true");
-    await expect(filterRail).toBeVisible();
-    await expect(filterToggle).toBeHidden();
-    await page.evaluate(() => {
-      document.querySelector("#radarFilterScrollTestSpacer")?.remove();
-      document.documentElement.style.scrollBehavior = "";
-    });
+    try {
+      await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(0);
+      await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+      await expect(filterRail).toHaveAttribute("aria-hidden", "true");
+      await expect(filterToggle).toBeVisible();
+      await expect(filterToggle).toHaveAttribute("aria-expanded", "false");
+
+      await page.evaluate(() => window.scrollTo(0, 0));
+      await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0);
+      await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+      await expect(filterRail).toHaveAttribute("aria-hidden", "true");
+      await expect(filterToggle).toBeVisible();
+      await filterToggle.click();
+      await expect(filterRail).not.toHaveAttribute("aria-hidden", "true");
+      await expect(filterRail).toBeVisible();
+      await expect(filterToggle).toBeHidden();
+    } finally {
+      await page.evaluate((scrollBehavior) => {
+        document.querySelector("#radarFilterScrollTestSpacer")?.remove();
+        document.documentElement.style.scrollBehavior = scrollBehavior;
+      }, previousScrollBehavior);
+    }
   } else {
     const previousScrollBehavior = await page.evaluate(() => document.documentElement.style.scrollBehavior);
     await page.evaluate(() => {
@@ -241,7 +254,7 @@ async function validateRadarSearchPage(page) {
   await page.locator("#radarTagInput").fill(searchableTerm);
   await page.locator("#radarTagInput").press("Enter");
   await expect(page.locator("#radarTagList li")).toHaveCount(1);
-  const simple = await submitRadarSearch(page, (payload) => payload.tags?.length === 1 && payload.proposalReceiptState === "all", { verifyScrollRestore: true });
+  const simple = await submitRadarSearch(page, (payload) => payload.tags?.length === 1 && payload.proposalReceiptState === "all", { verifyScrollPersistence: true });
   if (!simple.body.results.some((result) => result.numberControlPncp === knownProcurement.numberControlPncp)) {
     throw new Error("A busca por um termo do edital disponível não retornou o edital esperado.");
   }
