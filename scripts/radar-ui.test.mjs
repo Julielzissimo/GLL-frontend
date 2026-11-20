@@ -108,6 +108,20 @@ test("detalhes, favoritos e importação usam o cliente Supabase e preservam os 
   assert.match(preprocessedFeature, /from\("radar_itens_sync"\)/u);
 });
 
+test("a confirmação do Radar permite escolher até quatro documentos e anexá-los ao edital", () => {
+  assert.match(html, /id="radarImportConfirmDocuments"/u);
+  assert.match(html, /id="radarImportConfirmButton"[^>]*data-radar-import-confirm/u);
+  assert.match(detailsFeature, /function renderImportDocumentSelection()/u);
+  assert.match(detailsFeature, /Há \$\{documents\.length\.toLocaleString\("pt-BR"\)\} documentos disponíveis/u);
+  assert.match(detailsFeature, /data-radar-import-document=/u);
+  assert.match(detailsFeature, /imports\.attachDocuments\(procurementId, selectedDocumentIds\)/u);
+  assert.match(importFeature, /function normalizeSelectedRadarDocumentIds/u);
+  assert.match(importFeature, /selectedDocumentIds = normalizeSelectedRadarDocumentIds/u);
+  assert.match(styles, /\.radar-import-document-list[^}]+overflow-y: auto/u);
+  assert.match(designSystem, /permite escolher até quatro documentos do edital/u);
+  assert.match(radarStory, /SelecaoDeDocumentosDoEdital/u);
+});
+
 test("detalhes consultam documentos automaticamente e ocultam somente o título genérico Edital", () => {
   assert.match(detailsFeature, /await Promise\.all\(\[favoriteLoad, detailLoad\]\);\s*if \(state\.opened && currentId\(\) === id && state\.data\?\.documents\?\.status === "not_loaded"\) \{\s*void loadDocuments\(id\);/u);
   assert.doesNotMatch(detailsFeature, /data-radar-documents-refresh>Consultar documentos no PNCP/u);

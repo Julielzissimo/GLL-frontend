@@ -4,7 +4,7 @@ import { createRadarDetailsFeature } from '../../web/radar-details.js';
 import '../../web/radar-catalogs.js';
 import '../../web/radar-import.js';
 
-export async function mountRadarFixture(root, { role = 'Administrador', pending = false, itemCount = 45, previousImport = true } = {}) {
+export async function mountRadarFixture(root, { role = 'Administrador', pending = false, itemCount = 45, previousImport = true, documentCount = 1 } = {}) {
   root.classList.remove('hidden');
   window.GLL_CONFIG = { ...window.GLL_CONFIG, radarDocumentsFallbackEnabled: true };
   const calls = [];
@@ -28,6 +28,12 @@ export async function mountRadarFixture(root, { role = 'Administrador', pending 
     sourceUrl: 'https://pncp.gov.br/app/editais/00000000000000/2026/1',
   }));
   const itemRows = Array.from({ length: itemCount }, (_, i) => ({ numero_item: i + 1, descricao: `Item fictício ${i + 1} — material para teste de seleção e confirmação`, quantidade: 2.5, unidade_medida: 'UN', valor_unitario_estimado: 12.34, valor_total: 30.85 }));
+  const documents = Array.from({ length: documentCount }, (_, index) => ({
+    documentId: index + 1,
+    title: index === 0 ? 'Edital fictício' : `Documento fictício ${index + 1}`,
+    type: index === 0 ? 'Edital' : 'Anexo',
+    url: `https://pncp.gov.br/documento-teste-${index + 1}.pdf`,
+  }));
   const rows = results.map((r) => ({ numero_controle_pncp: r.numberControlPncp, numero_compra: r.procurementNumber, ano_compra: 2026, objeto_compra: r.object, nome_orgao: r.agencyName, modalidade_pncp_id: 6, uf: 'ES', municipio_ibge_id: 1, valor_estimado: r.estimatedValue, data_inicio_fase_lances: r.bidPhaseStartAt, data_fim_propostas: r.proposalsEndAt, plataforma_id: 'portal', plataforma_status: 'identified', link_sistema_origem: 'https://www.portaldecompraspublicas.com.br/' }));
   let documentsFail = false;
   const client = {
@@ -70,8 +76,19 @@ export async function mountRadarFixture(root, { role = 'Administrador', pending 
     functions: { async invoke(name, { body }) {
       calls.push({ name, body });
       if (name === 'radar-search') return { data: { results, pagination: { page: body.page, pageSize: 50, totalCount: 100, hasMore: body.page < 2 }, coverage: { status: 'complete' }, metadata: {} } };
-      if (name === 'radar-details') return documentsFail ? { error: new Error('Falha fictícia de documentos') } : { data: { status: 'available', numberControlPncp: body.numberControlPncp, documents: { status: 'available', documents: [{ title: 'Edital', type: 'Edital', url: 'https://pncp.gov.br/documento-teste.pdf' }] } } };
+      if (name === 'radar-details') return documentsFail ? { error: new Error('Falha fictícia de documentos') } : { data: { status: 'available', numberControlPncp: body.numberControlPncp, documents: { status: 'available', documents } } };
       if (name === 'radar-import') {
+        if (body.action === 'attach-documents') {
+          const selectedDocumentIds = Array.isArray(body.selectedDocumentIds)
+            ? body.selectedDocumentIds
+            : documents.slice(0, 4).map((document) => document.documentId);
+          return { data: { ok: true, document_attachments: {
+            status: 'complete',
+            attached_count: selectedDocumentIds.length,
+            ignored_count: documents.length - selectedDocumentIds.length,
+            selection_applied: Array.isArray(body.selectedDocumentIds),
+          } } };
+        }
         body.selectedItemNumbers?.forEach((n) => imported.add(String(n)));
         return { data: { ok: true, bid_id: 'bid-1', created_items: body.selectedItemNumbers?.length || 0 } };
       }
