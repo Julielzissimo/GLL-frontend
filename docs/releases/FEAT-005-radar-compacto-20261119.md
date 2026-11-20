@@ -35,3 +35,7 @@ Testes locais usam exclusivamente fixtures fictícias. As leituras reais, login 
 ## Arquivos principais
 
 web/index.html, web/styles.css, web/radar-search.js, web/radar-details.js, web/radar-catalogs.js e integração em web/app.js. Catálogo/story do Design System, testes Node, teste E2E publicado e suíte de navegador local ajustados no mesmo conjunto.
+
+## Ajuste posterior de interface — 19/11/2026
+
+Após solicitação da usuária, a sessão “Filtros da pesquisa” voltou para a lateral esquerda em telas amplas e permanece acima dos resultados em telas estreitas. A pesquisa válida continua recolhendo os filtros, com reexibição manual e valores preservados, conforme o comportamento da issue #495. Os cartões compactos e os demais fluxos da FEAT-005 permanecem inalterados.
