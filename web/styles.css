@@ -8376,8 +8376,10 @@ button.history-row:hover {
 .radar-default-settings-controls label { display: grid; width: min(22rem, 100%); gap: var(--space-xs); font-weight: var(--font-weight-semibold); }
 .radar-results-panel { min-width: 0; }
 .radar-results-heading { display: flex; align-items: flex-end; justify-content: space-between; gap: var(--space-lg); }
-.radar-results-title { display: flex; min-width: 0; align-items: center; justify-content: space-between; gap: var(--space-md); }
+.radar-results-title { min-width: 0; }
 .radar-results-title-copy { min-width: 0; }
+.radar-results-title-main { display: flex; min-width: 0; align-items: center; gap: var(--space-sm); }
+.radar-results-title-main h2 { margin: 0; }
 .radar-filter-toggle { min-width: var(--control-height-md); min-height: var(--control-height-md); flex: 0 0 auto; border: var(--border-default); background: var(--gll-paper); color: var(--gll-forest); }
 .radar-filter-toggle[hidden] { display: none; }
 .radar-result-list { display: grid; gap: var(--space-md); }
@@ -10328,7 +10330,7 @@ button.history-row:hover {
 /* FEAT-005: compact cards use the existing Radar and dialog components. */
 .radar-modality-field { display: grid; min-width: 0; gap: var(--space-xs); }
 .radar-modality-field > label { font-size: var(--font-size-sm); font-weight: var(--font-weight-semibold); }
-.radar-modality-field > button { min-height: var(--control-height-md); justify-content: space-between; text-align: left; }
+.radar-modality-field > button { min-height: var(--control-height-md); justify-content: space-between; text-align: left; font-size: var(--font-size-sm); }
 .radar-modality-dialog { width: min(var(--dialog-width-sm), calc(100vw - var(--space-2xl))); }
 .radar-modality-dialog .radar-modality-list { max-height: 50vh; overflow-y: auto; }
 .radar-modality-option { flex-wrap: wrap; }
