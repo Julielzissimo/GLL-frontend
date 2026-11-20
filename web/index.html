@@ -1038,10 +1038,15 @@
         <section class="radar-results-panel" aria-labelledby="radarResultsTitle">
           <div class="radar-results-heading">
             <div class="radar-results-title">
-              <div class="radar-results-title-copy"><h2 id="radarResultsTitle" tabindex="-1">Resultados</h2><p id="radarResultsCount" aria-live="polite">Configure os filtros para iniciar uma pesquisa.</p></div>
-              <button id="radarFilterToggleButton" class="icon-button radar-filter-toggle" type="button" data-radar-action="show-filter-rail" aria-label="Exibir filtros da pesquisa" title="Exibir filtros da pesquisa" aria-controls="radarFilterRail" aria-expanded="true" hidden>
-                <span aria-hidden="true" data-gll-icon="slidersHorizontal"></span>
-              </button>
+              <div class="radar-results-title-copy">
+                <div class="radar-results-title-main">
+                  <button id="radarFilterToggleButton" class="icon-button radar-filter-toggle" type="button" data-radar-action="show-filter-rail" aria-label="Exibir filtros da pesquisa" title="Exibir filtros da pesquisa" aria-controls="radarFilterRail" aria-expanded="true" hidden>
+                    <span aria-hidden="true" data-gll-icon="slidersHorizontal"></span>
+                  </button>
+                  <h2 id="radarResultsTitle" tabindex="-1">Resultados</h2>
+                </div>
+                <p id="radarResultsCount" aria-live="polite">Configure os filtros para iniciar uma pesquisa.</p>
+              </div>
             </div>
             <div class="radar-results-controls">
               <label for="radarSortBy">Ordenar por
