@@ -171,8 +171,11 @@ async function validateRadarSearchPage(page) {
   await expect(page.locator("#radarTagInput")).toHaveAttribute("placeholder", "Digite um termo e pressione Enter");
   const filterBounds = await page.locator("#radarFilterRail").boundingBox();
   const resultsBounds = await page.locator(".radar-results-panel").boundingBox();
-  if (!filterBounds || !resultsBounds || resultsBounds.y < filterBounds.y + filterBounds.height) {
-    throw new Error("Os filtros do Radar não estão posicionados acima dos resultados conforme a FEAT-005.");
+  const viewportWidth = page.viewportSize()?.width || await page.evaluate(() => window.innerWidth);
+  if (!filterBounds || !resultsBounds || (viewportWidth >= 761
+    ? filterBounds.x + filterBounds.width > resultsBounds.x
+    : resultsBounds.y < filterBounds.y + filterBounds.height)) {
+    throw new Error("Os filtros do Radar não estão na lateral esquerda em telas amplas nem acima dos resultados em telas estreitas.");
   }
   const filterToggle = page.locator("#radarFilterToggleButton");
   await expect(filterToggle).toBeHidden();
