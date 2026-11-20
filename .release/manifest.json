@@ -2949,6 +2949,16 @@
         "d8bd84459b5cc913c11e0a4ae06253f7041a8caf"
       ],
       "migrations": []
+    },
+    {
+      "id": "ISSUE-515",
+      "backend_commits": [
+        "943303eba188ab7a125c50dc10a98b64e9eebc7d"
+      ],
+      "frontend_commits": [],
+      "migrations": [
+        "supabase/migrations/20261120171830_radar_item_cache_retention_25_days.sql"
+      ]
     }
   ]
 }
