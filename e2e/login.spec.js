@@ -276,6 +276,8 @@ async function validateRadarSearchPage(page) {
   await expect(resultCard.locator(".radar-result-value")).toContainText("Valor estimado");
   await expect(resultCard.locator('[data-radar-card-view="items"]')).toBeVisible();
   await expect(resultCard.getByRole('button', { name: 'Dados', exact: true })).toBeVisible();
+  await expect(resultCard.getByRole('button', { name: 'Plataforma', exact: true })).toHaveCount(0);
+  await expect(resultCard.getByRole('link', { name: 'PNCP', exact: true })).toHaveAttribute('href', /^https:\/\/pncp\.gov\.br\/app\//);
   const favoriteBeforeDetails = await resultCard.locator("[data-radar-favorite]").getAttribute("aria-pressed");
   const numberControlPncp = simple.body.results[0].numberControlPncp;
   const context = page.context();
