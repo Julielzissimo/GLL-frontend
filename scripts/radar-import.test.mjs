@@ -3,6 +3,7 @@ import test from "node:test";
 import {
   createRadarImportService,
   formatRadarImportDocumentFeedback,
+  normalizeSelectedRadarDocumentIds,
   normalizeSelectedRadarItemNumbers,
 } from "../web/radar-import.js";
 import {
@@ -14,6 +15,14 @@ test("normaliza seleção de itens e rejeita vazios, repetidos e números invál
   assert.throws(() => normalizeSelectedRadarItemNumbers([]), /Selecione ao menos um item/);
   assert.throws(() => normalizeSelectedRadarItemNumbers([0]), /número de item inválido/);
   assert.throws(() => normalizeSelectedRadarItemNumbers([1, "1"]), /itens repetidos/);
+});
+
+test("normaliza seleção de documentos e limita o anexo a quatro IDs únicos", () => {
+  assert.deepEqual(normalizeSelectedRadarDocumentIds([5, "2"]), [5, 2]);
+  assert.throws(() => normalizeSelectedRadarDocumentIds([]), /um a quatro documentos/);
+  assert.throws(() => normalizeSelectedRadarDocumentIds([1, 2, 3, 4, 5]), /um a quatro documentos/);
+  assert.throws(() => normalizeSelectedRadarDocumentIds([1, "1"]), /documentos repetidos/);
+  assert.throws(() => normalizeSelectedRadarDocumentIds([0]), /documento inválido/);
 });
 
 test("seleção mantém itens de toda a contratação e pode importar parte ou todos os itens elegíveis", () => {
@@ -66,6 +75,23 @@ test("serviço consulta o anexo de documentos em ação separada da importação
   });
 });
 
+test("serviço envia a seleção de documentos para anexar", async () => {
+  let invocation = null;
+  const service = createRadarImportService({ getClient: () => ({
+    functions: { invoke: async (...args) => {
+      invocation = args;
+      return { data: { ok: true, document_attachments: { status: "complete", attached_count: 2 } }, error: null };
+    } },
+  }) });
+  const result = await service.attachDocuments("12345678000199-1-000001/2026", [5, 2]);
+  assert.deepEqual(result, { status: "complete", attached_count: 2 });
+  assert.deepEqual(invocation[1].body, {
+    action: "attach-documents",
+    numberControlPncp: "12345678000199-1-000001/2026",
+    selectedDocumentIds: [5, 2],
+  });
+});
+
 test("resumo da importação informa anexos, documentos ignorados e falhas sem invalidar a importação", () => {
   assert.deepEqual(formatRadarImportDocumentFeedback({
     status: "complete",
@@ -73,6 +99,19 @@ test("resumo da importação informa anexos, documentos ignorados e falhas sem i
     ignored_count: 2,
   }), {
     message: "4 documentos do edital anexados. Os documentos além dos quatro primeiros foram ignorados.",
+    tone: "success",
+  });
+  assert.deepEqual(formatRadarImportDocumentFeedback({
+    status: "complete",
+    attached_count: 2,
+    ignored_count: 4,
+    selection_applied: true,
+  }), {
+    message: "2 documentos do edital anexados. Os documentos não selecionados foram ignorados.",
+    tone: "success",
+  });
+  assert.deepEqual(formatRadarImportDocumentFeedback({ status: "not_selected" }), {
+    message: "Nenhum documento foi selecionado para anexar.",
     tone: "success",
   });
   assert.deepEqual(formatRadarImportDocumentFeedback({

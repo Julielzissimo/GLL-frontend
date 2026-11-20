@@ -1,4 +1,5 @@
 const MAX_SELECTED_ITEM_NUMBERS = 20_000;
+const MAX_SELECTED_RADAR_DOCUMENTS = 4;
 
 export function normalizeSelectedRadarItemNumbers(values) {
   if (!Array.isArray(values) || values.length < 1 || values.length > MAX_SELECTED_ITEM_NUMBERS) {
@@ -18,6 +19,28 @@ export function normalizeSelectedRadarItemNumbers(values) {
   return result;
 }
 
+export function normalizeSelectedRadarDocumentIds(values) {
+  if (!Array.isArray(values) || values.length < 1 || values.length > MAX_SELECTED_RADAR_DOCUMENTS) {
+    throw new TypeError("Selecione de um a quatro documentos do edital.");
+  }
+  const result = [];
+  const seen = new Set();
+  for (const value of values) {
+    const documentId = typeof value === "number"
+      ? value
+      : typeof value === "string" && /^[1-9]\d*$/u.test(value.trim())
+        ? Number(value.trim())
+        : Number.NaN;
+    if (!Number.isSafeInteger(documentId) || documentId < 1) {
+      throw new TypeError("A seleção contém um documento inválido.");
+    }
+    if (seen.has(documentId)) throw new TypeError("A seleção contém documentos repetidos.");
+    seen.add(documentId);
+    result.push(documentId);
+  }
+  return result;
+}
+
 function positiveCount(value) {
   const number = Number(value);
   return Number.isSafeInteger(number) && number > 0 ? number : 0;
@@ -28,6 +51,9 @@ export function formatRadarImportDocumentFeedback(value) {
   if (!status) return { message: "", tone: "success" };
   if (status === "unavailable") {
     return { message: "Os itens foram importados, mas não foi possível anexar os documentos do edital.", tone: "warning" };
+  }
+  if (status === "not_selected") {
+    return { message: "Nenhum documento foi selecionado para anexar.", tone: "success" };
   }
   if (status === "none") {
     return { message: "Não foram encontrados documentos publicados para anexar.", tone: "warning" };
@@ -45,7 +71,9 @@ export function formatRadarImportDocumentFeedback(value) {
   if (capacitySkipped) messages.push(attached || alreadyAttached
     ? "O limite de quatro arquivos foi atingido."
     : "O edital já atingiu o limite de quatro arquivos.");
-  if (ignored) messages.push("Os documentos além dos quatro primeiros foram ignorados.");
+  if (ignored) messages.push(value?.selection_applied
+    ? "Os documentos não selecionados foram ignorados."
+    : "Os documentos além dos quatro primeiros foram ignorados.");
   if (status === "limit_reached" && !messages.length) messages.push("O edital já atingiu o limite de quatro arquivos.");
 
   const tone = status === "partial" || status === "limit_reached" || failed > 0 || capacitySkipped > 0
@@ -117,11 +145,15 @@ export function createRadarImportService({ getClient } = {}) {
     return data;
   }
 
-  async function attachDocuments(numberControlPncp) {
+  async function attachDocuments(numberControlPncp, selectedDocumentIds) {
     const identifier = String(numberControlPncp || "").trim();
     if (!identifier) throw new TypeError("Identificador PNCP inválido.");
+    const body = { action: "attach-documents", numberControlPncp: identifier };
+    if (selectedDocumentIds !== undefined) {
+      body.selectedDocumentIds = normalizeSelectedRadarDocumentIds(selectedDocumentIds);
+    }
     const { data, error } = await client().functions.invoke("radar-import", {
-      body: { action: "attach-documents", numberControlPncp: identifier },
+      body,
     });
     if (error) {
       let responseBody = null;
@@ -132,9 +164,19 @@ export function createRadarImportService({ getClient } = {}) {
     return data.document_attachments || null;
   }
 
-  return Object.freeze({ loadImportStatus, importSelected, attachDocuments });
+  return Object.freeze({
+    loadImportStatus,
+    importSelected,
+    attachDocuments,
+    formatDocumentFeedback: formatRadarImportDocumentFeedback,
+    maxDocumentCount: MAX_SELECTED_RADAR_DOCUMENTS,
+  });
 }
 
 if (typeof window !== "undefined") {
-  window.GLLRadarImport = Object.freeze({ createRadarImportService, normalizeSelectedRadarItemNumbers });
+  window.GLLRadarImport = Object.freeze({
+    createRadarImportService,
+    normalizeSelectedRadarItemNumbers,
+    normalizeSelectedRadarDocumentIds,
+  });
 }
