@@ -10328,7 +10328,7 @@ button.history-row:hover {
 /* FEAT-005: compact cards use the existing Radar and dialog components. */
 .radar-modality-field { display: grid; min-width: 0; gap: var(--space-xs); }
 .radar-modality-field > label { font-size: var(--font-size-sm); font-weight: var(--font-weight-semibold); }
-.radar-modality-field > button { min-height: var(--control-height-md); justify-content: space-between; text-align: left; }
+.radar-modality-field > button { min-height: var(--control-height-md); justify-content: space-between; text-align: left; font-size: var(--font-size-sm); }
 .radar-modality-dialog { width: min(var(--dialog-width-sm), calc(100vw - var(--space-2xl))); }
 .radar-modality-dialog .radar-modality-list { max-height: 50vh; overflow-y: auto; }
 .radar-modality-option { flex-wrap: wrap; }
