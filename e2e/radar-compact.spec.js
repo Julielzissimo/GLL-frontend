@@ -93,9 +93,33 @@ test('itens completos, seleção persistente, modais e importação real pelo se
   await page.locator('[data-radar-import-confirm]').click();
   await expect(first.locator('[data-radar-select-item="45"]')).toBeDisabled();
   const calls = await page.evaluate(() => window.fixture.calls.filter((c) => c.name === 'radar-import'));
-  expect(calls).toHaveLength(1); expect(calls[0].body.selectedItemNumbers).toEqual(['45']);
+  expect(calls).toHaveLength(2);
+  expect(calls[0].body.action).toBe('import');
+  expect(calls[0].body.selectedItemNumbers).toEqual(['45']);
+  expect(calls[1].body.action).toBe('attach-documents');
+  expect(calls[1].body.selectedDocumentIds).toBeUndefined();
   await page.locator('[data-radar-page="2"]').click();
   await expect(page.locator('#radarPagination')).toContainText('Página 2');
+  expect(errors).toEqual([]);
+});
+
+test('cadastro permite escolher até quatro documentos do edital', async ({ page }) => {
+  const errors = await setup(page, { previousImport: false, itemCount: 6, documentCount: 6 });
+  await search(page);
+  const first = page.locator('.radar-result-card').first();
+  await first.locator('[data-radar-card-view="items"]').click();
+  await first.locator('[data-radar-select-item="1"]').check();
+  await first.locator('[data-radar-import-start]').click();
+  await expect(page.locator('.radar-import-document-option')).toHaveCount(6);
+  await expect(page.locator('[data-radar-import-document="1"]')).toBeChecked();
+  await expect(page.locator('[data-radar-import-document="5"]')).toBeDisabled();
+  await page.locator('[data-radar-import-document="1"]').uncheck();
+  await page.locator('[data-radar-import-document="5"]').check();
+  await expect(page.locator('#radarImportDocumentCount')).toHaveText('4 de 4 selecionados.');
+  await page.locator('#radarImportConfirmButton').click();
+  await expect.poll(async () => page.evaluate(() => window.fixture.calls
+    .find((call) => call.name === 'radar-import' && call.body.action === 'attach-documents')
+    ?.body.selectedDocumentIds)).toEqual([2, 3, 4, 5]);
   expect(errors).toEqual([]);
 });
 
@@ -179,7 +203,7 @@ test('documentos permitem nova consulta após erro e favoritos mantêm acesso ao
   await expect(page.locator('[data-radar-documents-refresh]')).toBeVisible();
   await page.evaluate(() => window.fixture.failDocuments(false));
   await page.locator('[data-radar-documents-refresh]').click();
-  await expect(page.locator('#radarCardDialog a')).toHaveAttribute('href', 'https://pncp.gov.br/documento-teste.pdf');
+  await expect(page.locator('#radarCardDialog a')).toHaveAttribute('href', 'https://pncp.gov.br/documento-teste-1.pdf');
   await page.keyboard.press('Escape');
   await page.locator('[data-radar-favorite]').first().click();
   await expect(page.locator('[data-radar-favorite]').first()).toHaveAttribute('aria-pressed', 'true');
