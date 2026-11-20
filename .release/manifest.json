@@ -2939,6 +2939,16 @@
         "4909a28832407735ee79cd74aebffd97ac571b2e"
       ],
       "migrations": []
+    },
+    {
+      "id": "ISSUE-508",
+      "backend_commits": [
+        "a754d993b63d008947cbf7f9e51eae926d1f56b3"
+      ],
+      "frontend_commits": [
+        "d8bd84459b5cc913c11e0a4ae06253f7041a8caf"
+      ],
+      "migrations": []
     }
   ]
 }
