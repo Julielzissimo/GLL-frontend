@@ -311,7 +311,7 @@ async function validateRadarSearchPage(page) {
   await expect(detailsPage.locator("#radarDetailsView")).toBeVisible();
   await expect(detailsPage.locator("#radarDetailsTitle")).toBeVisible();
   await expect(detailsPage.locator("#radarDetailsContent #radarItemsTitle")).toBeVisible();
-  await expect(detailsPage.locator("#radarDetailsContent #radarImportPanelTitle")).toBeVisible();
+  await expect(detailsPage.locator('#radarDetailsContent section[aria-labelledby="radarImportPanelTitle"]')).toBeVisible();
   if (process.env.GLL_E2E_EXPECTED_ENVIRONMENT === "homolog") {
     const documentsFallbackEnabled = await detailsPage.evaluate(() => window.GLL_CONFIG?.radarDocumentsFallbackEnabled === true);
     if (!documentsFallbackEnabled) throw new Error("A consulta de documentos do Radar não está habilitada em homologação.");
