@@ -141,8 +141,9 @@ test('sincronização informativa e permissões do Analista', async ({ page }) =
   await expect(page.locator('#radarDetailsContent')).toContainText('sincronização');
   await expect(page.locator('[data-radar-select-item]')).toHaveCount(0);
   await expect(page.getByRole('button', { name: /Atualizar dados do Radar|Solicitar atualização|Contingência PNCP/ })).toHaveCount(0);
-  await page.locator('[data-radar-card-view="platform"]').first().click();
-  await expect(page.locator('#radarCardDialog')).toBeVisible();
+  await expect(page.getByRole('link', { name: 'PNCP', exact: true }).first()).toBeVisible();
+  await expect(page.locator('[data-radar-card-view="platform"]')).toHaveCount(0);
+  await expect(page.locator('#radarCardDialog')).not.toBeVisible();
   await expect(page.locator('[data-radar-platform-confirm]')).toHaveCount(0);
   expect(errors).toEqual([]);
 });
@@ -169,7 +170,7 @@ test('limite de 25 termos, remoção, Escape e limpeza preservam regras', async 
   await expect(page.locator('#radarMunicipality')).toBeDisabled();
 });
 
-test('documentos permitem nova consulta após erro e plataforma mantém confirmação administrativa', async ({ page }) => {
+test('documentos permitem nova consulta após erro e favoritos mantêm acesso ao PNCP', async ({ page }) => {
   const errors = await setup(page);
   await page.evaluate(() => window.fixture.failDocuments());
   await search(page);
@@ -180,17 +181,31 @@ test('documentos permitem nova consulta após erro e plataforma mantém confirma
   await page.locator('[data-radar-documents-refresh]').click();
   await expect(page.locator('#radarCardDialog a')).toHaveAttribute('href', 'https://pncp.gov.br/documento-teste.pdf');
   await page.keyboard.press('Escape');
-  await page.locator('[data-radar-card-view="platform"]').first().click();
-  await expect(page.locator('[data-radar-platform-confirm]')).toBeVisible();
-  await page.locator('[data-radar-platform-confirm]').click();
-  await expect(page.locator('#radarPlatformConfirmDialog')).toBeVisible();
-  await page.keyboard.press('Escape');
-  await page.keyboard.press('Escape');
   await page.locator('[data-radar-favorite]').first().click();
   await expect(page.locator('[data-radar-favorite]').first()).toHaveAttribute('aria-pressed', 'true');
   await page.locator('[data-radar-action="show-favorites"]').click();
   await expect(page.locator('.radar-result-card')).toHaveCount(1);
+  await expect(page.getByRole('link', { name: 'PNCP', exact: true })).toHaveAttribute('href', 'https://pncp.gov.br/app/editais/00000000000000/2026/1');
   expect(errors).toEqual([]);
+});
+
+test('PNCP abre diretamente o edital em nova guia sem modal ou consulta de detalhes', async ({ page, context }) => {
+  await setup(page);
+  await search(page);
+  const pncpUrl = 'https://pncp.gov.br/app/editais/00000000000000/2026/1';
+  await context.route(pncpUrl, (route) => route.fulfill({ contentType: 'text/html', body: '<title>PNCP fictício</title>' }));
+  const card = page.locator('.radar-result-card').first();
+  const link = card.getByRole('link', { name: 'PNCP', exact: true });
+  await expect(link).toHaveCount(1);
+  await expect(card.getByRole('button', { name: 'Plataforma', exact: true })).toHaveCount(0);
+  const callsBefore = await page.evaluate(() => window.fixture.calls.length);
+  const popupPromise = page.waitForEvent('popup');
+  await link.click();
+  const popup = await popupPromise;
+  await expect(popup).toHaveURL(pncpUrl);
+  await expect(page.locator('#radarCardDialog')).not.toBeVisible();
+  expect(await page.evaluate(() => window.fixture.calls.length)).toBe(callsBefore);
+  await popup.close();
 });
 
 test('novo cadastro confirma apenas os itens selecionados', async ({ page }) => {

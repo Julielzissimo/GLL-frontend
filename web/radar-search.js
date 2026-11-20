@@ -324,6 +324,13 @@ export function validatedPncpSourceUrl(value) {
   }
 }
 
+export function radarPncpUrl(result) {
+  const sourceUrl = validatedPncpSourceUrl(result.sourceUrl);
+  if (sourceUrl) return sourceUrl;
+  const match = /^(\d{14})-\d-(\d{6})\/(\d{4})$/u.exec(String(result.numberControlPncp || ""));
+  return match ? `https://pncp.gov.br/app/editais/${match[1]}/${Number(match[3])}/${Number(match[2])}` : null;
+}
+
 export function validatedPlatformSourceUrl(value) {
   if (typeof value !== "string" || !value.trim()) return null;
   try {
@@ -878,12 +885,20 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
       const symbol = loading || updating ? "…" : favorite ? "★" : "☆";
       buttons.push(`<button type="button" class="icon-button radar-favorite-action${favorite ? " is-favorited" : ""}" data-radar-favorite="${escapeHtml(result.numberControlPncp)}" aria-label="${escapeHtml(label)}" title="${escapeHtml(label)}" aria-pressed="${favorite}"${updating || unavailable || loading ? " disabled" : ""}><span aria-hidden="true">${symbol}</span></button>`);
     }
-    const sourceUrl = validatedPncpSourceUrl(result.sourceUrl);
-    if (sourceUrl) buttons.push(`<a class="quiet-action compact-action radar-source-link" href="${escapeHtml(sourceUrl)}" target="_blank" rel="noopener noreferrer">PNCP <span aria-hidden="true">↗</span></a>`);
+    const sourceUrl = radarPncpUrl(result);
+    const pncpAction = sourceUrl
+      ? `<a class="quiet-action compact-action radar-source-link" href="${escapeHtml(sourceUrl)}" target="_blank" rel="noopener noreferrer">PNCP <span aria-hidden="true">↗</span></a>`
+      : '<button class="quiet-action compact-action" type="button" disabled title="Link do PNCP indisponível">PNCP</button>';
     if (actions.detailsEnabled === true) {
-      for (const [view, label] of [["data", "Dados"], ["platform", "Plataforma"], ["documents", "Documentos"], ["items", "Itens"]]) {
+      for (const [view, label] of [["data", "Dados"], ["pncp", "PNCP"], ["documents", "Documentos"], ["items", "Itens"]]) {
+        if (view === "pncp") {
+          buttons.push(pncpAction);
+          continue;
+        }
         buttons.push(`<button class="${view === "items" ? "primary-action" : "quiet-action"} compact-action" type="button" data-radar-card-view="${view}" data-radar-id="${escapeHtml(result.numberControlPncp)}"${view === "items" ? ' aria-expanded="false" aria-controls="radarDetailsView"' : ' aria-haspopup="dialog"'}>${view === "items" && Number.isSafeInteger(itemCount) ? `Itens (${itemCount.toLocaleString("pt-BR")})` : label}</button>`);
       }
+    } else if (sourceUrl) {
+      buttons.push(pncpAction);
     }
     return buttons.length ? `<div class="radar-row-actions">${buttons.join("")}</div>` : '<span class="radar-no-actions" aria-label="Ações disponíveis na Fase 6">Disponível na Fase 6</span>';
   }
