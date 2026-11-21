@@ -3560,19 +3560,18 @@ textarea[aria-invalid="true"]:focus {
 }
 
 .bids-table {
-  min-width: 1080px;
+  min-width: 960px;
   table-layout: fixed;
 }
 
-.bids-table th:nth-child(1) { width: 19%; }
-.bids-table th:nth-child(2) { width: 15%; }
-.bids-table th:nth-child(3) { width: 10%; }
-.bids-table th:nth-child(4) { width: 8%; }
-.bids-table th:nth-child(5) { width: 6%; }
-.bids-table th:nth-child(6) { width: 14%; }
-.bids-table th:nth-child(7) { width: 9%; }
-.bids-table th:nth-child(8) { width: 14%; }
-.bids-table th:nth-child(9) { width: 5%; }
+.bids-table th:nth-child(1) { width: 22%; }
+.bids-table th:nth-child(2) { width: 17%; }
+.bids-table th:nth-child(3) { width: 12%; }
+.bids-table th:nth-child(4) { width: 9%; }
+.bids-table th:nth-child(5) { width: 8%; }
+.bids-table th:nth-child(6) { width: 16%; }
+.bids-table th:nth-child(7) { width: 12%; }
+.bids-table th:nth-child(8) { width: 4%; }
 
 .bids-table td {
   overflow-wrap: anywhere;
@@ -3701,10 +3700,6 @@ td {
   min-height: 30px;
   padding: 0;
   color: var(--primary);
-}
-
-.bid-portal-action {
-  white-space: nowrap;
 }
 
 .status-pill {
@@ -8484,7 +8479,8 @@ button.history-row:hover {
 .radar-receipt-status[data-status="closed"] { background: var(--color-surface-subtle); color: var(--color-text-secondary); }
 .radar-receipt-status[data-status="unknown"] { background: var(--color-surface-subtle); color: var(--color-text-secondary); }
 .radar-row-actions { display: flex; min-width: 8rem; flex-direction: column; align-items: flex-start; gap: var(--space-xs); }
-.radar-row-actions .radar-source-link { display: inline-flex; align-items: center; gap: var(--space-xs); text-decoration: none; }
+.radar-row-actions .radar-source-link,
+.radar-row-actions .radar-dispute-portal-link { display: inline-flex; align-items: center; gap: var(--space-xs); text-decoration: none; }
 .radar-row-actions .radar-detail-link { text-decoration: none; }
 .radar-no-actions { color: var(--color-text-secondary); font-size: var(--font-size-xs); }
 .radar-pagination { display: flex; align-items: center; justify-content: space-between; gap: var(--space-lg); }

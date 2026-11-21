@@ -1,8 +1,10 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
+import { radarDisputePortalUrl } from "../web/radar-search.js";
 
 const html = readFileSync(new URL("../web/index.html", import.meta.url), "utf8");
+const appFeature = readFileSync(new URL("../web/app.js", import.meta.url), "utf8");
 const searchFeature = readFileSync(new URL("../web/radar-search.js", import.meta.url), "utf8");
 const styles = readFileSync(new URL("../web/styles.css", import.meta.url), "utf8");
 const detailsFeature = readFileSync(new URL("../web/radar-details.js", import.meta.url), "utf8");
@@ -10,6 +12,35 @@ const preprocessedFeature = readFileSync(new URL("../web/radar-preprocessed.js",
 const importFeature = readFileSync(new URL("../web/radar-import.js", import.meta.url), "utf8");
 const designSystem = readFileSync(new URL("../web/design-system/components.js", import.meta.url), "utf8");
 const radarStory = readFileSync(new URL("../stories/patterns/Radar.stories.js", import.meta.url), "utf8");
+
+test("o Portal de Disputa aparece entre Dados e PNCP nos cards do Radar, não em Licitações", () => {
+  const actionsRenderer = searchFeature.match(/function renderResultActions\(result\) \{[\s\S]*?\n  \}/u)?.[0];
+  assert.ok(actionsRenderer, "renderizador das ações dos cards do Radar presente");
+  assert.match(actionsRenderer, /radar-dispute-portal-link[^>]*>Portal de Disputa/u);
+  assert.match(actionsRenderer, /\[\["data", "Dados"\], \["portal", "Portal de Disputa"\], \["pncp", "PNCP"\]/u);
+  assert.doesNotMatch(html, /<th scope="col">Portal de Disputa<\/th>/u);
+  assert.doesNotMatch(appFeature, /data-bid-portal|bidDisputePortalUrl|openBidDisputePortal/u);
+});
+
+test("o Portal de Disputa usa o link do Radar ou busca pelo processo e órgão", () => {
+  assert.equal(
+    radarDisputePortalUrl({ platformSourceUrl: "https://operacao.portaldecompraspublicas.com.br/18/processo/123" }),
+    "https://operacao.portaldecompraspublicas.com.br/18/processo/123",
+  );
+  const fallback = new URL(radarDisputePortalUrl({
+    procurementNumber: "5/2026",
+    agencyName: "Fundo Municipal de Assistência Social de Sapé",
+  }));
+  assert.equal(fallback.origin, "https://www.portaldecompraspublicas.com.br");
+  assert.equal(fallback.pathname, "/processos");
+  assert.equal(fallback.searchParams.get("processo"), "5/2026");
+  assert.equal(fallback.searchParams.get("orgao"), "Fundo Municipal de Assistência Social de Sapé");
+  const invalidLinkFallback = radarDisputePortalUrl({
+    platformSourceUrl: "http://inseguro.example.com",
+    procurementNumber: "5/2026",
+  });
+  assert.equal(invalidLinkFallback.startsWith("https://www.portaldecompraspublicas.com.br/processos?"), true);
+});
 
 test("os cards do Radar exibem a data explícita da fase de lances como Data da Disputa", () => {
   const resultCard = searchFeature.match(/function renderResultCard\(result\) \{[\s\S]*?\n  \}/u)?.[0];
