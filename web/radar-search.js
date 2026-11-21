@@ -1417,19 +1417,18 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
     const button = byId("radarPlatformReclassify");
     if (getUserRole?.() !== "Administrador") return setPlatformAdminStatus("Somente Administradores podem reclassificar licitações.");
     const batchSize = Number(byId("radarPlatformBatchSize")?.value || 250);
-    const maxPncpLookups = Number(byId("radarPlatformPncpLookups")?.value || 0);
-    if (!Number.isInteger(batchSize) || batchSize < 1 || batchSize > 500 || !Number.isInteger(maxPncpLookups) || maxPncpLookups < 0 || maxPncpLookups > 5) {
-      return setPlatformAdminStatus("Informe um lote entre 1 e 500 e até 5 consultas PNCP.");
+    if (!Number.isInteger(batchSize) || batchSize < 1 || batchSize > 500) {
+      return setPlatformAdminStatus("Informe um lote entre 1 e 500.");
     }
     if (button) button.disabled = true;
     setPlatformAdminStatus("Processando reclassificação…");
     try {
-      const { data, error } = await client().functions.invoke("radar-collector", {
-        body: { action: "reclassify_platforms", batchSize, maxPncpLookups },
+      const { data, error } = await client().functions.invoke("radar-catalogs", {
+        body: { action: "reclassify_platforms", batchSize },
       });
       if (error) throw error;
       if (!data?.ok) throw new Error(data?.error || "Não foi possível executar a reclassificação.");
-      setPlatformAdminStatus(`Lote processado: ${Number(data.processed).toLocaleString("pt-BR")}; classificadas: ${Number(data.classified).toLocaleString("pt-BR")}; não identificadas: ${Number(data.unidentified).toLocaleString("pt-BR")}; consultas PNCP enfileiradas: ${Number(data.pncpRequestsQueued).toLocaleString("pt-BR")}; ainda com link para reclassificar: ${Number(data.remainingWithUrl).toLocaleString("pt-BR")}; sem link pendente: ${Number(data.remainingWithoutUrl).toLocaleString("pt-BR")}.`);
+      setPlatformAdminStatus(`Lote processado: ${Number(data.processed).toLocaleString("pt-BR")}; classificadas: ${Number(data.classified).toLocaleString("pt-BR")}; não identificadas: ${Number(data.unidentified).toLocaleString("pt-BR")}; ainda com link para reclassificar: ${Number(data.remainingWithUrl).toLocaleString("pt-BR")}; sem link pendente: ${Number(data.remainingWithoutUrl).toLocaleString("pt-BR")}.`);
       await loadPlatformMetrics();
     } catch (error) {
       const described = await describeFunctionError(error, "Não foi possível executar a reclassificação.");

@@ -1315,7 +1315,7 @@ export function createRadarDetailsFeature({ getClient, getUserRole = () => null,
         observation: "Confirmação individual no detalhamento do Radar.",
         ...(sourceUrl ? { sourceUrl } : {}),
       };
-      const { data, error: functionError } = await getClient().functions.invoke("radar-collector", { body });
+      const { data, error: functionError } = await getClient().functions.invoke("radar-catalogs", { body });
       if (functionError) {
         let message = "Não foi possível salvar a confirmação.";
         try {
