@@ -2854,10 +2854,12 @@
       "id": "ISSUE-481",
       "backend_commits": [
         "464f2de73405e8264763f69ccad06317b37fa28e",
-        "c844c75dad3b833fd530d37f0b6a4606281d3430"
+        "c844c75dad3b833fd530d37f0b6a4606281d3430",
+        "3678b9cb6361f358f472295389779989107cbad6"
       ],
       "frontend_commits": [
-        "5aae7231d237cfec4075a63b11b9f86d88e23bcd"
+        "5aae7231d237cfec4075a63b11b9f86d88e23bcd",
+        "e62bab06487ae2b71530a4119b4ef0cb56999a56"
       ],
       "migrations": []
     },
@@ -2958,6 +2960,17 @@
       "frontend_commits": [],
       "migrations": [
         "supabase/migrations/20261120171830_radar_item_cache_retention_25_days.sql"
+      ]
+    },
+    {
+      "id": "ISSUE-517",
+      "backend_commits": [
+        "c27abd4e9a828deb35ea15fee4df43d3a70bb39d",
+        "d5f383e1763ac4382a5835cb63a834f1d78eb120"
+      ],
+      "frontend_commits": [],
+      "migrations": [
+        "supabase/migrations/20261121120425_radar_engine_metadata_only_upsert.sql"
       ]
     }
   ]
