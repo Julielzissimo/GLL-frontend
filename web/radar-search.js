@@ -136,6 +136,8 @@ export function buildRadarSearchPayload(filters, { page = 1, refreshCoverage = f
     refreshCoverage: refreshCoverage === true,
   };
   if (tags.length) payload.tags = tags;
+  const editalNumber = String(filters.editalNumber ?? "").trim();
+  if (editalNumber) payload.editalNumber = editalNumber;
   payload.modalities = selectedIds;
   if (filters.uf) payload.uf = String(filters.uf).trim().toUpperCase();
   if (filters.municipalityIbgeId && filters.uf) payload.municipalityIbgeId = Number(filters.municipalityIbgeId);
@@ -421,6 +423,7 @@ function currentFiltersFromInputs(root, tags, modalities) {
   return {
     tags,
     modalities,
+    editalNumber: root.querySelector("#radarProcurementNumber")?.value || "",
     uf: root.querySelector("#radarUf")?.value || "",
     municipalityIbgeId: root.querySelector("#radarMunicipality")?.value || "",
     bidPhaseFrom: root.querySelector("#radarBidPhaseFrom")?.value || "",
@@ -1495,6 +1498,7 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
     state.hasSearched = false;
     state.error = null;
     if (byId("radarTagInput")) byId("radarTagInput").value = "";
+    if (byId("radarProcurementNumber")) byId("radarProcurementNumber").value = "";
     if (byId("radarModalityError")) byId("radarModalityError").textContent = "";
     if (byId("radarUf")) byId("radarUf").value = "";
     if (byId("radarSituation")) byId("radarSituation").value = "all";
