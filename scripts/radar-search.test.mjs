@@ -102,6 +102,21 @@ test("envia modalidade parcial permitida, UF e município somente quando relacio
   assert.equal(payload.proposalReceiptState, "closed");
 });
 
+test("envia o número do edital informado junto dos demais filtros", () => {
+  const payload = buildRadarSearchPayload({
+    tags: ["computador"],
+    modalities: [8],
+    editalNumber: " 0015/2026 ",
+    uf: "sp",
+    proposalReceiptState: "closed",
+  }, { activeModalities: [6, 8, 9] });
+  assert.equal(payload.editalNumber, "0015/2026");
+  assert.deepEqual(payload.tags, ["computador"]);
+  assert.deepEqual(payload.modalities, [8]);
+  assert.equal(payload.uf, "SP");
+  assert.equal(payload.proposalReceiptState, "closed");
+});
+
 test("ignora seleções legadas de plataforma e nunca amplia a pesquisa pública", () => {
   const payload = buildRadarSearchPayload({
     tags: ["computador"],

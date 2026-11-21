@@ -79,9 +79,11 @@ test("a interface pública mantém os filtros solicitados e fixa o Portal como p
   const searchForm = html.match(/<form id="radarSearchForm"[\s\S]*?<\/form>/u)?.[0];
   assert.ok(searchForm, "formulário de pesquisa do Radar presente");
   for (const id of [
-    "radarTagInput", "radarModalityDetails", "radarUf", "radarMunicipality",
+    "radarTagInput", "radarProcurementNumber", "radarModalityDetails", "radarUf", "radarMunicipality",
     "radarBidPhaseFrom", "radarBidPhaseTo", "radarSituation",
   ]) assert.match(searchForm, new RegExp(`id="${id}"`, "u"));
+  assert.match(searchForm, /<label for="radarProcurementNumber">Número do Edital/u);
+  assert.match(searchForm, /placeholder="Ex\.: 15\/2026" aria-describedby="radarProcurementNumberHelp"/u);
   assert.match(searchForm, /id="radarModalityHelp"/u);
   assert.match(searchForm, /id="radarModalityError"/u);
   assert.match(searchFeature, /name="radarModality"[^>]* disabled/u);

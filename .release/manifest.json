@@ -2983,6 +2983,18 @@
         "9f538f71a797042434a9446cbbdc3f4427575f1e"
       ],
       "migrations": []
+    },
+    {
+      "id": "ISSUE-520",
+      "backend_commits": [
+        "4ecd7c7831da106940a482e2934a343f61db249e"
+      ],
+      "frontend_commits": [
+        "a7a6ae2073458036fa6b15f45df19bde4182557f"
+      ],
+      "migrations": [
+        "supabase/migrations/20261121174134_radar_edital_number_filter.sql"
+      ]
     }
   ]
 }
