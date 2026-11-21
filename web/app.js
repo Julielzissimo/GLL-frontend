@@ -6645,7 +6645,7 @@ function renderBids() {
     });
 
   if (!rows.length) {
-    refs.bidList.innerHTML = `<tr><td colspan="9" class="empty-state">Nenhuma licitação encontrada.</td></tr>`;
+    refs.bidList.innerHTML = `<tr><td colspan="8" class="empty-state">Nenhuma licitação encontrada.</td></tr>`;
     return;
   }
 
@@ -6661,7 +6661,6 @@ function renderBids() {
           <td class="numeric">${summary.itemCount}</td>
           <td class="numeric"><strong>${money(summary.totalFinal)}</strong></td>
           <td class="numeric">${totalProfit === null ? "—" : `<strong>${money(totalProfit)}</strong>`}</td>
-          <td><button class="quiet-action compact-action bid-portal-action" type="button" data-bid-portal aria-label="Abrir Portal de Disputa do edital ${escapeHtml(bidDisplayNumber(bid))}">Portal de Disputa</button></td>
           <td><button class="icon-button row-action" type="button" aria-label="Abrir ${escapeHtml(bidDisplayNumber(bid))}">→</button></td>
         </tr>
       `;
@@ -6670,14 +6669,7 @@ function renderBids() {
 
   refs.bidList.querySelectorAll("[data-bid-id]").forEach((row) => {
     row.addEventListener("click", () => loadBid(row.dataset.bidId));
-    const portalButton = row.querySelector("[data-bid-portal]");
-    portalButton?.addEventListener("click", (event) => {
-      event.stopPropagation();
-      const bid = appState.bids.find((item) => item.id === row.dataset.bidId);
-      if (bid) openBidDisputePortal(bid);
-    });
     row.addEventListener("keydown", (event) => {
-      if (event.target !== row) return;
       if (event.key === "Enter" || event.key === " ") loadBid(row.dataset.bidId);
     });
   });
@@ -7273,23 +7265,6 @@ function openPublicSession() {
     return;
   }
   window.open(link, "_blank", "noopener,noreferrer");
-}
-
-function bidDisputePortalUrl(bid) {
-  const publicSessionLink = normalizeUrlValue(bid?.public_session_link);
-  if (publicSessionLink) return publicSessionLink;
-
-  const searchUrl = new URL("https://www.portaldecompraspublicas.com.br/processos");
-  const editalNumber = bidDisplayNumber(bid);
-  const buyerAgency = String(bid?.buyer_agency || "").trim();
-  if (editalNumber) searchUrl.searchParams.set("processo", editalNumber);
-  if (buyerAgency) searchUrl.searchParams.set("orgao", buyerAgency);
-  return searchUrl.toString();
-}
-
-function openBidDisputePortal(bid) {
-  const url = bidDisputePortalUrl(bid);
-  if (url) window.open(url, "_blank", "noopener,noreferrer");
 }
 
 function removePublicSessionLink() {
