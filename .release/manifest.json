@@ -2974,6 +2974,14 @@
       "migrations": [
         "supabase/migrations/20261121120425_radar_engine_metadata_only_upsert.sql"
       ]
+    },
+    {
+      "id": "ISSUE-521",
+      "backend_commits": [],
+      "frontend_commits": [
+        "55990757bcc18b5e42f08311f6330dba07fc415d"
+      ],
+      "migrations": []
     }
   ]
 }
