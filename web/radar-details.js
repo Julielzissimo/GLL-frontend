@@ -656,35 +656,17 @@ export function createRadarDetailsFeature({ getClient, getUserRole = () => null,
     const platformUrl = validatedPlatformSourceUrl(platform.sourceUrl);
     const pncpPlatformUrl = validatedPlatformSourceUrl(platform.sourceUrlFromPncp || contract.linkSistemaOrigem);
     const processUrl = validatedPlatformSourceUrl(platform.processUrl || contract.linkProcessoEletronico);
-    const evidence = Array.isArray(platform.evidence) ? platform.evidence.filter((item) => item && typeof item === "object") : [];
-    const evidenceMarkup = renderRadarPlatformEvidence(evidence);
-    const previousAutomatic = platform.previousAutomatic && typeof platform.previousAutomatic === "object"
-      ? platform.previousAutomatic
-      : null;
-    const previousAutomaticMarkup = previousAutomatic
-      ? `<p class="radar-platform-previous">Identificação automática anterior: <strong>${escapeHtml(previousAutomatic.name || platformStatusLabel(previousAutomatic.status))}</strong>${previousAutomatic.classifiedAt ? ` · ${escapeHtml(dateValue(previousAutomatic.classifiedAt))}` : ""}.</p>`
-      : "";
-    const confirmationMarkup = platform.confirmedAt
-      ? `<p>Confirmação manual registrada em ${escapeHtml(dateValue(platform.confirmedAt))}.</p>`
-      : "";
     return `<section class="section-band radar-detail-section" aria-labelledby="radarGeneralTitle">
       <div class="radar-detail-section-heading"><div><h2 id="radarGeneralTitle">Informações gerais</h2><p>Dados disponíveis no cache centralizado do Radar.</p></div></div>
       <dl class="radar-detail-grid">${values.map(([label, value]) => `<div${label === "Objeto da contratação" ? ' class="radar-detail-object-field"' : ""}><dt>${escapeHtml(label)}</dt><dd${label === "Objeto da contratação" ? ' class="radar-detail-object"' : ""}>${escapeHtml(value || "Não informado")}</dd></div>`).join("")}</dl>
       <section class="radar-platform-detail" aria-labelledby="radarPlatformDetailTitle">
         <h3 id="radarPlatformDetailTitle">Plataforma de disputa</h3>
         <p><strong>${escapeHtml(platformStatus)}</strong></p>
+        ${platform.classifiedAt ? `<p>Identificada em ${escapeHtml(dateValue(platform.classifiedAt))}.</p>` : ""}
         ${platformUrl && platform.sourceUrlManuallyConfirmed ? `<p>URL corrigida manualmente: <a href="${escapeHtml(platformUrl)}" target="_blank" rel="noopener noreferrer">Abrir URL corrigida <span aria-hidden="true">↗</span></a></p>` : ""}
         ${pncpPlatformUrl ? `<p>Link de origem informado pelo PNCP: <a href="${escapeHtml(pncpPlatformUrl)}" target="_blank" rel="noopener noreferrer">Abrir link do PNCP <span aria-hidden="true">↗</span></a></p>` : !platform.sourceUrlManuallyConfirmed ? "<p>O PNCP não informou um link de origem seguro para abrir.</p>" : ""}
         ${processUrl ? `<p>Link do processo eletrônico: <a href="${escapeHtml(processUrl)}" target="_blank" rel="noopener noreferrer">Abrir processo <span aria-hidden="true">↗</span></a></p>` : ""}
-        <dl class="radar-platform-metadata">
-          ${platform.evidenceSource ? `<div><dt>Fonte da identificação</dt><dd>${escapeHtml(platformEvidenceSourceLabel(platform.evidenceSource))}</dd></div>` : ""}
-          <div><dt>Método de confirmação</dt><dd>${escapeHtml(platformMethodLabel(platform.method))}</dd></div>
-          ${platform.classifiedAt ? `<div><dt>Identificada em</dt><dd>${escapeHtml(dateValue(platform.classifiedAt))}</dd></div>` : ""}
-        </dl>
         ${platform.conflict ? '<p class="radar-platform-conflict" role="status">As fontes consultadas indicam plataformas diferentes. Confira o edital antes de usar o link.</p>' : ""}
-        ${evidenceMarkup ? `<div><strong>Evidências do edital</strong>${evidenceMarkup}</div>` : ""}
-        ${previousAutomaticMarkup}${confirmationMarkup}
-        <small>${platform.sourceUrlManuallyConfirmed ? "A correção manual foi registrada por um Administrador e fica preservada nas próximas sincronizações." : "A identificação automática corresponde aos dados disponíveis do PNCP; domínio e referências textuais não confirmam uma sessão efetiva de disputa."}</small>
       </section>
       ${officialUrl ? `<a class="quiet-action compact-action radar-official-link" href="${escapeHtml(officialUrl)}" target="_blank" rel="noopener noreferrer">Abrir contratação no PNCP <span aria-hidden="true">↗</span></a>` : ""}
     </section>`;
@@ -908,14 +890,8 @@ export function createRadarDetailsFeature({ getClient, getUserRole = () => null,
     else {
       const general = document.createElement("div");
       general.innerHTML = renderGeneral(state.data.contract, state.data.sources, state.data.platform);
-      const platform = general.querySelector(".radar-platform-detail");
-      if (modalView === "platform") {
-        content.replaceChildren(platform);
-        if (getUserRole() === "Administrador") content.insertAdjacentHTML("beforeend", '<button class="quiet-action" type="button" data-radar-platform-confirm>Confirmar plataforma</button>');
-      } else {
-        platform?.remove();
-        content.replaceChildren(...general.childNodes);
-      }
+      general.querySelector(".radar-platform-detail")?.remove();
+      content.replaceChildren(...general.childNodes);
     }
     restoreFocusedDetailsControl(content, focus);
   }
@@ -1592,8 +1568,6 @@ export function createRadarDetailsFeature({ getClient, getUserRole = () => null,
       }
       if (event.target.closest("[data-radar-card-dialog-close]")) {
         byId("radarCardDialog")?.close();
-      } else if (event.target.closest("[data-radar-platform-confirm]")) {
-        void openPlatformConfirmation();
       } else if (event.target.closest("[data-radar-platform-dialog-close]")) {
         byId("radarPlatformConfirmDialog")?.close();
       } else if (event.target.closest("#radarDetailsBackButton")) {

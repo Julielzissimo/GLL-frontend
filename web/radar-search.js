@@ -939,9 +939,7 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
     const administrative = result.administrativeUnitName && result.administrativeUnitName !== result.agencyName
       ? `<small>${escapeHtml(result.administrativeUnitName)}</small>` : "";
     const organization = `${escapeHtml(result.agencyName || result.administrativeUnitName || "Órgão não informado")}${administrative}`;
-    const platform = state.view === "search"
-      ? radarPlatformConfirmation(result)
-      : radarPlatformSummary(result);
+    const platform = radarPlatformSummary(result);
     return `<article class="radar-result-card" data-radar-card="${escapeHtml(result.numberControlPncp)}">
       <div class="radar-result-card-heading">
         <div><p class="radar-result-number"><strong>Edital ${escapeHtml(number)}${year}</strong><span>PNCP ${escapeHtml(result.numberControlPncp || "—")}</span></p><h3 class="radar-result-object"><button type="button" class="radar-result-object-toggle is-truncated" data-radar-object-toggle aria-expanded="false">${escapeHtml(object)}</button></h3></div>
@@ -951,7 +949,7 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
         <div><dt>Município - UF</dt><dd>${municipality}</dd></div>
         <div><dt>Órgão responsável</dt><dd><div class="radar-organization-field"><button type="button" class="radar-organization-toggle is-truncated" data-radar-organization-toggle aria-expanded="false">${organization}</button></div></dd></div>
         <div><dt>Modalidade</dt><dd>${escapeHtml(resolveModalityName(result.modalityId))}</dd></div>
-        <div><dt>Plataforma</dt><dd>${escapeHtml(platform.platform || platform.label)}</dd></div>
+        <div><dt>Plataforma</dt><dd>${escapeHtml(platform.label)}${platform.note ? `<small class="radar-platform-card-note" role="status">${escapeHtml(platform.note)}</small>` : ""}</dd></div>
         <div><dt>Data da Disputa</dt><dd>${escapeHtml(result.bidPhaseStartAt ? formatDateTime(result.bidPhaseStartAt) : "Não confirmada")}${result.bidPhaseStartAt && result.bidPhaseDateStatus === "failed" ? "<small>Revalidação pendente</small>" : ""}</dd></div>
         <div><dt>Limite p/ Recebimento das Propostas</dt><dd>${escapeHtml(formatDateTime(result.proposalsEndAt))}</dd></div>
       </dl>
