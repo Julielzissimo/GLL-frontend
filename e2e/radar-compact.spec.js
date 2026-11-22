@@ -24,6 +24,14 @@ async function search(page) {
   await page.locator('#radarSearchButton').click();
   await expect(page.locator('.radar-result-card')).toHaveCount(2);
 }
+async function openDetails(page, resultIndex = 0) {
+  const result = await page.evaluate((index) => window.fixture.results[index], resultIndex);
+  await page.evaluate(async (numberControlPncp) => {
+    await window.fixture.details.open(numberControlPncp, { pushHistory: false });
+  }, result.numberControlPncp);
+  await expect(page.locator('#radarDetailsView')).toBeVisible();
+  return page.locator('#radarDetailsContent');
+}
 
 test('plataforma preserva classificação, conflito e links sem expor método ou evidências', async ({ page }) => {
   const errors = await setup(page, { platformConflict: true });
@@ -74,7 +82,7 @@ test('chips, modalidades transacionais, UF e contrato OU', async ({ page }) => {
   expect(errors).toEqual([]);
 });
 
-test('itens completos, seleção persistente, modais e importação real pelo serviço', async ({ page }) => {
+test('itens persistidos, seleção por edital e importação no fluxo de detalhes', async ({ page }) => {
   const errors = await setup(page);
   await search(page);
   const cards = page.locator('.radar-result-card');
@@ -88,7 +96,7 @@ test('itens completos, seleção persistente, modais e importação real pelo se
   }
   const first = cards.first();
   const itemsButton = first.locator('[data-radar-card-view="items"]');
-  await expect(itemsButton).toHaveText("Itens (45)");
+  await expect(itemsButton).toHaveText('Itens (45)');
   const resultsUrl = page.url();
   let popupOpened = false;
   page.on('popup', () => { popupOpened = true; });
@@ -101,37 +109,30 @@ test('itens completos, seleção persistente, modais e importação real pelo se
   await itemsButton.press('Space');
   await expect(itemsButton).toHaveAttribute('aria-expanded', 'false');
   await expect(first.locator('#radarDetailsView')).toBeHidden();
-  await itemsButton.click();
-  await expect(first.locator('[data-radar-select-item]')).toHaveCount(45);
-  await expect(page.locator('[data-radar-items-page]')).toHaveCount(0);
-  await expect(first.locator('[data-radar-select-item="4"]')).toBeDisabled();
-  await first.locator('[data-radar-select-item="45"]').check();
-  await first.locator('[data-radar-card-view="data"]').click();
-  await expect(page.locator('#radarCardDialog')).toBeVisible();
-  await page.keyboard.press('Escape');
-  await expect(first.locator('[data-radar-select-item="45"]')).toBeChecked();
-  await first.locator('[data-radar-card-view="items"]').click();
-  await first.locator('[data-radar-card-view="items"]').click();
-  await expect(first.locator('[data-radar-select-item="45"]')).toBeChecked();
-  await first.locator('[data-radar-import-start]').click();
+  const details = await openDetails(page, 0);
+  await expect(details.locator('[data-radar-select-item]')).toHaveCount(45);
+  await expect(details.locator('[data-radar-select-item="4"]')).toBeDisabled();
+  await details.locator('[data-radar-select-item="45"]').check();
+  await openDetails(page, 1);
+  await expect(details.locator('[data-radar-select-item="45"]')).not.toBeChecked();
+  await openDetails(page, 0);
+  await expect(details.locator('[data-radar-select-item="45"]')).toBeChecked();
+  await details.locator('[data-radar-import-start]').click();
   await expect(page.locator('#radarImportConfirmItems tbody tr')).toHaveCount(1);
   await expect(page.locator('#radarImportConfirmItems')).toContainText('30,85');
   await expect(page.locator('#radarImportConfirmItems th')).toHaveText(['Item', 'Descrição', 'Unidade', 'Quantidade', 'Valor estimado unitário', 'Valor total']);
   await page.locator('[data-radar-import-cancel]').click();
-  await expect(first.locator('[data-radar-select-item="45"]')).toBeChecked();
-  await cards.nth(1).locator('[data-radar-card-view="items"]').click();
-  await expect(cards.nth(1).locator('[data-radar-select-item="45"]')).not.toBeChecked();
-  await first.locator('[data-radar-card-view="items"]').click();
-  await expect(first.locator('[data-radar-select-item="45"]')).toBeChecked();
-  await first.locator('[data-radar-import-start]').click();
+  await expect(details.locator('[data-radar-select-item="45"]')).toBeChecked();
+  await details.locator('[data-radar-import-start]').click();
   await page.locator('[data-radar-import-confirm]').click();
-  await expect(first.locator('[data-radar-select-item="45"]')).toBeDisabled();
+  await expect(details.locator('[data-radar-select-item="45"]')).toBeDisabled();
   const calls = await page.evaluate(() => window.fixture.calls.filter((c) => c.name === 'radar-import'));
   expect(calls).toHaveLength(2);
   expect(calls[0].body.action).toBe('import');
   expect(calls[0].body.selectedItemNumbers).toEqual(['45']);
   expect(calls[1].body.action).toBe('attach-documents');
   expect(calls[1].body.selectedDocumentIds).toBeUndefined();
+  await page.locator('#radarDetailsBackButton').click();
   await page.locator('[data-radar-page="2"]').click();
   await expect(page.locator('#radarPagination')).toContainText('Página 2');
   expect(errors).toEqual([]);
@@ -140,10 +141,9 @@ test('itens completos, seleção persistente, modais e importação real pelo se
 test('cadastro permite escolher até quatro documentos do edital', async ({ page }) => {
   const errors = await setup(page, { previousImport: false, itemCount: 6, documentCount: 6 });
   await search(page);
-  const first = page.locator('.radar-result-card').first();
-  await first.locator('[data-radar-card-view="items"]').click();
-  await first.locator('[data-radar-select-item="1"]').check();
-  await first.locator('[data-radar-import-start]').click();
+  const details = await openDetails(page, 0);
+  await details.locator('[data-radar-select-item="1"]').check();
+  await details.locator('[data-radar-import-start]').click();
   await expect(page.locator('.radar-import-document-option')).toHaveCount(6);
   await expect(page.locator('[data-radar-import-document="1"]')).toBeChecked();
   await expect(page.locator('[data-radar-import-document="5"]')).toBeDisabled();
@@ -173,11 +173,11 @@ for (const width of [1440, 1024, 768, 390]) {
       expect(filters.y + filters.height).toBeLessThanOrEqual(results.y);
     }
     await page.screenshot({ path: `test-results/radar-${width}.png`, fullPage: true });
-    await page.locator('[data-radar-card-view="items"]').first().click();
-    await expect(page.locator('[data-radar-select-item]')).toHaveCount(45);
-    await page.locator('[data-radar-select-all]').click();
-    await expect(page.locator('[data-radar-select-item]:checked')).toHaveCount(44);
-    await page.locator('[data-radar-import-start]').click();
+    const details = await openDetails(page, 0);
+    await expect(details.locator('[data-radar-select-item]')).toHaveCount(45);
+    await details.locator('[data-radar-select-all]').click();
+    await expect(details.locator('[data-radar-select-item]:checked')).toHaveCount(44);
+    await details.locator('[data-radar-import-start]').click();
     await expect(page.locator('#radarImportConfirmItems tbody tr')).toHaveCount(44);
     const overflow = await page.evaluate(() => [...document.querySelectorAll('body *')].filter((e) => {
       const r = e.getBoundingClientRect();
@@ -186,8 +186,8 @@ for (const width of [1440, 1024, 768, 390]) {
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), JSON.stringify(overflow)).toBe(true);
     await page.screenshot({ path: `test-results/radar-confirm-${width}.png`, fullPage: false });
     await page.keyboard.press('Escape');
-    await page.locator('[data-radar-select-none]').click();
-    await expect(page.locator('[data-radar-import-start]')).toBeDisabled();
+    await details.locator('[data-radar-select-none]').click();
+    await expect(details.locator('[data-radar-import-start]')).toBeDisabled();
     expect(errors).toEqual([]);
   });
 }
@@ -195,11 +195,11 @@ for (const width of [1440, 1024, 768, 390]) {
 test('sincronização informativa e permissões do Analista', async ({ page }) => {
   const errors = await setup(page, { role: 'Analista', pending: true });
   await search(page);
-  await page.locator('[data-radar-card-view="items"]').first().click();
-  await expect(page.locator('#radarDetailsContent')).toContainText('sincronização');
-  await expect(page.locator('[data-radar-select-item]')).toHaveCount(0);
-  await expect(page.getByRole('button', { name: /Atualizar dados do Radar|Solicitar atualização|Contingência PNCP/ })).toHaveCount(0);
   await expect(page.getByRole('link', { name: 'PNCP', exact: true }).first()).toBeVisible();
+  const details = await openDetails(page, 0);
+  await expect(details).toContainText('sincronização');
+  await expect(details.locator('[data-radar-select-item]')).toHaveCount(0);
+  await expect(page.getByRole('button', { name: /Atualizar dados do Radar|Solicitar atualização|Contingência PNCP/ })).toHaveCount(0);
   await expect(page.locator('[data-radar-card-view="platform"]')).toHaveCount(0);
   await expect(page.locator('#radarCardDialog')).not.toBeVisible();
   await expect(page.locator('[data-radar-platform-confirm]')).toHaveCount(0);
@@ -269,12 +269,12 @@ test('PNCP abre diretamente o edital em nova guia sem modal ou consulta de detal
 test('novo cadastro confirma apenas os itens selecionados', async ({ page }) => {
   await setup(page, { previousImport: false });
   await search(page);
-  await page.locator('[data-radar-card-view="items"]').first().click();
-  await page.locator('[data-radar-select-item="2"]').check();
-  await page.locator('[data-radar-import-start]').click();
+  const details = await openDetails(page, 0);
+  await details.locator('[data-radar-select-item="2"]').check();
+  await details.locator('[data-radar-import-start]').click();
   await expect(page.locator('#radarImportConfirmTitle')).toHaveText('Confirmar cadastro');
   await expect(page.locator('#radarImportConfirmItems tbody tr')).toHaveCount(1);
   await expect(page.locator('#radarImportConfirmItems td').first()).toHaveText('2');
   await page.keyboard.press('Escape');
-  await expect(page.locator('[data-radar-select-item="2"]')).toBeChecked();
+  await expect(details.locator('[data-radar-select-item="2"]')).toBeChecked();
 });
