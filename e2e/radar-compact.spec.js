@@ -25,6 +25,27 @@ async function search(page) {
   await expect(page.locator('.radar-result-card')).toHaveCount(2);
 }
 
+test('plataforma preserva classificação, conflito e links sem expor método ou evidências', async ({ page }) => {
+  const errors = await setup(page, { platformConflict: true });
+  await search(page);
+  const first = page.locator('.radar-result-card').first();
+  await expect(first).toContainText('Portal de Compras Públicas');
+  await expect(first).toContainText('Fontes divergentes; confira o edital.');
+  await expect(first).not.toContainText(/confiança|método|evidências/i);
+
+  await page.evaluate(async () => {
+    await window.fixture.details.open(window.fixture.results[0], { pushHistory: false });
+  });
+  const details = page.locator('#radarDetailsContent');
+  await expect(details).toContainText('Portal de Compras Públicas');
+  await expect(details).toContainText('As fontes consultadas indicam plataformas diferentes.');
+  await expect(details).toContainText('Link de origem informado pelo PNCP');
+  await expect(details).toContainText('Abrir processo');
+  await expect(details).not.toContainText(/evidências do edital|fonte da identificação|confiança|método de confirmação|identificação automática anterior|confirmar plataforma/i);
+  await expect(details.locator('[data-radar-platform-confirm]')).toHaveCount(0);
+  expect(errors).toEqual([]);
+});
+
 test('chips, modalidades transacionais, UF e contrato OU', async ({ page }) => {
   const errors = await setup(page);
   const input = page.locator('#radarTagInput');

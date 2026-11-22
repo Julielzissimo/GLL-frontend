@@ -246,6 +246,21 @@ test("apresenta o Portal e a fonte e método retornados pela sincronização", (
   assert.equal(radarPlatformConfirmation({}).platform, "Portal de Compras Públicas");
 });
 
+test("resume a classificação da plataforma e mantém o aviso de conflito", () => {
+  assert.deepEqual(radarPlatformSummary({
+    platformStatus: "identified",
+    platformName: "Portal de Compras Públicas",
+    platformConflict: true,
+  }), {
+    label: "Portal de Compras Públicas",
+    note: "Fontes divergentes; confira o edital.",
+  });
+  assert.deepEqual(radarPlatformSummary({ platformStatus: "pending_verification" }), {
+    label: "Identificação pendente",
+    note: "",
+  });
+});
+
 test("só aceita link HTTPS da origem oficial PNCP em caminho de aplicação", () => {
   assert.equal(validatedPncpSourceUrl("https://pncp.gov.br/app/editais/12345678000199/2026/1"), "https://pncp.gov.br/app/editais/12345678000199/2026/1");
   assert.equal(validatedPncpSourceUrl("http://pncp.gov.br/app/editais/1"), null);
