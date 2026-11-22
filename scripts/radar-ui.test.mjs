@@ -13,13 +13,13 @@ const importFeature = readFileSync(new URL("../web/radar-import.js", import.meta
 const designSystem = readFileSync(new URL("../web/design-system/components.js", import.meta.url), "utf8");
 const radarStory = readFileSync(new URL("../stories/patterns/Radar.stories.js", import.meta.url), "utf8");
 
-test("o Portal de Disputa aparece entre Dados e PNCP nos cards do Radar, não em Licitações", () => {
+test("o Portal de Disputa aparece nos cards do Radar e na tabela de Licitações", () => {
   const actionsRenderer = searchFeature.match(/function renderResultActions\(result\) \{[\s\S]*?\n  \}/u)?.[0];
   assert.ok(actionsRenderer, "renderizador das ações dos cards do Radar presente");
   assert.match(actionsRenderer, /radar-dispute-portal-link[^>]*>Portal de Disputa/u);
   assert.match(actionsRenderer, /\[\["data", "Dados"\], \["portal", "Portal de Disputa"\], \["pncp", "PNCP"\]/u);
-  assert.doesNotMatch(html, /<th scope="col">Portal de Disputa<\/th>/u);
-  assert.doesNotMatch(appFeature, /data-bid-portal|bidDisputePortalUrl|openBidDisputePortal/u);
+  assert.match(html, /<th scope="col">Portal de Disputa<\/th>/u);
+  assert.match(appFeature, /data-bid-portal|bidDisputePortalUrl|openBidDisputePortal/u);
 });
 
 test("o Portal de Disputa usa o link do Radar ou busca pelo processo e órgão", () => {
