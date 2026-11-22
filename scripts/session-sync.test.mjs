@@ -22,6 +22,32 @@ const application = classicSource.slice(
 );
 const user = { id: "profile-1", email: "test@example.test", name: "Teste" };
 
+test("Portal de Disputa abre o link salvo ou a busca filtrada pelo edital e órgão", () => {
+  const app = client();
+  assert.equal(
+    app.bidDisputePortalUrl({
+      public_session_link: "https://operacao.portaldecompraspublicas.com.br/18/processo/123",
+      edital_number: "10/2026",
+      buyer_agency: "Prefeitura de São Paulo",
+    }),
+    "https://operacao.portaldecompraspublicas.com.br/18/processo/123",
+  );
+
+  const fallback = new URL(app.bidDisputePortalUrl({
+    edital_number: "PE 10/2026",
+    buyer_agency: "Prefeitura de São Paulo",
+  }));
+  assert.equal(fallback.origin, "https://www.portaldecompraspublicas.com.br");
+  assert.equal(fallback.pathname, "/processos");
+  assert.equal(fallback.searchParams.get("processo"), "PE 10/2026");
+  assert.equal(fallback.searchParams.get("orgao"), "Prefeitura de São Paulo");
+  assert.match(html, /<th scope="col">Portal de Disputa<\/th>/u);
+  assert.match(source, /data-bid-portal/u);
+  assert.match(source, /event\.stopPropagation\(\)/u);
+  assert.match(source, /window\.open\(url, "_blank", "noopener,noreferrer"\)/u);
+  assert.match(source, /if \(event\.target !== row\) return;/u);
+});
+
 test("feed descreve alterações específicas do edital e do orçamento", () => {
   const { bidActivityDescription } = client();
   const event = { bid_id: "bid-1", edital_number: "10/2026", buyer_agency: "Prefeitura", detail: "3", previous_value: "Em Analise", next_value: "Aprovada" };
@@ -527,6 +553,7 @@ function client(db = backend(), auth = { session: { user } }, config = {}) {
   element("notificationsMenu").classList.add("hidden");
   const api = vm.runInContext(`({ store, appState, authState, AUTH_STATUS, bidFollowupCalls, body: document.body, toast: refs.toast, showToast, main, initializeAuthStateListener, showAuthBootstrap, showAuthBootstrapError, showLoginView, showAppDataBootstrap, showAppDataBootstrapError, retryAppDataBootstrap, restoreSession, logout, reloadData, refreshInBackground, startLiveUpdates, stopLiveUpdates, resetAuthenticatedView, scheduleLiveRefresh, handleOrganizationDataChanged, verifyCurrentUserAccess, calculateBidSummary, calculateLineTotal, calculateItemProfit, calculateProfitMargin, calculateValueWithMargin, parseDecimal, parseProfitMargin, money, formatDateTime, toDateTimeInputValue, fromDateTimeInputValue, readNavigationRoute, writeNavigationRoute, resolveAuthorizedPage, normalizeBidRecord, normalizeBidAttachments, validateEditalFiles, bidDisplayNumber, bidMatchesSearch, bidActivityDescription, bidHistoryPresentation, creatorName, creatorInitials, creatorTagMarkup, normalizeQuotationRecord, normalizeQuotationItemRecord, quotationItemToBidItem, bidItemToQuotationItem, normalizeTechnicalSpecifications, quotationSaveError, sessionPolicyStorageKey, enforceSessionPolicy, availableBidQuotations, navigationNotifications, clearAllNotifications, updateCurrentUserProfile, waitForAppData: () => pendingAppDataBootstrap, waitForSessionRestore: () => pendingSessionRestore?.promise || Promise.resolve() })`, context);
   api.setActiveModal = (modal) => { activeModal = modal; };
+  api.bidDisputePortalUrl = vm.runInContext("bidDisputePortalUrl", context);
   api.runTimers = () => {
     const callbacks = [...timers.values()];
     timers.clear();
