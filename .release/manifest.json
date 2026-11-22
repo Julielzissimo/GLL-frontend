@@ -3013,6 +3013,19 @@
       "migrations": [
         "supabase/migrations/20261121174134_radar_edital_number_filter.sql"
       ]
+    },
+    {
+      "id": "ISSUE-531",
+      "backend_commits": [
+        "4f16e4576c5ecf5e6cedefce55b35ca60d6a5375",
+        "866563442992865781b189d49866aa644ccfdecf"
+      ],
+      "frontend_commits": [
+        "386a80ca26cfc3f772001cd29c3bbf56590e8dd4"
+      ],
+      "migrations": [
+        "supabase/migrations/20261122161757_radar_non_receiving_editals_cleanup.sql"
+      ]
     }
   ]
 }
