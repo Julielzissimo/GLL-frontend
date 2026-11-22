@@ -3022,7 +3022,8 @@
       ],
       "frontend_commits": [
         "386a80ca26cfc3f772001cd29c3bbf56590e8dd4",
-        "057873a010669e2af52743b5405dfabe20235738"
+        "057873a010669e2af52743b5405dfabe20235738",
+        "4dcca66b500e21716b85cca965016ec9153d3ab7"
       ],
       "migrations": [
         "supabase/migrations/20261122161757_radar_non_receiving_editals_cleanup.sql"
