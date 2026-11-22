@@ -87,8 +87,21 @@ test('itens completos, seleção persistente, modais e importação real pelo se
     await expect(object).toHaveAttribute('aria-expanded', 'false');
   }
   const first = cards.first();
-  await expect(first.locator('[data-radar-card-view="items"]')).toHaveText("Itens (45)");
-  await first.locator('[data-radar-card-view="items"]').click();
+  const itemsButton = first.locator('[data-radar-card-view="items"]');
+  await expect(itemsButton).toHaveText("Itens (45)");
+  const resultsUrl = page.url();
+  let popupOpened = false;
+  page.on('popup', () => { popupOpened = true; });
+  await itemsButton.focus();
+  await itemsButton.press('Enter');
+  await expect(itemsButton).toHaveAttribute('aria-expanded', 'true');
+  await expect(first.locator('#radarDetailsView')).toBeVisible();
+  expect(page.url()).toBe(resultsUrl);
+  expect(popupOpened).toBe(false);
+  await itemsButton.press('Space');
+  await expect(itemsButton).toHaveAttribute('aria-expanded', 'false');
+  await expect(first.locator('#radarDetailsView')).toBeHidden();
+  await itemsButton.click();
   await expect(first.locator('[data-radar-select-item]')).toHaveCount(45);
   await expect(page.locator('[data-radar-items-page]')).toHaveCount(0);
   await expect(first.locator('[data-radar-select-item="4"]')).toBeDisabled();

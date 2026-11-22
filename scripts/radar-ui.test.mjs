@@ -42,12 +42,13 @@ test("o Portal de Disputa usa o link do Radar ou busca pelo processo e órgão",
   assert.equal(invalidLinkFallback.startsWith("https://www.portaldecompraspublicas.com.br/processos?"), true);
 });
 
-test("a ação Itens abre os detalhes em uma nova guia e mantém a guia de resultados", () => {
+test("a ação Itens expande o collapse no card sem navegar para outra página", () => {
   const actionsRenderer = searchFeature.match(/function renderResultActions\(result\) \{[\s\S]*?\n  \}/u)?.[0];
   assert.ok(actionsRenderer, "renderizador das ações dos cards do Radar presente");
-  assert.match(actionsRenderer, /buildRadarDetailsHref\(\s*result\.numberControlPncp/u);
-  assert.match(actionsRenderer, /<a class="primary-action compact-action" href="\$\{escapeHtml\(detailsHref\)\}" target="_blank" rel="noopener noreferrer" aria-label="Ver itens em uma nova guia"/u);
-  assert.doesNotMatch(actionsRenderer, /data-radar-card-view="items"/u);
+  assert.match(actionsRenderer, /<button class="primary-action compact-action" type="button" data-radar-card-view="items"[\s\S]*?aria-expanded="false" aria-controls="radarDetailsView">/u);
+  assert.doesNotMatch(actionsRenderer, /buildRadarDetailsHref|target="_blank"[^>]*aria-label="Ver itens em uma nova guia"/u);
+  assert.match(detailsFeature, /inlineExpanded = sameCard \? !inlineExpanded : true/u);
+  assert.match(detailsFeature, /card\.append\(detailViewNode\)/u);
   assert.match(detailsFeature, /new URL\(window\.location\.href\)\.searchParams\.get\("radarDetail"\)/u);
   assert.match(searchFeature, /actions\.syncDetailRoute\?\.\(\)/u);
 });
