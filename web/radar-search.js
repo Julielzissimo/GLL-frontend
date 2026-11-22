@@ -128,7 +128,7 @@ export function buildRadarSearchPayload(filters, { page = 1, refreshCoverage = f
   const payload = {
     action: "search",
     dateFilterMode: "bid_phase",
-    proposalReceiptState: filters.proposalReceiptState || "all",
+    proposalReceiptState: filters.proposalReceiptState || "open",
     page: Number(page),
     pageSize: Number(filters.pageSize || 50),
     sortBy: filters.sortBy || "bidPhaseStartAt",
@@ -431,7 +431,7 @@ function currentFiltersFromInputs(root, tags, modalities) {
     municipalityIbgeId: root.querySelector("#radarMunicipality")?.value || "",
     bidPhaseFrom: root.querySelector("#radarBidPhaseFrom")?.value || "",
     bidPhaseTo: root.querySelector("#radarBidPhaseTo")?.value || "",
-    proposalReceiptState: root.querySelector("#radarSituation")?.value || "all",
+    proposalReceiptState: root.querySelector("#radarSituation")?.value || "open",
     pageSize: root.querySelector("#radarPageSize")?.value || 50,
     sortBy: root.querySelector("#radarSortBy")?.value || "bidPhaseStartAt",
     sortDirection: root.querySelector("#radarSortDirection")?.value || "desc",
@@ -1510,7 +1510,7 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
     if (byId("radarProcurementNumber")) byId("radarProcurementNumber").value = "";
     if (byId("radarModalityError")) byId("radarModalityError").textContent = "";
     if (byId("radarUf")) byId("radarUf").value = "";
-    if (byId("radarSituation")) byId("radarSituation").value = "all";
+    if (byId("radarSituation")) byId("radarSituation").value = "open";
     if (byId("radarPageSize")) byId("radarPageSize").value = "50";
     if (byId("radarSortBy")) byId("radarSortBy").value = "bidPhaseStartAt";
     if (byId("radarSortDirection")) byId("radarSortDirection").value = "desc";
@@ -1528,6 +1528,7 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
   function bind() {
     if (!root || state.bound) return;
     state.bound = true;
+    if (byId("radarSituation")) byId("radarSituation").value = "open";
     bindFilterRailVisibility();
     root.addEventListener("submit", (event) => {
       if (event.target?.id === "radarSearchForm") {
