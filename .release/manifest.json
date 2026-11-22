@@ -966,7 +966,8 @@
         "bce0a22622a4ce221fd3a03cc814fb05b5d51bf0"
       ],
       "frontend_commits": [
-        "ece32c8d52ad76c8c7948c3a9a9cb58b6eaa0c43"
+        "ece32c8d52ad76c8c7948c3a9a9cb58b6eaa0c43",
+        "4d4756e2653d24d5ae67a1e9b0e4bdcd6d20d744"
       ],
       "migrations": []
     },
@@ -1272,7 +1273,8 @@
         "e3572382f5e6c98b432544c89124ff86725cf62c"
       ],
       "frontend_commits": [
-        "d3cd82eb0c1fbcda67e5218b62e5168c78ef9bdb"
+        "d3cd82eb0c1fbcda67e5218b62e5168c78ef9bdb",
+        "4d4756e2653d24d5ae67a1e9b0e4bdcd6d20d744"
       ],
       "migrations": [
         "supabase/migrations/20261012023121_radar_items_operational_metrics.sql"
