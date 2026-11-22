@@ -907,7 +907,11 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
     if (actions.detailsEnabled === true) {
       const portalUrl = radarDisputePortalUrl(result);
       const portalAction = `<a class="quiet-action compact-action radar-dispute-portal-link" href="${escapeHtml(portalUrl)}" target="_blank" rel="noopener noreferrer">Portal de Disputa <span aria-hidden="true">↗</span></a>`;
-      for (const [view, label] of [["data", "Dados"], ["portal", "Portal de Disputa"], ["pncp", "PNCP"], ["documents", "Documentos"], ["items", "Itens"]]) {
+      const detailsHref = buildRadarDetailsHref(
+        result.numberControlPncp,
+        globalThis.window?.location?.href || "http://localhost/",
+      );
+      for (const [view, label] of [["data", "Dados"], ["portal", "Portal de Disputa"], ["pncp", "PNCP"], ["documents", "Documentos"]]) {
         if (view === "portal") {
           buttons.push(portalAction);
           continue;
@@ -916,8 +920,10 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
           buttons.push(pncpAction);
           continue;
         }
-        buttons.push(`<button class="${view === "items" ? "primary-action" : "quiet-action"} compact-action" type="button" data-radar-card-view="${view}" data-radar-id="${escapeHtml(result.numberControlPncp)}"${view === "items" ? ' aria-expanded="false" aria-controls="radarDetailsView"' : ' aria-haspopup="dialog"'}>${view === "items" && Number.isSafeInteger(itemCount) ? `Itens (${itemCount.toLocaleString("pt-BR")})` : label}</button>`);
+        buttons.push(`<button class="quiet-action compact-action" type="button" data-radar-card-view="${view}" data-radar-id="${escapeHtml(result.numberControlPncp)}" aria-haspopup="dialog">${label}</button>`);
       }
+      const itemLabel = Number.isSafeInteger(itemCount) ? `Itens (${itemCount.toLocaleString("pt-BR")})` : "Itens";
+      buttons.push(`<a class="primary-action compact-action" href="${escapeHtml(detailsHref)}" target="_blank" rel="noopener noreferrer" aria-label="Ver itens em uma nova guia">${itemLabel} <span aria-hidden="true">↗</span></a>`);
     } else if (sourceUrl) {
       buttons.push(pncpAction);
     }
