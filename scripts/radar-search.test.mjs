@@ -11,6 +11,7 @@ import {
   radarOperationalStatus,
   radarPlatformConfirmation,
   radarPlatformSummary,
+  radarPncpUrl,
   validatedPncpSourceUrl,
   validatedPlatformSourceUrl,
 } from "../web/radar-search.js";
@@ -235,6 +236,15 @@ test("só aceita link HTTPS da origem oficial PNCP em caminho de aplicação", (
   assert.equal(validatedPncpSourceUrl("http://pncp.gov.br/app/editais/1"), null);
   assert.equal(validatedPncpSourceUrl("https://pncp.gov.br.evil.example/app/editais/1"), null);
   assert.equal(validatedPncpSourceUrl("https://pncp.gov.br/manual/1"), null);
+});
+
+test("resolve o link oficial do PNCP também para favoritos sem URL de origem", () => {
+  const numberControlPncp = "12345678000199-1-000079/2026";
+  const expected = "https://pncp.gov.br/app/editais/12345678000199/2026/79";
+  assert.equal(radarPncpUrl({ numberControlPncp, sourceUrl: "" }), expected);
+  assert.equal(radarPncpUrl({ numberControlPncp, sourceUrl: "https://outro.example/" }), expected);
+  assert.equal(radarPncpUrl({ sourceUrl: expected }), expected);
+  assert.equal(radarPncpUrl({ numberControlPncp: "inválido", sourceUrl: "javascript:alert(1)" }), null);
 });
 
 test("links da plataforma aceitam HTTPS seguro e rejeitam protocolos e credenciais perigosos", () => {
