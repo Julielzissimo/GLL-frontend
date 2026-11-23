@@ -106,6 +106,29 @@ test("preserva metadados da licitação ao montar a visualização de favoritos"
   assert.equal(result.administrativeSituationName, "Divulgada no PNCP");
 });
 
+test("mapeia a identificação e a URL corrigida nos metadados dos favoritos", () => {
+  const result = mapRadarFavoriteMetadata({
+    numero_controle_pncp: procurementId,
+    plataforma_id: "10000000-0000-4000-8000-000000000001",
+    link_sistema_origem: "https://pncp.gov.br/origem",
+    link_sistema_origem_manual: "https://licitacao.example/processo",
+    plataforma_status: "identified",
+    plataforma_confianca: "high",
+    plataforma_metodo_classificacao: "manual_confirmed",
+    plataforma_fonte_evidencia: "manual",
+    plataforma_evidencia: [{ source: "manual", value_excerpt: "Conferido no edital" }],
+    plataforma_conflito: false,
+    plataforma_confirmada_em: "2026-10-11T12:00:00Z",
+  }, new Map([["10000000-0000-4000-8000-000000000001", "Licitanet"]]));
+  assert.equal(result.platformName, "Licitanet");
+  assert.equal(result.platformSourceUrl, "https://licitacao.example/processo");
+  assert.equal(result.platformSourceUrlFromPncp, "https://pncp.gov.br/origem");
+  assert.equal(result.platformConfidence, "high");
+  assert.equal(result.platformClassificationMethod, "manual_confirmed");
+  assert.deepEqual(result.platformEvidence, [{ source: "manual", value_excerpt: "Conferido no edital" }]);
+  assert.equal(result.platformConfirmedAt, "2026-10-11T12:00:00Z");
+});
+
 test("aceita links oficiais PNCP HTTPS e rejeita host parecido ou protocolo inseguro", () => {
   assert.equal(validatedOfficialPncpUrl("https://pncp.gov.br/pncp-api/arquivo/1"), "https://pncp.gov.br/pncp-api/arquivo/1");
   assert.equal(validatedOfficialPncpUrl("https://api.pncp.gov.br/arquivo/1"), "https://api.pncp.gov.br/arquivo/1");
