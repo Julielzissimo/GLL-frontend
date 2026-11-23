@@ -104,6 +104,15 @@ export function buildRadarSearchPayload(filters, { page = 1, refreshCoverage = f
   return payload;
 }
 
+export function buildRadarDetailsHref(numberControlPncp, currentUrl) {
+  const url = new URL(currentUrl);
+  url.search = "";
+  url.hash = "";
+  url.searchParams.set("page", "radar-de-licitacoes");
+  url.searchParams.set("radarDetail", String(numberControlPncp ?? ""));
+  return url.href;
+}
+
 export function radarEmptyResultState(coverage) {
   if (coverage?.complete === true || coverage?.status === "complete") {
     return {
@@ -250,7 +259,7 @@ function currentFiltersFromInputs(root, tags, modalities, platformIds) {
 
 /**
  * @typedef {Object} RadarResultActionHandlers
- * @property {(result: Object) => void} [onOpenDetails] Opens the on-demand detail view.
+ * @property {boolean} [detailsEnabled] Enables links to the on-demand detail route.
  * @property {(identifiers: string[]) => Promise<string[]>} [loadFavoriteIds] Loads the current user's state for result rows.
  * @property {(options: Object) => Promise<Object>} [loadFavoritesPage] Loads one page of the current user's favorites.
  * @property {(result: Object, shouldFavorite: boolean) => Promise<boolean>} [setFavorite] Persists the current user's favorite state.
@@ -635,8 +644,9 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
     }
     const sourceUrl = validatedPncpSourceUrl(result.sourceUrl);
     if (sourceUrl) buttons.push(`<a class="quiet-action compact-action radar-source-link" href="${escapeHtml(sourceUrl)}" target="_blank" rel="noopener noreferrer">PNCP <span aria-hidden="true">↗</span></a>`);
-    if (typeof actions.onOpenDetails === "function") {
-      buttons.push(`<button type="button" class="primary-action compact-action" data-radar-detail="${escapeHtml(result.numberControlPncp)}">Ver itens</button>`);
+    if (actions.detailsEnabled === true) {
+      const detailHref = buildRadarDetailsHref(result.numberControlPncp, globalThis.window.location.href);
+      buttons.push(`<a class="primary-action compact-action radar-detail-link" href="${escapeHtml(detailHref)}" target="_blank" rel="noopener noreferrer" aria-label="Ver itens (abre em nova guia)">Ver itens</a>`);
     }
     return buttons.length ? `<div class="radar-row-actions">${buttons.join("")}</div>` : '<span class="radar-no-actions" aria-label="Ações disponíveis na Fase 6">Disponível na Fase 6</span>';
   }
@@ -1205,7 +1215,7 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
       }
     });
     root.addEventListener("click", (event) => {
-      const target = event.target.closest("[data-radar-object-toggle], [data-radar-action], [data-radar-remove-tag], [data-radar-page], [data-radar-favorites-page], [data-radar-detail], [data-radar-favorite], [data-platform-edit], [data-platform-toggle], [data-domain-edit], [data-domain-toggle]");
+      const target = event.target.closest("[data-radar-object-toggle], [data-radar-action], [data-radar-remove-tag], [data-radar-page], [data-radar-favorites-page], [data-radar-favorite], [data-platform-edit], [data-platform-toggle], [data-domain-edit], [data-domain-toggle]");
       if (!target) return;
       if (target.dataset.radarObjectToggle !== undefined) {
         const expanded = target.getAttribute("aria-expanded") === "true";
@@ -1249,12 +1259,6 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
         void loadFavoritesPage(1);
       } else if (target.dataset.radarAction === "reload-favorites") {
         void loadFavoritesPage(state.favoritesPage);
-      } else if (target.dataset.radarDetail && typeof actions.onOpenDetails === "function") {
-        const result = state.results.find((item) => item.numberControlPncp === target.dataset.radarDetail);
-        const favoriteResult = state.view === "favorites"
-          ? state.favoritesResults.find((item) => item.numberControlPncp === target.dataset.radarDetail)
-          : null;
-        if (result || favoriteResult) actions.onOpenDetails(result || favoriteResult);
       } else if (target.dataset.radarFavorite && typeof actions.setFavorite === "function") {
         const result = [...state.results, ...state.favoritesResults]
           .find((item) => item.numberControlPncp === target.dataset.radarFavorite);

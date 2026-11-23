@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  buildRadarDetailsHref,
   buildRadarSearchPayload,
   parseRadarTags,
   radarDefaultPeriodDates,
@@ -9,6 +10,20 @@ import {
   validatedPncpSourceUrl,
   validatedPlatformSourceUrl,
 } from "../web/radar-search.js";
+
+test("monta a rota de detalhes do Radar sem reaproveitar filtros ou fragmentos da guia atual", () => {
+  const href = buildRadarDetailsHref(
+    "12345678000199-1-000079/2026",
+    "https://gll.example/homolog/?page=home&licitacao=42#section",
+  );
+  const url = new URL(href);
+  assert.equal(url.origin, "https://gll.example");
+  assert.equal(url.pathname, "/homolog/");
+  assert.equal(url.searchParams.get("page"), "radar-de-licitacoes");
+  assert.equal(url.searchParams.get("radarDetail"), "12345678000199-1-000079/2026");
+  assert.deepEqual([...url.searchParams.keys()].sort(), ["page", "radarDetail"]);
+  assert.equal(url.hash, "");
+});
 
 test("normaliza termos de objeto, remove duplicatas sem acentos e mantém frases para OU", () => {
   assert.deepEqual(parseRadarTags("  aquisição de computadores,\nAQUISICAO de computadores; ar condicionado  "), [
