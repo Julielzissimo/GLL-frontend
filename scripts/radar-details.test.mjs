@@ -6,12 +6,26 @@ import {
   formatRadarItemMoney,
   mapRadarFavoriteMetadata,
   radarContractBudgetIsSecret,
+  radarItemSyncMessage,
+  radarItemsPendingMessage,
   renderRadarPlatformEvidence,
   validatedOfficialPncpUrl,
   validatedPlatformSourceUrl,
 } from "../web/radar-details.js";
 
 const procurementId = "88768080000170-1-000478/2026";
+
+test("distingue sincronização pendente de edital sem itens publicados", () => {
+  assert.match(radarItemsPendingMessage({ status: "pending" }), /sincronização dos itens foi solicitada/u);
+  assert.match(radarItemsPendingMessage({ status: "processing" }), /em andamento/u);
+  assert.doesNotMatch(radarItemsPendingMessage({ status: "pending" }), /não há itens publicados/u);
+});
+
+test("informa que a versão completa do cache continua disponível durante falha ou atualização", () => {
+  assert.match(radarItemSyncMessage({ status: "processing" }, true), /última versão completa/u);
+  assert.match(radarItemSyncMessage({ status: "failed" }, true), /falhou/u);
+  assert.equal(radarItemSyncMessage({ status: "processing" }, false), "");
+});
 
 function createSupabaseMock({ initialFavorites = {}, userId = "user-a", metadata = [] } = {}) {
   const favorites = new Map(Object.entries(initialFavorites).map(([owner, ids]) => [owner, new Set(ids)]));
