@@ -57,6 +57,37 @@ export function formatRadarItemMoney(value, secret) {
   return secret ? "Orçamento sigiloso" : moneyValue(value);
 }
 
+export function createRadarItemSelectionState() {
+  const selected = new Set();
+  return Object.freeze({
+    get size() { return selected.size; },
+    has: (number) => selected.has(String(number)),
+    add: (number) => selected.add(String(number)),
+    delete: (number) => selected.delete(String(number)),
+    clear: () => selected.clear(),
+    values: () => [...selected],
+    selectAll: (items, excluded = new Set()) => {
+      selected.clear();
+      (Array.isArray(items) ? items : []).forEach((item) => {
+        const number = String(item?.number ?? "");
+        if (number && !excluded.has(number)) selected.add(number);
+      });
+    },
+  });
+}
+
+export function paginateRadarItems(items, page = 1, pageSize = 20) {
+  const allItems = Array.isArray(items) ? items : [];
+  const size = Math.max(1, Math.floor(Number(pageSize) || 20));
+  const pageCount = Math.max(1, Math.ceil(allItems.length / size));
+  const currentPage = Math.min(pageCount, Math.max(1, Math.floor(Number(page) || 1)));
+  return {
+    items: allItems.slice((currentPage - 1) * size, currentPage * size),
+    page: currentPage,
+    pageCount,
+  };
+}
+
 export function radarContractBudgetIsSecret(contract) {
   const code = Number(contract?.orcamentoSigilosoCodigo);
   if (code === 2 || code === 3) return true;
@@ -204,9 +235,11 @@ export function createRadarFavoritesService({ getClient } = {}) {
   });
 }
 
-export function createRadarDetailsFeature({ getClient, toast = () => {}, onFavoriteChanged = () => {} } = {}) {
+export function createRadarDetailsFeature({ getClient, toast = () => {}, onFavoriteChanged = () => {}, onOpenBid = () => {} } = {}) {
   const root = globalThis.document?.getElementById("radarSearchPage");
   const favorites = createRadarFavoritesService({ getClient });
+  const imports = globalThis.window?.GLLRadarImport?.createRadarImportService({ getClient }) || null;
+  const itemsPerPage = 20;
   const state = {
     current: null,
     data: null,
@@ -217,6 +250,15 @@ export function createRadarDetailsFeature({ getClient, toast = () => {}, onFavor
     favoriteError: false,
     requestId: 0,
     historyEntry: false,
+    itemsPage: 1,
+    selectedItemNumbers: createRadarItemSelectionState(),
+    importStatus: null,
+    importStatusError: "",
+    importFeedback: "",
+    importFeedbackTone: "success",
+    confirmingImport: false,
+    importing: false,
+    lastImport: null,
   };
 
   function byId(id) {
@@ -327,19 +369,33 @@ export function createRadarDetailsFeature({ getClient, toast = () => {}, onFavor
         <div class="radar-detail-section-heading"><div><h2 id="radarItemsTitle">Itens da contratação</h2><p>O PNCP não publicou itens para esta contratação.</p></div></div>
       </section>`;
     }
+    if (itemsState.status !== "available" || itemsState.complete !== true) {
+      const label = itemsState.status === "pagination_error"
+        ? "A paginação não foi concluída; atualize os itens antes de importar."
+        : "A importação ficará disponível quando o PNCP retornar todos os itens.";
+      return `<section class="section-band radar-detail-section" aria-labelledby="radarItemsTitle">
+        <div class="radar-detail-section-heading"><div><h2 id="radarItemsTitle">Itens da contratação</h2><p>${escapeHtml(label)}</p></div></div>
+        ${itemsState.items?.length ? renderItemTable(itemsState.items, { selectable: false }) : ""}
+      </section>`;
+    }
     const secretCount = itemsState.items.filter((item) => item.budgetSecret).length;
+    const page = paginateRadarItems(itemsState.items, state.itemsPage, itemsPerPage);
+    state.itemsPage = page.page;
     return `<section class="section-band radar-detail-section" aria-labelledby="radarItemsTitle">
       <div class="radar-detail-section-heading"><div><h2 id="radarItemsTitle">Itens da contratação</h2><p>${itemsState.items.length.toLocaleString("pt-BR")} itens consultados em ${Number(itemsState.pagesLoaded || 1).toLocaleString("pt-BR")} ${itemsState.pagesLoaded === 1 ? "página" : "páginas"} do PNCP.</p></div></div>
       ${secretCount ? `<p class="radar-feedback" data-tone="warning" role="status"><strong>Orçamento sigiloso</strong><span>O PNCP informou orçamento sigiloso em ${secretCount.toLocaleString("pt-BR")} ${secretCount === 1 ? "item" : "itens"}; valores não serão tratados como preço.</span></p>` : ""}
-      ${renderItemTable(itemsState.items)}
+      ${renderImportControls(itemsState.items)}
+      ${renderItemTable(page.items, { selectable: true })}
+      ${renderItemPagination(page.pageCount)}
     </section>`;
   }
 
-  function renderItemTable(items) {
+  function renderItemTable(items, { selectable = false } = {}) {
     return `<div class="table-wrap radar-detail-items-wrap" role="region" tabindex="0" aria-label="Itens da contratação; use a rolagem horizontal para ver todas as colunas."><table class="radar-results-table radar-items-table">
       <caption class="sr-only">Itens da contratação retornados pelo PNCP</caption>
-      <thead><tr><th scope="col">Item</th><th scope="col">Descrição</th><th scope="col" class="numeric">Quantidade</th><th scope="col">Unidade</th><th scope="col" class="numeric">Valor unitário estimado</th><th scope="col" class="numeric">Valor total</th><th scope="col">Situação</th><th scope="col">Critério de julgamento</th><th scope="col">Informação complementar</th></tr></thead>
+      <thead><tr>${selectable ? '<th scope="col">Importar</th>' : ""}<th scope="col">Item</th><th scope="col">Descrição</th><th scope="col" class="numeric">Quantidade</th><th scope="col">Unidade</th><th scope="col" class="numeric">Valor unitário estimado</th><th scope="col" class="numeric">Valor total</th><th scope="col">Situação</th><th scope="col">Critério de julgamento</th><th scope="col">Informação complementar</th></tr></thead>
       <tbody>${items.map((item) => `<tr>
+        ${selectable ? renderItemSelection(item) : ""}
         <td>${escapeHtml(item.number)}</td>
         <td>${escapeHtml(item.description || "Não informado")}</td>
         <td class="numeric">${item.quantity === null || item.quantity === undefined ? "—" : escapeHtml(quantityFormatter.format(Number(item.quantity)))}</td>
@@ -351,6 +407,46 @@ export function createRadarDetailsFeature({ getClient, toast = () => {}, onFavor
         <td>${escapeHtml(item.additionalInformation || "—")}</td>
       </tr>`).join("")}</tbody>
     </table></div>`;
+  }
+
+  function renderItemSelection(item) {
+    const number = String(item.number);
+    const imported = Boolean(state.importStatus?.itemNumbers?.has(number));
+    const selected = state.selectedItemNumbers.has(number);
+    return `<td class="radar-item-selection"><label><input type="checkbox" data-radar-select-item="${escapeHtml(number)}" aria-label="Selecionar item ${escapeHtml(number)} para importar" ${selected ? "checked" : ""} ${imported || state.importing ? "disabled" : ""}/><span class="sr-only">Selecionar item ${escapeHtml(number)}</span></label>${imported ? '<small>Já no GLL</small>' : ""}</td>`;
+  }
+
+  function renderImportControls(items) {
+    const eligibleItems = items.filter((item) => !state.importStatus?.itemNumbers?.has(String(item.number)));
+    const imported = state.importStatus;
+    const title = imported
+      ? `Esta contratação já está vinculada ao edital ${escapeHtml(imported.editalNumber)}${imported.buyerAgency ? ` — ${escapeHtml(imported.buyerAgency)}` : ""}. Selecione outros itens para complementar sem alterar os que já estão no GLL.`
+      : "Selecione somente os itens que deseja levar para o edital do GLL.";
+    const count = state.selectedItemNumbers.size;
+    const feedback = state.importFeedback
+      ? `<p class="radar-feedback" data-tone="${escapeHtml(state.importFeedbackTone)}" role="status" aria-live="polite">${escapeHtml(state.importFeedback)}</p>`
+      : "";
+    const statusWarning = state.importStatusError
+      ? `<p class="radar-feedback" data-tone="warning" role="status">O estado anterior da importação não pôde ser consultado. A gravação continuará protegida contra duplicidades.</p>`
+      : "";
+    const confirmation = state.confirmingImport
+      ? `<div class="radar-import-confirmation" role="group" aria-label="Confirmar importação"><p>Confirme a importação de <strong>${count.toLocaleString("pt-BR")} ${count === 1 ? "item" : "itens"}</strong>${imported ? ` para o edital ${escapeHtml(imported.editalNumber)}` : " para um novo edital"}. Dados que o PNCP não fornece poderão ser completados no formulário do edital.</p><div class="radar-import-actions"><button class="primary-action compact-action" type="button" data-radar-import-confirm ${state.importing ? "disabled" : ""}>Confirmar importação</button><button class="quiet-action compact-action" type="button" data-radar-import-cancel ${state.importing ? "disabled" : ""}>Cancelar</button></div></div>`
+      : "";
+    const openBidId = state.lastImport?.bid_id || imported?.bidId;
+    return `<div class="radar-import-controls">
+      <p>${title}</p>
+      <div class="radar-import-toolbar"><strong aria-live="polite">${count.toLocaleString("pt-BR")} ${count === 1 ? "item selecionado" : "itens selecionados"}</strong><div class="radar-import-actions">
+        <button class="quiet-action compact-action" type="button" data-radar-select-all ${!eligibleItems.length || state.importing ? "disabled" : ""}>${imported ? "Selecionar itens ainda não importados" : "Selecionar todos os itens carregados"}</button>
+        <button class="quiet-action compact-action" type="button" data-radar-select-none ${!count || state.importing ? "disabled" : ""}>Desmarcar seleção</button>
+      </div></div>
+      ${statusWarning}${feedback}${confirmation}
+      ${!state.confirmingImport ? `<div class="radar-import-actions"><button class="primary-action compact-action" type="button" data-radar-import-start ${!count || state.importing ? "disabled" : ""}>${state.importing ? "Importando…" : imported ? "Complementar importação" : "Importar para o GLL"}</button>${openBidId ? `<button class="quiet-action compact-action" type="button" data-radar-open-bid="${escapeHtml(openBidId)}">Abrir edital no GLL</button>` : ""}</div>` : ""}
+    </div>`;
+  }
+
+  function renderItemPagination(pageCount) {
+    if (pageCount <= 1) return "";
+    return `<nav class="radar-item-pagination" aria-label="Paginação dos itens da contratação"><button class="quiet-action compact-action" type="button" data-radar-items-page="${state.itemsPage - 1}" ${state.itemsPage <= 1 ? "disabled" : ""}>Anterior</button><span>Página ${state.itemsPage.toLocaleString("pt-BR")} de ${pageCount.toLocaleString("pt-BR")}</span><button class="quiet-action compact-action" type="button" data-radar-items-page="${state.itemsPage + 1}" ${state.itemsPage >= pageCount ? "disabled" : ""}>Próxima</button></nav>`;
   }
 
   function renderDocuments(documentsState) {
@@ -462,6 +558,16 @@ export function createRadarDetailsFeature({ getClient, toast = () => {}, onFavor
       state.data = data;
       state.error = "";
       state.notFound = false;
+      if (imports) {
+        try {
+          state.importStatus = await imports.loadImportStatus(id);
+          state.importStatusError = "";
+        } catch {
+          state.importStatus = null;
+          state.importStatusError = "Não foi possível consultar o estado anterior da importação.";
+        }
+        if (requestId !== state.requestId) return;
+      }
     } catch (error) {
       if (requestId === state.requestId) state.error = error instanceof Error ? error.message : "Não foi possível atualizar os detalhes.";
     } finally {
@@ -484,6 +590,57 @@ export function createRadarDetailsFeature({ getClient, toast = () => {}, onFavor
       toast(error instanceof Error ? error.message : "Não foi possível atualizar o favorito.", "error");
     }
     render();
+  }
+
+  async function executeImport() {
+    if (!imports || !state.data?.items?.complete || state.data.items.status !== "available") {
+      state.importFeedback = "Atualize os itens completos do PNCP antes de importar.";
+      state.importFeedbackTone = "warning";
+      render();
+      return;
+    }
+    const procurementId = currentId();
+    const selected = state.selectedItemNumbers.values();
+    if (!selected.length) return;
+    state.importing = true;
+    state.confirmingImport = false;
+    state.importFeedback = "";
+    render();
+    try {
+      const result = await imports.importSelected(procurementId, selected);
+      if (currentId() !== procurementId) {
+        toast("A importação foi concluída. Abra novamente os detalhes para consultar o edital.", "success");
+        return;
+      }
+      state.lastImport = result;
+      state.selectedItemNumbers.clear();
+      const conflicts = Array.isArray(result.conflicts) ? result.conflicts : [];
+      const importedCount = Number(result.created_items || 0);
+      const existingCount = Number(result.already_imported_items || 0);
+      const summary = result.created_bid
+        ? `Edital criado no GLL com ${importedCount} ${importedCount === 1 ? "item" : "itens"}.`
+        : `Importação complementada com ${importedCount} ${importedCount === 1 ? "novo item" : "novos itens"}.`;
+      const repeated = existingCount ? ` ${existingCount} ${existingCount === 1 ? "item já estava importado" : "itens já estavam importados"}.` : "";
+      const conflicted = conflicts.length ? ` ${conflicts.length} ${conflicts.length === 1 ? "item não foi incluído porque já existe no edital ou no orçamento vinculado" : "itens não foram incluídos porque já existem no edital ou no orçamento vinculado"}; nenhum dado manual foi alterado.` : "";
+      state.importFeedback = `${summary}${repeated}${conflicted}`;
+      state.importFeedbackTone = conflicts.length ? "warning" : "success";
+      try {
+        state.importStatus = await imports.loadImportStatus(procurementId);
+        state.importStatusError = "";
+      } catch {
+        state.importStatusError = "Não foi possível atualizar o estado da importação.";
+      }
+      toast(state.importFeedback, state.importFeedbackTone);
+    } catch (error) {
+      state.importFeedback = error instanceof Error ? error.message : "Não foi possível concluir a importação.";
+      state.importFeedbackTone = "warning";
+      toast(state.importFeedback, "error");
+    } finally {
+      if (currentId() === procurementId) {
+        state.importing = false;
+        render();
+      }
+    }
   }
 
   function closeView({ updateHistory = true } = {}) {
@@ -509,11 +666,22 @@ export function createRadarDetailsFeature({ getClient, toast = () => {}, onFavor
       toast("Esta contratação não tem um identificador PNCP válido.", "error");
       return;
     }
+    const keepSelection = currentId() === id;
     state.current = typeof result === "string" ? id : result;
     state.data = null;
     state.error = "";
     state.notFound = false;
     state.favoriteError = false;
+    state.importStatus = null;
+    state.importStatusError = "";
+    state.importFeedback = "";
+    state.confirmingImport = false;
+    state.importing = false;
+    state.lastImport = null;
+    if (!keepSelection) {
+      state.itemsPage = 1;
+      state.selectedItemNumbers.clear();
+    }
     state.opened = true;
     state.historyEntry = pushHistory;
     if (pushHistory) updateUrl(id, { push: true });
@@ -546,6 +714,14 @@ export function createRadarDetailsFeature({ getClient, toast = () => {}, onFavor
     state.notFound = false;
     state.error = "";
     state.favoriteError = false;
+    state.importStatus = null;
+    state.importStatusError = "";
+    state.importFeedback = "";
+    state.confirmingImport = false;
+    state.importing = false;
+    state.lastImport = null;
+    state.selectedItemNumbers.clear();
+    state.itemsPage = 1;
     state.historyEntry = false;
     favorites.reset();
     removeDetailFromUrl();
@@ -570,7 +746,49 @@ export function createRadarDetailsFeature({ getClient, toast = () => {}, onFavor
         }).catch((error) => {
           toast(error instanceof Error ? error.message : "Não foi possível consultar os favoritos.", "error");
         });
+      } else if (event.target.closest("[data-radar-select-all]")) {
+        state.selectedItemNumbers.selectAll(
+          state.data?.items?.items || [],
+          state.importStatus?.itemNumbers || new Set(),
+        );
+        render();
+      } else if (event.target.closest("[data-radar-select-none]")) {
+        state.selectedItemNumbers.clear();
+        state.confirmingImport = false;
+        render();
+      } else if (event.target.closest("[data-radar-import-start]")) {
+        state.confirmingImport = true;
+        render();
+        byId("radarDetailsContent")?.querySelector("[data-radar-import-confirm]")?.focus();
+      } else if (event.target.closest("[data-radar-import-confirm]")) {
+        void executeImport();
+      } else if (event.target.closest("[data-radar-import-cancel]")) {
+        state.confirmingImport = false;
+        render();
+        byId("radarDetailsContent")?.querySelector("[data-radar-import-start]")?.focus();
+      } else if (event.target.closest("[data-radar-open-bid]")) {
+        const bidId = event.target.closest("[data-radar-open-bid]").dataset.radarOpenBid;
+        if (bidId) Promise.resolve(onOpenBid(bidId)).catch((error) => {
+          toast(error instanceof Error ? error.message : "Não foi possível abrir o edital no GLL.", "error");
+        });
+      } else if (event.target.closest("[data-radar-items-page]")) {
+        const nextPage = Number(event.target.closest("[data-radar-items-page]").dataset.radarItemsPage);
+        state.itemsPage = paginateRadarItems(state.data?.items?.items, nextPage, itemsPerPage).page;
+        render();
+        const pageCount = Math.ceil((state.data?.items?.items || []).length / itemsPerPage);
+        const focusPage = state.itemsPage < pageCount ? state.itemsPage + 1 : state.itemsPage - 1;
+        byId("radarDetailsContent")?.querySelector(`[data-radar-items-page="${focusPage}"]`)?.focus();
       }
+    });
+    root.addEventListener("change", (event) => {
+      const checkbox = event.target.closest?.("[data-radar-select-item]");
+      if (!checkbox) return;
+      const number = String(checkbox.dataset.radarSelectItem || "");
+      if (checkbox.checked) state.selectedItemNumbers.add(number);
+      else state.selectedItemNumbers.delete(number);
+      render();
+      [...(byId("radarDetailsContent")?.querySelectorAll("[data-radar-select-item]") || [])]
+        .find((input) => input.dataset.radarSelectItem === number)?.focus();
     });
     if (typeof window !== "undefined") window.addEventListener("popstate", syncRoute);
   }
