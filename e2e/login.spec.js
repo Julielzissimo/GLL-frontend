@@ -243,6 +243,42 @@ async function validateRadarSearchPage(page) {
   await expect(page.locator("#usersPage")).toBeVisible();
 }
 
+async function validateRadarSmokeRecord(page, numberControlPncp) {
+  if (!/^\d{14}-\d-\d{6}\/\d{4}$/.test(numberControlPncp)) {
+    throw new Error("O identificador sintético do Radar está fora do formato esperado.");
+  }
+  await page.locator("#navRadarSearchButton").click();
+  await expect(page.locator("#radarSearchPage")).toBeVisible();
+  await page.locator('[data-radar-action="clear"]').click();
+  await page.locator("#radarSituation").selectOption("all");
+  await page.locator("#radarPublishedFrom").fill("");
+  await page.locator("#radarPublishedTo").fill("");
+  await page.locator("#radarTagInput").fill("SINTETICO GLL RADAR ENGINE");
+  await page.locator("#radarTagInput").press("Enter");
+
+  const { body } = await submitRadarSearch(page, (payload) => payload.tags?.length === 1);
+  const syntheticTender = body.results.find((result) => result.numberControlPncp === numberControlPncp);
+  if (!syntheticTender) {
+    throw new Error("A pesquisa autenticada do GLL não encontrou o edital sintético recebido pelo receiver.");
+  }
+
+  const resultCard = page.locator("#radarResultsContent .radar-result-card").filter({ hasText: numberControlPncp }).first();
+  await expect(resultCard).toBeVisible();
+  await expect(resultCard).toContainText("TESTE SINTETICO GLL RADAR ENGINE");
+  const detailsLink = resultCard.getByRole("link", { name: "Ver itens (abre em nova guia)" });
+  const detailsPagePromise = page.context().waitForEvent("page");
+  await detailsLink.click();
+  const detailsPage = await detailsPagePromise;
+  try {
+    await expect(detailsPage.locator("#radarDetailsView")).toBeVisible();
+    const syntheticItems = detailsPage.locator("#radarDetailsContent [data-radar-select-item]");
+    await expect(syntheticItems).toHaveCount(1);
+    await expect(syntheticItems.first()).toContainText("Item sintetico de validacao do receiver");
+  } finally {
+    await detailsPage.close();
+  }
+}
+
 test("o login de teste acessa somente a organização de teste", async ({ page }) => {
   const baseUrl = requiredSetting("GLL_E2E_BASE_URL");
   const email = requiredSetting("GLL_E2E_EMAIL");
@@ -444,6 +480,10 @@ test("o login de teste acessa somente a organização de teste", async ({ page }
     }
 
     await validateRadarSearchPage(page);
+    if (expectedEnvironment === "homolog") {
+      const radarSmokePncp = process.env.GLL_E2E_RADAR_SMOKE_PNCP?.trim();
+      if (radarSmokePncp) await validateRadarSmokeRecord(page, radarSmokePncp);
+    }
 
     await expect(page.locator("#editOwnProfileFooterButton")).toHaveCount(0);
     await expect(page.locator(".topbar-actions > #logoutButton")).toHaveCount(0);
