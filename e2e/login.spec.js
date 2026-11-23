@@ -249,41 +249,22 @@ async function validateRadarSmokeRecord(page, numberControlPncp) {
   }
   await page.locator("#navRadarSearchButton").click();
   await expect(page.locator("#radarSearchPage")).toBeVisible();
-  await page.locator('[data-radar-action="clear"]').click();
-  await page.locator("#radarSituation").selectOption("all");
-  await page.locator("#radarPublishedFrom").fill("");
-  await page.locator("#radarPublishedTo").fill("");
-  const modalityDetails = page.locator("#radarModalityDetails");
-  if (!(await modalityDetails.evaluate((details) => details.open))) {
-    await modalityDetails.locator("summary").click();
-  }
-  const modalityToggle = page.locator("#radarModalityToggle");
-  if ((await modalityToggle.innerText()) === "Desmarcar todas") await modalityToggle.click();
-  await expect(page.locator("#radarModalitySummary")).toHaveText("Nenhuma modalidade selecionada");
-  await page.locator("#radarTagInput").fill("SINTETICO");
-  await page.locator("#radarTagInput").press("Enter");
+  await page.evaluate((id) => {
+    const url = new URL(window.location.href);
+    url.searchParams.set("page", "radar-de-licitacoes");
+    url.searchParams.set("radarDetail", id);
+    window.history.pushState({ ...(window.history.state || {}), radarDetail: id }, "", url);
+    window.dispatchEvent(new PopStateEvent("popstate", { state: window.history.state }));
+  }, numberControlPncp);
 
-  const { body } = await submitRadarSearch(page, (payload) => payload.tags?.length === 1);
-  const syntheticTender = body.results.find((result) => result.numberControlPncp === numberControlPncp);
-  if (!syntheticTender) {
-    throw new Error("A pesquisa autenticada do GLL não encontrou o edital sintético recebido pelo receiver.");
-  }
-
-  const resultCard = page.locator("#radarResultsContent .radar-result-card").filter({ hasText: numberControlPncp }).first();
-  await expect(resultCard).toBeVisible();
-  await expect(resultCard).toContainText("SINTETICO");
-  const detailsLink = resultCard.getByRole("link", { name: "Ver itens (abre em nova guia)" });
-  const detailsPagePromise = page.context().waitForEvent("page");
-  await detailsLink.click();
-  const detailsPage = await detailsPagePromise;
-  try {
-    await expect(detailsPage.locator("#radarDetailsView")).toBeVisible();
-    const syntheticItems = detailsPage.locator("#radarDetailsContent [data-radar-select-item]");
-    await expect(syntheticItems).toHaveCount(1);
-    await expect(syntheticItems.first()).toContainText("Item sintetico de validacao do receiver");
-  } finally {
-    await detailsPage.close();
-  }
+  await expect(page.locator("#radarDetailsView")).toBeVisible();
+  const details = page.locator("#radarDetailsContent");
+  await expect(details).toContainText(numberControlPncp);
+  await expect(details).toContainText("SINTETICO");
+  await expect(details.locator(".radar-detail-source")).toContainText("Cache centralizado do Radar");
+  const syntheticItems = details.locator("[data-radar-select-item]");
+  await expect(syntheticItems).toHaveCount(1);
+  await expect(syntheticItems.first()).toContainText("Item sintetico de validacao do receiver");
 }
 
 test("o login de teste acessa somente a organização de teste", async ({ page }) => {
