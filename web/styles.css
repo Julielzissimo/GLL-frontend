@@ -3496,18 +3496,19 @@ textarea[aria-invalid="true"]:focus {
 }
 
 .bids-table {
-  min-width: 960px;
+  min-width: 1080px;
   table-layout: fixed;
 }
 
-.bids-table th:nth-child(1) { width: 22%; }
-.bids-table th:nth-child(2) { width: 17%; }
-.bids-table th:nth-child(3) { width: 12%; }
-.bids-table th:nth-child(4) { width: 9%; }
-.bids-table th:nth-child(5) { width: 8%; }
-.bids-table th:nth-child(6) { width: 16%; }
-.bids-table th:nth-child(7) { width: 12%; }
-.bids-table th:nth-child(8) { width: 4%; }
+.bids-table th:nth-child(1) { width: 19%; }
+.bids-table th:nth-child(2) { width: 15%; }
+.bids-table th:nth-child(3) { width: 10%; }
+.bids-table th:nth-child(4) { width: 8%; }
+.bids-table th:nth-child(5) { width: 6%; }
+.bids-table th:nth-child(6) { width: 14%; }
+.bids-table th:nth-child(7) { width: 9%; }
+.bids-table th:nth-child(8) { width: 14%; }
+.bids-table th:nth-child(9) { width: 5%; }
 
 .bids-table td {
   overflow-wrap: anywhere;
@@ -3636,6 +3637,10 @@ td {
   min-height: 30px;
   padding: 0;
   color: var(--primary);
+}
+
+.bid-portal-action {
+  white-space: nowrap;
 }
 
 .status-pill {
