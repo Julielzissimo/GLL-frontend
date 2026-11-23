@@ -1,3 +1,4 @@
+import { isRadarCatalogReadOnly } from "./radar-catalog-source.js";
 const DEFAULT_PERIOD_DAYS = 15;
 const MAX_TAGS = 25;
 const MAX_TAG_LENGTH = 200;
@@ -993,7 +994,7 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
     if (!target) return;
     const favoritesView = state.view === "favorites";
     const sourceNote = !favoritesView && state.catalogSource === "production"
-      ? " Fonte: catálogo de produção (somente leitura)."
+      ? ` Fonte: catálogo de produção${isRadarCatalogReadOnly(state.catalogSource) ? " (somente leitura)" : ""}.`
       : !favoritesView && state.catalogSource === "homolog"
       ? " Fonte: catálogo de homologação."
       : "";
@@ -1162,7 +1163,7 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
   async function loadItemCounts(results) {
     const ids = results.map((result) => result.numberControlPncp).filter(Boolean);
     if (!ids.length) return;
-    if (state.view !== "favorites" && state.catalogSource === "production") {
+    if (state.view !== "favorites" && isRadarCatalogReadOnly(state.catalogSource)) {
       ids.forEach((id) => state.itemCounts.delete(id));
       return;
     }

@@ -278,3 +278,28 @@ test('novo cadastro confirma apenas os itens selecionados', async ({ page }) => 
   await page.keyboard.press('Escape');
   await expect(details.locator('[data-radar-select-item="2"]')).toBeChecked();
 });
+
+
+test('homologação lê produção sem permitir importação do catálogo remoto', async ({ page }) => {
+  const errors = await setup(page, { catalogSource: 'production', environment: 'homolog', previousImport: false });
+  await search(page);
+  const details = await openDetails(page);
+  await expect(details).toContainText('esta sessão tem acesso somente de leitura');
+  await expect(details.locator('[data-radar-select-item]')).toHaveCount(0);
+  await expect(details.locator('[data-radar-import-start]')).toHaveCount(0);
+  expect(await page.evaluate(() => window.fixture.calls.filter((c) => c.name === 'radar-import'))).toEqual([]);
+  expect(errors).toEqual([]);
+});
+
+test('produção permite importar seu próprio catálogo com cache completo', async ({ page }) => {
+  const errors = await setup(page, { catalogSource: 'production', environment: 'production', previousImport: false });
+  await search(page);
+  const details = await openDetails(page);
+  await expect(details).toContainText('Dados do catálogo de produção.');
+  await expect(details).not.toContainText('esta sessão tem acesso somente de leitura');
+  await details.locator('[data-radar-select-item="2"]').check();
+  await details.locator('[data-radar-import-start]').click();
+  await page.locator('[data-radar-import-confirm]').click();
+  await expect.poll(() => page.evaluate(() => window.fixture.calls.filter((c) => c.name === 'radar-import' && c.body.action !== 'attach-documents').length)).toBe(1);
+  expect(errors).toEqual([]);
+});

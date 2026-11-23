@@ -50,13 +50,13 @@ test("homolog enables document lookup while keeping other Radar fallback actions
   assert.equal(config.radarDetailsFallbackEnabled, false);
 });
 
-test("production keeps Radar document lookup disabled by default", () => {
+test("production enables promoted Radar document lookup without metadata fallback", () => {
   const result = build("production", {
     GLL_RADAR_DETAILS_FALLBACK_PRODUCTION: "",
     GLL_RADAR_DOCUMENTS_FALLBACK_PRODUCTION: "",
   });
   assert.equal(result.status, 0, result.stderr);
   const config = readRuntimeConfig("production");
-  assert.equal(config.radarDocumentsFallbackEnabled, false);
+  assert.equal(config.radarDocumentsFallbackEnabled, true);
   assert.equal(config.radarDetailsFallbackEnabled, false);
 });
