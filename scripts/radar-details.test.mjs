@@ -105,6 +105,7 @@ test("preserva metadados da licitação ao montar a visualização de favoritos"
     valor_estimado: 151956.67,
     data_publicacao: "2026-09-04T12:04:06Z",
     data_inicio_propostas: "2026-09-04T13:00:00Z",
+    data_inicio_fase_lances: "2026-10-08T11:00:00Z",
     data_fim_propostas: "2026-09-28T08:00:00Z",
     situacao_codigo: "1",
     situacao_nome: "Divulgada no PNCP",
@@ -115,6 +116,7 @@ test("preserva metadados da licitação ao montar a visualização de favoritos"
   assert.equal(result.modalityId, 6);
   assert.equal(result.municipalityIbgeId, 4318309);
   assert.equal(result.estimatedValue, 151956.67);
+  assert.equal(result.bidPhaseStartAt, "2026-10-08T11:00:00Z");
   assert.equal(result.administrativeSituationName, "Divulgada no PNCP");
 });
 
@@ -162,6 +164,9 @@ test("detalhes da evidência PDF mostram documento, versão, página, método e 
     confidence: "high",
     processed_at: "2026-10-11T12:05:00Z",
     value_excerpt: "A sessão pública será realizada na plataforma <Licitanet>.",
+  }, {
+    source: "manual",
+    value_excerpt: "Confirmação manual preservada",
   }]);
   assert.match(html, /Edital &lt;atual&gt;/);
   assert.match(html, /Documento 42/);
@@ -170,6 +175,7 @@ test("detalhes da evidência PDF mostram documento, versão, página, método e 
   assert.match(html, /Instrução contextual do edital em PDF/);
   assert.match(html, /plataforma &lt;Licitanet&gt;/);
   assert.doesNotMatch(html, /<Licitanet>/);
+  assert.doesNotMatch(html, /Confirmação manual preservada/);
 });
 
 test("detalhes mostram limitações de digitalização mesmo sem trecho extraído", () => {
