@@ -157,20 +157,24 @@ async function validateRadarSearchPage(page) {
     throw new Error("A opção para marcar modalidades não está centralizada no campo.");
   }
   const modalityBoxes = page.locator('#radarModalities input[name="radarModality"]');
+  const availableModalityBoxes = page.locator('#radarModalities input[name="radarModality"]:not(:disabled)');
+  const disabledModalityBoxes = page.locator('#radarModalities input[name="radarModality"]:disabled');
   const checkedModalityBoxes = page.locator('#radarModalities input[name="radarModality"]:checked');
+  await expect(availableModalityBoxes).toHaveCount(3);
+  await expect(disabledModalityBoxes).toHaveCount(await modalityBoxes.count() - 3);
   await expect(checkedModalityBoxes).toHaveCount(3);
   await checkedModalityBoxes.first().uncheck();
   await expect(checkedModalityBoxes).toHaveCount(2);
-  await expect(modalityToggle).toHaveText("Marcar todas");
+  await expect(modalityToggle).toHaveText("Marcar disponíveis");
   await modalityToggle.click();
-  await expect(modalityToggle).toHaveText("Desmarcar todas");
-  await expect(checkedModalityBoxes).toHaveCount(await modalityBoxes.count());
+  await expect(modalityToggle).toHaveText("Desmarcar disponíveis");
+  await expect(checkedModalityBoxes).toHaveCount(await availableModalityBoxes.count());
   await modalityToggle.click();
-  await expect(modalityToggle).toHaveText("Marcar todas");
+  await expect(modalityToggle).toHaveText("Marcar disponíveis");
   await expect(checkedModalityBoxes).toHaveCount(0);
   await modalityToggle.click();
-  await expect(modalityToggle).toHaveText("Desmarcar todas");
-  await expect(checkedModalityBoxes).toHaveCount(await modalityBoxes.count());
+  await expect(modalityToggle).toHaveText("Desmarcar disponíveis");
+  await expect(checkedModalityBoxes).toHaveCount(await availableModalityBoxes.count());
   await modalityDetails.locator("summary").click();
 
   await page.locator("#radarUf").selectOption("ES");
