@@ -654,7 +654,7 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
     const platform = radarPlatformSummary(result);
     return `<article class="radar-result-card">
       <div class="radar-result-card-heading">
-        <div><p class="radar-result-number"><strong>Edital ${escapeHtml(number)}${year}</strong><span>PNCP ${escapeHtml(result.numberControlPncp || "—")}</span></p><h3 class="radar-result-object">${escapeHtml(object)}</h3><details class="radar-object-details" hidden><summary>Ver objeto completo</summary><p>${escapeHtml(object)}</p></details></div>
+        <div><p class="radar-result-number"><strong>Edital ${escapeHtml(number)}${year}</strong><span>PNCP ${escapeHtml(result.numberControlPncp || "—")}</span></p><h3 class="radar-result-object"><span class="radar-result-object-text">${escapeHtml(object)}</span></h3></div>
         <span class="radar-receipt-status" data-status="${escapeHtml(result.proposalReceiptStatus || "unknown")}">${escapeHtml(receipt)}</span>
       </div>
       <dl class="radar-result-fields">
@@ -672,13 +672,28 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
 
   function updateResultObjectDisclosures() {
     root?.querySelectorAll(".radar-result-object").forEach((heading) => {
-      heading.classList.remove("is-truncated");
-      const style = window.getComputedStyle(heading);
+      const toggle = heading.querySelector(".radar-result-object-toggle");
+      const objectText = toggle?.textContent || heading.textContent || "";
+      if (toggle) toggle.classList.remove("is-truncated");
+      const measuredText = toggle || heading.querySelector(".radar-result-object-text") || heading;
+      const style = window.getComputedStyle(measuredText);
       const lineHeight = Number.parseFloat(style.lineHeight) || Number.parseFloat(style.fontSize) * 1.4;
-      const shouldTruncate = heading.scrollHeight > lineHeight * 2 + 1;
-      heading.classList.toggle("is-truncated", shouldTruncate);
-      const disclosure = heading.nextElementSibling;
-      if (disclosure?.matches(".radar-object-details")) disclosure.hidden = !shouldTruncate;
+      const shouldTruncate = measuredText.scrollHeight > lineHeight * 2 + 1;
+      if (!shouldTruncate) {
+        if (toggle) heading.replaceChildren(document.createTextNode(objectText));
+        return;
+      }
+      if (toggle) {
+        toggle.classList.toggle("is-truncated", toggle.getAttribute("aria-expanded") !== "true");
+        return;
+      }
+      const disclosure = document.createElement("button");
+      disclosure.type = "button";
+      disclosure.className = "radar-result-object-toggle is-truncated";
+      disclosure.dataset.radarObjectToggle = "";
+      disclosure.setAttribute("aria-expanded", "false");
+      disclosure.textContent = objectText;
+      heading.replaceChildren(disclosure);
     });
   }
 
@@ -1192,9 +1207,13 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
       }
     });
     root.addEventListener("click", (event) => {
-      const target = event.target.closest("[data-radar-action], [data-radar-remove-tag], [data-radar-page], [data-radar-favorites-page], [data-radar-detail], [data-radar-favorite], [data-platform-edit], [data-platform-toggle], [data-domain-edit], [data-domain-toggle]");
+      const target = event.target.closest("[data-radar-object-toggle], [data-radar-action], [data-radar-remove-tag], [data-radar-page], [data-radar-favorites-page], [data-radar-detail], [data-radar-favorite], [data-platform-edit], [data-platform-toggle], [data-domain-edit], [data-domain-toggle]");
       if (!target) return;
-      if (target.dataset.radarRemoveTag !== undefined) {
+      if (target.dataset.radarObjectToggle !== undefined) {
+        const expanded = target.getAttribute("aria-expanded") === "true";
+        target.setAttribute("aria-expanded", String(!expanded));
+        target.classList.toggle("is-truncated", expanded);
+      } else if (target.dataset.radarRemoveTag !== undefined) {
         const index = Number(target.dataset.radarRemoveTag);
         state.tags.splice(index, 1);
         renderTags();

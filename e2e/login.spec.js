@@ -127,18 +127,39 @@ async function validateRadarSearchPage(page) {
   const longDescription = Array.from({ length: 8 }, () => "Contratação de serviços especializados para fornecimento, instalação e manutenção de equipamentos destinados às unidades administrativas do município.").join(" ");
   const objectDisclosureState = await resultCard.evaluate(async (card, text) => {
     const heading = card.querySelector(".radar-result-object");
-    const disclosure = heading?.nextElementSibling;
-    if (!heading || !disclosure?.matches(".radar-object-details")) throw new Error("O card não contém a descrição completa do objeto.");
-    heading.textContent = text;
-    disclosure.querySelector("p").textContent = text;
+    const objectText = heading?.querySelector(".radar-result-object-toggle, .radar-result-object-text");
+    if (!heading || !objectText) throw new Error("O card não contém o texto do objeto.");
+    objectText.textContent = text;
     window.dispatchEvent(new Event("resize"));
     await new Promise((resolve) => window.requestAnimationFrame(resolve));
-    const isTruncated = heading.classList.contains("is-truncated");
-    const isVisible = !disclosure.hidden;
-    disclosure.querySelector("summary").click();
-    return { isTruncated, isVisible, isOpen: disclosure.open, description: disclosure.querySelector("p").textContent };
+    const toggle = heading.querySelector("[data-radar-object-toggle]");
+    if (!toggle) throw new Error("O objeto extenso não possui controle de expansão.");
+    const isTruncated = toggle.classList.contains("is-truncated");
+    const initiallyExpanded = toggle.getAttribute("aria-expanded");
+    toggle.click();
+    const expanded = toggle.getAttribute("aria-expanded");
+    const expandedIsTruncated = toggle.classList.contains("is-truncated");
+    const description = toggle.textContent;
+    toggle.click();
+    return {
+      isTruncated,
+      initiallyExpanded,
+      expanded,
+      expandedIsTruncated,
+      collapsed: toggle.getAttribute("aria-expanded"),
+      collapsedIsTruncated: toggle.classList.contains("is-truncated"),
+      description,
+    };
   }, longDescription);
-  expect(objectDisclosureState).toEqual({ isTruncated: true, isVisible: true, isOpen: true, description: longDescription });
+  expect(objectDisclosureState).toEqual({
+    isTruncated: true,
+    initiallyExpanded: "false",
+    expanded: "true",
+    expandedIsTruncated: false,
+    collapsed: "false",
+    collapsedIsTruncated: true,
+    description: longDescription,
+  });
 
   await page.locator("#radarTagInput").fill("aquisição");
   await page.locator("#radarTagInput").press("Enter");
