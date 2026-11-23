@@ -105,10 +105,15 @@ const createCashflowFeature = window.GLLFinance?.createCashflowFeature || (() =>
   hide: () => undefined,
   reset: () => undefined,
 }));
+const createRadarSearchFeature = window.GLLRadarSearch?.createRadarSearchFeature || (() => ({
+  showPage: async () => undefined,
+  reset: () => undefined,
+}));
 
 const PAGE_ROUTE_NAMES = {
   home: "visao-geral",
   bids: "licitacoes",
+  radarSearch: "radar-de-licitacoes",
   edit: "nova-licitacao",
   items: "itens",
   documents: "documentos",
@@ -280,6 +285,7 @@ const refs = {
   toggleSidebarButton: $("toggleSidebarButton"),
   sidebarPanel: $("sidebarPanel"),
   bidsPage: $("bidsPage"),
+  radarSearchPage: $("radarSearchPage"),
   homePage: $("homePage"),
   bidCatalogPage: $("bidCatalogPage"),
   upcomingBidsList: $("upcomingBidsList"),
@@ -2436,6 +2442,11 @@ const commercialProposalsFeature = createCommercialProposalsFeature({
   toast: (message, tone) => showToast(message, tone),
   runBusy: (operation, message) => withBlockingLoading(operation, message)(),
 });
+const radarSearchFeature = createRadarSearchFeature({
+  getClient: () => (store.requiresAuthenticationBeforeData ? store.client : null),
+  getUserRole: () => appState.currentUserRole,
+  toast: (message, tone) => showToast(message, tone),
+});
 
 const SESSION_ACTIVITY_EVENTS = ["pointerdown", "keydown", "input"];
 const SESSION_POLICY_CHECK_INTERVAL_MS = 60 * 1000;
@@ -4289,6 +4300,7 @@ function resetAuthenticatedView() {
   companyDataFeature.reset();
   organizationDocumentsFeature.reset();
   billingFeature.reset();
+  radarSearchFeature.reset();
   refs.appView.classList.remove("mobile-nav-open");
   updateMainNavigationState();
   for (const key of DATA_KEYS) appState[key] = [];
@@ -4602,6 +4614,11 @@ function breadcrumbItems(page) {
       ? [{ label: "Propostas comerciais" }]
       : [home, { label: "Propostas comerciais" }];
   }
+  if (page === "radarSearch") {
+    return compact
+      ? [{ label: "Radar de Licitações" }]
+      : [home, { label: "Radar de Licitações" }];
+  }
   if (page === "declarations") {
     return compact
       ? [{ label: "Declarações" }]
@@ -4622,6 +4639,7 @@ function breadcrumbItems(page) {
   const topLevelLabels = {
     home: "Visão geral",
     bids: "Licitações",
+    radarSearch: "Radar de Licitações",
     quotations: "Orçamentos",
     commercialProposals: "Propostas comerciais",
     suppliers: "Fornecedores",
@@ -5466,6 +5484,7 @@ function setPage(page, options = {}) {
   const showDeclarations = declarationPages.includes(page);
   const showCommercialProposals = page === "commercialProposals";
   const showCashflow = page === "cashflow";
+  const showRadarSearch = page === "radarSearch";
   $("suppliersPage").classList.toggle("hidden", !showSuppliers);
   refs.declarationsPage.classList.toggle("hidden", !showDeclarations);
   refs.commercialProposalsPage.classList.toggle("hidden", !showCommercialProposals);
@@ -5474,8 +5493,9 @@ function setPage(page, options = {}) {
   const showCatalog = page === "bids";
   const showEditor = page === "edit";
   const showDetail = detailPages.includes(page);
-  refs.bidsPage.classList.toggle("hidden", showUsers || showUserProfile || showCompanyData || showOrganizationDocuments || showDesignSystem || showQuotations || showSuppliers || showDeclarations || showCommercialProposals || showCashflow);
+  refs.bidsPage.classList.toggle("hidden", showUsers || showUserProfile || showCompanyData || showOrganizationDocuments || showDesignSystem || showQuotations || showSuppliers || showDeclarations || showCommercialProposals || showCashflow || showRadarSearch);
   refs.cashflowPage.classList.toggle("hidden", !showCashflow);
+  refs.radarSearchPage.classList.toggle("hidden", !showRadarSearch);
   refs.usersPage.classList.toggle("hidden", !showUsers);
   refs.userProfilePage.classList.toggle("hidden", !showUserProfile);
   refs.companyDataPage.classList.toggle("hidden", !showCompanyData);
@@ -5493,7 +5513,7 @@ function setPage(page, options = {}) {
   refs.bidHistoryPanel.classList.toggle("hidden", page !== "history");
   refs.billingPanel.classList.toggle("hidden", page !== "billing");
   refs.failuresPanel.classList.toggle("hidden", page !== "failures");
-  refs.appView.classList.toggle("users-active", showUsers || showUserProfile || showCompanyData || showOrganizationDocuments || showDesignSystem || showQuotations || showSuppliers || showDeclarations || showCommercialProposals || showCashflow);
+  refs.appView.classList.toggle("users-active", showUsers || showUserProfile || showCompanyData || showOrganizationDocuments || showDesignSystem || showQuotations || showSuppliers || showDeclarations || showCommercialProposals || showCashflow || showRadarSearch);
   refs.itemsTabButton.classList.toggle("active", page === "items");
   refs.documentsTabButton.classList.toggle("active", page === "documents");
   refs.bidHistoryTabButton.classList.toggle("active", page === "history");
@@ -5506,7 +5526,7 @@ function setPage(page, options = {}) {
   refs.failuresTabButton.classList.toggle("active", page === "failures");
   refs.failuresTabButton.setAttribute("aria-selected", String(page === "failures"));
   refs.failuresTabButton.classList.toggle("hidden", !shouldShowFailureHistory());
-  const primaryPage = showOrganizationDocuments ? "organizationDocuments" : showCashflow ? "cashflow" : showCommercialProposals ? "commercialProposals" : showDeclarations ? "declarations" : showSuppliers ? "suppliers" : showUsers || (showUserProfile && isCurrentUserAdmin()) ? "users" : showCompanyData || showDesignSystem ? "settings" : showQuotations ? "quotations" : showHome || showUserProfile ? "home" : "bids";
+  const primaryPage = showRadarSearch ? "radarSearch" : showOrganizationDocuments ? "organizationDocuments" : showCashflow ? "cashflow" : showCommercialProposals ? "commercialProposals" : showDeclarations ? "declarations" : showSuppliers ? "suppliers" : showUsers || (showUserProfile && isCurrentUserAdmin()) ? "users" : showCompanyData || showDesignSystem ? "settings" : showQuotations ? "quotations" : showHome || showUserProfile ? "home" : "bids";
   const activeNavigationPage = ["companyData", "designSystem"].includes(page) ? page : primaryPage;
   renderBreadcrumb(page);
   document.querySelectorAll("[data-navigation-page]").forEach((button) => {
@@ -5529,6 +5549,7 @@ function setPage(page, options = {}) {
   if (showCommercialProposals) void commercialProposalsFeature.showPage().catch((error) => showToast(error.message, "error"));
   if (showCompanyData) void companyDataFeature.showPage().catch((error) => showToast(error.message, "error"));
   if (showOrganizationDocuments) void organizationDocumentsFeature.showPage();
+  if (showRadarSearch) void radarSearchFeature.showPage().catch((error) => showToast(error.message, "error"));
   if (showDesignSystem) window.GLLDesignSystem?.mountCatalog(refs.designSystemCatalog);
   writeNavigationRoute(page, options.history || "push");
   if (page === "history") void loadBidHistoryPage(bidHistoryState.page);
