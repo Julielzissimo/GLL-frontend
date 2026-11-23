@@ -15,6 +15,116 @@ function normalizedOrganizationName(value) {
     .toLocaleUpperCase("pt-BR");
 }
 
+function radarSearchResponse(page, predicate = () => true) {
+  return page.waitForResponse((response) => {
+    const request = response.request();
+    if (request.method() !== "POST" || !new URL(response.url()).pathname.endsWith("/functions/v1/radar-search")) return false;
+    try {
+      return predicate(request.postDataJSON());
+    } catch {
+      return false;
+    }
+  }, { timeout: 45_000 });
+}
+
+async function submitRadarSearch(page, predicate) {
+  const responsePromise = radarSearchResponse(page, predicate);
+  await page.locator("#radarSearchButton").click();
+  const response = await responsePromise;
+  if (!response.ok()) throw new Error(`A pesquisa real do Radar retornou HTTP ${response.status()}.`);
+  const body = await response.json();
+  if (!Array.isArray(body.results) || !body.pagination || !body.coverage) {
+    throw new Error("A pesquisa real do Radar retornou uma resposta incompatível.");
+  }
+  return { payload: response.request().postDataJSON(), body };
+}
+
+async function validateRadarSearchPage(page) {
+  await page.locator("#navRadarSearchButton").click();
+  await expect(page.locator("#radarSearchPage")).toBeVisible();
+  await expect.poll(() => page.locator('#radarModalities input[name="radarModality"]').count()).toBeGreaterThan(0);
+  await expect.poll(() => page.locator("#radarUf option").count()).toBeGreaterThan(1);
+  const defaultDates = {
+    from: await page.locator("#radarPublishedFrom").inputValue(),
+    to: await page.locator("#radarPublishedTo").inputValue(),
+  };
+  const sharedPeriodDays = await page.locator("#radarDefaultPeriodDays").inputValue();
+  if (!defaultDates.from || !defaultDates.to) throw new Error("O Radar não aplicou o período padrão compartilhado.");
+  if (!sharedPeriodDays) throw new Error("A configuração compartilhada do período do Radar não foi carregada.");
+  await expect(page.locator("#radarSituation")).toHaveValue("open");
+
+  await page.locator("#radarPublishedTo").fill("");
+  await page.locator("#radarSituation").selectOption("closed");
+  await page.locator("#radarUf").selectOption("ES");
+  await expect.poll(() => page.locator("#radarMunicipality option").count()).toBeGreaterThan(1);
+  const firstMunicipality = await page.locator('#radarMunicipality option[value]:not([value=""])').first().getAttribute("value");
+  if (!firstMunicipality) throw new Error("O catálogo do Radar não retornou município para a UF selecionada.");
+  await page.locator("#radarMunicipality").selectOption(firstMunicipality);
+  await page.locator('[data-radar-action="clear"]').click();
+  await expect(page.locator("#radarPublishedFrom")).toHaveValue(defaultDates.from);
+  await expect(page.locator("#radarPublishedTo")).toHaveValue(defaultDates.to);
+  await expect(page.locator("#radarDefaultPeriodDays")).toHaveValue(sharedPeriodDays);
+  await expect(page.locator("#radarSituation")).toHaveValue("open");
+  await expect(page.locator("#radarUf")).toHaveValue("");
+
+  const modalityDetails = page.locator("#radarModalityDetails");
+  await modalityDetails.locator("summary").click();
+  const modalityBoxes = page.locator('#radarModalities input[name="radarModality"]');
+  await expect(modalityBoxes.first()).toBeChecked();
+  await modalityBoxes.first().uncheck();
+  await expect(modalityBoxes.first()).not.toBeChecked();
+  await page.locator('[data-radar-action="select-all-modalities"]').click();
+  await expect(modalityBoxes.first()).toBeChecked();
+  await modalityDetails.locator("summary").click();
+
+  await page.locator("#radarUf").selectOption("ES");
+  await expect.poll(() => page.locator("#radarMunicipality option").count()).toBeGreaterThan(1);
+  await page.locator("#radarSituation").selectOption("all");
+  await page.locator("#radarPublishedFrom").fill("");
+  await page.locator("#radarPublishedTo").fill("");
+  await page.locator("#radarTagInput").fill("pavimentação");
+  await page.locator("#radarTagInput").press("Enter");
+  await expect(page.locator("#radarTagList li")).toHaveCount(1);
+  const simple = await submitRadarSearch(page, (payload) => payload.tags?.length === 1);
+  if (simple.body.results.length === 0) throw new Error("A busca real por pavimentação no Espírito Santo não retornou registros conhecidos.");
+  await expect(page.locator("#radarResultsContent tbody tr").first()).toBeVisible();
+
+  await page.locator("#radarTagInput").fill("aquisição");
+  await page.locator("#radarTagInput").press("Enter");
+  const multiple = await submitRadarSearch(page, (payload) => payload.tags?.length === 2);
+  await expect(multiple.payload.tags).toEqual(["pavimentação", "aquisição"]);
+  if (multiple.body.results.length === 0) throw new Error("A pesquisa OR do Radar não retornou resultados para os termos de teste.");
+
+  await page.locator('[data-radar-action="clear"]').click();
+  await page.locator("#radarSituation").selectOption("all");
+  await page.locator("#radarPublishedFrom").fill("");
+  await page.locator("#radarPublishedTo").fill("");
+  const firstPage = await submitRadarSearch(page, (payload) => payload.tags === undefined && payload.page === 1);
+  if (!firstPage.body.pagination.hasMore) throw new Error("O conjunto de teste do Radar não oferece uma segunda página para validação.");
+  const nextPageResponse = radarSearchResponse(page, (payload) => payload.page === 2);
+  await page.locator('#radarPagination [data-radar-page="2"]').click();
+  const nextPage = await nextPageResponse;
+  if (!nextPage.ok()) throw new Error(`A segunda página do Radar retornou HTTP ${nextPage.status()}.`);
+  const nextPageBody = await nextPage.json();
+  if (nextPageBody.pagination?.page !== 2 || !Array.isArray(nextPageBody.results)) {
+    throw new Error("A paginação do Radar não carregou a segunda página do serviço.");
+  }
+
+  await page.locator('[data-radar-action="clear"]').click();
+  await page.locator("#radarUf").selectOption("ES");
+  await expect.poll(() => page.locator("#radarMunicipality option").count()).toBeGreaterThan(1);
+  await modalityDetails.locator("summary").click();
+  const singleModality = page.locator('#radarModalities input[name="radarModality"]');
+  const modalityCount = await singleModality.count();
+  for (let index = 1; index < modalityCount; index += 1) await singleModality.nth(index).uncheck();
+  await page.locator("#radarSituation").selectOption("open");
+  const refreshResponse = radarSearchResponse(page, (payload) => payload.refreshCoverage === true);
+  await page.locator("#radarUpdateButton").click();
+  const refresh = await refreshResponse;
+  if (!refresh.ok()) throw new Error(`A atualização manual do Radar retornou HTTP ${refresh.status()}.`);
+  await expect(page.locator("#radarCoverageFeedback")).toBeVisible();
+}
+
 test("o login de teste acessa somente a organização de teste", async ({ page }) => {
   const baseUrl = requiredSetting("GLL_E2E_BASE_URL");
   const email = requiredSetting("GLL_E2E_EMAIL");
@@ -214,6 +324,8 @@ test("o login de teste acessa somente a organização de teste", async ({ page }
     if (!isolationCheck.passed) {
       throw new Error("A sessão não passou na verificação de isolamento das tabelas da organização.");
     }
+
+    await validateRadarSearchPage(page);
 
     await expect(page.locator("#editOwnProfileFooterButton")).toHaveCount(0);
     await expect(page.locator(".topbar-actions > #logoutButton")).toHaveCount(0);
