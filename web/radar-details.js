@@ -702,6 +702,70 @@ export function createRadarDetailsFeature({ getClient, getUserRole = () => null,
     }
   }
 
+  function measureRadarVisibleTextWidth(element) {
+    const bounds = element.getBoundingClientRect();
+    const range = element.ownerDocument.createRange();
+    range.selectNodeContents(element);
+    const visibleRects = [...range.getClientRects()].filter((rect) => (
+      rect.width > 0 && rect.top < bounds.bottom - 0.5 && rect.bottom > bounds.top + 0.5
+    ));
+    return Math.max(0, ...visibleRects.map((rect) => rect.width));
+  }
+
+  function fitRadarItemTableColumns(container) {
+    const table = container.querySelector(".radar-items-table");
+    if (!table) return;
+
+    const rootFontSize = Number.parseFloat(getComputedStyle(table.ownerDocument.documentElement).fontSize);
+    const columnDefinitions = [
+      {
+        selector: "th.radar-item-description, td.radar-item-description",
+        contentSelector: ".radar-description-preview, .radar-description-toggle",
+        maxWidth: 26 * rootFontSize,
+        reserveEllipsis: true,
+      },
+      {
+        selector: "th.radar-item-unit, td.radar-item-unit",
+        contentSelector: null,
+        maxWidth: Number.POSITIVE_INFINITY,
+        reserveEllipsis: false,
+      },
+    ];
+
+    for (const definition of columnDefinitions) {
+      const cells = [...table.querySelectorAll(definition.selector)];
+      if (!cells.length) continue;
+
+      let textWidth = 0;
+      let needsEllipsis = false;
+      for (const cell of cells) {
+        const content = definition.contentSelector
+          ? cell.querySelector(definition.contentSelector) || cell
+          : cell;
+        textWidth = Math.max(textWidth, measureRadarVisibleTextWidth(content));
+        needsEllipsis ||= content.scrollHeight > content.clientHeight + 1;
+      }
+
+      const cellStyle = getComputedStyle(cells[0]);
+      const horizontalSpace = Number.parseFloat(cellStyle.paddingLeft)
+        + Number.parseFloat(cellStyle.paddingRight)
+        + Number.parseFloat(cellStyle.borderLeftWidth)
+        + Number.parseFloat(cellStyle.borderRightWidth);
+      const fontSize = Number.parseFloat(cellStyle.fontSize);
+      const ellipsisSpace = definition.reserveEllipsis && needsEllipsis ? fontSize * 0.75 : 0;
+      const width = Math.ceil(Math.min(
+        definition.maxWidth,
+        textWidth + horizontalSpace + ellipsisSpace,
+      ));
+
+      for (const cell of cells) {
+        cell.style.width = `${width}px`;
+        cell.style.minWidth = `${width}px`;
+        cell.style.maxWidth = `${width}px`;
+      }
+    }
+  }
+
   function renderItemSelection(item) {
     const number = String(item.number);
     const imported = Boolean(state.importStatus?.itemNumbers?.has(number));
@@ -831,6 +895,7 @@ export function createRadarDetailsFeature({ getClient, getUserRole = () => null,
       </div>
       ${renderItems(state.data.items, state.data.itemSync)}`;
     initializeRadarDescriptionToggles(content);
+    fitRadarItemTableColumns(content);
     restoreFocusedDetailsControl(content, focusTarget);
   }
 
