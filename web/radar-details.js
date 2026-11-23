@@ -73,6 +73,17 @@ function platformMethodLabel(method) {
     ambiguous_reference: "Referência ambígua no texto do PNCP",
     domain_conflict: "Conflito entre domínios informados",
     source_conflict: "Conflito entre fontes do PNCP",
+    pdf_context: "Instrução contextual do edital em PDF",
+    pdf_conflict: "Conflito entre plataformas citadas no edital em PDF",
+    pdf_no_match: "Edital consultado sem indicação contextual",
+    pdf_no_text: "PDF digitalizado sem texto extraível",
+    pdf_ambiguous_reference: "Menção sem contexto suficiente no edital",
+    pdf_unavailable: "Documento indisponível no PNCP",
+    pdf_invalid: "Arquivo PDF inválido",
+    pdf_too_large: "Arquivo PDF acima do limite",
+    pdf_page_limit: "Limite de páginas atingido",
+    pdf_processing_limit: "Tempo máximo de leitura atingido",
+    pdf_superseded_by_retification: "Menção substituída por retificação vigente",
     unmatched_domain: "Domínio sem correspondência no catálogo",
     invalid_url: "URL inválida ou insegura",
     missing_url: "O PNCP não informou uma URL",
@@ -87,11 +98,37 @@ function platformEvidenceSourceLabel(source) {
     objetoCompra: "Objeto da contratação",
     nomeComprador: "Nome informado pelo PNCP",
     manual: "Confirmação manual",
+    editalPdf: "Edital em PDF do PNCP",
   })[source] || (source ? String(source) : "Fonte não informada");
 }
 
 function platformConfidenceLabel(confidence) {
   return ({ high: "Alta", medium: "Média", low: "Baixa" })[confidence] || "Não informada";
+}
+
+export function renderRadarPlatformEvidence(evidence) {
+  const items = Array.isArray(evidence) ? evidence.filter((item) => item && typeof item === "object") : [];
+  if (!items.length) return "";
+  return "<ul class=\"radar-platform-evidence\">" + items.map((item) => {
+    const excerpt = item.value_excerpt || item.matched_value || item.url;
+    const documentTitle = item.document_title || "";
+    const metadata = [
+      item.document_id ? "Documento " + item.document_id : "",
+      item.document_type || "",
+      item.document_published_at ? "publicado em " + dateValue(item.document_published_at, dateFormatter) : "",
+      item.page_number ? "página " + item.page_number : "",
+      item.confidence ? "confiança " + platformConfidenceLabel(item.confidence).toLowerCase() : "",
+      item.processed_at ? "processado em " + dateValue(item.processed_at) : "",
+      item.document_version_hash ? "SHA-256 " + String(item.document_version_hash).slice(0, 16) : "",
+      item.method ? platformMethodLabel(item.method) : "",
+    ].filter(Boolean);
+    const heading = documentTitle
+      ? "<strong>" + escapeHtml(platformEvidenceSourceLabel(item.source)) + ": " + escapeHtml(documentTitle) + "</strong>"
+      : "<strong>" + escapeHtml(platformEvidenceSourceLabel(item.source)) + ":</strong>";
+    const metadataMarkup = metadata.length ? "<p>" + escapeHtml(metadata.join(" · ")) + "</p>" : "";
+    const excerptMarkup = excerpt ? "<p>" + escapeHtml(excerpt) + "</p>" : "";
+    return "<li>" + heading + metadataMarkup + excerptMarkup + "</li>";
+  }).join("") + "</ul>";
 }
 
 function moneyValue(value) {
@@ -430,13 +467,7 @@ export function createRadarDetailsFeature({ getClient, getUserRole = () => null,
     const pncpPlatformUrl = validatedPlatformSourceUrl(platform.sourceUrlFromPncp || contract.linkSistemaOrigem);
     const processUrl = validatedPlatformSourceUrl(platform.processUrl || contract.linkProcessoEletronico);
     const evidence = Array.isArray(platform.evidence) ? platform.evidence.filter((item) => item && typeof item === "object") : [];
-    const evidenceMarkup = evidence.length
-      ? `<ul class="radar-platform-evidence">${evidence.map((item) => {
-        const excerpt = item.value_excerpt || item.matched_value || item.url;
-        if (!excerpt) return "";
-        return `<li><strong>${escapeHtml(platformEvidenceSourceLabel(item.source))}:</strong> ${escapeHtml(excerpt)}</li>`;
-      }).filter(Boolean).join("")}</ul>`
-      : "";
+    const evidenceMarkup = renderRadarPlatformEvidence(evidence);
     const previousAutomatic = platform.previousAutomatic && typeof platform.previousAutomatic === "object"
       ? platform.previousAutomatic
       : null;

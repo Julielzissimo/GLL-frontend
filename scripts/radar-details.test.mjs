@@ -6,6 +6,7 @@ import {
   formatRadarItemMoney,
   mapRadarFavoriteMetadata,
   radarContractBudgetIsSecret,
+  renderRadarPlatformEvidence,
   validatedOfficialPncpUrl,
   validatedPlatformSourceUrl,
 } from "../web/radar-details.js";
@@ -134,6 +135,43 @@ test("aceita links oficiais PNCP HTTPS e rejeita host parecido ou protocolo inse
   assert.equal(validatedOfficialPncpUrl("https://api.pncp.gov.br/arquivo/1"), "https://api.pncp.gov.br/arquivo/1");
   assert.equal(validatedOfficialPncpUrl("http://pncp.gov.br/arquivo/1"), null);
   assert.equal(validatedOfficialPncpUrl("https://pncp.gov.br.evil.example/arquivo/1"), null);
+});
+
+test("detalhes da evidência PDF mostram documento, versão, página, método e trecho escapado", () => {
+  const html = renderRadarPlatformEvidence([{
+    source: "editalPdf",
+    platform_name: "Licitanet",
+    document_title: "Edital <atual>",
+    document_id: 42,
+    document_type: "Edital",
+    document_published_at: "2026-10-11T12:00:00Z",
+    document_version_hash: "a".repeat(64),
+    page_number: 3,
+    method: "pdf_context",
+    confidence: "high",
+    processed_at: "2026-10-11T12:05:00Z",
+    value_excerpt: "A sessão pública será realizada na plataforma <Licitanet>.",
+  }]);
+  assert.match(html, /Edital &lt;atual&gt;/);
+  assert.match(html, /Documento 42/);
+  assert.match(html, /página 3/);
+  assert.match(html, /SHA-256 a{16}/);
+  assert.match(html, /Instrução contextual do edital em PDF/);
+  assert.match(html, /plataforma &lt;Licitanet&gt;/);
+  assert.doesNotMatch(html, /<Licitanet>/);
+});
+
+test("detalhes mostram limitações de digitalização mesmo sem trecho extraído", () => {
+  const html = renderRadarPlatformEvidence([{
+    source: "editalPdf",
+    document_title: "Edital digitalizado",
+    document_id: 9,
+    method: "pdf_no_text",
+    confidence: "low",
+    processed_at: "2026-10-11T12:05:00Z",
+  }]);
+  assert.match(html, /PDF digitalizado sem texto extraível/);
+  assert.match(html, /Documento 9/);
 });
 
 test("persiste favoritos com identidade do usuário autenticado e mantém usuários isolados", async () => {
