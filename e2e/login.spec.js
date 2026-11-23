@@ -15,6 +15,26 @@ function normalizedOrganizationName(value) {
     .toLocaleUpperCase("pt-BR");
 }
 
+function normalizedRadarModalityName(value) {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/gu, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/gu, " ")
+    .trim();
+}
+
+async function expectDefaultRadarModalities(page) {
+  const checkedNames = await page.locator("#radarModalities .radar-modality-option").evaluateAll((options) => options
+    .filter((option) => option.querySelector('input[name="radarModality"]')?.checked)
+    .map((option) => option.querySelector("span")?.textContent?.trim() || ""));
+  expect(checkedNames.map(normalizedRadarModalityName).sort()).toEqual([
+    "dispensa",
+    "inexigibilidade",
+    "pregao eletronico",
+  ]);
+}
+
 function radarSearchResponse(page, predicate = () => true) {
   return page.waitForResponse((response) => {
     const request = response.request();
@@ -92,6 +112,8 @@ async function validateRadarSearchPage(page) {
     throw new Error("Os filtros do Radar não estão posicionados ao lado dos resultados como no protótipo.");
   }
   await expect.poll(() => page.locator('#radarModalities input[name="radarModality"]').count()).toBeGreaterThan(0);
+  await expect.poll(() => page.locator('#radarModalities input[name="radarModality"]:checked').count()).toBe(3);
+  await expectDefaultRadarModalities(page);
   await expect.poll(() => page.locator("#radarUf option").count()).toBeGreaterThan(1);
   const defaultDates = {
     from: await page.locator("#radarPublishedFrom").inputValue(),
@@ -112,6 +134,7 @@ async function validateRadarSearchPage(page) {
   await expect(page.locator("#radarPublishedTo")).toHaveValue(defaultDates.to);
   await expect(page.locator("#radarSituation")).toHaveValue("open");
   await expect(page.locator("#radarUf")).toHaveValue("");
+  await expectDefaultRadarModalities(page);
 
   const modalityDetails = page.locator("#radarModalityDetails");
   await modalityDetails.locator("summary").click();
@@ -123,19 +146,20 @@ async function validateRadarSearchPage(page) {
     throw new Error("A opção para marcar modalidades não está centralizada no campo.");
   }
   const modalityBoxes = page.locator('#radarModalities input[name="radarModality"]');
-  await expect(modalityBoxes.first()).toBeChecked();
-  await modalityBoxes.first().uncheck();
-  await expect(modalityBoxes.first()).not.toBeChecked();
+  const checkedModalityBoxes = page.locator('#radarModalities input[name="radarModality"]:checked');
+  await expect(checkedModalityBoxes).toHaveCount(3);
+  await checkedModalityBoxes.first().uncheck();
+  await expect(checkedModalityBoxes).toHaveCount(2);
   await expect(modalityToggle).toHaveText("Marcar todas");
   await modalityToggle.click();
   await expect(modalityToggle).toHaveText("Desmarcar todas");
-  await expect(modalityBoxes.first()).toBeChecked();
+  await expect(checkedModalityBoxes).toHaveCount(await modalityBoxes.count());
   await modalityToggle.click();
   await expect(modalityToggle).toHaveText("Marcar todas");
-  await expect(modalityBoxes.first()).not.toBeChecked();
+  await expect(checkedModalityBoxes).toHaveCount(0);
   await modalityToggle.click();
   await expect(modalityToggle).toHaveText("Desmarcar todas");
-  await expect(modalityBoxes.first()).toBeChecked();
+  await expect(checkedModalityBoxes).toHaveCount(await modalityBoxes.count());
   await modalityDetails.locator("summary").click();
 
   await page.locator("#radarUf").selectOption("ES");
