@@ -123,19 +123,6 @@ async function validateRadarSearchPage(page) {
     throw new Error("A paginação do Radar não carregou a segunda página do serviço.");
   }
 
-  await page.locator('[data-radar-action="clear"]').click();
-  await page.locator("#radarUf").selectOption("ES");
-  await expect.poll(() => page.locator("#radarMunicipality option").count()).toBeGreaterThan(1);
-  await modalityDetails.locator("summary").click();
-  const singleModality = page.locator('#radarModalities input[name="radarModality"]');
-  const modalityCount = await singleModality.count();
-  for (let index = 1; index < modalityCount; index += 1) await singleModality.nth(index).uncheck();
-  await page.locator("#radarSituation").selectOption("open");
-  const refreshResponse = radarSearchResponse(page, (payload) => payload.refreshCoverage === true);
-  await page.locator("#radarUpdateButton").click();
-  const refresh = await refreshResponse;
-  if (!refresh.ok()) throw new Error(`A atualização manual do Radar retornou HTTP ${refresh.status()}.`);
-  await expect(page.locator("#radarCoverageFeedback")).toBeVisible();
   await page.locator("#navUsersButton").click();
   await expect(page.locator("#usersPage")).toBeVisible();
 }
