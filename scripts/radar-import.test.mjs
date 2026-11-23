@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   createRadarImportService,
+  formatRadarImportDocumentFeedback,
   normalizeSelectedRadarItemNumbers,
 } from "../web/radar-import.js";
 import {
@@ -52,6 +53,44 @@ test("serviço envia somente os itens selecionados à função autenticada", asy
     numberControlPncp: "12345678000199-1-000001/2026",
     selectedItemNumbers: ["2", "4"],
   });
+});
+
+test("serviço consulta o anexo de documentos em ação separada da importação", async () => {
+  let invocation = null;
+  const service = createRadarImportService({ getClient: () => ({
+    functions: { invoke: async (...args) => {
+      invocation = args;
+      return { data: { ok: true, document_attachments: { status: "complete", attached_count: 2 } }, error: null };
+    } },
+  }) });
+  const result = await service.attachDocuments("12345678000199-1-000001/2026");
+  assert.deepEqual(result, { status: "complete", attached_count: 2 });
+  assert.equal(invocation[0], "radar-import");
+  assert.deepEqual(invocation[1].body, {
+    action: "attach-documents",
+    numberControlPncp: "12345678000199-1-000001/2026",
+  });
+});
+
+test("resumo da importação informa anexos, documentos ignorados e falhas sem invalidar a importação", () => {
+  assert.deepEqual(formatRadarImportDocumentFeedback({
+    status: "complete",
+    attached_count: 4,
+    ignored_count: 2,
+  }), {
+    message: "4 documentos do edital anexados. Os documentos além dos quatro primeiros foram ignorados.",
+    tone: "success",
+  });
+  assert.deepEqual(formatRadarImportDocumentFeedback({
+    status: "partial",
+    attached_count: 1,
+    failed_count: 2,
+    capacity_skipped_count: 1,
+  }), {
+    message: "1 documento do edital anexado. 2 documentos não puderam ser anexados. O limite de quatro arquivos foi atingido.",
+    tone: "warning",
+  });
+  assert.equal(formatRadarImportDocumentFeedback({ status: "unavailable" }).tone, "warning");
 });
 
 test("consulta vínculo e números de origem visíveis pela RLS", async () => {
