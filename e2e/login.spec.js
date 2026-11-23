@@ -262,7 +262,7 @@ async function validateRadarSmokeRecord(page, numberControlPncp) {
   await expect(details).toContainText(numberControlPncp);
   await expect(details).toContainText("SINTETICO");
   await expect(details.locator(".radar-detail-source")).toContainText("Cache centralizado do Radar");
-  const syntheticItems = details.locator("[data-radar-select-item]");
+  const syntheticItems = details.locator(".radar-items-table tbody tr");
   await expect(syntheticItems).toHaveCount(1);
   await expect(syntheticItems.first()).toContainText("Item sintetico de validacao do receiver");
 }
