@@ -7,6 +7,8 @@ const searchFeature = readFileSync(new URL("../web/radar-search.js", import.meta
 const detailsFeature = readFileSync(new URL("../web/radar-details.js", import.meta.url), "utf8");
 const preprocessedFeature = readFileSync(new URL("../web/radar-preprocessed.js", import.meta.url), "utf8");
 const importFeature = readFileSync(new URL("../web/radar-import.js", import.meta.url), "utf8");
+const designSystem = readFileSync(new URL("../web/design-system/components.js", import.meta.url), "utf8");
+const radarStory = readFileSync(new URL("../stories/patterns/Radar.stories.js", import.meta.url), "utf8");
 
 test("a interface pública mantém os filtros solicitados e fixa o Portal como plataforma elegível", () => {
   const searchForm = html.match(/<form id="radarSearchForm"[\s\S]*?<\/form>/u)?.[0];
@@ -59,6 +61,14 @@ test("detalhes, favoritos e importação usam o cliente Supabase e preservam os 
   assert.match(detailsFeature, /functions\.invoke\("radar-details"/u);
   assert.match(detailsFeature, /imports\.importSelected\(/u);
   assert.match(detailsFeature, /data-radar-import-start/u);
+  assert.match(html, /<dialog id="radarImportConfirmDialog"[^>]+aria-labelledby="radarImportConfirmTitle"[^>]+aria-describedby="radarImportConfirmSummary"/u);
+  assert.match(detailsFeature, /function openImportConfirmationDialog\(\)/u);
+  assert.match(detailsFeature, /dialog\.showModal\(\)/u);
+  assert.match(detailsFeature, /data-radar-import-confirm/u);
+  assert.match(detailsFeature, /data-radar-import-cancel/u);
+  assert.doesNotMatch(detailsFeature, /radar-import-confirmation" role="group"/u);
+  assert.match(designSystem, /id: "radarImportConfirmDialog", area: "Radar"/u);
+  assert.match(radarStory, /name: "Confirmação do cadastro do edital"/u);
   assert.match(importFeature, /functions\.invoke\("radar-import"/u);
   assert.match(preprocessedFeature, /from\("radar_licitacoes"\)/u);
   assert.match(preprocessedFeature, /from\("radar_itens_sync"\)/u);

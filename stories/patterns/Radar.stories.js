@@ -88,3 +88,19 @@ export const DetalhesDaContratacao = {
       <section class="section-band radar-detail-section"><div class="radar-detail-section-heading"><div><h2>Itens da contratação</h2><p>3 itens disponíveis no cache do Radar · Itens atualizados em 10/10/2026, 15:30.</p></div></div><p class="radar-feedback" data-tone="warning" role="status"><strong>Orçamento sigiloso</strong><span>Os valores não serão tratados como preço.</span></p><div class="table-wrap radar-detail-items-wrap" role="region" tabindex="0" aria-label="Itens da contratação"><table class="radar-results-table radar-items-table"><caption class="sr-only">Itens da contratação armazenados no Radar</caption><thead><tr><th scope="col">Item</th><th scope="col">Descrição</th><th scope="col">Quantidade</th><th scope="col">Unidade</th><th scope="col">Valor unitário estimado</th><th scope="col">Valor total</th><th scope="col">Situação</th><th scope="col">Critério</th><th scope="col">Informação complementar</th></tr></thead><tbody><tr><td>1</td><td>Veículo utilitário</td><td>1</td><td>Unidade</td><td>Orçamento sigiloso</td><td>Orçamento sigiloso</td><td>Em andamento</td><td>Menor preço</td><td>Entrega em até 10 dias</td></tr></tbody></table></div></section>
     </section>`),
 };
+
+export const ConfirmacaoDoCadastro = {
+  name: "Confirmação do cadastro do edital",
+  render: () => frame(`
+    <dialog id="storyRadarImportConfirmDialog" class="quotation-item-discard-modal" aria-labelledby="storyRadarImportConfirmTitle" aria-describedby="storyRadarImportConfirmSummary">
+      <div class="quotation-item-discard-content">
+        <h2 id="storyRadarImportConfirmTitle">Cadastrar edital?</h2>
+        <p id="storyRadarImportConfirmSummary">Deseja importar 3 itens selecionados para criar um novo edital? Dados que o PNCP não informa poderão ser preenchidos no formulário do edital.</p>
+        <div class="button-row end"><button class="quiet-action" type="button">Cancelar</button><button class="primary-action" type="button">Confirmar importação</button></div>
+      </div>
+    </dialog>`),
+  play: ({ canvasElement }) => {
+    const dialog = canvasElement.querySelector("#storyRadarImportConfirmDialog");
+    if (dialog && typeof dialog.showModal === "function" && !dialog.open) dialog.showModal();
+  },
+};
