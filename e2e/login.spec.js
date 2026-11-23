@@ -45,6 +45,11 @@ async function validateRadarSearchPage(page) {
   await expect(page.locator("#radarWorkbench")).toBeVisible();
   await expect(page.locator("#radarFilterRail")).toBeVisible();
   await expect(page.locator(".radar-results-panel")).toBeVisible();
+  await expect(page.locator("#radarSearchPage")).toHaveCSS("max-width", "none");
+  await expect(page.locator("#radarPlatformSummary")).toHaveText("Selecionar plataformas");
+  await expect(page.locator("#radarPlatformSearch")).toHaveCount(0);
+  await expect(page.locator('[data-radar-action="add-tag"]')).toHaveCount(0);
+  await expect(page.locator("#radarTagInput")).toHaveAttribute("placeholder", "Digite um termo e pressione Enter");
   const filterBounds = await page.locator("#radarFilterRail").boundingBox();
   const resultsBounds = await page.locator(".radar-results-panel").boundingBox();
   if (!filterBounds || !resultsBounds || resultsBounds.x <= filterBounds.x + filterBounds.width) {
@@ -74,11 +79,17 @@ async function validateRadarSearchPage(page) {
 
   const modalityDetails = page.locator("#radarModalityDetails");
   await modalityDetails.locator("summary").click();
+  const modalityMenu = modalityDetails.locator(".radar-modality-menu");
+  const modalityToggle = page.locator("#radarModalityToggle");
+  const toggleBounds = await modalityToggle.boundingBox();
+  const menuBounds = await modalityMenu.boundingBox();
+  if (!toggleBounds || !menuBounds || Math.abs((toggleBounds.x + toggleBounds.width / 2) - (menuBounds.x + menuBounds.width / 2)) > 2) {
+    throw new Error("A opção para marcar modalidades não está centralizada no campo.");
+  }
   const modalityBoxes = page.locator('#radarModalities input[name="radarModality"]');
   await expect(modalityBoxes.first()).toBeChecked();
   await modalityBoxes.first().uncheck();
   await expect(modalityBoxes.first()).not.toBeChecked();
-  const modalityToggle = page.locator("#radarModalityToggle");
   await expect(modalityToggle).toHaveText("Marcar todas");
   await modalityToggle.click();
   await expect(modalityToggle).toHaveText("Desmarcar todas");
@@ -112,6 +123,19 @@ async function validateRadarSearchPage(page) {
   await expect(resultCard.locator(".radar-result-number")).toContainText("PNCP");
   await expect(resultCard.locator(".radar-result-value")).toContainText("Valor estimado");
   await expect(resultCard).toContainText("Ver itens");
+  await expect(resultCard.locator(".radar-receipt-status")).toHaveCSS("border-top-style", "solid");
+  const objectHeading = resultCard.locator(".radar-result-object");
+  const objectDisclosure = resultCard.locator(".radar-object-details");
+  const longDescription = Array.from({ length: 8 }, () => "Contratação de serviços especializados para fornecimento, instalação e manutenção de equipamentos destinados às unidades administrativas do município.").join(" ");
+  await objectHeading.evaluate((heading, text) => {
+    heading.textContent = text;
+    heading.nextElementSibling.querySelector("p").textContent = text;
+    window.dispatchEvent(new Event("resize"));
+  }, longDescription);
+  await expect(objectHeading).toHaveClass(/is-truncated/);
+  await expect(objectDisclosure).toBeVisible();
+  await objectDisclosure.locator("summary").click();
+  await expect(objectDisclosure.locator("p")).toHaveText(longDescription);
 
   await page.locator("#radarTagInput").fill("aquisição");
   await page.locator("#radarTagInput").press("Enter");
