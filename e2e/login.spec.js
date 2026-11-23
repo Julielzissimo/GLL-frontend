@@ -173,9 +173,8 @@ async function validateRadarSearchPage(page) {
   if (simple.body.results.some((result) => result.platformName !== "Portal de Compras Públicas")) {
     throw new Error("A pesquisa do Radar retornou uma plataforma diferente do Portal de Compras Públicas.");
   }
-  await expect(page.locator("#radarOperationalSummary")).toBeVisible();
-  await expect(page.locator("#radarTotalFound")).not.toHaveText("—");
-  await expect(page.locator("#radarConfirmationValue")).toHaveText("Portal de Compras Públicas");
+  await expect(page.locator("#radarOperationalSummary, .radar-operational-card")).toHaveCount(0);
+  await expect(page.getByText("Coleta indisponível", { exact: true })).toHaveCount(0);
   const resultCard = page.locator("#radarResultsContent .radar-result-card").first();
   await expect(resultCard).toBeVisible();
   await expect(resultCard).toContainText("Município - UF");

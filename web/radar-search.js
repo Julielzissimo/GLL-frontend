@@ -102,7 +102,7 @@ export function radarDefaultPeriodDates(days, today = todayInSaoPaulo()) {
     throw new TypeError("A data atual é inválida.");
   }
   end.setUTCDate(end.getUTCDate() - periodDays + 1);
-  return { bidPhaseFrom: end.toISOString().slice(0, 10), bidPhaseTo: today };
+  return { publishedFrom: end.toISOString().slice(0, 10), publishedTo: today };
 }
 
 function normalizedModalityIds(values) {
@@ -136,7 +136,6 @@ export function buildRadarSearchPayload(filters, { page = 1, refreshCoverage = f
     || selectedIds.length === activeIds.length;
   const payload = {
     action: "search",
-    dateFilterMode: "bid_phase",
     proposalReceiptState: filters.proposalReceiptState || "open",
     page: Number(page),
     pageSize: Number(filters.pageSize || 20),
@@ -148,8 +147,8 @@ export function buildRadarSearchPayload(filters, { page = 1, refreshCoverage = f
   if (!useEveryActiveModality && selectedIds.length) payload.modalities = selectedIds;
   if (filters.uf) payload.uf = String(filters.uf).trim().toUpperCase();
   if (filters.municipalityIbgeId && filters.uf) payload.municipalityIbgeId = Number(filters.municipalityIbgeId);
-  if (filters.bidPhaseFrom) payload.bidPhaseFrom = filters.bidPhaseFrom;
-  if (filters.bidPhaseTo) payload.bidPhaseTo = filters.bidPhaseTo;
+  if (filters.publishedFrom) payload.publishedFrom = filters.publishedFrom;
+  if (filters.publishedTo) payload.publishedTo = filters.publishedTo;
   return payload;
 }
 
@@ -172,13 +171,6 @@ export function buildRadarDetailsHref(numberControlPncp, currentUrl) {
 }
 
 export function radarEmptyResultState(coverage) {
-  if (coverage?.status === "unconfirmed") {
-    return {
-      kind: "coverage-unconfirmed-empty",
-      title: "Fase de lances sem cobertura confirmada",
-      description: "A ausência de resultados não é definitiva: o Radar ainda não confirma a cobertura histórica para as datas da fase de lances.",
-    };
-  }
   if (coverage?.complete === true || coverage?.status === "complete") {
     return {
       kind: "complete-empty",
@@ -263,14 +255,6 @@ export function radarOperationalStatus({ coverage, collectionTask, error, totalC
       description: "A cobertura está desatualizada. Os resultados armazenados continuam disponíveis.",
     };
   }
-  if (coverage?.status === "unconfirmed") {
-    return {
-      kind: "coverage-unconfirmed",
-      label: "Cobertura não confirmada",
-      tone: "warning",
-      description: "O Radar filtra pela data de início da fase de lances, mas ainda não mede a cobertura histórica por essa data.",
-    };
-  }
   if (coverage?.status === "not_collected") {
     return {
       kind: "collection-unavailable",
@@ -319,12 +303,6 @@ export function radarPlatformConfirmation(result = {}) {
     method: PLATFORM_CONFIRMATION_METHOD_LABELS[methodCode] || methodCode || "Confirmação elegível pelo GLL Radar Engine",
     source: PLATFORM_CONFIRMATION_SOURCE_LABELS[sourceCode] || sourceCode || "Fonte não informada pelo contrato",
   };
-}
-
-export function radarLatestDisplayedSync(results = []) {
-  const timestamps = results.map((result) => Date.parse(result?.dataUpdatedAt || ""))
-    .filter((value) => Number.isFinite(value));
-  return timestamps.length ? new Date(Math.max(...timestamps)).toISOString() : null;
 }
 
 export function validatedPncpSourceUrl(value) {
@@ -431,8 +409,8 @@ function currentFiltersFromInputs(root, tags, modalities) {
     modalities,
     uf: root.querySelector("#radarUf")?.value || "",
     municipalityIbgeId: root.querySelector("#radarMunicipality")?.value || "",
-    bidPhaseFrom: root.querySelector("#radarBidPhaseFrom")?.value || "",
-    bidPhaseTo: root.querySelector("#radarBidPhaseTo")?.value || "",
+    publishedFrom: root.querySelector("#radarPublishedFrom")?.value || "",
+    publishedTo: root.querySelector("#radarPublishedTo")?.value || "",
     proposalReceiptState: root.querySelector("#radarSituation")?.value || "open",
     pageSize: root.querySelector("#radarPageSize")?.value || 20,
     sortBy: root.querySelector("#radarSortBy")?.value || "publishedAt",
@@ -457,8 +435,6 @@ function currentFiltersFromInputs(root, tags, modalities) {
  */
 export function createRadarSearchFeature({ getClient, getUserRole = () => null, toast = () => {}, actions = {} }) {
   const root = globalThis.document?.getElementById("radarSearchPage");
-  let filterScrollFrame = null;
-  let filterScrollBound = false;
   const state = {
     bound: false,
     initialized: false,
@@ -507,82 +483,6 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
 
   function byId(id) {
     return root?.querySelector(`#${id}`) || null;
-  }
-
-  function setFilterRailCollapsed(collapsed) {
-    const workbench = byId("radarWorkbench");
-    const filterRail = byId("radarFilterRail");
-    if (!workbench || !filterRail) return;
-
-    workbench.classList.toggle("is-filter-collapsed", collapsed);
-    if (collapsed) {
-      filterRail.setAttribute("aria-hidden", "true");
-      filterRail.setAttribute("inert", "");
-    } else {
-      filterRail.removeAttribute("aria-hidden");
-      filterRail.removeAttribute("inert");
-    }
-  }
-
-  function syncFilterRailVisibility() {
-    const workbench = byId("radarWorkbench");
-    const filterRail = byId("radarFilterRail");
-    const listView = byId("radarListView");
-    const document = root?.ownerDocument;
-    const window = document?.defaultView;
-    if (!workbench || !filterRail || !window || !document) return;
-
-    const isDesktop = window.matchMedia
-      ? window.matchMedia("(min-width: 761px)").matches
-      : window.innerWidth > 760;
-    const isSearchListVisible = state.view === "search"
-      && !root.classList.contains("hidden")
-      && !listView?.hidden
-      && !filterRail.hidden;
-    if (!isDesktop || !isSearchListVisible) {
-      setFilterRailCollapsed(false);
-      return;
-    }
-
-    if (filterRail.contains(document.activeElement)) return;
-
-    const filterBottom = filterRail.getBoundingClientRect().bottom;
-    const topbarBottom = document.getElementById("appTopbar")?.getBoundingClientRect().bottom || 0;
-    const isCollapsed = workbench.classList.contains("is-filter-collapsed");
-    if (!isCollapsed && filterBottom <= topbarBottom) {
-      setFilterRailCollapsed(true);
-    } else if (isCollapsed && filterBottom > topbarBottom + 48) {
-      setFilterRailCollapsed(false);
-    }
-  }
-
-  function scheduleFilterRailVisibilitySync() {
-    const window = root?.ownerDocument?.defaultView;
-    if (!window || filterScrollFrame !== null) return;
-
-    const sync = () => {
-      filterScrollFrame = null;
-      syncFilterRailVisibility();
-    };
-    if (window.requestAnimationFrame) {
-      filterScrollFrame = window.requestAnimationFrame(sync);
-    } else {
-      filterScrollFrame = window.setTimeout(sync, 0);
-    }
-  }
-
-  function bindFilterRailVisibility() {
-    const window = root?.ownerDocument?.defaultView;
-    if (!window || filterScrollBound) return;
-    filterScrollBound = true;
-    window.addEventListener("scroll", scheduleFilterRailVisibilitySync, { passive: true });
-    window.addEventListener("resize", scheduleFilterRailVisibilitySync);
-    byId("radarFilterRail")?.addEventListener("focusout", scheduleFilterRailVisibilitySync);
-    const listView = byId("radarListView");
-    if (listView && window.MutationObserver) {
-      new window.MutationObserver(scheduleFilterRailVisibilitySync)
-        .observe(listView, { attributes: true, attributeFilter: ["hidden"] });
-    }
   }
 
   function announce(message) {
@@ -718,8 +618,8 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
 
   function applyDefaultPeriod() {
     const dates = radarDefaultPeriodDates(state.defaultPeriodDays);
-    byId("radarBidPhaseFrom").value = dates.bidPhaseFrom;
-    byId("radarBidPhaseTo").value = dates.bidPhaseTo;
+    byId("radarPublishedFrom").value = dates.publishedFrom;
+    byId("radarPublishedTo").value = dates.publishedTo;
     byId("radarDateError").textContent = "";
   }
 
@@ -779,7 +679,7 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
       renderModalityOptions();
       renderPlatformAdmin();
       renderStateOptions();
-      if (!byId("radarBidPhaseFrom").value && !byId("radarBidPhaseTo").value) applyDefaultPeriod();
+      if (!byId("radarPublishedFrom").value && !byId("radarPublishedTo").value) applyDefaultPeriod();
       await loadMunicipalities(byId("radarUf").value);
       void loadPlatformMetrics();
     } catch (error) {
@@ -802,12 +702,11 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
   function renderCoverage() {
     const target = byId("radarCoverageFeedback");
     if (!target) return;
-    if (state.view === "favorites") {
+    if (state.view === "favorites" || (!state.searching && !state.error)) {
       target.hidden = true;
       target.replaceChildren();
       return;
     }
-    const coverage = state.coverage;
     if (state.searching) {
       target.hidden = false;
       target.dataset.tone = "info";
@@ -820,90 +719,6 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
       target.textContent = state.error.message;
       return;
     }
-    if (!state.hasSearched) {
-      target.hidden = true;
-      target.replaceChildren();
-      return;
-    }
-    const operational = radarOperationalStatus({
-      coverage,
-      collectionTask: state.collectionTask,
-      totalCount: state.pagination?.totalCount,
-    });
-    const coverageTime = coverage?.updatedAt ? ` Última cobertura: ${formatDateTime(coverage.updatedAt)}.` : "";
-    target.hidden = false;
-    target.dataset.tone = operational.tone;
-    target.innerHTML = `<strong>${escapeHtml(operational.label)}</strong><span>${escapeHtml(operational.description + coverageTime)}</span>`;
-  }
-
-  function renderOperationalSummary() {
-    const target = byId("radarOperationalSummary");
-    if (!target) return;
-    if (state.view === "favorites" || (!state.hasSearched && !state.error)) {
-      target.hidden = true;
-      return;
-    }
-    const totalCount = Number.isSafeInteger(state.pagination?.totalCount) ? state.pagination.totalCount : null;
-    const latestRecordSync = radarLatestDisplayedSync(state.results);
-    const latestSync = state.dataUpdatedAt || latestRecordSync;
-    const status = radarOperationalStatus({
-      coverage: state.coverage,
-      collectionTask: state.collectionTask,
-      error: state.error,
-      totalCount,
-    });
-    const firstResult = state.results.find((result) => result && typeof result === "object") || {};
-    const confirmation = radarPlatformConfirmation(firstResult);
-    const coverage = state.coverage || {};
-    const expectedScopes = Number(coverage.expectedScopes);
-    const completeScopes = Number(coverage.completeScopes);
-    const knownScopes = Number(coverage.knownScopes);
-    const scopeCountAvailable = coverage.status !== "unconfirmed"
-      && Number.isFinite(expectedScopes) && Number.isFinite(completeScopes);
-    const coverageLabel = coverage.status === "complete" ? "Completa"
-      : coverage.status === "partial" ? "Parcial"
-        : coverage.status === "stale" ? "Desatualizada"
-          : coverage.status === "failed" ? "Com falha"
-            : coverage.status === "not_collected" ? "Não coletada"
-              : coverage.status === "unconfirmed" ? "Não confirmada" : "Não informada";
-    const setText = (id, value) => {
-      const element = byId(id);
-      if (element) element.textContent = value;
-    };
-    const updateCard = byId("radarUpdateState");
-    if (updateCard) updateCard.dataset.tone = status.tone;
-    setText("radarTotalFound", totalCount === null ? "Não confirmado" : totalCount.toLocaleString("pt-BR"));
-    setText("radarTotalFoundDetail", totalCount === null
-      ? coverage.status === "unconfirmed"
-        ? "A cobertura histórica para as datas da fase de lances ainda não é confirmada."
-        : "O total depende da cobertura informada pelo backend."
-      : state.error
-        ? "Total da última consulta bem-sucedida; os filtros atuais não foram aplicados."
-        : "Total para os filtros da pesquisa atual.");
-    const openCount = state.openProposalCount;
-    setText("radarTotalOpen", Number.isSafeInteger(openCount) ? openCount.toLocaleString("pt-BR") : "Não confirmado");
-    setText("radarTotalOpenDetail", state.error
-      ? "Último total disponível; a pesquisa atual não foi concluída."
-      : "Editais com propostas abertas no mesmo escopo geográfico e período.");
-    setText("radarLastSuccessfulSync", latestSync ? formatDateTime(latestSync) : "Não informado");
-    setText("radarLastSuccessfulSyncDetail", latestSync
-      ? state.dataUpdatedAt
-        ? "Última coleta bem-sucedida nos escopos desta busca; a API não expõe o horário do lote global do Engine."
-        : "Sincronização mais recente entre os editais exibidos; a API não expõe o horário do lote global do Engine."
-      : "O contrato atual não expõe o horário do último lote do Engine.");
-    setText("radarCoverageValue", coverageLabel);
-    setText("radarCoverageDetail", scopeCountAvailable
-      ? `${state.error ? "Última pesquisa bem-sucedida: " : ""}${completeScopes.toLocaleString("pt-BR")} de ${expectedScopes.toLocaleString("pt-BR")} escopos completos · ${Number.isFinite(knownScopes) ? knownScopes.toLocaleString("pt-BR") : "—"} com dados`
-      : coverage.status === "unconfirmed"
-        ? "A cobertura histórica não é acompanhada pelas datas da fase de lances; o total pode estar incompleto."
-      : "A API não informou a quantidade de escopos.");
-    setText("radarConfirmationValue", confirmation.platform);
-    setText("radarConfirmationDetail", state.results.length
-      ? `${state.error ? "Pesquisa anterior · " : ""}Primeiro edital exibido · Fonte: ${confirmation.source} · Método: ${confirmation.method}`
-      : "A API não retornou edital para detalhar fonte e método de confirmação.");
-    setText("radarUpdateStateValue", status.label);
-    setText("radarUpdateStateDetail", status.description);
-    target.hidden = false;
   }
 
   function resolveModalityName(id) {
@@ -1047,11 +862,9 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
     const filterRail = byId("radarFilterRail");
     const platformAdminSettings = byId("radarPlatformAdminSettings");
     const resultControls = root?.querySelector(".radar-results-controls");
-    renderOperationalSummary();
     workbench?.classList.toggle("is-favorites", favoritesView);
     if (filterRail) filterRail.hidden = favoritesView;
     if (searchForm) searchForm.hidden = favoritesView;
-    syncFilterRailVisibility();
     if (platformAdminSettings) platformAdminSettings.hidden = favoritesView || getUserRole?.() !== "Administrador";
     if (resultControls) resultControls.hidden = favoritesView;
     byId("radarSearchViewButton")?.setAttribute("aria-pressed", String(!favoritesView));
@@ -1169,8 +982,8 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
   }
 
   function validateDates() {
-    const from = byId("radarBidPhaseFrom");
-    const to = byId("radarBidPhaseTo");
+    const from = byId("radarPublishedFrom");
+    const to = byId("radarPublishedTo");
     const error = byId("radarDateError");
     from.removeAttribute("aria-invalid");
     to.removeAttribute("aria-invalid");
@@ -1532,7 +1345,6 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
   function bind() {
     if (!root || state.bound) return;
     state.bound = true;
-    bindFilterRailVisibility();
     root.addEventListener("submit", (event) => {
       if (event.target?.id === "radarSearchForm") {
         event.preventDefault();
@@ -1656,7 +1468,6 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
       renderCoverage();
       renderResults();
       actions.syncDetailRoute?.();
-      syncFilterRailVisibility();
     },
     syncFavorite,
     async refreshCurrentView() {
