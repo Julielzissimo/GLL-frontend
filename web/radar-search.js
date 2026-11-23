@@ -494,6 +494,7 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
     collectionTask: null,
     queriedAt: null,
     dataUpdatedAt: null,
+    catalogSource: null,
     hasSearched: false,
     searching: false,
     updating: false,
@@ -991,6 +992,11 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
     const count = byId("radarResultsCount");
     if (!target) return;
     const favoritesView = state.view === "favorites";
+    const sourceNote = !favoritesView && state.catalogSource === "production"
+      ? " Fonte: catálogo de produção (somente leitura)."
+      : !favoritesView && state.catalogSource === "homolog"
+      ? " Fonte: catálogo de homologação."
+      : "";
     const rows = favoritesView ? state.favoritesResults : state.results;
     const searchForm = byId("radarSearchForm");
     const workbench = byId("radarWorkbench");
@@ -1060,7 +1066,7 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
     }
     if (!rows.length && state.error) {
       const operational = radarOperationalStatus({ error: state.error });
-      if (count) count.textContent = "Não foi possível atualizar a pesquisa atual.";
+      if (count) count.textContent = `Não foi possível atualizar a pesquisa atual.${sourceNote}`;
       target.innerHTML = `<div class="empty-state radar-empty-state" data-empty-kind="${escapeHtml(operational.kind)}"><span class="radar-empty-icon" aria-hidden="true">!</span><strong>${escapeHtml(operational.label)}</strong><p>${escapeHtml(operational.description)}</p></div>`;
       renderPagination();
       renderCoverage();
@@ -1070,8 +1076,8 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
       const empty = radarEmptyResultState(state.coverage);
       if (count) {
         count.textContent = empty.kind === "partial-empty"
-          ? "Nenhum edital nesta página; cobertura parcial."
-          : `${empty.title}.`;
+          ? `Nenhum edital nesta página; cobertura parcial.${sourceNote}`
+          : `${empty.title}.${sourceNote}`;
       }
       target.innerHTML = "";
       renderPagination();
@@ -1083,8 +1089,8 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
       ? `${rows.length.toLocaleString("pt-BR")} resultados nesta página; total ainda não confirmado.`
         : `${Number(state.pagination.totalCount).toLocaleString("pt-BR")} licitações encontradas.`;
       count.textContent = state.error
-        ? `${countLabel} Os resultados são da última consulta bem-sucedida; os filtros atuais não foram aplicados.`
-        : countLabel;
+        ? `${countLabel} Os resultados são da última consulta bem-sucedida; os filtros atuais não foram aplicados.${sourceNote}`
+        : `${countLabel}${sourceNote}`;
     }
     target.innerHTML = `<div class="radar-result-list">${rows.map(renderResultCard).join("")}</div>`;
 
@@ -1156,6 +1162,10 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
   async function loadItemCounts(results) {
     const ids = results.map((result) => result.numberControlPncp).filter(Boolean);
     if (!ids.length) return;
+    if (state.view !== "favorites" && state.catalogSource === "production") {
+      ids.forEach((id) => state.itemCounts.delete(id));
+      return;
+    }
     try {
       const { data, error } = await client().from("radar_itens_sync")
         .select("numero_controle_pncp, quantidade_itens, quantidade_itens_esperada, versao_sincronizacao, disponibilidade_origem")
@@ -1324,6 +1334,7 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
       state.collectionTask = data.collectionTask || null;
       state.queriedAt = data.metadata?.queriedAt || null;
       state.dataUpdatedAt = data.metadata?.dataUpdatedAt || data.coverage.updatedAt || null;
+      state.catalogSource = data.metadata?.catalogSource || "local";
       state.hasSearched = true;
       await Promise.all([loadMunicipalityLabels(state.results), loadItemCounts(state.results)]);
       if (typeof actions.loadFavoriteIds === "function") {
