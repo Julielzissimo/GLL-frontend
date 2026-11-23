@@ -8187,6 +8187,12 @@ button.history-row:hover {
 .radar-default-settings-controls label { display: grid; width: min(22rem, 100%); gap: var(--space-xs); font-weight: var(--font-weight-semibold); }
 .radar-results-panel { min-width: 0; }
 .radar-results-heading { display: flex; align-items: flex-end; justify-content: space-between; gap: var(--space-lg); }
+.radar-results-title { display: flex; min-width: 0; align-items: center; justify-content: space-between; gap: var(--space-md); }
+.radar-results-title-copy { min-width: 0; }
+.radar-filter-toggle { flex: 0 0 auto; }
+.radar-filter-toggle[hidden] { display: none; }
+#radarFilterToggleButton[aria-expanded="true"] [data-filter-toggle-icon="expand"],
+#radarFilterToggleButton[aria-expanded="false"] [data-filter-toggle-icon="collapse"] { display: none; }
 .radar-result-list { display: grid; gap: var(--space-md); }
 .radar-result-card { display: grid; min-width: 0; gap: var(--space-lg); padding: var(--space-lg); border: var(--border-default); border-radius: var(--radius-md); background: var(--color-surface); }
 .radar-result-card-heading { display: flex; min-width: 0; align-items: flex-start; justify-content: space-between; gap: var(--space-lg); }
@@ -8378,6 +8384,19 @@ button.history-row:hover {
 
 .radar-workbench.is-favorites {
   grid-template-columns: minmax(0, 1fr);
+}
+
+.radar-workbench.is-filter-manually-collapsed {
+  position: relative;
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.radar-workbench.is-filter-manually-collapsed .radar-filter-rail {
+  position: absolute;
+  z-index: 1;
+  inset-block-start: 0;
+  inset-inline-start: 0;
+  width: min(18.75rem, 100%);
 }
 
 .radar-workbench.is-filter-collapsed .radar-filter-rail {
