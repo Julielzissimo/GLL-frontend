@@ -207,15 +207,8 @@ async function validateRadarSearchPage(page) {
   await expect(page.locator("#radarUf")).toHaveValue("");
   await expectDefaultRadarModalities(page);
 
-  const modalityDetails = page.locator("#radarModalityDetails");
-  await modalityDetails.locator("summary").click();
-  const modalityMenu = modalityDetails.locator(".radar-modality-menu");
-  const modalityToggle = page.locator("#radarModalityToggle");
-  const toggleBounds = await modalityToggle.boundingBox();
-  const menuBounds = await modalityMenu.boundingBox();
-  if (!toggleBounds || !menuBounds || Math.abs((toggleBounds.x + toggleBounds.width / 2) - (menuBounds.x + menuBounds.width / 2)) > 2) {
-    throw new Error("A opção para marcar modalidades não está centralizada no campo.");
-  }
+  await page.locator('#radarModalityOpen').click();
+  const modalityToggle = page.locator('#radarModalityToggle');
   const modalityBoxes = page.locator('#radarModalities input[name="radarModality"]');
   const availableModalityBoxes = page.locator('#radarModalities input[name="radarModality"]:not(:disabled)');
   const disabledModalityBoxes = page.locator('#radarModalities input[name="radarModality"]:disabled');
@@ -235,7 +228,7 @@ async function validateRadarSearchPage(page) {
   await modalityToggle.click();
   await expect(modalityToggle).toHaveText("Desmarcar disponíveis");
   await expect(checkedModalityBoxes).toHaveCount(await availableModalityBoxes.count());
-  await modalityDetails.locator("summary").click();
+  await page.locator('[data-radar-action="apply-modalities"]').click();
 
   await page.locator("#radarUf").selectOption("ES");
   await expect.poll(() => page.locator("#radarMunicipality option").count()).toBeGreaterThan(1);
@@ -276,22 +269,21 @@ async function validateRadarSearchPage(page) {
   await expect(resultCard.locator(".radar-result-fields > div")).toHaveCount(6);
   await expect(resultCard.locator(".radar-result-number")).toContainText("PNCP");
   await expect(resultCard.locator(".radar-result-value")).toContainText("Valor estimado");
-  await expect(resultCard).toContainText("Ver itens");
-  const detailsLink = resultCard.getByRole("link", { name: "Ver itens (abre em nova guia)" });
-  await expect(detailsLink).toHaveAttribute("target", "_blank");
-  await expect(detailsLink).toHaveAttribute("rel", "noopener noreferrer");
-  await expect(resultCard.locator(".radar-receipt-status")).toHaveCSS("border-top-style", "solid");
+  await expect(resultCard.locator('[data-radar-card-view="items"]')).toBeVisible();
+  await expect(resultCard.getByRole('button', { name: 'Dados', exact: true })).toBeVisible();
   const favoriteBeforeDetails = await resultCard.locator("[data-radar-favorite]").getAttribute("aria-pressed");
   const numberControlPncp = simple.body.results[0].numberControlPncp;
   const context = page.context();
   const procurementResponsePromise = radarCacheResponse(context, "radar_licitacoes", numberControlPncp);
   const itemSyncResponsePromise = radarCacheResponse(context, "radar_itens_sync", numberControlPncp);
-  const detailsPagePromise = page.context().waitForEvent("page");
-  await detailsLink.click();
-  const detailsPage = await detailsPagePromise;
+  // Keep compatibility coverage for previously shared detail URLs.
+  const detailsPage = await context.newPage();
   const documentsResponsePromise = process.env.GLL_E2E_EXPECTED_ENVIRONMENT === "homolog"
     ? radarDocumentsResponse(detailsPage, numberControlPncp)
     : null;
+  const detailUrl = new URL(page.url());
+  detailUrl.searchParams.set('radarDetail', numberControlPncp);
+  await detailsPage.goto(detailUrl.href);
   const [procurementResponse, itemSyncResponse] = await Promise.all([
     procurementResponsePromise,
     itemSyncResponsePromise,

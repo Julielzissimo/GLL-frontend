@@ -7,7 +7,6 @@ import {
 } from "../web/radar-import.js";
 import {
   createRadarItemSelectionState,
-  paginateRadarItems,
 } from "../web/radar-details.js";
 
 test("normaliza seleção de itens e rejeita vazios, repetidos e números inválidos", () => {
@@ -17,16 +16,11 @@ test("normaliza seleção de itens e rejeita vazios, repetidos e números invál
   assert.throws(() => normalizeSelectedRadarItemNumbers([1, "1"]), /itens repetidos/);
 });
 
-test("seleção permanece ao navegar entre páginas e pode importar parte ou todos os itens elegíveis", () => {
+test("seleção mantém itens de toda a contratação e pode importar parte ou todos os itens elegíveis", () => {
   const items = Array.from({ length: 45 }, (_, index) => ({ number: index + 1 }));
   const selected = createRadarItemSelectionState();
-  const firstPage = paginateRadarItems(items, 1, 20);
-  assert.equal(firstPage.items.length, 20);
-  selected.add(firstPage.items[2].number);
-  const secondPage = paginateRadarItems(items, 2, 20);
-  assert.equal(secondPage.page, 2);
-  assert.equal(secondPage.items[0].number, 21);
-  selected.add(secondPage.items[0].number);
+  selected.add(items[2].number);
+  selected.add(items[20].number);
   assert.deepEqual(selected.values(), ["3", "21"]);
 
   selected.selectAll(items, new Set(["1", "2"]));

@@ -83,3 +83,11 @@ test("falhas de consulta e sincronização são propagadas para a camada chamado
   await assert.rejects(service.listModalities(), /RLS bloqueou a consulta/);
   await assert.rejects(service.syncCatalogs(), /RLS bloqueou a consulta/);
 });
+
+test('o catálogo completo inclui inativas somente quando solicitado pela interface', async () => {
+  const rows = [{ pncp_id: 6, name: 'Pregão - Eletrônico', is_active: false }];
+  const client = mockSupabase({ rows });
+  const service = createRadarCatalogsService(client);
+  assert.deepEqual(await service.listModalities({ includeInactive: true }), rows);
+  assert.deepEqual(client.calls[0].filters, []);
+});
