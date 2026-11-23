@@ -485,20 +485,20 @@ export function createRadarDetailsFeature({ getClient, toast = () => {}, onFavor
   function renderDocuments(documentsState) {
     if (documentsState?.status === "unavailable") {
       return `<section class="section-band radar-detail-section" aria-labelledby="radarDocumentsTitle">
-        <div class="radar-detail-section-heading"><div><h2 id="radarDocumentsTitle">Documentos oficiais</h2><p>Os documentos estão indisponíveis no PNCP neste momento.</p></div></div>
+        <div class="radar-detail-section-heading"><div><h2 id="radarDocumentsTitle">Documentos do edital</h2><p>Os documentos estão indisponíveis no PNCP neste momento.</p></div></div>
         <button class="quiet-action compact-action" type="button" data-radar-details-refresh>Atualizar documentos</button>
       </section>`;
     }
     if (!documentsState || documentsState.status === "not_published" || !documentsState.documents?.length) {
       return `<section class="section-band radar-detail-section" aria-labelledby="radarDocumentsTitle">
-        <div class="radar-detail-section-heading"><div><h2 id="radarDocumentsTitle">Documentos oficiais</h2><p>Nenhum documento foi publicado para esta contratação.</p></div></div>
+        <div class="radar-detail-section-heading"><div><h2 id="radarDocumentsTitle">Documentos do edital</h2><p>Nenhum documento foi publicado para esta contratação.</p></div></div>
       </section>`;
     }
     return `<section class="section-band radar-detail-section" aria-labelledby="radarDocumentsTitle">
-      <div class="radar-detail-section-heading"><div><h2 id="radarDocumentsTitle">Documentos oficiais</h2><p>Os arquivos permanecem no PNCP e não são baixados nem armazenados pelo GLL.</p></div></div>
+      <div class="radar-detail-section-heading"><div><h2 id="radarDocumentsTitle">Documentos do edital</h2></div></div>
       <ul class="radar-document-list">${documentsState.documents.map((document) => {
         const officialUrl = validatedOfficialPncpUrl(document.url);
-        return `<li><div><strong>${escapeHtml(document.title || "Documento sem título")}</strong><span>${escapeHtml(document.type || "Tipo não informado")}</span>${document.publishedAt ? `<small>Publicado em ${escapeHtml(dateValue(document.publishedAt, dateFormatter))}</small>` : ""}</div>${officialUrl ? `<a class="quiet-action compact-action" href="${escapeHtml(officialUrl)}" target="_blank" rel="noopener noreferrer">Acessar documento <span aria-hidden="true">↗</span></a>` : `<span class="radar-document-url">${escapeHtml(document.url || "URL não informada")}</span>`}</li>`;
+        return `<li><div><strong>${escapeHtml(document.title || "Documento sem título")}</strong><span>${escapeHtml(document.type || "Tipo não informado")}</span>${document.publishedAt ? `<small>Publicado em ${escapeHtml(dateValue(document.publishedAt, dateFormatter))}</small>` : ""}</div>${officialUrl ? `<a class="quiet-action compact-action" href="${escapeHtml(officialUrl)}" target="_blank" rel="noopener noreferrer">Baixar <span aria-hidden="true">↗</span></a>` : `<span class="radar-document-url">${escapeHtml(document.url || "URL não informada")}</span>`}</li>`;
       }).join("")}</ul>
     </section>`;
   }

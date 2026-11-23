@@ -256,7 +256,6 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
     loadingCatalogs: false,
     catalogsLoaded: false,
     catalogsError: "",
-    settingsError: "",
     defaultPeriodDays: DEFAULT_PERIOD_DAYS,
     modalities: [],
     states: [],
@@ -340,13 +339,20 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
 
   function updateModalitySummary() {
     const summary = byId("radarModalitySummary");
-    if (!summary) return;
     const selectedCount = state.selectedModalities === null
       ? state.modalities.length
       : state.selectedModalities.length;
-    summary.textContent = selectedCount === state.modalities.length
+    const allSelected = state.modalities.length > 0 && selectedCount === state.modalities.length;
+    if (summary) summary.textContent = allSelected
       ? `Todas as modalidades ativas (${state.modalities.length})`
-      : `${selectedCount} de ${state.modalities.length} selecionadas`;
+      : selectedCount === 0
+        ? "Nenhuma modalidade selecionada"
+        : `${selectedCount} de ${state.modalities.length} selecionadas`;
+    const toggle = byId("radarModalityToggle");
+    if (toggle) {
+      toggle.textContent = allSelected ? "Desmarcar todas" : "Marcar todas";
+      toggle.disabled = state.modalities.length === 0;
+    }
   }
 
   function updatePlatformSummary() {
@@ -466,19 +472,6 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
     byId("radarDateError").textContent = "";
   }
 
-  function renderDefaultSettings() {
-    const settings = byId("radarDefaultSettings");
-    const summary = byId("radarSharedDefaultSummary");
-    const input = byId("radarDefaultPeriodDays");
-    const status = byId("radarDefaultSettingsStatus");
-    if (summary) summary.textContent = state.settingsError
-      ? `Período compartilhado indisponível; usando ${state.defaultPeriodDays} dias temporariamente.`
-      : `Padrão compartilhado: últimos ${state.defaultPeriodDays} dias.`;
-    if (settings) settings.hidden = getUserRole?.() !== "Administrador";
-    if (input && document.activeElement !== input) input.value = String(state.defaultPeriodDays);
-    if (status) status.textContent = state.settingsError;
-  }
-
   async function loadMunicipalities(uf) {
     const loadId = ++state.municipalityLoadId;
     state.municipalities = [];
@@ -521,15 +514,10 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
       if (platformCatalogResult.status === "rejected") throw platformCatalogResult.reason;
       state.modalities = modalitiesResult.value;
       state.states = statesResult.value;
-      if (settingsResult.status === "rejected") {
-        state.settingsError = "Não foi possível carregar o período compartilhado; o formulário está usando 30 dias temporariamente.";
-      }
       if (settingsResult.status === "fulfilled" && !settingsResult.value.error) {
         state.defaultPeriodDays = clampPeriodDays(settingsResult.value.data?.busca_periodo_padrao_dias);
-        state.settingsError = "";
       } else {
         state.defaultPeriodDays = DEFAULT_PERIOD_DAYS;
-        state.settingsError = "Não foi possível carregar o período compartilhado; o formulário está usando 30 dias temporariamente.";
       }
       state.catalogsLoaded = true;
       state.initialized = true;
@@ -537,7 +525,6 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
       renderPlatformOptions();
       renderPlatformAdmin();
       renderStateOptions();
-      renderDefaultSettings();
       if (!byId("radarPublishedFrom").value && !byId("radarPublishedTo").value) applyDefaultPeriod();
       await loadMunicipalities(byId("radarUf").value);
       void loadPlatformMetrics();
@@ -554,9 +541,7 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
   function updateSearchAvailability() {
     const disabled = state.searching || state.loadingCatalogs || !state.catalogsLoaded;
     const searchButton = byId("radarSearchButton");
-    const updateButton = byId("radarUpdateButton");
     if (searchButton) searchButton.disabled = disabled;
-    if (updateButton) updateButton.disabled = state.searching || state.loadingCatalogs || !state.catalogsLoaded;
     root?.setAttribute("aria-busy", String(state.searching || state.loadingCatalogs));
   }
 
@@ -590,9 +575,11 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
     let title = "Cobertura completa";
     let description = "O Radar consultou o escopo completo para os filtros atuais.";
     if (coverage?.status === "partial") {
-      tone = "warning";
-      title = "Resultados parciais";
-      description = `A coleta registrou ${Number(coverage.completeScopes || 0)} de ${Number(coverage.expectedScopes || 0)} escopos completos. Os resultados podem estar incompletos.`;
+      if (!state.collectionTask || !["queued", "running", "partial"].includes(state.collectionTask.status)) {
+        target.hidden = true;
+        target.replaceChildren();
+        return;
+      }
     } else if (coverage?.status === "stale") {
       tone = "warning";
       title = "Cobertura desatualizada";
@@ -643,7 +630,7 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
   function renderResultActions(result) {
     const buttons = [];
     if (typeof actions.onOpenDetails === "function") {
-      buttons.push(`<button type="button" class="quiet-action compact-action" data-radar-detail="${escapeHtml(result.numberControlPncp)}">Ver detalhes</button>`);
+      buttons.push(`<button type="button" class="quiet-action compact-action" data-radar-detail="${escapeHtml(result.numberControlPncp)}">Ver itens</button>`);
     }
     if (typeof actions.setFavorite === "function") {
       const favorite = state.favoriteIds.has(result.numberControlPncp);
@@ -658,17 +645,11 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
     return buttons.length ? `<div class="radar-row-actions">${buttons.join("")}</div>` : '<span class="radar-no-actions" aria-label="Ações disponíveis na Fase 6">Disponível na Fase 6</span>';
   }
 
-  function renderResultRow(result) {
+  function renderResultCard(result) {
     const object = String(result.object || "Objeto não informado");
     const excerpt = object.length > 220 ? `${object.slice(0, 217).trimEnd()}…` : object;
-    const objectMarkup = object.length > 220
-      ? `<details class="radar-object-details"><summary>${escapeHtml(excerpt)}</summary><p>${escapeHtml(object)}</p></details>`
-      : `<span class="radar-object-text">${escapeHtml(object)}</span>`;
     const number = result.procurementNumber || result.numberControlPncp || "—";
     const year = result.year ? `/${escapeHtml(result.year)}` : "";
-    const administrative = result.administrativeSituationName
-      ? `<small>${escapeHtml(result.administrativeSituationName)}</small>`
-      : "";
     const receipt = RECEIPT_STATUS_LABELS[result.proposalReceiptStatus] || RECEIPT_STATUS_LABELS.unknown;
     const platformSourceUrl = result.platformStatus === "identified" ? validatedPlatformSourceUrl(result.platformSourceUrl) : null;
     const platformLabel = result.platformStatus === "identified"
@@ -677,19 +658,27 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
     const platformMarkup = platformSourceUrl
       ? `<a href="${escapeHtml(platformSourceUrl)}" target="_blank" rel="noopener noreferrer">${escapeHtml(platformLabel)} <span aria-hidden="true">↗</span></a>`
       : escapeHtml(platformLabel);
-    return `<tr>
-      <td><strong>${escapeHtml(number)}${year}</strong><small>${escapeHtml(result.numberControlPncp || "")}</small></td>
-      <td><strong>${escapeHtml(result.agencyName || result.administrativeUnitName || "Órgão não informado")}</strong><small>${escapeHtml(result.administrativeUnitName || "")}</small></td>
-      <td class="radar-object-cell">${objectMarkup}</td>
-      <td>${escapeHtml(resolveModalityName(result.modalityId))}</td>
-      <td>${platformMarkup}</td>
-      <td>${escapeHtml(resolveMunicipalityName(result))}${result.uf ? ` / ${escapeHtml(result.uf)}` : ""}</td>
-      <td class="numeric">${escapeHtml(formatMoney(result.estimatedValue))}</td>
-      <td>${escapeHtml(formatDate(result.publishedAt))}</td>
-      <td>${escapeHtml(formatDateTime(result.proposalsEndAt))}</td>
-      <td><span class="radar-receipt-status" data-status="${escapeHtml(result.proposalReceiptStatus || "unknown")}">${escapeHtml(receipt)}</span>${administrative}</td>
-      <td>${renderResultActions(result)}</td>
-    </tr>`;
+    const municipality = `${escapeHtml(resolveMunicipalityName(result))}${result.uf ? ` - ${escapeHtml(result.uf)}` : ""}`;
+    const administrative = result.administrativeUnitName && result.administrativeUnitName !== result.agencyName
+      ? `<small>${escapeHtml(result.administrativeUnitName)}</small>` : "";
+    return `<article class="radar-result-card">
+      <div class="radar-result-card-heading">
+        <div><p class="radar-result-number">Edital ${escapeHtml(number)}${year}</p><h3>${escapeHtml(excerpt)}</h3>${object.length > 220 ? `<details class="radar-object-details"><summary>Ver objeto completo</summary><p>${escapeHtml(object)}</p></details>` : ""}</div>
+        <span class="radar-receipt-status" data-status="${escapeHtml(result.proposalReceiptStatus || "unknown")}">${escapeHtml(receipt)}</span>
+      </div>
+      <dl class="radar-result-fields">
+        <div><dt>Município - UF</dt><dd>${municipality}</dd></div>
+        <div><dt>Abertura das propostas</dt><dd>${escapeHtml(formatDateTime(result.proposalsStartAt))}</dd></div>
+        <div><dt>Encerramento das propostas</dt><dd>${escapeHtml(formatDateTime(result.proposalsEndAt))}</dd></div>
+        <div><dt>Órgão responsável</dt><dd>${escapeHtml(result.agencyName || result.administrativeUnitName || "Órgão não informado")}${administrative}</dd></div>
+        <div><dt>Modalidade</dt><dd>${escapeHtml(resolveModalityName(result.modalityId))}</dd></div>
+        <div><dt>Plataforma de disputa</dt><dd>${platformMarkup}</dd></div>
+        <div><dt>Valor estimado</dt><dd>${escapeHtml(formatMoney(result.estimatedValue))}</dd></div>
+        <div><dt>Publicação no PNCP</dt><dd>${escapeHtml(formatDate(result.publishedAt))}</dd></div>
+        <div><dt>Situação no PNCP</dt><dd>${escapeHtml(result.administrativeSituationName || "Divulgada no PNCP")}</dd></div>
+      </dl>
+      <div class="radar-result-card-footer"><small>Identificador PNCP: ${escapeHtml(result.numberControlPncp || "—")}</small>${renderResultActions(result)}</div>
+    </article>`;
   }
 
   function renderPagination() {
@@ -736,23 +725,19 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
   function renderResults() {
     const target = byId("radarResultsContent");
     const count = byId("radarResultsCount");
-    const lastUpdate = byId("radarLastUpdated");
     if (!target) return;
     const favoritesView = state.view === "favorites";
     const rows = favoritesView ? state.favoritesResults : state.results;
     const searchForm = byId("radarSearchForm");
-    const defaultSettings = byId("radarDefaultSettings");
+    const platformAdminSettings = byId("radarPlatformAdminSettings");
     const resultControls = root?.querySelector(".radar-results-controls");
     if (searchForm) searchForm.hidden = favoritesView;
-    if (defaultSettings) defaultSettings.hidden = favoritesView || getUserRole?.() !== "Administrador";
+    if (platformAdminSettings) platformAdminSettings.hidden = favoritesView || getUserRole?.() !== "Administrador";
     if (resultControls) resultControls.hidden = favoritesView;
     byId("radarSearchViewButton")?.setAttribute("aria-pressed", String(!favoritesView));
     byId("radarFavoritesViewButton")?.setAttribute("aria-pressed", String(favoritesView));
     const title = byId("radarResultsTitle");
     if (title) title.textContent = favoritesView ? "Favoritos" : "Resultados";
-    if (lastUpdate) lastUpdate.textContent = state.dataUpdatedAt
-      ? `Última atualização da base: ${formatDateTime(state.dataUpdatedAt)}`
-      : "Última atualização da base: ainda não confirmada";
     if (favoritesView) {
       if (state.favoritesLoading && !rows.length) {
         if (count) count.textContent = "Carregando favoritos…";
@@ -777,9 +762,7 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
       }
       const total = Number(state.favoritesPagination?.totalCount ?? rows.length);
       if (count) count.textContent = `${total.toLocaleString("pt-BR")} licitações favoritas nesta conta.`;
-      target.innerHTML = `<div class="table-wrap radar-results-table-wrap" role="region" tabindex="0" aria-label="Licitações favoritas; use a rolagem horizontal para ver todas as colunas."><table class="radar-results-table"><caption class="sr-only">Licitações favoritas do usuário</caption><thead><tr>
-        <th scope="col">Contratação</th><th scope="col">Órgão responsável</th><th scope="col">Objeto da contratação</th><th scope="col">Modalidade</th><th scope="col">Plataforma</th><th scope="col">Município / UF</th><th scope="col" class="numeric">Valor estimado</th><th scope="col">Publicação</th><th scope="col">Encerramento</th><th scope="col">Situação</th><th scope="col">Ações</th>
-        </tr></thead><tbody>${rows.map(renderResultRow).join("")}</tbody></table></div>`;
+      target.innerHTML = `<div class="radar-result-list">${rows.map(renderResultCard).join("")}</div>`;
       renderPagination();
       renderCoverage();
       return;
@@ -811,9 +794,7 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
       ? `${rows.length.toLocaleString("pt-BR")} resultados nesta página; total ainda não confirmado.`
         : `${Number(state.pagination.totalCount).toLocaleString("pt-BR")} licitações encontradas.`;
     }
-    target.innerHTML = `<div class="table-wrap radar-results-table-wrap" role="region" tabindex="0" aria-label="Resultados do Radar; use a rolagem horizontal para ver todas as colunas."><table class="radar-results-table"><caption class="sr-only">Resultados do Radar de Licitações</caption><thead><tr>
-      <th scope="col">Contratação</th><th scope="col">Órgão responsável</th><th scope="col">Objeto da contratação</th><th scope="col">Modalidade</th><th scope="col">Plataforma</th><th scope="col">Município / UF</th><th scope="col" class="numeric">Valor estimado</th><th scope="col">Publicação</th><th scope="col">Encerramento</th><th scope="col">Situação</th><th scope="col">Ações</th>
-      </tr></thead><tbody>${rows.map(renderResultRow).join("")}</tbody></table></div>`;
+    target.innerHTML = `<div class="radar-result-list">${rows.map(renderResultCard).join("")}</div>`;
     renderPagination();
     renderCoverage();
   }
@@ -916,7 +897,6 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
   function showSearchView() {
     state.view = "search";
     state.favoritesError = "";
-    if (state.initialized) renderDefaultSettings();
     renderResults();
   }
 
@@ -1017,41 +997,6 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
       updateSearchAvailability();
       renderCoverage();
       renderResults();
-    }
-  }
-
-  async function saveDefaultPeriod() {
-    const input = byId("radarDefaultPeriodDays");
-    const days = Number(input?.value);
-    state.settingsError = "";
-    if (getUserRole?.() !== "Administrador") {
-      state.settingsError = "Somente Administradores podem alterar o período padrão compartilhado.";
-      renderDefaultSettings();
-      return;
-    }
-    if (!Number.isInteger(days) || days < 1 || days > 365) {
-      state.settingsError = "Informe um período entre 1 e 365 dias.";
-      renderDefaultSettings();
-      input?.focus();
-      return;
-    }
-    const button = byId("radarSaveDefaultPeriodButton");
-    if (button) button.disabled = true;
-    try {
-      const { data, error } = await client().functions.invoke("radar-collector", {
-        body: { action: "config", settings: { searchDefaultPeriodDays: days } },
-      });
-      if (error) throw error;
-      if (!data?.ok) throw new Error(data?.error || "Não foi possível salvar o período padrão.");
-      state.defaultPeriodDays = clampPeriodDays(data.config?.busca_periodo_padrao_dias ?? days);
-      renderDefaultSettings();
-      toast("Período padrão compartilhado atualizado. Filtros já abertos não foram alterados.", "success");
-    } catch (error) {
-      const described = await describeFunctionError(error, "Não foi possível salvar o período padrão.");
-      state.settingsError = described.message;
-      renderDefaultSettings();
-    } finally {
-      if (button) button.disabled = false;
     }
   }
 
@@ -1261,8 +1206,11 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
       } else if (target.dataset.radarAction === "reload-catalogs") {
         state.catalogsLoaded = false;
         void loadCatalogs();
-      } else if (target.dataset.radarAction === "select-all-modalities") {
-        state.selectedModalities = null;
+      } else if (target.dataset.radarAction === "toggle-modalities") {
+        const selectedCount = state.selectedModalities === null
+          ? state.modalities.length
+          : state.selectedModalities.length;
+        state.selectedModalities = selectedCount === state.modalities.length ? [] : null;
         renderModalityOptions();
       } else if (target.dataset.radarAction === "select-all-platforms") {
         state.selectedPlatformIds = null;
@@ -1275,11 +1223,6 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
         void reclassifyPlatformBatch();
       } else if (target.dataset.radarAction === "refresh-platform-metrics") {
         void loadPlatformMetrics();
-      } else if (target.dataset.radarAction === "apply-default-period") {
-        applyDefaultPeriod();
-        announce(`Período padrão de ${state.defaultPeriodDays} dias aplicado ao formulário.`);
-      } else if (target.dataset.radarAction === "save-default-period") {
-        void saveDefaultPeriod();
       } else if (target.dataset.radarAction === "refresh") {
         void runSearch({ page: 1, refreshCoverage: true });
       } else if (target.dataset.radarAction === "show-search") {
@@ -1318,11 +1261,8 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
         const modalityId = Number(event.target.value);
         if (event.target.checked) selected.add(modalityId);
         else selected.delete(modalityId);
-        state.selectedModalities = selected.size === state.modalities.length || selected.size === 0
-          ? null
-          : [...selected];
-        if (selected.size === 0) renderModalityOptions();
-        else updateModalitySummary();
+        state.selectedModalities = selected.size === state.modalities.length ? null : [...selected];
+        updateModalitySummary();
       } else if (event.target?.matches('input[name="radarPlatform"]')) {
         const activePlatforms = state.platforms.filter((platform) => platform.ativo);
         const selected = state.selectedPlatformIds === null
@@ -1380,7 +1320,6 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
       state.catalogsLoaded = false;
       state.loadingCatalogs = false;
       state.catalogsError = "";
-      state.settingsError = "";
       state.modalities = [];
       state.states = [];
       state.municipalities = [];
