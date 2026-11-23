@@ -105,12 +105,12 @@ test("combina filtro de plataforma com os demais filtros e mantém a página sel
   assert.equal(payload.publishedTo, "2026-10-10");
 });
 
-test("resume estado e confiança da plataforma para os cards de resultados", () => {
+test("resume o estado da plataforma nos cards de resultados sem exibir confiança", () => {
   assert.deepEqual(radarPlatformSummary({ platformStatus: "identified", platformName: "Licitanet" }), {
     label: "Licitanet", note: "",
   });
   assert.deepEqual(radarPlatformSummary({ platformStatus: "identified", platformName: "Licitanet", platformConfidence: "low" }), {
-    label: "Licitanet", note: "Confiança baixa; confira o edital.",
+    label: "Licitanet", note: "",
   });
   assert.deepEqual(radarPlatformSummary({ platformStatus: "identified", platformConflict: true }), {
     label: "Plataforma identificada", note: "Fontes divergentes; confira o edital.",

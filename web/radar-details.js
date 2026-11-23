@@ -64,33 +64,6 @@ function platformStatusLabel(status) {
   return "Pendente de verificação";
 }
 
-function platformMethodLabel(method) {
-  return ({
-    manual_confirmed: "Confirmação manual por Administrador",
-    source_domain: "Domínio da URL informada pelo PNCP",
-    complementary_text: "Referência explícita no texto complementar do PNCP",
-    user_name_hint: "Indício no nome informado pelo PNCP",
-    ambiguous_reference: "Referência ambígua no texto do PNCP",
-    domain_conflict: "Conflito entre domínios informados",
-    source_conflict: "Conflito entre fontes do PNCP",
-    pdf_context: "Instrução contextual do edital em PDF",
-    pdf_conflict: "Conflito entre plataformas citadas no edital em PDF",
-    pdf_no_match: "Edital consultado sem indicação contextual",
-    pdf_no_text: "PDF digitalizado sem texto extraível",
-    pdf_ambiguous_reference: "Menção sem contexto suficiente no edital",
-    pdf_unavailable: "Documento indisponível no PNCP",
-    pdf_invalid: "Arquivo PDF inválido",
-    pdf_too_large: "Arquivo PDF acima do limite",
-    pdf_page_limit: "Limite de páginas atingido",
-    pdf_processing_limit: "Tempo máximo de leitura atingido",
-    pdf_superseded_by_retification: "Menção substituída por retificação vigente",
-    unmatched_domain: "Domínio sem correspondência no catálogo",
-    invalid_url: "URL inválida ou insegura",
-    missing_url: "O PNCP não informou uma URL",
-    pncp_detail: "Detalhe consultado no PNCP",
-  })[method] || (method ? String(method) : "Não informado");
-}
-
 function platformEvidenceSourceLabel(source) {
   return ({
     linkSistemaOrigem: "Link de origem do PNCP",
@@ -98,37 +71,7 @@ function platformEvidenceSourceLabel(source) {
     objetoCompra: "Objeto da contratação",
     nomeComprador: "Nome informado pelo PNCP",
     manual: "Confirmação manual",
-    editalPdf: "Edital em PDF do PNCP",
   })[source] || (source ? String(source) : "Fonte não informada");
-}
-
-function platformConfidenceLabel(confidence) {
-  return ({ high: "Alta", medium: "Média", low: "Baixa" })[confidence] || "Não informada";
-}
-
-export function renderRadarPlatformEvidence(evidence) {
-  const items = Array.isArray(evidence) ? evidence.filter((item) => item && typeof item === "object") : [];
-  if (!items.length) return "";
-  return "<ul class=\"radar-platform-evidence\">" + items.map((item) => {
-    const excerpt = item.value_excerpt || item.matched_value || item.url;
-    const documentTitle = item.document_title || "";
-    const metadata = [
-      item.document_id ? "Documento " + item.document_id : "",
-      item.document_type || "",
-      item.document_published_at ? "publicado em " + dateValue(item.document_published_at, dateFormatter) : "",
-      item.page_number ? "página " + item.page_number : "",
-      item.confidence ? "confiança " + platformConfidenceLabel(item.confidence).toLowerCase() : "",
-      item.processed_at ? "processado em " + dateValue(item.processed_at) : "",
-      item.document_version_hash ? "SHA-256 " + String(item.document_version_hash).slice(0, 16) : "",
-      item.method ? platformMethodLabel(item.method) : "",
-    ].filter(Boolean);
-    const heading = documentTitle
-      ? "<strong>" + escapeHtml(platformEvidenceSourceLabel(item.source)) + ": " + escapeHtml(documentTitle) + "</strong>"
-      : "<strong>" + escapeHtml(platformEvidenceSourceLabel(item.source)) + ":</strong>";
-    const metadataMarkup = metadata.length ? "<p>" + escapeHtml(metadata.join(" · ")) + "</p>" : "";
-    const excerptMarkup = excerpt ? "<p>" + escapeHtml(excerpt) + "</p>" : "";
-    return "<li>" + heading + metadataMarkup + excerptMarkup + "</li>";
-  }).join("") + "</ul>";
 }
 
 function moneyValue(value) {
@@ -466,8 +409,6 @@ export function createRadarDetailsFeature({ getClient, getUserRole = () => null,
     const platformUrl = validatedPlatformSourceUrl(platform.sourceUrl);
     const pncpPlatformUrl = validatedPlatformSourceUrl(platform.sourceUrlFromPncp || contract.linkSistemaOrigem);
     const processUrl = validatedPlatformSourceUrl(platform.processUrl || contract.linkProcessoEletronico);
-    const evidence = Array.isArray(platform.evidence) ? platform.evidence.filter((item) => item && typeof item === "object") : [];
-    const evidenceMarkup = renderRadarPlatformEvidence(evidence);
     const previousAutomatic = platform.previousAutomatic && typeof platform.previousAutomatic === "object"
       ? platform.previousAutomatic
       : null;
@@ -487,16 +428,12 @@ export function createRadarDetailsFeature({ getClient, getUserRole = () => null,
         ${pncpPlatformUrl ? `<p>Link de origem informado pelo PNCP: <a href="${escapeHtml(pncpPlatformUrl)}" target="_blank" rel="noopener noreferrer">Abrir link do PNCP <span aria-hidden="true">↗</span></a></p>` : !platform.sourceUrlManuallyConfirmed ? "<p>O PNCP não informou um link de origem seguro para abrir.</p>" : ""}
         ${processUrl ? `<p>Link do processo eletrônico: <a href="${escapeHtml(processUrl)}" target="_blank" rel="noopener noreferrer">Abrir processo <span aria-hidden="true">↗</span></a></p>` : ""}
         <dl class="radar-platform-metadata">
-          ${platform.method ? `<div><dt>Método</dt><dd>${escapeHtml(platformMethodLabel(platform.method))}</dd></div>` : ""}
           ${platform.evidenceSource ? `<div><dt>Fonte da identificação</dt><dd>${escapeHtml(platformEvidenceSourceLabel(platform.evidenceSource))}</dd></div>` : ""}
-          ${platform.confidence ? `<div><dt>Confiança</dt><dd>${escapeHtml(platformConfidenceLabel(platform.confidence))}</dd></div>` : ""}
           ${platform.classifiedAt ? `<div><dt>Identificada em</dt><dd>${escapeHtml(dateValue(platform.classifiedAt))}</dd></div>` : ""}
         </dl>
         ${platform.conflict ? '<p class="radar-platform-conflict" role="status">As fontes consultadas indicam plataformas diferentes. Confira o edital antes de usar o link.</p>' : ""}
-        ${evidenceMarkup ? `<div><strong>Evidências encontradas</strong>${evidenceMarkup}</div>` : ""}
         ${previousAutomaticMarkup}${confirmationMarkup}
         <small>${platform.sourceUrlManuallyConfirmed ? "A correção manual foi registrada por um Administrador e fica preservada nas próximas sincronizações." : "A identificação automática corresponde aos dados disponíveis do PNCP; domínio e referências textuais não confirmam uma sessão efetiva de disputa."}</small>
-        ${getUserRole() === "Administrador" ? '<button class="quiet-action compact-action" type="button" data-radar-platform-confirm>Confirmar ou corrigir plataforma</button>' : ""}
       </section>
       ${officialUrl ? `<a class="quiet-action compact-action radar-official-link" href="${escapeHtml(officialUrl)}" target="_blank" rel="noopener noreferrer">Abrir contratação no PNCP <span aria-hidden="true">↗</span></a>` : ""}
     </section>`;
@@ -672,7 +609,7 @@ export function createRadarDetailsFeature({ getClient, getUserRole = () => null,
       return;
     }
     const loadedAt = dateTimeFormatter.format(new Date(state.data.retrievedAt));
-    content.innerHTML = `<p class="radar-detail-source">Fonte: <a href="${escapeHtml(state.data.sources.detail)}" target="_blank" rel="noopener noreferrer">API oficial do PNCP</a> · Consulta realizada em ${escapeHtml(loadedAt)}.</p>
+    content.innerHTML = `<p class="radar-detail-source">Fonte: Dados coletados em PNCP · Consulta realizada em ${escapeHtml(loadedAt)}.</p>
       <div class="radar-detail-layout">
         <main class="radar-detail-main">${renderGeneral(state.data.contract, state.data.sources, state.data.platform)}${renderItems(state.data.items)}</main>
         <aside class="radar-detail-aside">${renderDocuments(state.data.documents)}${renderImportPanel(state.data.items)}</aside>
@@ -752,7 +689,7 @@ export function createRadarDetailsFeature({ getClient, getUserRole = () => null,
     const currentPlatform = state.data.platform;
     const currentName = currentPlatform.name || platformStatusLabel(currentPlatform.status);
     const originalLink = validatedPlatformSourceUrl(currentPlatform.sourceUrlFromPncp);
-    summary.textContent = `Identificação atual: ${currentName}. Método: ${platformMethodLabel(currentPlatform.method)}.${originalLink ? " O link do PNCP será mantido separado da URL corrigida." : " O PNCP não informou um link de origem seguro."}`;
+    summary.textContent = `Identificação atual: ${currentName}.${originalLink ? " O link do PNCP será mantido separado da URL corrigida." : " O PNCP não informou um link de origem seguro."}`;
     const closeButtons = dialog.querySelectorAll("[data-radar-platform-dialog-close]");
     closeButtons.forEach((button) => { button.disabled = false; });
     const urlInput = byId("radarPlatformConfirmUrl");
@@ -847,7 +784,6 @@ export function createRadarDetailsFeature({ getClient, getUserRole = () => null,
       const identifier = currentId();
       await refresh();
       onClassificationChanged(identifier);
-      byId("radarDetailsContent")?.querySelector("[data-radar-platform-confirm]")?.focus();
     } catch (saveError) {
       status.dataset.tone = "error";
       status.textContent = saveError instanceof Error ? saveError.message : "Não foi possível salvar a confirmação.";
