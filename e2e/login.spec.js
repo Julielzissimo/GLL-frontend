@@ -93,7 +93,14 @@ async function validateRadarSearchPage(page) {
   await expect(page.locator("#radarTagList li")).toHaveCount(1);
   const simple = await submitRadarSearch(page, (payload) => payload.tags?.length === 1);
   if (simple.body.results.length === 0) throw new Error("A busca real por pavimentação no Espírito Santo não retornou registros conhecidos.");
-  await expect(page.locator("#radarResultsContent tbody tr").first()).toBeVisible();
+  const resultCard = page.locator("#radarResultsContent .radar-result-card").first();
+  await expect(resultCard).toBeVisible();
+  await expect(resultCard).toContainText("Município - UF");
+  await expect(resultCard).toContainText("Abertura das propostas");
+  await expect(resultCard).toContainText("Encerramento das propostas");
+  await expect(resultCard).toContainText("Órgão responsável");
+  await expect(resultCard).toContainText("Modalidade");
+  await expect(resultCard).toContainText("Ver itens");
 
   await page.locator("#radarTagInput").fill("aquisição");
   await page.locator("#radarTagInput").press("Enter");
