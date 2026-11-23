@@ -42,6 +42,17 @@ test("o Portal de Disputa usa o link do Radar ou busca pelo processo e órgão",
   assert.equal(invalidLinkFallback.startsWith("https://www.portaldecompraspublicas.com.br/processos?"), true);
 });
 
+test("a ação Itens expande o collapse no card sem navegar para outra página", () => {
+  const actionsRenderer = searchFeature.match(/function renderResultActions\(result\) \{[\s\S]*?\n  \}/u)?.[0];
+  assert.ok(actionsRenderer, "renderizador das ações dos cards do Radar presente");
+  assert.match(actionsRenderer, /<button class="primary-action compact-action" type="button" data-radar-card-view="items"[\s\S]*?aria-expanded="false" aria-controls="radarDetailsView">/u);
+  assert.doesNotMatch(actionsRenderer, /buildRadarDetailsHref|target="_blank"[^>]*aria-label="Ver itens em uma nova guia"/u);
+  assert.match(detailsFeature, /inlineExpanded = sameCard \? !inlineExpanded : true/u);
+  assert.match(detailsFeature, /card\.append\(detailViewNode\)/u);
+  assert.match(detailsFeature, /new URL\(window\.location\.href\)\.searchParams\.get\("radarDetail"\)/u);
+  assert.match(searchFeature, /actions\.syncDetailRoute\?\.\(\)/u);
+});
+
 test("os cards do Radar exibem a data explícita da fase de lances como Data da Disputa", () => {
   const resultCard = searchFeature.match(/function renderResultCard\(result\) \{[\s\S]*?\n  \}/u)?.[0];
   assert.ok(resultCard, "renderizador dos cards de resultados presente");
@@ -64,7 +75,10 @@ test("a listagem ordena pelas disputas mais recentes e permite expandir o órgã
   assert.match(resultCard, /data-radar-organization-toggle aria-expanded="false"/u);
   assert.match(searchFeature, /aria-expanded="false"/u);
   assert.match(styles, /\.radar-organization-toggle\.is-truncated[^}]*-webkit-line-clamp: 2/u);
-  assert.doesNotMatch(resultCard, /platform\.(?:source|method|note)|radar-platform-card-note/u);
+  assert.match(resultCard, /radarPlatformSummary\(result\)/u);
+  assert.match(resultCard, /platform\.label/u);
+  assert.match(resultCard, /platform\.note \? `<small class="radar-platform-card-note" role="status">/u);
+  assert.doesNotMatch(resultCard, /platform\.(?:source|method|confidence)/u);
 });
 
 test("os detalhes exibem Data da Disputa e removem os campos operacionais antigos", () => {
@@ -73,6 +87,16 @@ test("os detalhes exibem Data da Disputa e removem os campos operacionais antigo
   assert.match(renderGeneral, /\["Data da Disputa", dateValue\(contract\.dataInicioFaseLances\)\]/u);
   assert.doesNotMatch(renderGeneral, /Atualização dos dados no Radar/u);
   assert.doesNotMatch(renderGeneral, /\["Situação", contract\.situacaoCompraNome\]/u);
+});
+
+test("o detalhe da plataforma preserva classificação, links e conflitos sem evidências ou método", () => {
+  const renderGeneral = detailsFeature.match(/function renderGeneral\(contract, sources, platform = \{\}\) \{[\s\S]*?\n  \}/u)?.[0];
+  assert.ok(renderGeneral, "renderizador dos detalhes gerais presente");
+  assert.match(renderGeneral, /platformStatus/u);
+  assert.match(renderGeneral, /platform\.sourceUrl/u);
+  assert.match(renderGeneral, /platform\.conflict/u);
+  assert.doesNotMatch(renderGeneral, /platform\.(?:evidence|method|confidence)|Evidências do edital|Fonte da identificação|Confiança|Método de confirmação|Identificação automática anterior|Confirmar plataforma/u);
+  assert.doesNotMatch(detailsFeature, /modalView === "platform"|data-radar-platform-confirm/u);
 });
 
 test("a interface pública mantém os filtros solicitados e fixa o Portal como plataforma elegível", () => {

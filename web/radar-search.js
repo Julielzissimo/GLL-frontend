@@ -155,15 +155,6 @@ export function buildRadarOpenProposalCountPayload(filters, { activeModalities =
   });
 }
 
-export function buildRadarDetailsHref(numberControlPncp, currentUrl) {
-  const url = new URL(currentUrl);
-  url.search = "";
-  url.hash = "";
-  url.searchParams.set("page", "radar-de-licitacoes");
-  url.searchParams.set("radarDetail", String(numberControlPncp ?? ""));
-  return url.href;
-}
-
 export function radarEmptyResultState(coverage) {
   if (coverage?.status === "unconfirmed") {
     return {
@@ -907,7 +898,7 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
     if (actions.detailsEnabled === true) {
       const portalUrl = radarDisputePortalUrl(result);
       const portalAction = `<a class="quiet-action compact-action radar-dispute-portal-link" href="${escapeHtml(portalUrl)}" target="_blank" rel="noopener noreferrer">Portal de Disputa <span aria-hidden="true">↗</span></a>`;
-      for (const [view, label] of [["data", "Dados"], ["portal", "Portal de Disputa"], ["pncp", "PNCP"], ["documents", "Documentos"], ["items", "Itens"]]) {
+      for (const [view, label] of [["data", "Dados"], ["portal", "Portal de Disputa"], ["pncp", "PNCP"], ["documents", "Documentos"]]) {
         if (view === "portal") {
           buttons.push(portalAction);
           continue;
@@ -916,8 +907,10 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
           buttons.push(pncpAction);
           continue;
         }
-        buttons.push(`<button class="${view === "items" ? "primary-action" : "quiet-action"} compact-action" type="button" data-radar-card-view="${view}" data-radar-id="${escapeHtml(result.numberControlPncp)}"${view === "items" ? ' aria-expanded="false" aria-controls="radarDetailsView"' : ' aria-haspopup="dialog"'}>${view === "items" && Number.isSafeInteger(itemCount) ? `Itens (${itemCount.toLocaleString("pt-BR")})` : label}</button>`);
+        buttons.push(`<button class="quiet-action compact-action" type="button" data-radar-card-view="${view}" data-radar-id="${escapeHtml(result.numberControlPncp)}" aria-haspopup="dialog">${label}</button>`);
       }
+      const itemLabel = Number.isSafeInteger(itemCount) ? `Itens (${itemCount.toLocaleString("pt-BR")})` : "Itens";
+      buttons.push(`<button class="primary-action compact-action" type="button" data-radar-card-view="items" data-radar-id="${escapeHtml(result.numberControlPncp)}" aria-expanded="false" aria-controls="radarDetailsView">${itemLabel}</button>`);
     } else if (sourceUrl) {
       buttons.push(pncpAction);
     }
@@ -933,9 +926,7 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
     const administrative = result.administrativeUnitName && result.administrativeUnitName !== result.agencyName
       ? `<small>${escapeHtml(result.administrativeUnitName)}</small>` : "";
     const organization = `${escapeHtml(result.agencyName || result.administrativeUnitName || "Órgão não informado")}${administrative}`;
-    const platform = state.view === "search"
-      ? radarPlatformConfirmation(result)
-      : radarPlatformSummary(result);
+    const platform = radarPlatformSummary(result);
     return `<article class="radar-result-card" data-radar-card="${escapeHtml(result.numberControlPncp)}">
       <div class="radar-result-card-heading">
         <div><p class="radar-result-number"><strong>Edital ${escapeHtml(number)}${year}</strong><span>PNCP ${escapeHtml(result.numberControlPncp || "—")}</span></p><h3 class="radar-result-object"><button type="button" class="radar-result-object-toggle is-truncated" data-radar-object-toggle aria-expanded="false">${escapeHtml(object)}</button></h3></div>
@@ -945,7 +936,7 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
         <div><dt>Município - UF</dt><dd>${municipality}</dd></div>
         <div><dt>Órgão responsável</dt><dd><div class="radar-organization-field"><button type="button" class="radar-organization-toggle is-truncated" data-radar-organization-toggle aria-expanded="false">${organization}</button></div></dd></div>
         <div><dt>Modalidade</dt><dd>${escapeHtml(resolveModalityName(result.modalityId))}</dd></div>
-        <div><dt>Plataforma</dt><dd>${escapeHtml(platform.platform || platform.label)}</dd></div>
+        <div><dt>Plataforma</dt><dd>${escapeHtml(platform.label)}${platform.note ? `<small class="radar-platform-card-note" role="status">${escapeHtml(platform.note)}</small>` : ""}</dd></div>
         <div><dt>Data da Disputa</dt><dd>${escapeHtml(result.bidPhaseStartAt ? formatDateTime(result.bidPhaseStartAt) : "Não confirmada")}${result.bidPhaseStartAt && result.bidPhaseDateStatus === "failed" ? "<small>Revalidação pendente</small>" : ""}</dd></div>
         <div><dt>Limite p/ Recebimento das Propostas</dt><dd>${escapeHtml(formatDateTime(result.proposalsEndAt))}</dd></div>
       </dl>
