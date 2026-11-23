@@ -761,9 +761,10 @@ export function createRadarDetailsFeature({ getClient, getUserRole = () => null,
     const loadedAt = dateTimeFormatter.format(new Date(state.data.retrievedAt));
     content.innerHTML = `<p class="radar-detail-source">Fonte: Dados centralizados no Radar · Consulta realizada em ${escapeHtml(loadedAt)}.</p>
       <div class="radar-detail-layout">
-        <main class="radar-detail-main">${renderGeneral(state.data.contract, state.data.sources, state.data.platform)}${renderItems(state.data.items, state.data.itemSync)}</main>
+        <main class="radar-detail-main">${renderGeneral(state.data.contract, state.data.sources, state.data.platform)}</main>
         <aside class="radar-detail-aside">${renderDocuments(state.data.documents)}${renderImportPanel(state.data.items)}</aside>
-      </div>`;
+      </div>
+      ${renderItems(state.data.items, state.data.itemSync)}`;
     restoreFocusedDetailsControl(content, focusTarget);
   }
 
