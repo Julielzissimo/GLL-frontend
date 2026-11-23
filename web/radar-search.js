@@ -136,6 +136,7 @@ export function buildRadarSearchPayload(filters, { page = 1, refreshCoverage = f
     || selectedIds.length === activeIds.length;
   const payload = {
     action: "search",
+    dateFilterMode: "bid_phase",
     proposalReceiptState: filters.proposalReceiptState || "open",
     page: Number(page),
     pageSize: Number(filters.pageSize || 20),
