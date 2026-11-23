@@ -265,6 +265,9 @@ async function validateRadarSmokeRecord(page, numberControlPncp) {
   const syntheticItems = details.locator(".radar-items-table tbody tr");
   await expect(syntheticItems).toHaveCount(1);
   await expect(syntheticItems.first()).toContainText("Item sintetico de validacao do receiver");
+  await page.locator("#radarDetailsBackButton").click();
+  await expect(page.locator("#radarDetailsView")).toBeHidden();
+  await expect(page.locator("#radarListView")).toBeVisible();
 }
 
 test("o login de teste acessa somente a organização de teste", async ({ page }) => {
