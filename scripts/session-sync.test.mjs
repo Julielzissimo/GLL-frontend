@@ -454,6 +454,10 @@ function client(db = backend(), auth = { session: { user } }, config = {}) {
         get() { return this._innerHTML; },
         set(value) { this.innerHTMLWrites += 1; this._innerHTML = String(value); },
       });
+      Object.defineProperty(elements.get(id), "innerHTML", {
+        get() { return this._innerHTML; },
+        set(value) { this.innerHTMLWrites += 1; this._innerHTML = String(value); },
+      });
     }
     return elements.get(id);
   };
