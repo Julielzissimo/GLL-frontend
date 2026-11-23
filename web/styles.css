@@ -8112,6 +8112,8 @@ button.history-row:hover {
 .radar-detail-items-wrap { max-height: min(68vh, 52rem); overflow: auto; overscroll-behavior: contain; }
 .radar-items-table { min-width: 86rem; }
 .radar-items-table td { max-width: 25rem; white-space: pre-wrap; }
+.radar-items-table th.radar-item-description,
+.radar-items-table td.radar-item-description { width: 32rem; min-width: 32rem; max-width: none; }
 .radar-items-table td.numeric,
 .radar-items-table th.numeric { font-variant-numeric: tabular-nums; }
 .radar-document-list { display: grid; gap: var(--space-sm); margin: 0; padding: 0; list-style: none; }
