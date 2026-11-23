@@ -50,6 +50,11 @@ const SEARCH_SORTS = Object.freeze({
   object: "Objeto da contratação",
   situationCode: "Situação",
 });
+const DEFAULT_RADAR_MODALITY_NAMES = new Set([
+  "pregao eletronico",
+  "dispensa",
+  "inexigibilidade",
+]);
 
 const escapeHtml = (value) => String(value ?? "")
   .replaceAll("&", "&amp;")
@@ -104,6 +109,21 @@ function normalizedModalityIds(values) {
   return [...new Set((Array.isArray(values) ? values : [])
     .map((value) => Number(value))
     .filter((value) => Number.isSafeInteger(value) && value > 0))];
+}
+
+function modalityNameIdentity(value) {
+  return String(value ?? "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/gu, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/gu, " ")
+    .trim();
+}
+
+export function defaultRadarModalityIds(modalities) {
+  return normalizedModalityIds((Array.isArray(modalities) ? modalities : [])
+    .filter((modality) => DEFAULT_RADAR_MODALITY_NAMES.has(modalityNameIdentity(modality?.name)))
+    .map((modality) => modality?.pncp_id));
 }
 
 export function buildRadarSearchPayload(filters, { page = 1, refreshCoverage = false, activeModalities = [] } = {}) {
@@ -429,6 +449,7 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
     catalogsError: "",
     defaultPeriodDays: DEFAULT_PERIOD_DAYS,
     modalities: [],
+    modalitiesInitialized: false,
     states: [],
     municipalities: [],
     platforms: [],
@@ -649,6 +670,10 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
       if (statesResult.status === "rejected") throw statesResult.reason;
       if (platformCatalogResult.status === "rejected") throw platformCatalogResult.reason;
       state.modalities = modalitiesResult.value;
+      if (!state.modalitiesInitialized) {
+        state.selectedModalities = defaultRadarModalityIds(state.modalities);
+        state.modalitiesInitialized = true;
+      }
       state.states = statesResult.value;
       if (settingsResult.status === "fulfilled" && !settingsResult.value.error) {
         state.defaultPeriodDays = clampPeriodDays(settingsResult.value.data?.busca_periodo_padrao_dias);
@@ -1374,7 +1399,7 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
 
   function resetFilters() {
     state.tags = [];
-    state.selectedModalities = null;
+    state.selectedModalities = defaultRadarModalityIds(state.modalities);
     state.results = [];
     state.coverage = null;
     state.pagination = null;
@@ -1537,6 +1562,7 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
       state.loadingCatalogs = false;
       state.catalogsError = "";
       state.modalities = [];
+      state.modalitiesInitialized = false;
       state.states = [];
       state.municipalities = [];
       state.platforms = [];
