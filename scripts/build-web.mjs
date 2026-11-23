@@ -39,7 +39,7 @@ const TARGETS = {
     commercialProposalsEnabled: false,
     designSystemEnabled: false,
     radarDetailsFallbackEnabled: false,
-    radarDocumentsFallbackEnabled: false,
+    radarDocumentsFallbackEnabled: true,
     organizationDocumentsEnabled: true,
   },
   prod: null,

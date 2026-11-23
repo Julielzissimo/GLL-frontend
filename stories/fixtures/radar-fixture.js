@@ -1,12 +1,13 @@
 // Fictitious data for Storybook and browser tests only; never included in web/.
 import { createRadarSearchFeature } from '../../web/radar-search.js';
 import { createRadarDetailsFeature } from '../../web/radar-details.js';
+import { createRadarPreprocessedService } from '../../web/radar-preprocessed.js';
 import '../../web/radar-catalogs.js';
 import '../../web/radar-import.js';
 
-export async function mountRadarFixture(root, { role = 'Administrador', pending = false, itemCount = 45, previousImport = true, documentCount = 1, platformConflict = false } = {}) {
+export async function mountRadarFixture(root, { role = 'Administrador', pending = false, itemCount = 45, previousImport = true, documentCount = 1, platformConflict = false, catalogSource = "homolog", environment = "homolog" } = {}) {
   root.classList.remove('hidden');
-  window.GLL_CONFIG = { ...window.GLL_CONFIG, radarDocumentsFallbackEnabled: true };
+  window.GLL_CONFIG = { ...window.GLL_CONFIG, environment, radarDocumentsFallbackEnabled: true };
   const calls = [];
   const favorites = new Set();
   const imported = new Set(['4']);
@@ -78,8 +79,12 @@ export async function mountRadarFixture(root, { role = 'Administrador', pending 
     },
     functions: { async invoke(name, { body }) {
       calls.push({ name, body });
-      if (name === 'radar-search') return { data: { results, pagination: { page: body.page, pageSize: 50, totalCount: 100, hasMore: body.page < 2 }, coverage: { status: 'complete' }, metadata: {} } };
-      if (name === 'radar-details') return documentsFail ? { error: new Error('Falha fictícia de documentos') } : { data: { status: 'available', numberControlPncp: body.numberControlPncp, documents: { status: 'available', documents } } };
+      if (name === 'radar-search') return { data: { results, pagination: { page: body.page, pageSize: 50, totalCount: 100, hasMore: body.page < 2 }, coverage: { status: 'complete' }, metadata: { catalogSource } } };
+      if (name === 'radar-details') {
+        if (body.action === 'details') return { data: { ...await preprocessed.load(body.numberControlPncp), catalogSource } };
+        if (body.action === 'sync-status') return { data: { ...await preprocessed.loadItemSyncSnapshot(body.numberControlPncp), catalogSource } };
+        return documentsFail ? { error: new Error('Falha fictícia de documentos') } : { data: { status: 'available', numberControlPncp: body.numberControlPncp, documents: { status: 'available', documents } } };
+      }
       if (name === 'radar-import') {
         if (body.action === 'attach-documents') {
           const selectedDocumentIds = Array.isArray(body.selectedDocumentIds)
@@ -98,6 +103,7 @@ export async function mountRadarFixture(root, { role = 'Administrador', pending 
       return { data: { ok: true } };
     } },
   };
+  const preprocessed = createRadarPreprocessedService({ getClient: () => client });
   let search;
   const details = createRadarDetailsFeature({ getClient: () => client, getUserRole: () => role, onFavoriteChanged: (id, value) => search.syncFavorite(id, value) });
   search = createRadarSearchFeature({ getClient: () => client, getUserRole: () => role, actions: {

@@ -1,3 +1,4 @@
+import { isRadarCatalogReadOnly } from "./radar-catalog-source.js";
 import {
   canRequestRadarItemSyncUpdate,
   createRadarItemSyncPoller,
@@ -654,8 +655,10 @@ export function createRadarDetailsFeature({ getClient, getUserRole = () => null,
     const platformUrl = validatedPlatformSourceUrl(platform.sourceUrl);
     const pncpPlatformUrl = validatedPlatformSourceUrl(platform.sourceUrlFromPncp || contract.linkSistemaOrigem);
     const processUrl = validatedPlatformSourceUrl(platform.processUrl || contract.linkProcessoEletronico);
-    const catalogSourceLabel = catalogSource === "production"
+    const catalogSourceLabel = isRadarCatalogReadOnly(catalogSource)
       ? "Dados de produção; esta sessão tem acesso somente de leitura."
+      : catalogSource === "production"
+      ? "Dados do catálogo de produção."
       : catalogSource === "homolog"
       ? "Dados do catálogo de homologação."
       : "Dados disponíveis no cache local do Radar.";
@@ -717,12 +720,12 @@ export function createRadarDetailsFeature({ getClient, getUserRole = () => null,
       <div class="radar-detail-section-heading"><div class="radar-item-count-heading"><h2 id="radarItemsTitle">Itens da contratação</h2><span class="supplier-tag radar-items-total">Total: ${itemsState.items.length.toLocaleString("pt-BR")} ${itemsState.items.length === 1 ? "item" : "itens"}</span></div></div>
       ${statusNotice}
       ${secretCount ? `<p class="radar-feedback" data-tone="warning" role="status"><strong>Orçamento sigiloso</strong><span>O PNCP informou orçamento sigiloso em ${secretCount.toLocaleString("pt-BR")} ${secretCount === 1 ? "item" : "itens"}; valores não serão tratados como preço.</span></p>` : ""}
-      ${renderItemTable(itemsState.items, { selectable: catalogSource !== "production" })}
+      ${renderItemTable(itemsState.items, { selectable: !isRadarCatalogReadOnly(catalogSource) })}
     </section>`;
   }
 
   function renderImportPanel(itemsState, catalogSource = "local") {
-    if (catalogSource === "production") {
+    if (isRadarCatalogReadOnly(catalogSource)) {
       return `<section class="section-band radar-detail-section radar-import-panel" aria-labelledby="radarImportPanelTitle">
         <h2 id="radarImportPanelTitle" class="sr-only">Cadastrar edital</h2>
         <p>O edital e os itens estão em modo somente leitura, vindos do catálogo de produção. Para importar, use um edital armazenado no catálogo local de homologação.</p>
