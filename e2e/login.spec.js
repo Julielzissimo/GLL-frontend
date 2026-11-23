@@ -42,6 +42,14 @@ async function submitRadarSearch(page, predicate) {
 async function validateRadarSearchPage(page) {
   await page.locator("#navRadarSearchButton").click();
   await expect(page.locator("#radarSearchPage")).toBeVisible();
+  await expect(page.locator("#radarWorkbench")).toBeVisible();
+  await expect(page.locator("#radarFilterRail")).toBeVisible();
+  await expect(page.locator(".radar-results-panel")).toBeVisible();
+  const filterBounds = await page.locator("#radarFilterRail").boundingBox();
+  const resultsBounds = await page.locator(".radar-results-panel").boundingBox();
+  if (!filterBounds || !resultsBounds || resultsBounds.x <= filterBounds.x + filterBounds.width) {
+    throw new Error("Os filtros do Radar não estão posicionados ao lado dos resultados como no protótipo.");
+  }
   await expect.poll(() => page.locator('#radarModalities input[name="radarModality"]').count()).toBeGreaterThan(0);
   await expect.poll(() => page.locator("#radarUf option").count()).toBeGreaterThan(1);
   const defaultDates = {
@@ -100,6 +108,9 @@ async function validateRadarSearchPage(page) {
   await expect(resultCard).toContainText("Encerramento das propostas");
   await expect(resultCard).toContainText("Órgão responsável");
   await expect(resultCard).toContainText("Modalidade");
+  await expect(resultCard.locator(".radar-result-fields > div")).toHaveCount(6);
+  await expect(resultCard.locator(".radar-result-number")).toContainText("PNCP");
+  await expect(resultCard.locator(".radar-result-value")).toContainText("Valor estimado");
   await expect(resultCard).toContainText("Ver itens");
 
   await page.locator("#radarTagInput").fill("aquisição");
