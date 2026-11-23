@@ -2627,12 +2627,15 @@
     {
       "id": "ISSUE-542",
       "backend_commits": [
-        "6869f34258020e5d72729a0b63a3a308d2c5fdd3"
+        "6869f34258020e5d72729a0b63a3a308d2c5fdd3",
+        "2681f277f70357223a843fc5a302d1f711cfbff8"
       ],
       "frontend_commits": [
         "1cadf6fc5726ab9368a3f53f60eea53206e9b752"
       ],
-      "migrations": []
+      "migrations": [
+        "supabase/migrations/20261123221244_retire_radar_legacy_collection_cron.sql"
+      ]
     }
   ]
 }
