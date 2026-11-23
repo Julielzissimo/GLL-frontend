@@ -342,6 +342,18 @@ export function validatedPlatformSourceUrl(value) {
   }
 }
 
+export function radarDisputePortalUrl(result = {}) {
+  const sourceUrl = validatedPlatformSourceUrl(result.platformSourceUrl);
+  if (sourceUrl) return sourceUrl;
+
+  const searchUrl = new URL("https://www.portaldecompraspublicas.com.br/processos");
+  const procurementNumber = String(result.procurementNumber || "").trim();
+  const buyerAgency = String(result.agencyName || result.administrativeUnitName || "").trim();
+  if (procurementNumber) searchUrl.searchParams.set("processo", procurementNumber);
+  if (buyerAgency) searchUrl.searchParams.set("orgao", buyerAgency);
+  return searchUrl.toString();
+}
+
 export function radarPlatformSummary(result = {}) {
   const status = result.platformStatus || "pending_verification";
   const label = status === "identified"
@@ -890,7 +902,13 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
       ? `<a class="quiet-action compact-action radar-source-link" href="${escapeHtml(sourceUrl)}" target="_blank" rel="noopener noreferrer">PNCP <span aria-hidden="true">↗</span></a>`
       : '<button class="quiet-action compact-action" type="button" disabled title="Link do PNCP indisponível">PNCP</button>';
     if (actions.detailsEnabled === true) {
-      for (const [view, label] of [["data", "Dados"], ["pncp", "PNCP"], ["documents", "Documentos"], ["items", "Itens"]]) {
+      const portalUrl = radarDisputePortalUrl(result);
+      const portalAction = `<a class="quiet-action compact-action radar-dispute-portal-link" href="${escapeHtml(portalUrl)}" target="_blank" rel="noopener noreferrer">Portal de Disputa <span aria-hidden="true">↗</span></a>`;
+      for (const [view, label] of [["data", "Dados"], ["portal", "Portal de Disputa"], ["pncp", "PNCP"], ["documents", "Documentos"], ["items", "Itens"]]) {
+        if (view === "portal") {
+          buttons.push(portalAction);
+          continue;
+        }
         if (view === "pncp") {
           buttons.push(pncpAction);
           continue;
