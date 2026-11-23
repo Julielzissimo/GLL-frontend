@@ -9,6 +9,7 @@ import {
   radarItemSyncProgress,
   retainCompleteRadarItemSnapshot,
   shouldPollRadarItemSync,
+  shouldRenderRadarItemSyncNotice,
   RADAR_ITEM_SYNC_ERROR_MESSAGE,
   RADAR_ITEM_SYNC_PENDING_MESSAGE,
   RADAR_ITEM_SYNC_RUNNING_MESSAGE,
@@ -48,6 +49,18 @@ test("pending items get the automatic update message without claiming confirmed 
   assert.equal(presentation.message, RADAR_ITEM_SYNC_PENDING_MESSAGE);
   assert.doesNotMatch(presentation.message, /confirmou|não possui itens/u);
   assert.equal(shouldPollRadarItemSync({ status: "pending" }, { status: "pending" }), true);
+});
+
+test("does not render an empty retry notice when contingency is disabled", () => {
+  const itemsState = { status: "available", complete: true, items: [{ number: "1" }] };
+  const itemSync = { status: "complete" };
+  const presentation = radarItemSyncPresentation(itemsState, itemSync);
+
+  assert.equal(presentation.message, "");
+  assert.equal(canRequestRadarItemSyncUpdate(itemsState, itemSync, Date.parse("2026-11-17T12:00:00Z")), true);
+  assert.equal(shouldRenderRadarItemSyncNotice(presentation, { canRequestUpdate: false }), false);
+  assert.equal(shouldRenderRadarItemSyncNotice(presentation, { canRequestUpdate: true }), true);
+  assert.equal(shouldRenderRadarItemSyncNotice({ message: " ", runningMessage: "", progress: "\n" }), false);
 });
 
 test("processing reports reliable page progress and stale snapshots remain visible", () => {
