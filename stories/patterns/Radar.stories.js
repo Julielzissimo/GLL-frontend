@@ -59,7 +59,7 @@ export const DetalhesDaContratacao = {
 
 // Uses the application's actual DOM, controllers and styles with fictitious data.
 export const CartaoCompacto = {
-  name: "FEAT-005 · Card compacto e filtros no topo",
+  name: "FEAT-005 · Cartões compactos e filtros laterais recolhíveis",
   render: () => {
     const documentCopy = new DOMParser().parseFromString(applicationHtml, "text/html");
     const root = documentCopy.querySelector("#radarSearchPage");

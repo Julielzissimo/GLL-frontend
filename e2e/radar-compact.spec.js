@@ -104,10 +104,16 @@ for (const width of [1440, 1024, 768, 390]) {
     await page.setViewportSize({ width, height: 1000 });
     const errors = await setup(page);
     await search(page);
+    await expect(page.locator('#radarFilterRail')).toHaveAttribute('aria-hidden', 'true');
+    await expect(page.locator('#radarFilterToggleButton')).toBeVisible();
     await page.locator('#radarFilterToggleButton').click();
     const filters = await page.locator('#radarFilterRail').boundingBox();
     const results = await page.locator('.radar-results-panel').boundingBox();
-    expect(filters.y + filters.height).toBeLessThanOrEqual(results.y);
+    if (width >= 761) {
+      expect(filters.x + filters.width).toBeLessThanOrEqual(results.x);
+    } else {
+      expect(filters.y + filters.height).toBeLessThanOrEqual(results.y);
+    }
     await page.screenshot({ path: `test-results/radar-${width}.png`, fullPage: true });
     await page.locator('[data-radar-card-view="items"]').first().click();
     await expect(page.locator('[data-radar-select-item]')).toHaveCount(45);
