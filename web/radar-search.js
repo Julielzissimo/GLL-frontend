@@ -8,6 +8,39 @@ const RECEIPT_STATUS_LABELS = Object.freeze({
   closed: "Propostas encerradas",
   unknown: "Prazo não informado",
 });
+const PORTAL_PLATFORM_NAME = "Portal de Compras Públicas";
+const PLATFORM_CONFIRMATION_METHOD_LABELS = Object.freeze({
+  manual_confirmed: "Confirmação manual registrada no Radar",
+  source_domain: "Domínio da URL de origem",
+  complementary_text: "Referência explícita no texto complementar",
+  user_name_hint: "Indício no nome informado pela fonte",
+  ambiguous_reference: "Referência ambígua na fonte",
+  domain_conflict: "Conflito entre domínios informados",
+  source_conflict: "Conflito entre fontes",
+  pdf_context: "Contexto do edital em PDF",
+  pdf_conflict: "Conflito entre plataformas no edital",
+  pdf_no_match: "Edital consultado sem indicação contextual",
+  pdf_no_text: "PDF sem texto extraível",
+  pdf_ambiguous_reference: "Menção sem contexto suficiente no edital",
+  pdf_unavailable: "Documento indisponível",
+  pdf_invalid: "Arquivo PDF inválido",
+  pdf_too_large: "Arquivo PDF acima do limite",
+  pdf_page_limit: "Limite de páginas atingido",
+  pdf_processing_limit: "Tempo máximo de leitura atingido",
+  pdf_superseded_by_retification: "Menção substituída por retificação vigente",
+  unmatched_domain: "Domínio sem correspondência no catálogo",
+  invalid_url: "URL inválida ou insegura",
+  missing_url: "A fonte não informou URL",
+  pncp_detail: "Detalhe consultado na fonte oficial",
+});
+const PLATFORM_CONFIRMATION_SOURCE_LABELS = Object.freeze({
+  linkSistemaOrigem: "Link de origem do PNCP",
+  informacaoComplementar: "Informação complementar do PNCP",
+  objetoCompra: "Objeto da contratação",
+  nomeComprador: "Nome informado pelo PNCP",
+  manual: "Confirmação manual",
+  editalPdf: "Edital em PDF do PNCP",
+});
 const SEARCH_SORTS = Object.freeze({
   publishedAt: "Data de publicação",
   proposalEndsAt: "Encerramento das propostas",
@@ -92,16 +125,20 @@ export function buildRadarSearchPayload(filters, { page = 1, refreshCoverage = f
   };
   if (tags.length) payload.tags = tags;
   if (!useEveryActiveModality && selectedIds.length) payload.modalities = selectedIds;
-  if (Array.isArray(filters.platformIds)) {
-    const platformIds = [...new Set(filters.platformIds.map((id) => String(id).toLowerCase()))];
-    if (platformIds.length || filters.includeUnidentified === true) payload.platformIds = platformIds;
-  }
-  if (filters.includeUnidentified === true) payload.includeUnidentified = true;
   if (filters.uf) payload.uf = String(filters.uf).trim().toUpperCase();
   if (filters.municipalityIbgeId && filters.uf) payload.municipalityIbgeId = Number(filters.municipalityIbgeId);
   if (filters.publishedFrom) payload.publishedFrom = filters.publishedFrom;
   if (filters.publishedTo) payload.publishedTo = filters.publishedTo;
   return payload;
+}
+
+export function buildRadarOpenProposalCountPayload(filters, { activeModalities = [] } = {}) {
+  if (filters.proposalReceiptState === "open") return null;
+  return buildRadarSearchPayload({ ...filters, proposalReceiptState: "open" }, {
+    page: 1,
+    refreshCoverage: false,
+    activeModalities,
+  });
 }
 
 export function buildRadarDetailsHref(numberControlPncp, currentUrl) {
@@ -117,29 +154,141 @@ export function radarEmptyResultState(coverage) {
   if (coverage?.complete === true || coverage?.status === "complete") {
     return {
       kind: "complete-empty",
-      title: "Nenhuma licitação encontrada",
+      title: "Nenhum edital encontrado",
       description: "A cobertura está completa para o escopo pesquisado. Ajuste os filtros para ampliar a busca.",
     };
   }
   if (coverage?.status === "not_collected") {
     return {
       kind: "not-collected",
-      title: "Este período ainda não foi coletado",
-      description: "Não há resultados indexados para este escopo. Solicite uma atualização para iniciar a coleta.",
+      title: "Coleta indisponível",
+      description: "Não há cobertura sincronizada para o período e os filtros selecionados.",
     };
   }
   if (coverage?.status === "failed") {
     return {
       kind: "sync-failed",
-      title: "A sincronização falhou",
-      description: "A cobertura não foi concluída. Tente atualizar novamente antes de avaliar os resultados.",
+      title: "Erro de sincronização",
+      description: "O backend registrou uma falha na atualização. Os resultados armazenados continuam preservados.",
+    };
+  }
+  if (coverage?.status === "stale") {
+    return {
+      kind: "stale-empty",
+      title: "Dados desatualizados",
+      description: "A cobertura atual está desatualizada; consulte novamente quando a próxima sincronização estiver disponível.",
     };
   }
   return {
     kind: "partial-empty",
-    title: "Nenhum resultado visível na cobertura atual",
-    description: "A coleta está incompleta ou desatualizada. Ainda não é possível concluir que não existam licitações neste período.",
+    title: "Nenhum edital nesta página",
+    description: "A cobertura está parcial. Não é possível concluir que não existam editais neste período.",
   };
+}
+
+export function radarOperationalStatus({ coverage, collectionTask, error, totalCount } = {}) {
+  if (error?.kind === "unavailable" || error?.kind === "connection") {
+    return {
+      kind: "collection-unavailable",
+      label: "Coleta indisponível",
+      tone: "error",
+      description: "A API do GLL não está disponível. Os resultados sincronizados já exibidos permanecem armazenados.",
+    };
+  }
+  if (error?.kind === "access") {
+    return {
+      kind: "access-error",
+      label: "Acesso indisponível",
+      tone: "error",
+      description: "A sessão atual não conseguiu consultar os dados do Radar.",
+    };
+  }
+  if (error) {
+    return {
+      kind: "query-error",
+      label: "Falha ao consultar o Radar",
+      tone: "error",
+      description: "A API do GLL não concluiu a consulta. Resultados armazenados de pesquisas anteriores continuam disponíveis.",
+    };
+  }
+  if (["queued", "running", "partial"].includes(collectionTask?.status)) {
+    return {
+      kind: "collection-running",
+      label: "Coleta em andamento",
+      tone: "info",
+      description: "O backend informa uma atualização em andamento. Os resultados já sincronizados continuam disponíveis.",
+    };
+  }
+  if (collectionTask?.status === "failed" || coverage?.status === "failed") {
+    return {
+      kind: "sync-error",
+      label: "Erro de sincronização",
+      tone: "error",
+      description: "O backend registrou uma falha de sincronização. Os resultados armazenados continuam disponíveis.",
+    };
+  }
+  if (coverage?.status === "stale") {
+    return {
+      kind: "stale",
+      label: "Dados desatualizados",
+      tone: "warning",
+      description: "A cobertura está desatualizada. Os resultados armazenados continuam disponíveis.",
+    };
+  }
+  if (coverage?.status === "not_collected") {
+    return {
+      kind: "collection-unavailable",
+      label: "Coleta indisponível",
+      tone: "info",
+      description: "Não há cobertura sincronizada para o escopo selecionado.",
+    };
+  }
+  if (coverage?.status === "partial") {
+    return {
+      kind: "partial",
+      label: "Cobertura parcial",
+      tone: "warning",
+      description: "Os dados armazenados estão disponíveis, mas o contrato atual não informa se a coleta ainda está ativa.",
+    };
+  }
+  if (coverage?.status === "complete" && totalCount === 0) {
+    return {
+      kind: "none-found",
+      label: "Nenhum edital encontrado",
+      tone: "info",
+      description: "A cobertura está completa para os filtros selecionados e não há editais correspondentes.",
+    };
+  }
+  if (coverage?.status === "complete") {
+    return {
+      kind: "available",
+      label: "Dados sincronizados disponíveis",
+      tone: "success",
+      description: "A cobertura está completa para os filtros selecionados.",
+    };
+  }
+  return {
+    kind: "unknown",
+    label: "Situação da atualização indisponível",
+    tone: "info",
+    description: "A API do GLL não informou o estado de cobertura para esta consulta.",
+  };
+}
+
+export function radarPlatformConfirmation(result = {}) {
+  const methodCode = String(result.platformClassificationMethod || "");
+  const sourceCode = String(result.platformEvidenceSource || "");
+  return {
+    platform: PORTAL_PLATFORM_NAME,
+    method: PLATFORM_CONFIRMATION_METHOD_LABELS[methodCode] || methodCode || "Confirmação elegível pelo GLL Radar Engine",
+    source: PLATFORM_CONFIRMATION_SOURCE_LABELS[sourceCode] || sourceCode || "Fonte não informada pelo contrato",
+  };
+}
+
+export function radarLatestDisplayedSync(results = []) {
+  const timestamps = results.map((result) => Date.parse(result?.dataUpdatedAt || ""))
+    .filter((value) => Number.isFinite(value));
+  return timestamps.length ? new Date(Math.max(...timestamps)).toISOString() : null;
 }
 
 export function validatedPncpSourceUrl(value) {
@@ -240,14 +389,12 @@ function clampPeriodDays(value) {
   return Number.isInteger(days) && days >= 1 && days <= 365 ? days : DEFAULT_PERIOD_DAYS;
 }
 
-function currentFiltersFromInputs(root, tags, modalities, platformIds) {
+function currentFiltersFromInputs(root, tags, modalities) {
   return {
     tags,
     modalities,
     uf: root.querySelector("#radarUf")?.value || "",
     municipalityIbgeId: root.querySelector("#radarMunicipality")?.value || "",
-    platformIds,
-    includeUnidentified: root.querySelector("#radarIncludeUnidentified")?.checked === true,
     publishedFrom: root.querySelector("#radarPublishedFrom")?.value || "",
     publishedTo: root.querySelector("#radarPublishedTo")?.value || "",
     proposalReceiptState: root.querySelector("#radarSituation")?.value || "open",
@@ -290,7 +437,6 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
     municipalityNames: new Map(),
     municipalityLoadId: 0,
     selectedModalities: null,
-    selectedPlatformIds: null,
     tags: [],
     results: [],
     favoriteIds: new Set(),
@@ -304,6 +450,7 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
     view: "search",
     coverage: null,
     pagination: null,
+    openProposalCount: null,
     collectionTask: null,
     queriedAt: null,
     dataUpdatedAt: null,
@@ -379,20 +526,6 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
     }
   }
 
-  function renderPlatformOptions() {
-    const list = byId("radarPlatforms");
-    if (!list) return;
-    const active = state.platforms.filter((platform) => platform.ativo);
-    const selected = state.selectedPlatformIds === null
-      ? new Set(active.map((platform) => platform.id))
-      : new Set(state.selectedPlatformIds);
-    list.innerHTML = active.length ? active.map((platform) => `
-      <label class="radar-modality-option">
-        <input type="checkbox" name="radarPlatform" value="${escapeHtml(platform.id)}"${selected.has(platform.id) ? " checked" : ""} />
-        <span>${escapeHtml(platform.nome)}</span>
-      </label>`).join("") : '<p class="radar-empty-state">Nenhuma plataforma ativa disponível.</p>';
-  }
-
   function renderPlatformAdmin() {
     const target = byId("radarPlatformAdminList");
     const platformSelect = byId("radarPlatformDomainPlatform");
@@ -419,7 +552,6 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
     state.platforms = platformResult.data || [];
     state.platformDomains = domainResult.data || [];
     state.platformCatalogVersion = Number(versionResult.data?.versao || 1);
-    renderPlatformOptions();
     renderPlatformAdmin();
   }
 
@@ -526,7 +658,6 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
       state.catalogsLoaded = true;
       state.initialized = true;
       renderModalityOptions();
-      renderPlatformOptions();
       renderPlatformAdmin();
       renderStateOptions();
       if (!byId("radarPublishedFrom").value && !byId("radarPublishedTo").value) applyDefaultPeriod();
@@ -561,7 +692,7 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
     if (state.searching) {
       target.hidden = false;
       target.dataset.tone = "info";
-      target.innerHTML = '<span class="radar-spinner" aria-hidden="true"></span><span>Pesquisando no índice de contratações do Radar…</span>';
+      target.innerHTML = '<span class="radar-spinner" aria-hidden="true"></span><span>Consultando os resultados sincronizados no Supabase…</span>';
       return;
     }
     if (state.error) {
@@ -575,47 +706,79 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
       target.replaceChildren();
       return;
     }
-    let tone = "success";
-    let title = "Cobertura completa";
-    let description = "O Radar consultou o escopo completo para os filtros atuais.";
-    if (coverage?.status === "partial") {
-      if (!state.collectionTask || !["queued", "running", "partial"].includes(state.collectionTask.status)) {
-        target.hidden = true;
-        target.replaceChildren();
-        return;
-      }
-    } else if (coverage?.status === "stale") {
-      tone = "warning";
-      title = "Cobertura desatualizada";
-      description = "Os resultados disponíveis podem não incluir as atualizações mais recentes do PNCP.";
-    } else if (coverage?.status === "not_collected") {
-      tone = "info";
-      title = "Período ainda não coletado";
-      description = "Não há cobertura confirmada para todo o escopo pesquisado.";
-    } else if (coverage?.status === "failed") {
-      tone = "error";
-      title = "Falha de sincronização";
-      description = "A coleta não concluiu o escopo solicitado. Os registros atuais podem estar incompletos.";
-    }
-    if (state.collectionTask && ["queued", "running", "partial"].includes(state.collectionTask.status)) {
-      tone = "info";
-      title = "Atualização em andamento";
-      description = state.collectionTask.status === "queued"
-        ? "A solicitação entrou na fila do Radar. A tabela mostra os dados já indexados e pode ser consultada novamente."
-        : "O Radar está atualizando este escopo. A tabela mostra os dados já indexados e pode ser consultada novamente.";
-    } else if (state.collectionTask?.status === "failed") {
-      tone = "error";
-      title = "Falha de sincronização";
-      description = "O Radar não concluiu a atualização solicitada. Os resultados atuais podem estar incompletos.";
-    } else if (state.collectionTask?.status === "complete") {
-      tone = "success";
-      title = "Atualização concluída";
-      description = "A coleta solicitada foi concluída para este escopo.";
-    }
+    const operational = radarOperationalStatus({
+      coverage,
+      collectionTask: state.collectionTask,
+      totalCount: state.pagination?.totalCount,
+    });
     const coverageTime = coverage?.updatedAt ? ` Última cobertura: ${formatDateTime(coverage.updatedAt)}.` : "";
     target.hidden = false;
-    target.dataset.tone = tone;
-    target.innerHTML = `<strong>${escapeHtml(title)}</strong><span>${escapeHtml(description + coverageTime)}</span>`;
+    target.dataset.tone = operational.tone;
+    target.innerHTML = `<strong>${escapeHtml(operational.label)}</strong><span>${escapeHtml(operational.description + coverageTime)}</span>`;
+  }
+
+  function renderOperationalSummary() {
+    const target = byId("radarOperationalSummary");
+    if (!target) return;
+    if (state.view === "favorites" || (!state.hasSearched && !state.error)) {
+      target.hidden = true;
+      return;
+    }
+    const totalCount = Number.isSafeInteger(state.pagination?.totalCount) ? state.pagination.totalCount : null;
+    const latestRecordSync = radarLatestDisplayedSync(state.results);
+    const latestSync = state.dataUpdatedAt || latestRecordSync;
+    const status = radarOperationalStatus({
+      coverage: state.coverage,
+      collectionTask: state.collectionTask,
+      error: state.error,
+      totalCount,
+    });
+    const firstResult = state.results.find((result) => result && typeof result === "object") || {};
+    const confirmation = radarPlatformConfirmation(firstResult);
+    const coverage = state.coverage || {};
+    const expectedScopes = Number(coverage.expectedScopes);
+    const completeScopes = Number(coverage.completeScopes);
+    const knownScopes = Number(coverage.knownScopes);
+    const scopeCountAvailable = Number.isFinite(expectedScopes) && Number.isFinite(completeScopes);
+    const coverageLabel = coverage.status === "complete" ? "Completa"
+      : coverage.status === "partial" ? "Parcial"
+        : coverage.status === "stale" ? "Desatualizada"
+          : coverage.status === "failed" ? "Com falha"
+            : coverage.status === "not_collected" ? "Não coletada" : "Não informada";
+    const setText = (id, value) => {
+      const element = byId(id);
+      if (element) element.textContent = value;
+    };
+    const updateCard = byId("radarUpdateState");
+    if (updateCard) updateCard.dataset.tone = status.tone;
+    setText("radarTotalFound", totalCount === null ? "Não confirmado" : totalCount.toLocaleString("pt-BR"));
+    setText("radarTotalFoundDetail", totalCount === null
+      ? "O total depende da cobertura informada pelo backend."
+      : state.error
+        ? "Total da última consulta bem-sucedida; os filtros atuais não foram aplicados."
+        : "Total para os filtros da pesquisa atual.");
+    const openCount = state.openProposalCount;
+    setText("radarTotalOpen", Number.isSafeInteger(openCount) ? openCount.toLocaleString("pt-BR") : "Não confirmado");
+    setText("radarTotalOpenDetail", state.error
+      ? "Último total disponível; a pesquisa atual não foi concluída."
+      : "Editais com propostas abertas no mesmo escopo geográfico e período.");
+    setText("radarLastSuccessfulSync", latestSync ? formatDateTime(latestSync) : "Não informado");
+    setText("radarLastSuccessfulSyncDetail", latestSync
+      ? state.dataUpdatedAt
+        ? "Última coleta bem-sucedida nos escopos desta busca; a API não expõe o horário do lote global do Engine."
+        : "Sincronização mais recente entre os editais exibidos; a API não expõe o horário do lote global do Engine."
+      : "O contrato atual não expõe o horário do último lote do Engine.");
+    setText("radarCoverageValue", coverageLabel);
+    setText("radarCoverageDetail", scopeCountAvailable
+      ? `${state.error ? "Última pesquisa bem-sucedida: " : ""}${completeScopes.toLocaleString("pt-BR")} de ${expectedScopes.toLocaleString("pt-BR")} escopos completos · ${Number.isFinite(knownScopes) ? knownScopes.toLocaleString("pt-BR") : "—"} com dados`
+      : "A API não informou a quantidade de escopos.");
+    setText("radarConfirmationValue", confirmation.platform);
+    setText("radarConfirmationDetail", state.results.length
+      ? `${state.error ? "Pesquisa anterior · " : ""}Primeiro edital exibido · Fonte: ${confirmation.source} · Método: ${confirmation.method}`
+      : "A API não retornou edital para detalhar fonte e método de confirmação.");
+    setText("radarUpdateStateValue", status.label);
+    setText("radarUpdateStateDetail", status.description);
+    target.hidden = false;
   }
 
   function resolveModalityName(id) {
@@ -659,7 +822,9 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
     const municipality = `${escapeHtml(resolveMunicipalityName(result))}${result.uf ? ` - ${escapeHtml(result.uf)}` : ""}`;
     const administrative = result.administrativeUnitName && result.administrativeUnitName !== result.agencyName
       ? `<small>${escapeHtml(result.administrativeUnitName)}</small>` : "";
-    const platform = radarPlatformSummary(result);
+    const platform = state.view === "search"
+      ? radarPlatformConfirmation(result)
+      : radarPlatformSummary(result);
     return `<article class="radar-result-card">
       <div class="radar-result-card-heading">
         <div><p class="radar-result-number"><strong>Edital ${escapeHtml(number)}${year}</strong><span>PNCP ${escapeHtml(result.numberControlPncp || "—")}</span></p><h3 class="radar-result-object"><span class="radar-result-object-text">${escapeHtml(object)}</span></h3></div>
@@ -669,7 +834,7 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
         <div><dt>Município - UF</dt><dd>${municipality}</dd></div>
         <div><dt>Órgão responsável</dt><dd>${escapeHtml(result.agencyName || result.administrativeUnitName || "Órgão não informado")}${administrative}</dd></div>
         <div><dt>Modalidade</dt><dd>${escapeHtml(resolveModalityName(result.modalityId))}</dd></div>
-        <div><dt>Plataforma</dt><dd>${escapeHtml(platform.label)}${platform.note ? `<small class="radar-platform-card-note">${escapeHtml(platform.note)}</small>` : ""}</dd></div>
+        <div><dt>Plataforma</dt><dd>${escapeHtml(platform.platform || platform.label)}${platform.source ? `<small class="radar-platform-card-note">Fonte: ${escapeHtml(platform.source)} · Método: ${escapeHtml(platform.method)}</small>` : platform.note ? `<small class="radar-platform-card-note">${escapeHtml(platform.note)}</small>` : ""}</dd></div>
         <div><dt>Abertura das propostas</dt><dd>${escapeHtml(formatDateTime(result.proposalsStartAt))}</dd></div>
         <div><dt>Encerramento das propostas</dt><dd>${escapeHtml(formatDateTime(result.proposalsEndAt))}</dd></div>
         <div><dt>Publicação no PNCP</dt><dd>${escapeHtml(formatDate(result.publishedAt))}</dd></div>
@@ -757,6 +922,7 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
     const filterRail = byId("radarFilterRail");
     const platformAdminSettings = byId("radarPlatformAdminSettings");
     const resultControls = root?.querySelector(".radar-results-controls");
+    renderOperationalSummary();
     workbench?.classList.toggle("is-favorites", favoritesView);
     if (filterRail) filterRail.hidden = favoritesView;
     if (searchForm) searchForm.hidden = favoritesView;
@@ -797,8 +963,15 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
       return;
     }
     if (!state.hasSearched && !state.searching) {
+      if (state.error) {
+        if (count) count.textContent = "Não foi possível consultar os resultados do Radar.";
+        target.innerHTML = `<div class="empty-state radar-empty-state" data-empty-kind="${escapeHtml(radarOperationalStatus({ error: state.error }).kind)}"><span class="radar-empty-icon" aria-hidden="true">!</span><strong>${escapeHtml(radarOperationalStatus({ error: state.error }).label)}</strong><p>${escapeHtml(radarOperationalStatus({ error: state.error }).description)}</p></div>`;
+        renderPagination();
+        renderCoverage();
+        return;
+      }
       if (count) count.textContent = "Configure os filtros para iniciar uma pesquisa.";
-      target.innerHTML = '<div class="empty-state radar-empty-state"><span class="radar-empty-icon" aria-hidden="true">⌕</span><strong>Pesquise contratações do PNCP</strong><p>O Radar pesquisa somente o objeto da contratação. Você pode informar mais de um termo; qualquer termo pode corresponder.</p></div>';
+      target.innerHTML = '<div class="empty-state radar-empty-state"><span class="radar-empty-icon" aria-hidden="true">⌕</span><strong>Pesquise editais do Portal de Compras Públicas</strong><p>O Radar mostra oportunidades confirmadas pelo GLL Radar Engine e armazenadas no Supabase. Informe um ou mais termos; qualquer termo pode corresponder.</p></div>';
       renderPagination();
       renderCoverage();
       return;
@@ -806,6 +979,14 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
     if (state.searching && !rows.length) {
       if (count) count.textContent = "A pesquisa está em andamento.";
       target.innerHTML = '<div class="radar-loading" role="status"><span class="radar-spinner" aria-hidden="true"></span><span>Consultando o índice do Radar…</span></div>';
+      renderPagination();
+      renderCoverage();
+      return;
+    }
+    if (!rows.length && state.error) {
+      const operational = radarOperationalStatus({ error: state.error });
+      if (count) count.textContent = "Não foi possível atualizar a pesquisa atual.";
+      target.innerHTML = `<div class="empty-state radar-empty-state" data-empty-kind="${escapeHtml(operational.kind)}"><span class="radar-empty-icon" aria-hidden="true">!</span><strong>${escapeHtml(operational.label)}</strong><p>${escapeHtml(operational.description)}</p></div>`;
       renderPagination();
       renderCoverage();
       return;
@@ -819,9 +1000,12 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
       return;
     }
     if (count) {
-      count.textContent = state.pagination?.totalCount === null || state.pagination?.totalCount === undefined
+      const countLabel = state.pagination?.totalCount === null || state.pagination?.totalCount === undefined
       ? `${rows.length.toLocaleString("pt-BR")} resultados nesta página; total ainda não confirmado.`
         : `${Number(state.pagination.totalCount).toLocaleString("pt-BR")} licitações encontradas.`;
+      count.textContent = state.error
+        ? `${countLabel} Os resultados são da última consulta bem-sucedida; os filtros atuais não foram aplicados.`
+        : countLabel;
     }
     target.innerHTML = `<div class="radar-result-list">${rows.map(renderResultCard).join("")}</div>`;
     updateResultObjectDisclosures();
@@ -830,7 +1014,7 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
   }
 
   function readForm() {
-    return currentFiltersFromInputs(root, state.tags, state.selectedModalities, state.selectedPlatformIds);
+    return currentFiltersFromInputs(root, state.tags, state.selectedModalities);
   }
 
   function collectPendingTags() {
@@ -989,11 +1173,27 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
     renderResults();
     announce(refreshCoverage ? "Atualização da cobertura solicitada." : "Pesquisa do Radar iniciada.");
     try {
-      const { data, error } = await client().functions.invoke("radar-search", { body: payload });
+      const activeClient = client();
+      const countPayload = buildRadarOpenProposalCountPayload(filters, {
+        activeModalities: state.modalities.map((item) => item.pncp_id),
+      });
+      const [searchResult, openCountResult] = await Promise.all([
+        activeClient.functions.invoke("radar-search", { body: payload }),
+        countPayload
+          ? Promise.resolve()
+            .then(() => activeClient.functions.invoke("radar-search", { body: countPayload }))
+            .catch((error) => ({ error }))
+          : Promise.resolve(null),
+      ]);
+      const { data, error } = searchResult;
       if (error) throw error;
       if (!data || !Array.isArray(data.results) || !data.pagination || !data.coverage) {
         throw new Error("O Radar retornou uma resposta incompatível com o contrato de pesquisa.");
       }
+      const openCount = filters.proposalReceiptState === "open"
+        ? data.pagination.totalCount
+        : openCountResult?.error ? null : openCountResult?.data?.pagination?.totalCount;
+      state.openProposalCount = Number.isSafeInteger(openCount) ? openCount : null;
       state.results = data.results;
       state.coverage = data.coverage;
       state.pagination = data.pagination;
@@ -1175,11 +1375,10 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
   function resetFilters() {
     state.tags = [];
     state.selectedModalities = null;
-    state.selectedPlatformIds = null;
-    byId("radarIncludeUnidentified").checked = false;
     state.results = [];
     state.coverage = null;
     state.pagination = null;
+    state.openProposalCount = null;
     state.collectionTask = null;
     state.hasSearched = false;
     state.error = null;
@@ -1191,7 +1390,6 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
     if (byId("radarSortDirection")) byId("radarSortDirection").value = "desc";
     renderTags();
     renderModalityOptions();
-    renderPlatformOptions();
     renderStateOptions();
     renderMunicipalityOptions();
     byId("radarTagsError").textContent = "";
@@ -1285,19 +1483,6 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
         else selected.delete(modalityId);
         state.selectedModalities = selected.size === state.modalities.length ? null : [...selected];
         updateModalitySummary();
-      } else if (event.target?.matches('input[name="radarPlatform"]')) {
-        const activePlatforms = state.platforms.filter((platform) => platform.ativo);
-        const selected = state.selectedPlatformIds === null
-          ? new Set(activePlatforms.map((platform) => platform.id))
-          : new Set(state.selectedPlatformIds);
-        if (event.target.checked) selected.add(event.target.value);
-        else selected.delete(event.target.value);
-        const includeUnknown = byId("radarIncludeUnidentified")?.checked === true;
-        state.selectedPlatformIds = selected.size === activePlatforms.length || (selected.size === 0 && !includeUnknown)
-          ? null
-          : [...selected];
-      } else if (event.target?.id === "radarIncludeUnidentified") {
-        if (!event.target.checked && state.selectedPlatformIds?.length === 0) state.selectedPlatformIds = null;
       } else if (event.target?.id === "radarPageSize" && state.hasSearched) {
         void runSearch({ page: 1 });
       } else if (["radarSortBy", "radarSortDirection"].includes(event.target?.id) && state.hasSearched) {
@@ -1360,7 +1545,6 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
       state.municipalityNames.clear();
       state.municipalityLoadId += 1;
       state.selectedModalities = null;
-      state.selectedPlatformIds = null;
       state.tags = [];
       state.results = [];
       state.favoriteIds.clear();
@@ -1375,6 +1559,7 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
       actions.resetDetails?.();
       state.coverage = null;
       state.pagination = null;
+      state.openProposalCount = null;
       state.collectionTask = null;
       state.queriedAt = null;
       state.dataUpdatedAt = null;

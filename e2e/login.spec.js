@@ -48,10 +48,14 @@ async function submitRadarSearch(page, predicate) {
   const response = await responsePromise;
   if (!response.ok()) throw new Error(`A pesquisa real do Radar retornou HTTP ${response.status()}.`);
   const body = await response.json();
+  const payload = response.request().postDataJSON();
+  if ("platformIds" in payload || "includeUnidentified" in payload) {
+    throw new Error("A pesquisa pública enviou filtros legados de plataformas.");
+  }
   if (!Array.isArray(body.results) || !body.pagination || !body.coverage) {
     throw new Error("A pesquisa real do Radar retornou uma resposta incompatível.");
   }
-  return { payload: response.request().postDataJSON(), body };
+  return { payload, body };
 }
 
 async function validateRadarSearchPage(page) {
@@ -61,8 +65,8 @@ async function validateRadarSearchPage(page) {
   await expect(page.locator("#radarFilterRail")).toBeVisible();
   await expect(page.locator(".radar-results-panel")).toBeVisible();
   await expect(page.locator("#radarSearchPage")).toHaveCSS("max-width", "none");
-  await expect(page.locator("#radarPlatformSummary")).toHaveText("Selecionar plataformas");
-  await expect(page.locator("#radarPlatformSearch")).toHaveCount(0);
+  await expect(page.locator(".radar-platform-eligibility")).toContainText("Portal de Compras Públicas");
+  await expect(page.locator("#radarPlatformDetails, #radarPlatforms, #radarIncludeUnidentified")).toHaveCount(0);
   await expect(page.locator('[data-radar-action="add-tag"]')).toHaveCount(0);
   await expect(page.locator("#radarTagInput")).toHaveAttribute("placeholder", "Digite um termo e pressione Enter");
   const filterBounds = await page.locator("#radarFilterRail").boundingBox();
@@ -125,8 +129,14 @@ async function validateRadarSearchPage(page) {
   await page.locator("#radarTagInput").fill("pavimentação");
   await page.locator("#radarTagInput").press("Enter");
   await expect(page.locator("#radarTagList li")).toHaveCount(1);
-  const simple = await submitRadarSearch(page, (payload) => payload.tags?.length === 1);
+  const simple = await submitRadarSearch(page, (payload) => payload.tags?.length === 1 && payload.proposalReceiptState === "all");
   if (simple.body.results.length === 0) throw new Error("A busca real por pavimentação no Espírito Santo não retornou registros conhecidos.");
+  if (simple.body.results.some((result) => result.platformName !== "Portal de Compras Públicas")) {
+    throw new Error("A pesquisa do Radar retornou uma plataforma diferente do Portal de Compras Públicas.");
+  }
+  await expect(page.locator("#radarOperationalSummary")).toBeVisible();
+  await expect(page.locator("#radarTotalFound")).not.toHaveText("—");
+  await expect(page.locator("#radarConfirmationValue")).toHaveText("Portal de Compras Públicas");
   const resultCard = page.locator("#radarResultsContent .radar-result-card").first();
   await expect(resultCard).toBeVisible();
   await expect(resultCard).toContainText("Município - UF");
@@ -135,6 +145,7 @@ async function validateRadarSearchPage(page) {
   await expect(resultCard).toContainText("Órgão responsável");
   await expect(resultCard).toContainText("Modalidade");
   await expect(resultCard).toContainText("Plataforma");
+  await expect(resultCard).toContainText("Método:");
   await expect(resultCard.locator(".radar-result-fields > div")).toHaveCount(7);
   await expect(resultCard.locator(".radar-result-number")).toContainText("PNCP");
   await expect(resultCard.locator(".radar-result-value")).toContainText("Valor estimado");
@@ -220,7 +231,7 @@ async function validateRadarSearchPage(page) {
 
   await page.locator("#radarTagInput").fill("aquisição");
   await page.locator("#radarTagInput").press("Enter");
-  const multiple = await submitRadarSearch(page, (payload) => payload.tags?.length === 2);
+  const multiple = await submitRadarSearch(page, (payload) => payload.tags?.length === 2 && payload.proposalReceiptState === "all");
   await expect(multiple.payload.tags).toEqual(["pavimentação", "aquisição"]);
   if (multiple.body.results.length === 0) throw new Error("A pesquisa OR do Radar não retornou resultados para os termos de teste.");
 
@@ -228,7 +239,7 @@ async function validateRadarSearchPage(page) {
   await page.locator("#radarSituation").selectOption("all");
   await page.locator("#radarPublishedFrom").fill("");
   await page.locator("#radarPublishedTo").fill("");
-  const firstPage = await submitRadarSearch(page, (payload) => payload.tags === undefined && payload.page === 1);
+  const firstPage = await submitRadarSearch(page, (payload) => payload.tags === undefined && payload.page === 1 && payload.proposalReceiptState === "all");
   if (!firstPage.body.pagination.hasMore) throw new Error("O conjunto de teste do Radar não oferece uma segunda página para validação.");
   const nextPageResponse = radarSearchResponse(page, (payload) => payload.page === 2);
   await page.locator('#radarPagination [data-radar-page="2"]').click();
