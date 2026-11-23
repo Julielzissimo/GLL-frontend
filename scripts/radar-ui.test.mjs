@@ -4,6 +4,7 @@ import test from "node:test";
 
 const html = readFileSync(new URL("../web/index.html", import.meta.url), "utf8");
 const searchFeature = readFileSync(new URL("../web/radar-search.js", import.meta.url), "utf8");
+const styles = readFileSync(new URL("../web/styles.css", import.meta.url), "utf8");
 const detailsFeature = readFileSync(new URL("../web/radar-details.js", import.meta.url), "utf8");
 const preprocessedFeature = readFileSync(new URL("../web/radar-preprocessed.js", import.meta.url), "utf8");
 const importFeature = readFileSync(new URL("../web/radar-import.js", import.meta.url), "utf8");
@@ -17,6 +18,22 @@ test("os cards do Radar exibem a data explícita da fase de lances como Data da 
   assert.match(resultCard, /result\.bidPhaseStartAt/u);
   assert.match(resultCard, /Não confirmada/u);
   assert.doesNotMatch(resultCard, /Publicação no PNCP/u);
+});
+
+test("a listagem ordena pelas disputas mais recentes e permite expandir o órgão responsável", () => {
+  const resultCard = searchFeature.match(/function renderResultCard\(result\) \{[\s\S]*?\n  \}/u)?.[0];
+  assert.ok(resultCard, "renderizador dos cards de resultados presente");
+  assert.match(html, /option value="bidPhaseStartAt" selected>Data da Disputa/u);
+  assert.match(html, /option value="desc" selected>Mais recente \/ maior primeiro/u);
+  assert.match(searchFeature, /sortDirection: filters\.sortDirection \|\| "desc"/u);
+  assert.match(searchFeature, /sortDirection: root\.querySelector\("#radarSortDirection"\)\?\.value \|\| "desc"/u);
+  assert.match(searchFeature, /byId\("radarSortDirection"\)\.value = "desc"/u);
+  assert.match(resultCard, /class="radar-organization-field"/u);
+  assert.match(searchFeature, /data-radar-organization-toggle/u);
+  assert.match(searchFeature, /shouldTruncate = measuredText\.scrollHeight > lineHeight \* 5/u);
+  assert.match(searchFeature, /aria-expanded", "false"/u);
+  assert.match(styles, /\.radar-organization-toggle\.is-truncated[^}]*-webkit-line-clamp: 5/u);
+  assert.doesNotMatch(resultCard, /platform\.(?:source|method|note)|radar-platform-card-note/u);
 });
 
 test("os detalhes exibem Data da Disputa e removem os campos operacionais antigos", () => {
