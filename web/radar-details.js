@@ -17,6 +17,9 @@ const FAVORITE_METADATA_FIELDS = [
   "situacao_codigo",
   "situacao_nome",
   "data_atualizacao_fonte",
+  "plataforma_id",
+  "link_sistema_origem",
+  "plataforma_status",
 ].join(", ");
 
 const escapeHtml = (value) => String(value ?? "")
@@ -109,6 +112,17 @@ export function validatedOfficialPncpUrl(value) {
   }
 }
 
+export function validatedPlatformSourceUrl(value) {
+  if (typeof value !== "string" || !value.trim()) return null;
+  try {
+    const url = new URL(value);
+    if (url.protocol !== "https:" || !url.hostname || url.username || url.password) return null;
+    return url.toString();
+  } catch {
+    return null;
+  }
+}
+
 function proposalStatus(startValue, endValue) {
   const start = startValue ? new Date(startValue).getTime() : NaN;
   const end = endValue ? new Date(endValue).getTime() : NaN;
@@ -118,7 +132,7 @@ function proposalStatus(startValue, endValue) {
   return now <= end ? "open" : "closed";
 }
 
-export function mapRadarFavoriteMetadata(row) {
+export function mapRadarFavoriteMetadata(row, platformNames = new Map()) {
   const numberControlPncp = String(row?.numero_controle_pncp || "");
   return {
     numberControlPncp,
@@ -139,6 +153,10 @@ export function mapRadarFavoriteMetadata(row) {
     proposalReceiptStatus: proposalStatus(row?.data_inicio_propostas, row?.data_fim_propostas),
     dataUpdatedAt: row?.data_atualizacao_fonte || null,
     sourceUrl: "",
+    platformId: row?.plataforma_id || null,
+    platformName: platformNames.get(row?.plataforma_id) || null,
+    platformSourceUrl: row?.link_sistema_origem || null,
+    platformStatus: row?.plataforma_status || "pending_verification",
   };
 }
 
@@ -189,9 +207,14 @@ export function createRadarFavoritesService({ getClient } = {}) {
       : { data: [], error: null };
     if (records.error) throw new Error("Não foi possível carregar os dados das licitações favoritas.");
     const byId = new Map((records.data || []).map((row) => [row.numero_controle_pncp, row]));
+    const platformIds = [...new Set((records.data || []).map((row) => row.plataforma_id).filter(Boolean))];
+    const platforms = platformIds.length
+      ? await client().from("radar_plataformas").select("id, nome").in("id", platformIds)
+      : { data: [], error: null };
+    const platformNames = new Map((platforms.data || []).map((platform) => [platform.id, platform.nome]));
     ids.forEach((id) => favoriteIds.add(id));
     const results = ids.map((id) => byId.get(id)
-      ? mapRadarFavoriteMetadata(byId.get(id))
+      ? mapRadarFavoriteMetadata(byId.get(id), platformNames)
       : { numberControlPncp: id, object: "Metadados temporariamente indisponíveis" });
     const totalCount = Number.isSafeInteger(count) ? count : rows.length;
     return {
@@ -326,7 +349,7 @@ export function createRadarDetailsFeature({ getClient, toast = () => {}, onFavor
     feedback.replaceChildren();
   }
 
-  function renderGeneral(contract, sources) {
+  function renderGeneral(contract, sources, platform = {}) {
     const organization = contract.orgaoEntidade?.razaoSocial
       || contract.orgaoEntidade?.nomeRazaoSocial
       || contract.nomeOrgao
@@ -348,9 +371,19 @@ export function createRadarDetailsFeature({ getClient, toast = () => {}, onFavor
       ["Situação", contract.situacaoCompraNome],
     ];
     const officialUrl = validatedOfficialPncpUrl(sources?.official);
+    const platformStatus = platform.status === "identified"
+      ? platform.name || "Plataforma identificada"
+      : platform.status === "pending_verification" ? "Pendente de verificação" : "Não identificada";
+    const platformUrl = validatedPlatformSourceUrl(platform.sourceUrl || contract.linkSistemaOrigem);
     return `<section class="section-band radar-detail-section" aria-labelledby="radarGeneralTitle">
       <div class="radar-detail-section-heading"><div><h2 id="radarGeneralTitle">Informações gerais</h2><p>Dados consultados diretamente no PNCP.</p></div></div>
       <dl class="radar-detail-grid">${values.map(([label, value]) => `<div><dt>${escapeHtml(label)}</dt><dd${label === "Objeto da contratação" ? ' class="radar-detail-object"' : ""}>${escapeHtml(value || "Não informado")}</dd></div>`).join("")}</dl>
+      <section class="radar-platform-detail" aria-labelledby="radarPlatformDetailTitle">
+        <h3 id="radarPlatformDetailTitle">Plataforma de disputa</h3>
+        <p><strong>${escapeHtml(platformStatus)}</strong></p>
+        ${platformUrl ? `<p>Link de origem informado pelo PNCP: <a href="${escapeHtml(platformUrl)}" target="_blank" rel="noopener noreferrer">Acessar plataforma <span aria-hidden="true">↗</span></a></p>` : "<p>O PNCP não informou um link de origem seguro para abrir.</p>"}
+        <small>A identificação automática corresponde ao domínio da URL. Ela não confirma que o endereço seja a sessão efetiva de disputa.</small>
+      </section>
       ${officialUrl ? `<a class="quiet-action compact-action radar-official-link" href="${escapeHtml(officialUrl)}" target="_blank" rel="noopener noreferrer">Abrir contratação no PNCP <span aria-hidden="true">↗</span></a>` : ""}
     </section>`;
   }
@@ -514,7 +547,7 @@ export function createRadarDetailsFeature({ getClient, toast = () => {}, onFavor
     }
     const loadedAt = dateTimeFormatter.format(new Date(state.data.retrievedAt));
     content.innerHTML = `<p class="radar-detail-source">Fonte: <a href="${escapeHtml(state.data.sources.detail)}" target="_blank" rel="noopener noreferrer">API oficial do PNCP</a> · Consulta realizada em ${escapeHtml(loadedAt)}.</p>
-      ${renderGeneral(state.data.contract, state.data.sources)}
+      ${renderGeneral(state.data.contract, state.data.sources, state.data.platform)}
       ${renderItems(state.data.items)}
       ${renderDocuments(state.data.documents)}`;
   }

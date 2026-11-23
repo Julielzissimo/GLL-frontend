@@ -6,6 +6,7 @@ import {
   radarDefaultPeriodDates,
   radarEmptyResultState,
   validatedPncpSourceUrl,
+  validatedPlatformSourceUrl,
 } from "../web/radar-search.js";
 
 test("normaliza termos de objeto, remove duplicatas sem acentos e mantém frases para OU", () => {
@@ -65,6 +66,20 @@ test("envia modalidade parcial, UF e município somente quando relacionados", ()
   assert.equal(payload.proposalReceiptState, "closed");
 });
 
+test("envia seleção múltipla de plataformas e a opção de incluir registros desconhecidos", () => {
+  const first = "10000000-0000-4000-8000-000000000001";
+  const second = "10000000-0000-4000-8000-000000000002";
+  const onePlatform = buildRadarSearchPayload({ platformIds: [first], includeUnidentified: false });
+  assert.deepEqual(onePlatform.platformIds, [first]);
+  assert.equal("includeUnidentified" in onePlatform, false);
+  const manyPlatforms = buildRadarSearchPayload({ platformIds: [first, second], includeUnidentified: true });
+  assert.deepEqual(manyPlatforms.platformIds, [first, second]);
+  assert.equal(manyPlatforms.includeUnidentified, true);
+  const unknownOnly = buildRadarSearchPayload({ platformIds: [], includeUnidentified: true });
+  assert.deepEqual(unknownOnly.platformIds, []);
+  assert.equal(unknownOnly.includeUnidentified, true);
+});
+
 test("gera período inclusivo compartilhado no fuso de São Paulo e valida limites", () => {
   assert.deepEqual(radarDefaultPeriodDates(30, "2026-10-10"), {
     publishedFrom: "2026-09-11",
@@ -84,4 +99,11 @@ test("só aceita link HTTPS da origem oficial PNCP em caminho de aplicação", (
   assert.equal(validatedPncpSourceUrl("http://pncp.gov.br/app/editais/1"), null);
   assert.equal(validatedPncpSourceUrl("https://pncp.gov.br.evil.example/app/editais/1"), null);
   assert.equal(validatedPncpSourceUrl("https://pncp.gov.br/manual/1"), null);
+});
+
+test("links da plataforma aceitam HTTPS seguro e rejeitam protocolos e credenciais perigosos", () => {
+  assert.equal(validatedPlatformSourceUrl("https://licitanet.com.br/processo?id=4"), "https://licitanet.com.br/processo?id=4");
+  assert.equal(validatedPlatformSourceUrl("http://licitanet.com.br/processo"), null);
+  assert.equal(validatedPlatformSourceUrl("javascript:alert(1)"), null);
+  assert.equal(validatedPlatformSourceUrl("https://user:pass@licitanet.com.br/"), null);
 });
