@@ -7,7 +7,6 @@ import {
   shouldPollRadarItemSync,
   shouldRenderRadarItemSyncNotice,
 } from "./radar-item-sync.js";
-import { createRadarPreprocessedService } from "./radar-preprocessed.js";
 
 const FAVORITE_METADATA_FIELDS = [
   "numero_controle_pncp",
@@ -367,7 +366,6 @@ export function createRadarDetailsFeature({ getClient, getUserRole = () => null,
   const documentsFallbackEnabled = fallbackEnabled || globalThis.window?.GLL_CONFIG?.radarDocumentsFallbackEnabled === true;
   const root = globalThis.document?.getElementById("radarSearchPage");
   const favorites = createRadarFavoritesService({ getClient });
-  const preprocessed = createRadarPreprocessedService({ getClient });
   const imports = globalThis.window?.GLLRadarImport?.createRadarImportService({ getClient }) || null;
   const selections = new Map();
   let inlineCard = null;
@@ -629,7 +627,7 @@ export function createRadarDetailsFeature({ getClient, getUserRole = () => null,
     feedback.replaceChildren();
   }
 
-  function renderGeneral(contract, sources, platform = {}) {
+  function renderGeneral(contract, sources, platform = {}, catalogSource = "local") {
     const organization = contract.orgaoEntidade?.razaoSocial
       || contract.orgaoEntidade?.nomeRazaoSocial
       || contract.nomeOrgao
@@ -656,35 +654,22 @@ export function createRadarDetailsFeature({ getClient, getUserRole = () => null,
     const platformUrl = validatedPlatformSourceUrl(platform.sourceUrl);
     const pncpPlatformUrl = validatedPlatformSourceUrl(platform.sourceUrlFromPncp || contract.linkSistemaOrigem);
     const processUrl = validatedPlatformSourceUrl(platform.processUrl || contract.linkProcessoEletronico);
-    const evidence = Array.isArray(platform.evidence) ? platform.evidence.filter((item) => item && typeof item === "object") : [];
-    const evidenceMarkup = renderRadarPlatformEvidence(evidence);
-    const previousAutomatic = platform.previousAutomatic && typeof platform.previousAutomatic === "object"
-      ? platform.previousAutomatic
-      : null;
-    const previousAutomaticMarkup = previousAutomatic
-      ? `<p class="radar-platform-previous">Identificação automática anterior: <strong>${escapeHtml(previousAutomatic.name || platformStatusLabel(previousAutomatic.status))}</strong>${previousAutomatic.classifiedAt ? ` · ${escapeHtml(dateValue(previousAutomatic.classifiedAt))}` : ""}.</p>`
-      : "";
-    const confirmationMarkup = platform.confirmedAt
-      ? `<p>Confirmação manual registrada em ${escapeHtml(dateValue(platform.confirmedAt))}.</p>`
-      : "";
+    const catalogSourceLabel = catalogSource === "production"
+      ? "Dados de produção; esta sessão tem acesso somente de leitura."
+      : catalogSource === "homolog"
+      ? "Dados do catálogo de homologação."
+      : "Dados disponíveis no cache local do Radar.";
     return `<section class="section-band radar-detail-section" aria-labelledby="radarGeneralTitle">
-      <div class="radar-detail-section-heading"><div><h2 id="radarGeneralTitle">Informações gerais</h2><p>Dados disponíveis no cache centralizado do Radar.</p></div></div>
+      <div class="radar-detail-section-heading"><div><h2 id="radarGeneralTitle">Informações gerais</h2><p>${escapeHtml(catalogSourceLabel)}</p></div></div>
       <dl class="radar-detail-grid">${values.map(([label, value]) => `<div${label === "Objeto da contratação" ? ' class="radar-detail-object-field"' : ""}><dt>${escapeHtml(label)}</dt><dd${label === "Objeto da contratação" ? ' class="radar-detail-object"' : ""}>${escapeHtml(value || "Não informado")}</dd></div>`).join("")}</dl>
       <section class="radar-platform-detail" aria-labelledby="radarPlatformDetailTitle">
         <h3 id="radarPlatformDetailTitle">Plataforma de disputa</h3>
         <p><strong>${escapeHtml(platformStatus)}</strong></p>
+        ${platform.classifiedAt ? `<p>Identificada em ${escapeHtml(dateValue(platform.classifiedAt))}.</p>` : ""}
         ${platformUrl && platform.sourceUrlManuallyConfirmed ? `<p>URL corrigida manualmente: <a href="${escapeHtml(platformUrl)}" target="_blank" rel="noopener noreferrer">Abrir URL corrigida <span aria-hidden="true">↗</span></a></p>` : ""}
         ${pncpPlatformUrl ? `<p>Link de origem informado pelo PNCP: <a href="${escapeHtml(pncpPlatformUrl)}" target="_blank" rel="noopener noreferrer">Abrir link do PNCP <span aria-hidden="true">↗</span></a></p>` : !platform.sourceUrlManuallyConfirmed ? "<p>O PNCP não informou um link de origem seguro para abrir.</p>" : ""}
         ${processUrl ? `<p>Link do processo eletrônico: <a href="${escapeHtml(processUrl)}" target="_blank" rel="noopener noreferrer">Abrir processo <span aria-hidden="true">↗</span></a></p>` : ""}
-        <dl class="radar-platform-metadata">
-          ${platform.evidenceSource ? `<div><dt>Fonte da identificação</dt><dd>${escapeHtml(platformEvidenceSourceLabel(platform.evidenceSource))}</dd></div>` : ""}
-          <div><dt>Método de confirmação</dt><dd>${escapeHtml(platformMethodLabel(platform.method))}</dd></div>
-          ${platform.classifiedAt ? `<div><dt>Identificada em</dt><dd>${escapeHtml(dateValue(platform.classifiedAt))}</dd></div>` : ""}
-        </dl>
         ${platform.conflict ? '<p class="radar-platform-conflict" role="status">As fontes consultadas indicam plataformas diferentes. Confira o edital antes de usar o link.</p>' : ""}
-        ${evidenceMarkup ? `<div><strong>Evidências do edital</strong>${evidenceMarkup}</div>` : ""}
-        ${previousAutomaticMarkup}${confirmationMarkup}
-        <small>${platform.sourceUrlManuallyConfirmed ? "A correção manual foi registrada por um Administrador e fica preservada nas próximas sincronizações." : "A identificação automática corresponde aos dados disponíveis do PNCP; domínio e referências textuais não confirmam uma sessão efetiva de disputa."}</small>
       </section>
       ${officialUrl ? `<a class="quiet-action compact-action radar-official-link" href="${escapeHtml(officialUrl)}" target="_blank" rel="noopener noreferrer">Abrir contratação no PNCP <span aria-hidden="true">↗</span></a>` : ""}
     </section>`;
@@ -709,7 +694,7 @@ export function createRadarDetailsFeature({ getClient, getUserRole = () => null,
     </div>`;
   }
 
-  function renderItems(itemsState, itemSync = {}) {
+  function renderItems(itemsState, itemSync = {}, catalogSource = "local") {
     const hasSnapshot = isCompleteRadarItemSnapshot(itemsState);
     const statusNotice = renderItemSyncNotice(itemsState, itemSync);
     const heading = `<div class="radar-detail-section-heading"><div><h2 id="radarItemsTitle">Itens da contratação</h2></div></div>`;
@@ -732,11 +717,17 @@ export function createRadarDetailsFeature({ getClient, getUserRole = () => null,
       <div class="radar-detail-section-heading"><div class="radar-item-count-heading"><h2 id="radarItemsTitle">Itens da contratação</h2><span class="supplier-tag radar-items-total">Total: ${itemsState.items.length.toLocaleString("pt-BR")} ${itemsState.items.length === 1 ? "item" : "itens"}</span></div></div>
       ${statusNotice}
       ${secretCount ? `<p class="radar-feedback" data-tone="warning" role="status"><strong>Orçamento sigiloso</strong><span>O PNCP informou orçamento sigiloso em ${secretCount.toLocaleString("pt-BR")} ${secretCount === 1 ? "item" : "itens"}; valores não serão tratados como preço.</span></p>` : ""}
-      ${renderItemTable(itemsState.items, { selectable: true })}
+      ${renderItemTable(itemsState.items, { selectable: catalogSource !== "production" })}
     </section>`;
   }
 
-  function renderImportPanel(itemsState) {
+  function renderImportPanel(itemsState, catalogSource = "local") {
+    if (catalogSource === "production") {
+      return `<section class="section-band radar-detail-section radar-import-panel" aria-labelledby="radarImportPanelTitle">
+        <h2 id="radarImportPanelTitle" class="sr-only">Cadastrar edital</h2>
+        <p>O edital e os itens estão em modo somente leitura, vindos do catálogo de produção. Para importar, use um edital armazenado no catálogo local de homologação.</p>
+      </section>`;
+    }
     const available = isCompleteRadarItemSnapshot(itemsState) && itemsState.items.length > 0;
     const body = available
       ? renderImportControls(itemsState.items)
@@ -907,15 +898,9 @@ export function createRadarDetailsFeature({ getClient, getUserRole = () => null,
     if (modalView === "documents") content.innerHTML = renderDocuments(state.data.documents);
     else {
       const general = document.createElement("div");
-      general.innerHTML = renderGeneral(state.data.contract, state.data.sources, state.data.platform);
-      const platform = general.querySelector(".radar-platform-detail");
-      if (modalView === "platform") {
-        content.replaceChildren(platform);
-        if (getUserRole() === "Administrador") content.insertAdjacentHTML("beforeend", '<button class="quiet-action" type="button" data-radar-platform-confirm>Confirmar plataforma</button>');
-      } else {
-        platform?.remove();
-        content.replaceChildren(...general.childNodes);
-      }
+      general.innerHTML = renderGeneral(state.data.contract, state.data.sources, state.data.platform, state.data.catalogSource);
+      general.querySelector(".radar-platform-detail")?.remove();
+      content.replaceChildren(...general.childNodes);
     }
     restoreFocusedDetailsControl(content, focus);
   }
@@ -992,11 +977,11 @@ export function createRadarDetailsFeature({ getClient, getUserRole = () => null,
     }
     const focusTarget = captureFocusedDetailsControl(content);
     content.innerHTML = inlineCard
-      ? `${renderImportPanel(state.data.items)}${renderItems(state.data.items, state.data.itemSync)}`
+      ? `${renderImportPanel(state.data.items, state.data.catalogSource)}${renderItems(state.data.items, state.data.itemSync, state.data.catalogSource)}`
       : `<div class="radar-detail-layout">
-        <main class="radar-detail-main">${renderGeneral(state.data.contract, state.data.sources, state.data.platform)}</main>
-        <aside class="radar-detail-aside">${renderDocuments(state.data.documents)}${renderImportPanel(state.data.items)}</aside>
-      </div>${renderItems(state.data.items, state.data.itemSync)}`;
+        <main class="radar-detail-main">${renderGeneral(state.data.contract, state.data.sources, state.data.platform, state.data.catalogSource)}</main>
+        <aside class="radar-detail-aside">${renderDocuments(state.data.documents)}${renderImportPanel(state.data.items, state.data.catalogSource)}</aside>
+      </div>${renderItems(state.data.items, state.data.itemSync, state.data.catalogSource)}`;
     if (inlineCard) {
       const button = inlineCard.querySelector('[data-radar-card-view="items"]');
       const count = isCompleteRadarItemSnapshot(state.data.items) ? state.data.items.items.length : state.data.itemSync?.expectedItemCount;
@@ -1005,6 +990,21 @@ export function createRadarDetailsFeature({ getClient, getUserRole = () => null,
     initializeRadarDescriptionToggles(content);
     fitRadarItemTableColumns(content);
     restoreFocusedDetailsControl(content, focusTarget);
+  }
+
+  async function invokeRadarDetails(action, numberControlPncp, knownVersion = null) {
+    const body = { action, numberControlPncp };
+    if (typeof knownVersion === "string" && knownVersion) body.knownVersion = knownVersion;
+    const { data, error } = await getClient().functions.invoke("radar-details", { body });
+    if (error) {
+      let responseBody = null;
+      try { responseBody = await error.context?.json?.(); } catch { /* Response bodies may already be consumed. */ }
+      const fallbackMessage = action === "sync-status"
+        ? "Não foi possível consultar o estado dos itens no Radar."
+        : "Não foi possível consultar os detalhes do edital no Radar.";
+      throw new Error(responseBody?.error || fallbackMessage);
+    }
+    return data;
   }
 
   async function loadDocuments(numberControlPncp = currentId(), { force = false } = {}) {
@@ -1023,15 +1023,8 @@ export function createRadarDetailsFeature({ getClient, getUserRole = () => null,
     const request = (async () => {
       let documentsState;
       try {
-        const { data, error } = await getClient().functions.invoke("radar-details", {
-          body: { action: "documents", numberControlPncp },
-        });
+        const data = await invokeRadarDetails("documents", numberControlPncp);
         if (documentRequestId !== state.documentRequestId || !state.opened || currentId() !== numberControlPncp) return null;
-        if (error) {
-          let responseBody = null;
-          try { responseBody = await error.context?.json?.(); } catch { /* Response bodies may already be consumed. */ }
-          throw new Error(responseBody?.error || "Não foi possível consultar os documentos.");
-        }
         if (!data || data.status !== "available" || !data.documents) {
           throw new Error("A contingência retornou uma resposta incompatível com o contrato de documentos.");
         }
@@ -1061,9 +1054,7 @@ export function createRadarDetailsFeature({ getClient, getUserRole = () => null,
     if (!identityIsValid(numberControlPncp)) return;
     const itemStatusRequestId = ++state.itemStatusRequestId;
     try {
-      const data = await preprocessed.loadItemSyncSnapshot(numberControlPncp, {
-        knownVersion: state.data?.itemSync?.publishedVersion ?? null,
-      });
+      const data = await invokeRadarDetails("sync-status", numberControlPncp, state.data?.itemSync?.publishedVersion ?? null);
       const isCurrent = detailsRequestId === state.requestId
         && itemStatusRequestId === state.itemStatusRequestId
         && state.opened && state.data && currentId() === numberControlPncp;
@@ -1112,7 +1103,7 @@ export function createRadarDetailsFeature({ getClient, getUserRole = () => null,
     state.notFound = false;
     render();
     try {
-      const data = await preprocessed.load(id);
+      const data = await invokeRadarDetails("details", id);
       if (requestId !== state.requestId) return;
       if (data?.status === "not_found") {
         state.notFound = true;
@@ -1190,14 +1181,7 @@ export function createRadarDetailsFeature({ getClient, getUserRole = () => null,
 
   async function requestDetailsFallback(numberControlPncp = currentId()) {
     if (!fallbackEnabled || !identityIsValid(numberControlPncp)) return false;
-    const { error } = await getClient().functions.invoke("radar-details", {
-      body: { action: "details", numberControlPncp },
-    });
-    if (error) {
-      let responseBody = null;
-      try { responseBody = await error.context?.json?.(); } catch { /* Response bodies may already be consumed. */ }
-      throw new Error(responseBody?.error || "A contingência do Radar está indisponível.");
-    }
+    await invokeRadarDetails("details", numberControlPncp);
     return true;
   }
 
@@ -1592,8 +1576,6 @@ export function createRadarDetailsFeature({ getClient, getUserRole = () => null,
       }
       if (event.target.closest("[data-radar-card-dialog-close]")) {
         byId("radarCardDialog")?.close();
-      } else if (event.target.closest("[data-radar-platform-confirm]")) {
-        void openPlatformConfirmation();
       } else if (event.target.closest("[data-radar-platform-dialog-close]")) {
         byId("radarPlatformConfirmDialog")?.close();
       } else if (event.target.closest("#radarDetailsBackButton")) {
