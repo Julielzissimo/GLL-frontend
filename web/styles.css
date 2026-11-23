@@ -8149,9 +8149,9 @@ button.history-row:hover {
 .radar-tag-entry input { flex: 1 1 auto; }
 .radar-tag-list { display: flex; flex-wrap: wrap; gap: var(--space-sm); margin: 0; padding: 0; list-style: none; }
 .radar-tag-list:empty { display: none; }
-.radar-tag { display: inline-flex; align-items: center; gap: var(--space-xs); max-width: 100%; padding: var(--space-xs) var(--space-sm); border: var(--border-default); border-radius: var(--radius-pill); background: var(--color-surface-subtle); color: var(--color-text-primary); font-size: var(--font-size-sm); }
+.radar-tag { display: inline-flex; align-items: center; gap: var(--space-xs); max-width: 100%; padding: var(--space-0) var(--space-xs); border: var(--border-default); border-radius: var(--radius-xs); background: var(--color-surface-subtle); color: var(--color-text-primary); font-size: var(--font-size-sm); }
 .radar-tag span { overflow-wrap: anywhere; }
-.radar-tag button { display: inline-grid; width: var(--control-height-sm); height: var(--control-height-sm); place-items: center; border: 0; border-radius: var(--radius-pill); background: transparent; color: var(--color-text-secondary); cursor: pointer; font-size: var(--font-size-lg); }
+.radar-tag button { display: inline-grid; width: var(--space-xl); height: var(--control-height-sm); flex: 0 0 auto; padding: 0; place-items: center; border: 0; border-radius: var(--radius-xs); background: transparent; color: var(--color-text-secondary); cursor: pointer; font-size: var(--font-size-lg); }
 .radar-tag button:hover { background: var(--color-surface); color: var(--color-text-primary); }
 .radar-tag-field .form-error,
 .radar-search-form > .form-error,
@@ -8413,9 +8413,9 @@ button.history-row:hover {
 .radar-tag-entry {
   display: flex;
   min-height: var(--control-height-md);
-  flex-direction: row;
-  flex-wrap: wrap;
-  align-items: center;
+  flex-direction: column;
+  flex-wrap: nowrap;
+  align-items: stretch;
   gap: var(--space-xs);
   padding: var(--space-xs) var(--space-sm);
   border: var(--border-default);
@@ -8429,9 +8429,9 @@ button.history-row:hover {
 }
 
 .radar-tag-entry input {
-  width: auto;
+  width: 100%;
   min-height: 2rem;
-  flex: 1 1 10rem;
+  flex: 0 0 auto;
   padding-inline: var(--space-xs);
   border: 0;
   border-radius: 0;
@@ -8446,7 +8446,8 @@ button.history-row:hover {
 }
 
 .radar-tag-list {
-  flex: 0 1 auto;
+  width: 100%;
+  flex: 0 0 auto;
   max-width: 100%;
   gap: var(--space-xs);
 }
