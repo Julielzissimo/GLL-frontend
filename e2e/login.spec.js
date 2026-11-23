@@ -141,7 +141,7 @@ async function validateRadarSearchPage(page) {
   await expect(resultCard).toBeVisible();
   await expect(resultCard).toContainText("Município - UF");
   await expect(resultCard).toContainText("Abertura das propostas");
-  await expect(resultCard).toContainText("Encerramento das propostas");
+  await expect(resultCard).toContainText("Limite p/ Recebimento das Propostas");
   await expect(resultCard).toContainText("Órgão responsável");
   await expect(resultCard).toContainText("Modalidade");
   await expect(resultCard).toContainText("Plataforma");
