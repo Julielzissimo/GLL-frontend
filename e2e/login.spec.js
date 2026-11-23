@@ -48,9 +48,7 @@ async function validateRadarSearchPage(page) {
     from: await page.locator("#radarPublishedFrom").inputValue(),
     to: await page.locator("#radarPublishedTo").inputValue(),
   };
-  const sharedPeriodDays = await page.locator("#radarDefaultPeriodDays").inputValue();
-  if (!defaultDates.from || !defaultDates.to) throw new Error("O Radar não aplicou o período padrão compartilhado.");
-  if (!sharedPeriodDays) throw new Error("A configuração compartilhada do período do Radar não foi carregada.");
+  if (!defaultDates.from || !defaultDates.to) throw new Error("O Radar não aplicou as datas iniciais de publicação.");
   await expect(page.locator("#radarSituation")).toHaveValue("open");
 
   await page.locator("#radarPublishedTo").fill("");
@@ -63,7 +61,6 @@ async function validateRadarSearchPage(page) {
   await page.locator('[data-radar-action="clear"]').click();
   await expect(page.locator("#radarPublishedFrom")).toHaveValue(defaultDates.from);
   await expect(page.locator("#radarPublishedTo")).toHaveValue(defaultDates.to);
-  await expect(page.locator("#radarDefaultPeriodDays")).toHaveValue(sharedPeriodDays);
   await expect(page.locator("#radarSituation")).toHaveValue("open");
   await expect(page.locator("#radarUf")).toHaveValue("");
 
@@ -73,7 +70,16 @@ async function validateRadarSearchPage(page) {
   await expect(modalityBoxes.first()).toBeChecked();
   await modalityBoxes.first().uncheck();
   await expect(modalityBoxes.first()).not.toBeChecked();
-  await page.locator('[data-radar-action="select-all-modalities"]').click();
+  const modalityToggle = page.locator("#radarModalityToggle");
+  await expect(modalityToggle).toHaveText("Marcar todas");
+  await modalityToggle.click();
+  await expect(modalityToggle).toHaveText("Desmarcar todas");
+  await expect(modalityBoxes.first()).toBeChecked();
+  await modalityToggle.click();
+  await expect(modalityToggle).toHaveText("Marcar todas");
+  await expect(modalityBoxes.first()).not.toBeChecked();
+  await modalityToggle.click();
+  await expect(modalityToggle).toHaveText("Desmarcar todas");
   await expect(modalityBoxes.first()).toBeChecked();
   await modalityDetails.locator("summary").click();
 
