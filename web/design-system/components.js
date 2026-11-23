@@ -67,7 +67,7 @@
     { id: "declarationValidationModal", area: "Validação", title: "Não foi possível gerar a declaração", description: "Lista as informações usadas no documento que ainda não foram preenchidas.", actions: ["Entendi"] },
     { id: "radarModalityDialog", area: "Radar", title: "Modalidades", description: "Seleção temporária das modalidades habilitadas; opções bloqueadas permanecem visíveis.", actions: ["Cancelar", "Aplicar"] },
     { id: "radarCardDialog", area: "Radar", title: "Dados do edital", description: "Dados, plataforma e documentos do edital abertos a partir do cartão.", actions: ["Fechar"] },
-    { id: "radarImportConfirmDialog", area: "Radar", title: "Confirmar cadastro", description: "Confirma a importação dos itens selecionados para um novo edital ou complementa um edital existente.", actions: ["Cancelar", "Confirmar importação"] },
+    { id: "radarImportConfirmDialog", area: "Radar", title: "Confirmar cadastro", description: "Confirma a importação dos itens selecionados e permite escolher até quatro documentos do edital quando houver mais de quatro opções.", actions: ["Cancelar", "Confirmar importação"] },
     { id: "deleteBidModal", area: "Confirmação", title: "Excluir edital?", description: "O edital deixará de aparecer no sistema, mas os dados permanecerão preservados.", actions: ["Cancelar", "Excluir Edital"] },
     { id: "deleteBidAttachmentModal", area: "Confirmação", title: "Remover arquivo?", description: "Deseja remover este arquivo do edital? Esta ação não poderá ser desfeita.", actions: ["Cancelar", "Remover arquivo"] },
     { id: "blockingLoadingModal", area: "Processamento", title: "Processando…", description: "Aguarde a conclusão da operação. Não feche nem atualize esta página.", actions: [] },

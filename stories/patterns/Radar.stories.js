@@ -58,37 +58,60 @@ export const DetalhesDaContratacao = {
 };
 
 // Uses the application's actual DOM, controllers and styles with fictitious data.
+function renderInteractiveRadarStory(documentCount = 1) {
+  const documentCopy = new DOMParser().parseFromString(applicationHtml, "text/html");
+  const root = documentCopy.querySelector("#radarSearchPage");
+  root.classList.remove("hidden");
+  root.fixtureReady = new Promise((resolve) => requestAnimationFrame(async () => {
+    await mountRadarFixture(root, { itemCount: 6, previousImport: false, documentCount });
+    root.querySelector("#radarSearchButton").click();
+    resolve();
+  }));
+  return root;
+}
+
 export const CartaoCompacto = {
   name: "FEAT-005 · Cartões compactos e filtros laterais recolhíveis",
-  render: () => {
-    const documentCopy = new DOMParser().parseFromString(applicationHtml, "text/html");
-    const root = documentCopy.querySelector("#radarSearchPage");
-    root.classList.remove("hidden");
-    root.fixtureReady = new Promise((resolve) => requestAnimationFrame(async () => {
-      await mountRadarFixture(root, { itemCount: 6, previousImport: false });
-      root.querySelector("#radarSearchButton").click();
-      resolve();
-    }));
-    return root;
-  },
+  render: () => renderInteractiveRadarStory(),
 };
+
+async function waitForEnabledControl(root, selector) {
+  for (let attempt = 0; attempt < 100; attempt++) {
+    const element = root.querySelector(selector);
+    if (element && !element.disabled) return element;
+    await new Promise((resolve) => setTimeout(resolve, 20));
+  }
+  throw new Error(`Controle não disponível: ${selector}`);
+}
+
+async function showImportConfirmation(root) {
+  await root.fixtureReady;
+  (await waitForEnabledControl(root, '[data-radar-card-view="items"]')).click();
+  (await waitForEnabledControl(root, '[data-radar-select-item="1"]')).click();
+  (await waitForEnabledControl(root, "[data-radar-import-start]")).click();
+}
 
 export const ConfirmacaoDoCadastro = {
   name: "Confirmação do cadastro do edital",
   render: CartaoCompacto.render,
   play: async ({ canvasElement }) => {
     const root = canvasElement.querySelector("#radarSearchPage");
-    await root.fixtureReady;
-    const waitFor = async (selector) => {
-      for (let attempt = 0; attempt < 100; attempt++) {
-        const element = root.querySelector(selector);
-        if (element && !element.disabled) return element;
-        await new Promise((resolve) => setTimeout(resolve, 20));
-      }
-      throw new Error(`Controle não disponível: ${selector}`);
-    };
-    (await waitFor('[data-radar-card-view="items"]')).click();
-    (await waitFor('[data-radar-select-item="1"]')).click();
-    (await waitFor('[data-radar-import-start]')).click();
+    await showImportConfirmation(root);
+  },
+};
+
+export const SelecaoDeDocumentosDoEdital = {
+  name: "Seleção de documentos quando há mais de quatro",
+  render: () => renderInteractiveRadarStory(6),
+  play: async ({ canvasElement }) => {
+    const root = canvasElement.querySelector("#radarSearchPage");
+    await showImportConfirmation(root);
+    const firstDocument = await waitForEnabledControl(root, '[data-radar-import-document="1"]');
+    firstDocument.click();
+    const fifthDocument = await waitForEnabledControl(root, '[data-radar-import-document="5"]');
+    fifthDocument.click();
+    if (root.querySelector("#radarImportDocumentCount")?.textContent !== "4 de 4 selecionados.") {
+      throw new Error("A seleção não respeitou o limite de quatro documentos.");
+    }
   },
 };

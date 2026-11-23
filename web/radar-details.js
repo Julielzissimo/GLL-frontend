@@ -5,6 +5,7 @@ import {
   radarItemSyncPresentation,
   retainCompleteRadarItemSnapshot,
   shouldPollRadarItemSync,
+  shouldRenderRadarItemSyncNotice,
 } from "./radar-item-sync.js";
 import { createRadarPreprocessedService } from "./radar-preprocessed.js";
 
@@ -23,6 +24,7 @@ const FAVORITE_METADATA_FIELDS = [
   "valor_estimado",
   "data_publicacao",
   "data_inicio_propostas",
+  "data_inicio_fase_lances",
   "data_fim_propostas",
   "situacao_codigo",
   "situacao_nome",
@@ -242,6 +244,7 @@ export function mapRadarFavoriteMetadata(row, platformNames = new Map()) {
     estimatedValue: row?.valor_estimado ?? null,
     publishedAt: row?.data_publicacao || null,
     proposalsStartAt: row?.data_inicio_propostas || null,
+    bidPhaseStartAt: row?.data_inicio_fase_lances || null,
     proposalsEndAt: row?.data_fim_propostas || null,
     administrativeSituationCode: row?.situacao_codigo || "",
     administrativeSituationName: row?.situacao_nome || "",
@@ -370,6 +373,8 @@ export function createRadarDetailsFeature({ getClient, getUserRole = () => null,
   let inlineCard = null;
   let inlineExpanded = false;
   let modalView = null;
+  let documentLoadPromise = null;
+  let documentLoadProcurementId = null;
   const detailViewNode = root?.querySelector("#radarDetailsView");
   const state = {
     current: null,
@@ -382,6 +387,8 @@ export function createRadarDetailsFeature({ getClient, getUserRole = () => null,
     requestId: 0,
     itemStatusRequestId: 0,
     documentRequestId: 0,
+    selectedImportDocumentIds: null,
+    selectedImportDocumentProcurementId: null,
     historyEntry: false,
     expandedDescriptionItemKeys: new Set(),
     selectedItemNumbers: createRadarItemSelectionState(),
@@ -482,13 +489,80 @@ export function createRadarDetailsFeature({ getClient, getUserRole = () => null,
     const contract = state.data?.contract || {};
     summary.textContent = `Edital ${contract.numeroCompra || currentId()} — ${contract.orgaoEntidade?.razaoSocial || contract.nomeOrgao || "Órgão não informado"}. ${summary.textContent}`;
     byId("radarImportConfirmItems").innerHTML = renderConfirmationItems(selectedItems);
+    state.selectedImportDocumentIds = null;
+    state.selectedImportDocumentProcurementId = currentId();
+    renderImportDocumentSelection();
     if (!dialog.open) dialog.showModal();
     dialog.querySelector("[data-radar-import-cancel]")?.focus({ preventScroll: true });
+    const documentsStatus = state.data?.documents?.status;
+    if (documentsFallbackEnabled && ["not_loaded", "pending", "unavailable"].includes(documentsStatus)) {
+      void loadDocuments(currentId(), { force: documentsStatus === "unavailable" });
+    }
+  }
+
+  function renderImportDocumentSelection() {
+    const container = byId("radarImportConfirmDocuments");
+    const confirmButton = byId("radarImportConfirmButton");
+    if (!container) return;
+    const documentsState = state.data?.documents;
+    const documentsPending = documentsFallbackEnabled
+      && (!documentsState || ["not_loaded", "pending"].includes(documentsState.status));
+    if (documentsPending) {
+      container.innerHTML = '<p class="radar-feedback" data-tone="info" role="status" aria-live="polite">Consultando os documentos do edital…</p>';
+      if (confirmButton) confirmButton.disabled = true;
+      return;
+    }
+    if (confirmButton) confirmButton.disabled = state.importing || state.loading;
+    if (documentsState?.status === "unavailable") {
+      container.innerHTML = '<p class="radar-feedback" data-tone="warning" role="status">Não foi possível consultar os documentos agora. O cadastro dos itens poderá continuar.</p>';
+      state.selectedImportDocumentIds = null;
+      return;
+    }
+    const sourceDocuments = documentsState?.status === "available" && Array.isArray(documentsState.documents)
+      ? documentsState.documents
+      : [];
+    const documents = sourceDocuments.map((document) => ({
+      source: document,
+      id: Number(document?.documentId),
+    })).filter((document) => Number.isSafeInteger(document.id) && document.id > 0);
+    const documentLimit = imports?.maxDocumentCount || 4;
+    if (documents.length <= documentLimit) {
+      container.innerHTML = "";
+      state.selectedImportDocumentIds = null;
+      return;
+    }
+    if (state.selectedImportDocumentProcurementId !== currentId() || !(state.selectedImportDocumentIds instanceof Set)) {
+      state.selectedImportDocumentProcurementId = currentId();
+      state.selectedImportDocumentIds = new Set(documents.slice(0, documentLimit).map((document) => document.id));
+    } else {
+      const availableIds = new Set(documents.map((document) => document.id));
+      state.selectedImportDocumentIds = new Set([...state.selectedImportDocumentIds].filter((id) => availableIds.has(id)));
+    }
+    const selectedIds = state.selectedImportDocumentIds;
+    const selectedCount = selectedIds.size;
+    container.innerHTML = `<section class="radar-import-document-selection" aria-labelledby="radarImportDocumentsTitle">
+      <h3 id="radarImportDocumentsTitle">Documentos do edital</h3>
+      <p>Há ${documents.length.toLocaleString("pt-BR")} documentos disponíveis. Escolha até ${documentLimit} para anexar ao edital no GLL.</p>
+      <p id="radarImportDocumentCount" class="radar-import-document-count" aria-live="polite">${selectedCount} de ${documentLimit} selecionados.</p>
+      <fieldset class="radar-import-document-list" aria-describedby="radarImportDocumentCount">
+        <legend class="sr-only">Selecione os documentos para anexar</legend>
+        ${documents.map(({ source, id }) => {
+          const title = String(source?.title || "Documento sem título");
+          const type = String(source?.type || "Tipo não informado");
+          const selected = selectedIds.has(id);
+          const disabled = !selected && selectedCount >= documentLimit;
+          return `<label class="radar-import-document-option"><input type="checkbox" data-radar-import-document="${id}" aria-label="Anexar ${escapeHtml(title)}" ${selected ? "checked" : ""} ${disabled ? "disabled" : ""}><span><strong>${escapeHtml(title)}</strong><small>${escapeHtml(type)}</small></span></label>`;
+        }).join("")}
+      </fieldset>
+      <p class="radar-import-document-hint">Você pode continuar sem anexos; os documentos não selecionados serão ignorados.</p>
+    </section>`;
   }
 
   function closeImportConfirmationDialog({ restoreFocus = false } = {}) {
     const dialog = byId("radarImportConfirmDialog");
     if (dialog?.open) dialog.close();
+    state.selectedImportDocumentIds = null;
+    state.selectedImportDocumentProcurementId = null;
     if (restoreFocus) {
       byId("radarDetailsContent")?.querySelector("[data-radar-import-start]")?.focus({ preventScroll: true });
     }
@@ -571,10 +645,9 @@ export function createRadarDetailsFeature({ getClient, getUserRole = () => null,
       ["Objeto da contratação", contract.objetoCompra],
       ["Valor estimado", estimatedValue],
       ["Publicação no PNCP", dateValue(contract.dataPublicacaoPncp, dateFormatter)],
+      ["Data da Disputa", dateValue(contract.dataInicioFaseLances)],
       ["Abertura das propostas", dateValue(contract.dataAberturaProposta)],
       ["Limite p/ Recebimento das Propostas", dateValue(contract.dataEncerramentoProposta)],
-      ["Atualização dos dados no Radar", dateValue(platform.dataUpdatedAt || contract.dataAtualizacaoGlobal || contract.dataAtualizacao)],
-      ["Situação", contract.situacaoCompraNome],
     ];
     const officialUrl = validatedOfficialPncpUrl(sources?.official);
     const platformStatus = platform.status === "identified" && platform.name
@@ -623,8 +696,7 @@ export function createRadarDetailsFeature({ getClient, getUserRole = () => null,
     });
     const canRequestUpdate = false;
     const canResumePolling = state.itemPollingLimitReached && presentation.syncActive;
-    if (!presentation.message && !presentation.runningMessage && !presentation.progress
-      && !canRequestUpdate && !canResumePolling) return "";
+    if (!shouldRenderRadarItemSyncNotice(presentation, { canRequestUpdate, canResumePolling })) return "";
 
     const tone = presentation.kind === "error" ? "error" : "info";
     const showSpinner = presentation.kind === "pending" || presentation.kind === "running"
@@ -657,7 +729,7 @@ export function createRadarDetailsFeature({ getClient, getUserRole = () => null,
 
     const secretCount = itemsState.items.filter((item) => item.budgetSecret).length;
     return `<section class="section-band radar-detail-section" aria-labelledby="radarItemsTitle">
-      <div class="radar-detail-section-heading"><div><h2 id="radarItemsTitle">Itens da contratação</h2><p>${itemsState.items.length.toLocaleString("pt-BR")} ${itemsState.items.length === 1 ? "item disponível" : "itens disponíveis"} no cache do Radar.</p>${itemSync.retrievedAt ? `<small>Itens atualizados em ${escapeHtml(dateValue(itemSync.retrievedAt))}.</small>` : ""}</div></div>
+      <div class="radar-detail-section-heading"><div class="radar-item-count-heading"><h2 id="radarItemsTitle">Itens da contratação</h2><span class="supplier-tag radar-items-total">Total: ${itemsState.items.length.toLocaleString("pt-BR")} ${itemsState.items.length === 1 ? "item" : "itens"}</span></div></div>
       ${statusNotice}
       ${secretCount ? `<p class="radar-feedback" data-tone="warning" role="status"><strong>Orçamento sigiloso</strong><span>O PNCP informou orçamento sigiloso em ${secretCount.toLocaleString("pt-BR")} ${secretCount === 1 ? "item" : "itens"}; valores não serão tratados como preço.</span></p>` : ""}
       ${renderItemTable(itemsState.items, { selectable: true })}
@@ -686,7 +758,7 @@ export function createRadarDetailsFeature({ getClient, getUserRole = () => null,
   function renderItemTable(items, { selectable = false } = {}) {
     return `<div class="table-wrap radar-detail-items-wrap" role="region" tabindex="0" aria-label="Itens da contratação; use a rolagem horizontal para ver todas as colunas."><table class="radar-results-table radar-items-table">
       <caption class="sr-only">Itens da contratação armazenados no Radar</caption>
-      <thead><tr>${selectable ? '<th scope="col">Importar</th>' : ""}<th scope="col">Item</th><th scope="col" class="radar-item-description">Descrição</th><th scope="col" class="numeric">Quantidade</th><th scope="col" class="radar-item-unit">Unidade</th><th scope="col" class="numeric">VALOR ESTIMADO</th><th scope="col" class="numeric">Valor total</th></tr></thead>
+      <thead><tr>${selectable ? '<th scope="col" class="radar-item-selection">Importar</th>' : ""}<th scope="col">Item</th><th scope="col" class="radar-item-description">Descrição</th><th scope="col" class="numeric">Quantidade</th><th scope="col" class="radar-item-unit">Unidade</th><th scope="col" class="numeric">VALOR ESTIMADO</th><th scope="col" class="numeric">Valor total</th></tr></thead>
       <tbody>${items.map((item) => `<tr>
         ${selectable ? renderItemSelection(item) : ""}
         <td>${escapeHtml(item.number)}</td>
@@ -851,8 +923,7 @@ export function createRadarDetailsFeature({ getClient, getUserRole = () => null,
   function renderDocuments(documentsState) {
     if (!documentsState || documentsState.status === "not_loaded") {
       return `<section class="section-band radar-detail-section" aria-labelledby="radarDocumentsTitle">
-        <div class="radar-detail-section-heading"><div><h2 id="radarDocumentsTitle">Documentos do edital</h2><p>${documentsFallbackEnabled ? "A consulta externa de documentos está disponível como ação de contingência." : "A consulta externa de documentos está desativada nesta etapa."}</p></div></div>
-        ${documentsFallbackEnabled ? '<button class="quiet-action compact-action" type="button" data-radar-documents-refresh>Consultar documentos no PNCP</button>' : ""}
+        <div class="radar-detail-section-heading"><div><h2 id="radarDocumentsTitle">Documentos do edital</h2><p>${documentsFallbackEnabled ? "A consulta dos documentos começa automaticamente ao abrir os detalhes." : "A consulta externa de documentos está desativada nesta etapa."}</p></div></div>
       </section>`;
     }
     if (documentsState?.status === "pending") {
@@ -875,7 +946,9 @@ export function createRadarDetailsFeature({ getClient, getUserRole = () => null,
       <div class="radar-detail-section-heading"><div><h2 id="radarDocumentsTitle">Documentos do edital</h2></div></div>
       <ul class="radar-document-list">${documentsState.documents.map((document) => {
         const officialUrl = validatedOfficialPncpUrl(document.url);
-        return `<li><div><strong>${escapeHtml(document.title || "Documento sem título")}</strong><span>${escapeHtml(document.type || "Tipo não informado")}</span>${document.publishedAt ? `<small>Publicado em ${escapeHtml(dateValue(document.publishedAt, dateFormatter))}</small>` : ""}</div>${officialUrl ? `<a class="quiet-action compact-action" href="${escapeHtml(officialUrl)}" target="_blank" rel="noopener noreferrer">Baixar <span aria-hidden="true">↗</span></a>` : `<span class="radar-document-url">${escapeHtml(document.url || "URL não informada")}</span>`}</li>`;
+        const title = String(document.title || "Documento sem título");
+        const titleMarkup = title.trim().toLocaleLowerCase("pt-BR") === "edital" ? "" : `<strong>${escapeHtml(title)}</strong>`;
+        return `<li><div>${titleMarkup}<span>${escapeHtml(document.type || "Tipo não informado")}</span>${document.publishedAt ? `<small>Publicado em ${escapeHtml(dateValue(document.publishedAt, dateFormatter))}</small>` : ""}</div>${officialUrl ? `<a class="quiet-action compact-action" href="${escapeHtml(officialUrl)}" target="_blank" rel="noopener noreferrer">Baixar <span aria-hidden="true">↗</span></a>` : `<span class="radar-document-url">${escapeHtml(document.url || "URL não informada")}</span>`}</li>`;
       }).join("")}</ul>
     </section>`;
   }
@@ -934,34 +1007,54 @@ export function createRadarDetailsFeature({ getClient, getUserRole = () => null,
     restoreFocusedDetailsControl(content, focusTarget);
   }
 
-  async function loadDocuments(numberControlPncp = currentId(), detailsRequestId = state.requestId) {
-    if (!documentsFallbackEnabled || !identityIsValid(numberControlPncp)) return;
+  async function loadDocuments(numberControlPncp = currentId(), { force = false } = {}) {
+    if (!documentsFallbackEnabled || !state.opened || currentId() !== numberControlPncp || !identityIsValid(numberControlPncp)) {
+      return state.data?.documents || null;
+    }
+    const currentStatus = state.data?.documents?.status;
+    if (!force && ["available", "not_published", "unavailable"].includes(currentStatus)) return state.data.documents;
+    if (!force && documentLoadPromise && documentLoadProcurementId === numberControlPncp) return documentLoadPromise;
     const documentRequestId = ++state.documentRequestId;
     if (state.data && currentId() === numberControlPncp) {
       state.data = { ...state.data, documents: { status: "pending", documents: [], errorCode: null } };
       render();
+      if (byId("radarImportConfirmDialog")?.open) renderImportDocumentSelection();
     }
-    let documentsState;
+    const request = (async () => {
+      let documentsState;
+      try {
+        const { data, error } = await getClient().functions.invoke("radar-details", {
+          body: { action: "documents", numberControlPncp },
+        });
+        if (documentRequestId !== state.documentRequestId || !state.opened || currentId() !== numberControlPncp) return null;
+        if (error) {
+          let responseBody = null;
+          try { responseBody = await error.context?.json?.(); } catch { /* Response bodies may already be consumed. */ }
+          throw new Error(responseBody?.error || "Não foi possível consultar os documentos.");
+        }
+        if (!data || data.status !== "available" || !data.documents) {
+          throw new Error("A contingência retornou uma resposta incompatível com o contrato de documentos.");
+        }
+        documentsState = data.documents;
+      } catch {
+        documentsState = { status: "unavailable", documents: [], errorCode: "DOCUMENTS_UPSTREAM_UNAVAILABLE" };
+      }
+      if (documentRequestId !== state.documentRequestId || !state.opened || currentId() !== numberControlPncp || !state.data) return null;
+      state.data = { ...state.data, documents: documentsState };
+      render();
+      if (byId("radarImportConfirmDialog")?.open) renderImportDocumentSelection();
+      return documentsState;
+    })();
+    documentLoadPromise = request;
+    documentLoadProcurementId = numberControlPncp;
     try {
-      const { data, error } = await getClient().functions.invoke("radar-details", {
-        body: { action: "documents", numberControlPncp },
-      });
-      if (detailsRequestId !== state.requestId || documentRequestId !== state.documentRequestId) return;
-      if (error) {
-        let responseBody = null;
-        try { responseBody = await error.context?.json?.(); } catch { /* Response bodies may already be consumed. */ }
-        throw new Error(responseBody?.error || "Não foi possível consultar os documentos.");
+      return await request;
+    } finally {
+      if (documentLoadPromise === request) {
+        documentLoadPromise = null;
+        documentLoadProcurementId = null;
       }
-      if (!data || data.status !== "available" || !data.documents) {
-        throw new Error("A contingência retornou uma resposta incompatível com o contrato de documentos.");
-      }
-      documentsState = data.documents;
-    } catch {
-      documentsState = { status: "unavailable", documents: [], errorCode: "DOCUMENTS_UPSTREAM_UNAVAILABLE" };
     }
-    if (detailsRequestId !== state.requestId || documentRequestId !== state.documentRequestId || !state.data) return;
-    state.data = { ...state.data, documents: documentsState };
-    render();
   }
 
   async function refreshItemsStatus(numberControlPncp = currentId(), detailsRequestId = state.requestId) {
@@ -1261,6 +1354,9 @@ export function createRadarDetailsFeature({ getClient, getUserRole = () => null,
 
   async function executeImport() {
     if (state.importing || state.loading) return;
+    const selectedDocumentIds = state.selectedImportDocumentIds instanceof Set
+      ? [...state.selectedImportDocumentIds]
+      : undefined;
     closeImportConfirmationDialog();
     if (!imports || !isCompleteRadarItemSnapshot(state.data?.items) || !state.data.items.items.length) {
       state.importFeedback = "Aguarde a sincronização completa dos itens no Radar antes de importar.";
@@ -1279,12 +1375,6 @@ export function createRadarDetailsFeature({ getClient, getUserRole = () => null,
     byId("radarDetailsContent")?.querySelector("[data-radar-import-status]")?.focus({ preventScroll: true });
     try {
       const result = await imports.importSelected(procurementId, selected);
-      if (currentId() !== procurementId) {
-        toast("A importação foi concluída. Abra novamente os detalhes para consultar o edital.", "success");
-        return;
-      }
-      state.lastImport = result;
-      state.selectedItemNumbers.clear();
       const conflicts = Array.isArray(result.conflicts) ? result.conflicts : [];
       const importedCount = Number(result.created_items || 0);
       const existingCount = Number(result.already_imported_items || 0);
@@ -1293,8 +1383,29 @@ export function createRadarDetailsFeature({ getClient, getUserRole = () => null,
         : `Importação complementada com ${importedCount} ${importedCount === 1 ? "novo item" : "novos itens"}.`;
       const repeated = existingCount ? ` ${existingCount} ${existingCount === 1 ? "item já estava importado" : "itens já estavam importados"}.` : "";
       const conflicted = conflicts.length ? ` ${conflicts.length} ${conflicts.length === 1 ? "item não foi incluído porque já existe no edital ou no orçamento vinculado" : "itens não foram incluídos porque já existem no edital ou no orçamento vinculado"}; nenhum dado manual foi alterado.` : "";
-      state.importFeedback = [summary, repeated.trim(), conflicted.trim()].filter(Boolean).join(" ");
-      state.importFeedbackTone = conflicts.length ? "warning" : "success";
+      let documentFeedback;
+      if (selectedDocumentIds?.length === 0) {
+        documentFeedback = imports.formatDocumentFeedback({ status: "not_selected" });
+      } else {
+        try {
+          const attachments = await imports.attachDocuments(procurementId, selectedDocumentIds);
+          documentFeedback = selectedDocumentIds !== undefined && attachments?.selection_applied !== true
+            ? { message: "O GLL não confirmou a seleção dos documentos. Confira os anexos da licitação; o cadastro dos itens foi concluído.", tone: "warning" }
+            : imports.formatDocumentFeedback(attachments);
+        } catch {
+          documentFeedback = imports.formatDocumentFeedback({ status: "unavailable" });
+        }
+      }
+      const feedback = [summary, repeated.trim(), conflicted.trim(), documentFeedback.message].filter(Boolean).join(" ");
+      const feedbackTone = conflicts.length || documentFeedback.tone === "warning" ? "warning" : "success";
+      if (currentId() !== procurementId) {
+        toast(`${feedback} Abra novamente os detalhes para consultar o edital.`, feedbackTone);
+        return;
+      }
+      state.lastImport = result;
+      state.selectedItemNumbers.clear();
+      state.importFeedback = feedback;
+      state.importFeedbackTone = feedbackTone;
       try {
         state.importStatus = await imports.loadImportStatus(procurementId);
         state.importStatusError = "";
@@ -1319,6 +1430,7 @@ export function createRadarDetailsFeature({ getClient, getUserRole = () => null,
     closeImportConfirmationDialog();
     itemStatusPoller.stop();
     state.itemStatusRequestId += 1;
+    state.documentRequestId += 1;
     state.opened = false;
     state.loading = false;
     state.itemPollingLimitReached = false;
@@ -1345,6 +1457,7 @@ export function createRadarDetailsFeature({ getClient, getUserRole = () => null,
     }
     itemStatusPoller.stop();
     state.itemStatusRequestId += 1;
+    state.documentRequestId += 1;
     state.itemStatusCommunicationError = false;
     state.itemPollingLimitReached = false;
     state.syncRequestInProgress = false;
@@ -1376,6 +1489,9 @@ export function createRadarDetailsFeature({ getClient, getUserRole = () => null,
     });
     const detailLoad = refresh();
     await Promise.all([favoriteLoad, detailLoad]);
+    if (state.opened && currentId() === id && state.data?.documents?.status === "not_loaded") {
+      void loadDocuments(id);
+    }
     render();
   }
 
@@ -1454,6 +1570,10 @@ export function createRadarDetailsFeature({ getClient, getUserRole = () => null,
     if (!root || root.dataset.radarDetailsBound === "true") return;
     root.dataset.radarDetailsBound = "true";
     byId("radarCardDialog")?.addEventListener("close", () => { modalView = null; });
+    byId("radarImportConfirmDialog")?.addEventListener("close", () => {
+      state.selectedImportDocumentIds = null;
+      state.selectedImportDocumentProcurementId = null;
+    });
     root.addEventListener("click", (event) => {
       const descriptionToggle = event.target.closest?.("[data-radar-description-toggle]");
       if (descriptionToggle) {
@@ -1481,7 +1601,7 @@ export function createRadarDetailsFeature({ getClient, getUserRole = () => null,
       } else if (event.target.closest("#radarDetailsContingencyButton")) {
         void runDetailsFallback();
       } else if (event.target.closest("[data-radar-documents-refresh]")) {
-        void loadDocuments(currentId(), state.requestId);
+        void loadDocuments(currentId(), { force: true });
       } else if (event.target.closest("[data-radar-item-sync-request]")) {
         void requestItemSync();
       } else if (event.target.closest("[data-radar-item-sync-watch]")) {
@@ -1527,6 +1647,27 @@ export function createRadarDetailsFeature({ getClient, getUserRole = () => null,
       }
     });
     root.addEventListener("change", (event) => {
+      const documentCheckbox = event.target.closest?.("[data-radar-import-document]");
+      if (documentCheckbox) {
+        const documentId = Number(documentCheckbox.dataset.radarImportDocument);
+        const selected = state.selectedImportDocumentIds;
+        const documentLimit = imports?.maxDocumentCount || 4;
+        const isAvailable = state.data?.documents?.documents?.some((document) => Number(document?.documentId) === documentId);
+        if (documentCheckbox.disabled || state.importing || !(selected instanceof Set)
+          || !Number.isSafeInteger(documentId) || documentId < 1 || !isAvailable) return;
+        if (documentCheckbox.checked) {
+          if (selected.size >= documentLimit) {
+            documentCheckbox.checked = false;
+            return;
+          }
+          selected.add(documentId);
+        } else {
+          selected.delete(documentId);
+        }
+        renderImportDocumentSelection();
+        byId("radarImportConfirmDocuments")?.querySelector(`[data-radar-import-document="${documentId}"]`)?.focus({ preventScroll: true });
+        return;
+      }
       const checkbox = event.target.closest?.("[data-radar-select-item]");
       if (!checkbox) return;
       const number = String(checkbox.dataset.radarSelectItem || "");
