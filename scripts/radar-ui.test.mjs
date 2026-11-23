@@ -167,11 +167,11 @@ test("detalhes, favoritos e importação usam o cliente Supabase e preservam os 
 
 test("dados de produção são identificados como somente leitura e não permitem importação", () => {
   assert.match(detailsFeature, /Dados de produção; esta sessão tem acesso somente de leitura\./u);
-  assert.match(detailsFeature, /selectable: catalogSource !== "production"/u);
-  assert.match(detailsFeature, /if \(catalogSource === "production"\)/u);
+  assert.match(detailsFeature, /selectable: !isRadarCatalogReadOnly\(catalogSource\)/u);
+  assert.match(detailsFeature, /if \(isRadarCatalogReadOnly\(catalogSource\)\)/u);
   assert.doesNotMatch(detailsFeature, /createRadarPreprocessedService/u);
   assert.match(searchFeature, /state\.catalogSource === "production"/u);
-  assert.match(searchFeature, /if \(state\.view !== "favorites" && state\.catalogSource === "production"\)/u);
+  assert.match(searchFeature, /if \(state\.view !== "favorites" && isRadarCatalogReadOnly\(state\.catalogSource\)\)/u);
 });
 
 test("a confirmação do Radar permite escolher até quatro documentos e anexá-los ao edital", () => {
