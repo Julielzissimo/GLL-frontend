@@ -119,7 +119,8 @@ async function validateRadarSearchPage(page) {
   await expect(resultCard).toContainText("Encerramento das propostas");
   await expect(resultCard).toContainText("Órgão responsável");
   await expect(resultCard).toContainText("Modalidade");
-  await expect(resultCard.locator(".radar-result-fields > div")).toHaveCount(6);
+  await expect(resultCard).toContainText("Plataforma");
+  await expect(resultCard.locator(".radar-result-fields > div")).toHaveCount(7);
   await expect(resultCard.locator(".radar-result-number")).toContainText("PNCP");
   await expect(resultCard.locator(".radar-result-value")).toContainText("Valor estimado");
   await expect(resultCard).toContainText("Ver itens");
