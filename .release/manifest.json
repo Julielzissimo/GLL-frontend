@@ -3041,6 +3041,16 @@
         "supabase/migrations/20261123023924_radar_receipt_dates_cleanup.sql",
         "supabase/migrations/20261123023927_radar_engine_revision_watermark.sql"
       ]
+    },
+    {
+      "id": "ISSUE-539",
+      "backend_commits": [
+        "e91340e9239fe20c54c841064fe68d4b64253503"
+      ],
+      "frontend_commits": [
+        "f58e1bf0373ca49b494e1f1881362901a5e6d73d"
+      ],
+      "migrations": []
     }
   ]
 }

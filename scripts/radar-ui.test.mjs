@@ -82,7 +82,7 @@ test("a listagem ordena pelas disputas mais recentes e permite expandir o órgã
 });
 
 test("os detalhes exibem Data da Disputa e removem os campos operacionais antigos", () => {
-  const renderGeneral = detailsFeature.match(/function renderGeneral\(contract, sources, platform = \{\}\) \{[\s\S]*?\n  \}/u)?.[0];
+  const renderGeneral = detailsFeature.match(/function renderGeneral\(contract, sources, platform = \{\}, catalogSource = "local"\) \{[\s\S]*?\n  \}/u)?.[0];
   assert.ok(renderGeneral, "renderizador dos detalhes gerais presente");
   assert.match(renderGeneral, /\["Data da Disputa", dateValue\(contract\.dataInicioFaseLances\)\]/u);
   assert.doesNotMatch(renderGeneral, /Atualização dos dados no Radar/u);
@@ -90,7 +90,7 @@ test("os detalhes exibem Data da Disputa e removem os campos operacionais antigo
 });
 
 test("o detalhe da plataforma preserva classificação, links e conflitos sem evidências ou método", () => {
-  const renderGeneral = detailsFeature.match(/function renderGeneral\(contract, sources, platform = \{\}\) \{[\s\S]*?\n  \}/u)?.[0];
+  const renderGeneral = detailsFeature.match(/function renderGeneral\(contract, sources, platform = \{\}, catalogSource = "local"\) \{[\s\S]*?\n  \}/u)?.[0];
   assert.ok(renderGeneral, "renderizador dos detalhes gerais presente");
   assert.match(renderGeneral, /platformStatus/u);
   assert.match(renderGeneral, /platform\.sourceUrl/u);
@@ -163,6 +163,15 @@ test("detalhes, favoritos e importação usam o cliente Supabase e preservam os 
   assert.match(importFeature, /functions\.invoke\("radar-import"/u);
   assert.match(preprocessedFeature, /from\("radar_licitacoes"\)/u);
   assert.match(preprocessedFeature, /from\("radar_itens_sync"\)/u);
+});
+
+test("dados de produção são identificados como somente leitura e não permitem importação", () => {
+  assert.match(detailsFeature, /Dados de produção; esta sessão tem acesso somente de leitura\./u);
+  assert.match(detailsFeature, /selectable: catalogSource !== "production"/u);
+  assert.match(detailsFeature, /if \(catalogSource === "production"\)/u);
+  assert.doesNotMatch(detailsFeature, /createRadarPreprocessedService/u);
+  assert.match(searchFeature, /state\.catalogSource === "production"/u);
+  assert.match(searchFeature, /if \(state\.view !== "favorites" && state\.catalogSource === "production"\)/u);
 });
 
 test("a confirmação do Radar permite escolher até quatro documentos e anexá-los ao edital", () => {
