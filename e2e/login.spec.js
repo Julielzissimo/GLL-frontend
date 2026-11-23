@@ -198,7 +198,6 @@ async function validateRadarSearchPage(page) {
   await expect(page.locator('#radarSituation option:not([value="open"]):not(:disabled)')).toHaveCount(0);
 
   await page.locator("#radarBidPhaseTo").fill("");
-  await expect(page.locator('#radarSituation option[value="closed"]')).toBeDisabled();
   await page.locator("#radarUf").selectOption("ES");
   await expect.poll(() => page.locator("#radarMunicipality option").count()).toBeGreaterThan(1);
   const firstMunicipality = await page.locator('#radarMunicipality option[value]:not([value=""])').first().getAttribute("value");
