@@ -444,6 +444,10 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
   let filterScrollFrame = null;
   let filterScrollBound = false;
   let filterRailExpansionScrollPending = false;
+  let filterRailSearchCollapsed = false;
+  let filterRailSearchHasScrolledDown = false;
+  let filterRailSearchCollapseScrollY = 0;
+  let lastFilterScrollY = 0;
   const state = {
     bound: false,
     initialized: false,
@@ -500,13 +504,6 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
     if (!workbench || !filterRail) return;
 
     workbench.classList.toggle("is-filter-collapsed", collapsed);
-    const toggleButton = byId("radarFilterToggleButton");
-    if (toggleButton) {
-      const label = collapsed ? "Exibir filtros da pesquisa" : "Ocultar filtros da pesquisa";
-      toggleButton.setAttribute("aria-expanded", String(!collapsed));
-      toggleButton.setAttribute("aria-label", label);
-      toggleButton.setAttribute("title", label);
-    }
     if (collapsed) {
       filterRail.setAttribute("aria-hidden", "true");
       filterRail.setAttribute("inert", "");
@@ -514,28 +511,49 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
       filterRail.removeAttribute("aria-hidden");
       filterRail.removeAttribute("inert");
     }
+
+    const toggleButton = byId("radarFilterToggleButton");
+    if (toggleButton) {
+      if (!collapsed && toggleButton === root.ownerDocument.activeElement) {
+        byId("radarFilterHeading")?.focus({ preventScroll: true });
+      }
+      toggleButton.setAttribute("aria-expanded", String(!collapsed));
+      toggleButton.hidden = !collapsed;
+    }
   }
 
-  function toggleFilterRailManually() {
+  function collapseFilterRailAfterSearch() {
     const workbench = byId("radarWorkbench");
     const filterRail = byId("radarFilterRail");
     const window = root?.ownerDocument?.defaultView;
     if (!workbench || !filterRail || !window) return;
 
-    const isCollapsed = workbench.classList.contains("is-filter-collapsed");
-    if (!isCollapsed) {
-      workbench.classList.add("is-filter-manually-collapsed");
-      filterRailExpansionScrollPending = false;
-      setFilterRailCollapsed(true);
-      announce("Filtros da pesquisa ocultados.");
-      return;
+    if (filterRail.contains(root.ownerDocument.activeElement)) {
+      byId("radarResultsTitle")?.focus({ preventScroll: true });
     }
+    filterRailSearchCollapsed = true;
+    filterRailSearchCollapseScrollY = Number(window.scrollY) || 0;
+    filterRailSearchHasScrolledDown = filterRailSearchCollapseScrollY > 2;
+    lastFilterScrollY = filterRailSearchCollapseScrollY;
+    filterRailExpansionScrollPending = false;
+    workbench.classList.add("is-filter-search-collapsed");
+    setFilterRailCollapsed(true);
+  }
+
+  function showFilterRail() {
+    const workbench = byId("radarWorkbench");
+    const filterRail = byId("radarFilterRail");
+    const window = root?.ownerDocument?.defaultView;
+    if (!workbench || !filterRail || !window) return;
 
     const railBounds = filterRail.getBoundingClientRect();
     const topbarBottom = root.ownerDocument.getElementById("appTopbar")?.getBoundingClientRect().bottom || 0;
     const shouldScrollToFilters = railBounds.top < topbarBottom + 16;
     const scrollTop = Math.max(0, window.scrollY + railBounds.top - topbarBottom - 16);
-    workbench.classList.remove("is-filter-manually-collapsed");
+    filterRailSearchCollapsed = false;
+    filterRailSearchHasScrolledDown = false;
+    filterRailExpansionScrollPending = false;
+    workbench.classList.remove("is-filter-search-collapsed");
     setFilterRailCollapsed(false);
     if (shouldScrollToFilters) {
       filterRailExpansionScrollPending = true;
@@ -564,15 +582,33 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
       && !listView?.hidden
       && !filterRail.hidden;
     const toggleButton = byId("radarFilterToggleButton");
-    if (toggleButton) toggleButton.hidden = !isSearchListVisible;
+    const scrollY = Number(window.scrollY) || 0;
+    const isScrollingDown = scrollY > lastFilterScrollY;
+    const isScrollingUp = scrollY < lastFilterScrollY;
+    lastFilterScrollY = scrollY;
     if (!isSearchListVisible) {
-      workbench.classList.remove("is-filter-manually-collapsed");
+      filterRailSearchCollapsed = false;
+      filterRailSearchHasScrolledDown = false;
+      workbench.classList.remove("is-filter-search-collapsed");
       filterRailExpansionScrollPending = false;
       setFilterRailCollapsed(false);
+      if (toggleButton) toggleButton.hidden = true;
       return;
     }
 
-    if (workbench.classList.contains("is-filter-manually-collapsed")) {
+    const railBounds = filterRail.getBoundingClientRect();
+    const topbarBottom = document.getElementById("appTopbar")?.getBoundingClientRect().bottom || 0;
+    if (filterRailSearchCollapsed) {
+      if (isScrollingDown && scrollY > filterRailSearchCollapseScrollY + 2) {
+        filterRailSearchHasScrolledDown = true;
+      }
+      if (filterRailSearchHasScrolledDown && isScrollingUp && railBounds.top >= topbarBottom + 8) {
+        filterRailSearchCollapsed = false;
+        filterRailSearchHasScrolledDown = false;
+        workbench.classList.remove("is-filter-search-collapsed");
+        setFilterRailCollapsed(false);
+        return;
+      }
       setFilterRailCollapsed(true);
       return;
     }
@@ -585,8 +621,7 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
 
     if (filterRail.contains(document.activeElement)) return;
 
-    const filterBottom = filterRail.getBoundingClientRect().bottom;
-    const topbarBottom = document.getElementById("appTopbar")?.getBoundingClientRect().bottom || 0;
+    const filterBottom = railBounds.bottom;
     if (filterRailExpansionScrollPending) {
       if (filterBottom > topbarBottom + 48) filterRailExpansionScrollPending = false;
       else return;
@@ -618,6 +653,7 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
     const window = root?.ownerDocument?.defaultView;
     if (!window || filterScrollBound) return;
     filterScrollBound = true;
+    lastFilterScrollY = Number(window.scrollY) || 0;
     window.addEventListener("scroll", scheduleFilterRailVisibilitySync, { passive: true });
     window.addEventListener("resize", scheduleFilterRailVisibilitySync);
     byId("radarFilterRail")?.addEventListener("focusout", scheduleFilterRailVisibilitySync);
@@ -1274,6 +1310,7 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
       }
       return;
     }
+    collapseFilterRailAfterSearch();
     state.searching = true;
     state.updating = refreshCoverage;
     state.error = null;
@@ -1530,8 +1567,8 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
         const expanded = target.getAttribute("aria-expanded") === "true";
         target.setAttribute("aria-expanded", String(!expanded));
         target.classList.toggle("is-truncated", expanded);
-      } else if (target.dataset.radarAction === "toggle-filter-rail") {
-        toggleFilterRailManually();
+      } else if (target.dataset.radarAction === "show-filter-rail") {
+        showFilterRail();
       } else if (target.dataset.radarRemoveTag !== undefined) {
         const index = Number(target.dataset.radarRemoveTag);
         state.tags.splice(index, 1);
@@ -1653,7 +1690,11 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
     reset() {
       state.initialized = false;
       filterRailExpansionScrollPending = false;
-      byId("radarWorkbench")?.classList.remove("is-filter-manually-collapsed");
+      filterRailSearchCollapsed = false;
+      filterRailSearchHasScrolledDown = false;
+      filterRailSearchCollapseScrollY = 0;
+      lastFilterScrollY = Number(root?.ownerDocument?.defaultView?.scrollY) || 0;
+      byId("radarWorkbench")?.classList.remove("is-filter-search-collapsed");
       setFilterRailCollapsed(false);
       state.catalogsLoaded = false;
       state.loadingCatalogs = false;
