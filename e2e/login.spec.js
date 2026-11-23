@@ -157,7 +157,10 @@ async function validateRadarSearchPage(page) {
     to: await page.locator("#radarBidPhaseTo").inputValue(),
   };
   if (!defaultDates.from || !defaultDates.to) throw new Error("O Radar não aplicou as datas iniciais da fase de lances.");
-  await expect(page.locator("#radarSituation")).toHaveValue("open");
+  expect((Date.parse(defaultDates.to) - Date.parse(defaultDates.from)) / 86_400_000).toBe(15);
+  await expect(page.locator("#radarSortBy")).toHaveValue("bidPhaseStartAt");
+  await expect(page.locator("#radarSortDirection")).toHaveValue("asc");
+  await expect(page.locator("#radarSituation")).toHaveValue("all");
 
   await page.locator("#radarBidPhaseTo").fill("");
   await page.locator("#radarSituation").selectOption("closed");
@@ -169,7 +172,7 @@ async function validateRadarSearchPage(page) {
   await page.locator('[data-radar-action="clear"]').click();
   await expect(page.locator("#radarBidPhaseFrom")).toHaveValue(defaultDates.from);
   await expect(page.locator("#radarBidPhaseTo")).toHaveValue(defaultDates.to);
-  await expect(page.locator("#radarSituation")).toHaveValue("open");
+  await expect(page.locator("#radarSituation")).toHaveValue("all");
   await expect(page.locator("#radarUf")).toHaveValue("");
   await expectDefaultRadarModalities(page);
 

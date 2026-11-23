@@ -1,4 +1,4 @@
-const DEFAULT_PERIOD_DAYS = 30;
+const DEFAULT_PERIOD_DAYS = 15;
 const MAX_TAGS = 25;
 const MAX_TAG_LENGTH = 200;
 const PAGE_SIZES = [20, 50, 100];
@@ -42,6 +42,7 @@ const PLATFORM_CONFIRMATION_SOURCE_LABELS = Object.freeze({
   editalPdf: "Edital em PDF do PNCP",
 });
 const SEARCH_SORTS = Object.freeze({
+  bidPhaseStartAt: "Data da Disputa",
   publishedAt: "Data de publicação",
   proposalEndsAt: "Limite p/ Recebimento das Propostas",
   updatedAt: "Atualização no PNCP",
@@ -97,8 +98,8 @@ export function radarDefaultPeriodDates(days, today = todayInSaoPaulo()) {
   if (!Number.isFinite(end.getTime()) || end.toISOString().slice(0, 10) !== today) {
     throw new TypeError("A data atual é inválida.");
   }
-  end.setUTCDate(end.getUTCDate() - periodDays + 1);
-  return { bidPhaseFrom: end.toISOString().slice(0, 10), bidPhaseTo: today };
+  end.setUTCDate(end.getUTCDate() + periodDays);
+  return { bidPhaseFrom: today, bidPhaseTo: end.toISOString().slice(0, 10) };
 }
 
 function normalizedModalityIds(values) {
@@ -127,11 +128,11 @@ export function buildRadarSearchPayload(filters, { page = 1, refreshCoverage = f
   const payload = {
     action: "search",
     dateFilterMode: "bid_phase",
-    proposalReceiptState: filters.proposalReceiptState || "open",
+    proposalReceiptState: filters.proposalReceiptState || "all",
     page: Number(page),
     pageSize: Number(filters.pageSize || 50),
-    sortBy: filters.sortBy || "publishedAt",
-    sortDirection: filters.sortDirection || "desc",
+    sortBy: filters.sortBy || "bidPhaseStartAt",
+    sortDirection: filters.sortDirection || "asc",
     refreshCoverage: refreshCoverage === true,
   };
   if (tags.length) payload.tags = tags;
@@ -166,7 +167,7 @@ export function radarEmptyResultState(coverage) {
     return {
       kind: "coverage-unconfirmed-empty",
       title: "Fase de lances sem cobertura confirmada",
-      description: "A ausência de resultados não é definitiva: o Radar ainda não confirma a cobertura histórica para as datas da fase de lances.",
+      description: "A ausência de resultados não é definitiva: há datas de disputa pendentes de confirmação e a cobertura das fontes ainda não está confirmada.",
     };
   }
   if (coverage?.complete === true || coverage?.status === "complete") {
@@ -417,10 +418,10 @@ function currentFiltersFromInputs(root, tags, modalities) {
     municipalityIbgeId: root.querySelector("#radarMunicipality")?.value || "",
     bidPhaseFrom: root.querySelector("#radarBidPhaseFrom")?.value || "",
     bidPhaseTo: root.querySelector("#radarBidPhaseTo")?.value || "",
-    proposalReceiptState: root.querySelector("#radarSituation")?.value || "open",
+    proposalReceiptState: root.querySelector("#radarSituation")?.value || "all",
     pageSize: root.querySelector("#radarPageSize")?.value || 50,
-    sortBy: root.querySelector("#radarSortBy")?.value || "publishedAt",
-    sortDirection: root.querySelector("#radarSortDirection")?.value || "desc",
+    sortBy: root.querySelector("#radarSortBy")?.value || "bidPhaseStartAt",
+    sortDirection: root.querySelector("#radarSortDirection")?.value || "asc",
   };
 }
 
@@ -966,7 +967,7 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
         <div><dt>Órgão responsável</dt><dd>${escapeHtml(result.agencyName || result.administrativeUnitName || "Órgão não informado")}${administrative}</dd></div>
         <div><dt>Modalidade</dt><dd>${escapeHtml(resolveModalityName(result.modalityId))}</dd></div>
         <div><dt>Plataforma</dt><dd>${escapeHtml(platform.platform || platform.label)}${platform.source ? `<small class="radar-platform-card-note">Fonte: ${escapeHtml(platform.source)} · Método: ${escapeHtml(platform.method)}</small>` : platform.note ? `<small class="radar-platform-card-note">${escapeHtml(platform.note)}</small>` : ""}</dd></div>
-        <div><dt>Data da Disputa</dt><dd>${escapeHtml(formatDateTime(result.proposalsStartAt))}</dd></div>
+        <div><dt>Data da Disputa</dt><dd>${escapeHtml(result.bidPhaseStartAt ? formatDateTime(result.bidPhaseStartAt) : "Não confirmada")}${result.bidPhaseStartAt && result.bidPhaseDateStatus === "failed" ? "<small>Revalidação pendente</small>" : ""}</dd></div>
         <div><dt>Limite p/ Recebimento das Propostas</dt><dd>${escapeHtml(formatDateTime(result.proposalsEndAt))}</dd></div>
       </dl>
       <div class="radar-result-card-footer"><div class="radar-result-value"><small>Valor estimado</small><strong>${escapeHtml(formatMoney(result.estimatedValue))}</strong></div>${renderResultActions(result)}</div>
@@ -1544,10 +1545,10 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
     if (byId("radarTagInput")) byId("radarTagInput").value = "";
     if (byId("radarModalityError")) byId("radarModalityError").textContent = "";
     if (byId("radarUf")) byId("radarUf").value = "";
-    if (byId("radarSituation")) byId("radarSituation").value = "open";
+    if (byId("radarSituation")) byId("radarSituation").value = "all";
     if (byId("radarPageSize")) byId("radarPageSize").value = "50";
-    if (byId("radarSortBy")) byId("radarSortBy").value = "publishedAt";
-    if (byId("radarSortDirection")) byId("radarSortDirection").value = "desc";
+    if (byId("radarSortBy")) byId("radarSortBy").value = "bidPhaseStartAt";
+    if (byId("radarSortDirection")) byId("radarSortDirection").value = "asc";
     renderTags();
     renderModalityOptions();
     renderStateOptions();
