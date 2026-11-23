@@ -66,6 +66,8 @@ const DEFAULT_GLL_CONFIG = {
   suppliersEnabled: true,
   commercialProposalsEnabled: true,
   designSystemEnabled: true,
+  radarDetailsFallbackEnabled: false,
+  radarDocumentsFallbackEnabled: false,
   organizationDocumentsEnabled: true,
 };
 const GLL_CONFIG = {
