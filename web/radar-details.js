@@ -677,8 +677,8 @@ export function createRadarDetailsFeature({ getClient, getUserRole = () => null,
             : itemsState?.status === "unavailable"
               ? "Os itens estão temporariamente indisponíveis no cache do Radar."
               : "A importação ficará disponível após a sincronização completa dos itens."}</p>`;
-    return `<section class="section-band radar-detail-section" aria-labelledby="radarImportPanelTitle">
-      <div class="radar-detail-section-heading"><div><h2 id="radarImportPanelTitle">Cadastrar edital</h2><p>Selecione os itens do edital para importar.</p></div></div>
+    return `<section class="section-band radar-detail-section radar-import-panel" aria-labelledby="radarImportPanelTitle">
+      <h2 id="radarImportPanelTitle" class="sr-only">Cadastrar edital</h2>
       ${body}
     </section>`;
   }
@@ -792,7 +792,7 @@ export function createRadarDetailsFeature({ getClient, getUserRole = () => null,
     const imported = state.importStatus;
     const title = imported
       ? `Esta contratação já está vinculada ao edital ${escapeHtml(imported.editalNumber)}${imported.buyerAgency ? ` — ${escapeHtml(imported.buyerAgency)}` : ""}. Selecione outros itens para complementar sem alterar os que já estão no Licigestão.`
-      : "Selecione somente os itens que deseja levar para o edital do GLL.";
+      : "";
     const count = state.selectedItemNumbers.size;
     const feedback = state.importFeedback
       ? `<p class="radar-feedback" data-tone="${escapeHtml(state.importFeedbackTone)}" role="status" aria-live="polite" tabindex="-1" data-radar-import-feedback>${escapeHtml(state.importFeedback)}</p>`
@@ -805,13 +805,14 @@ export function createRadarDetailsFeature({ getClient, getUserRole = () => null,
       : "";
     const openBidId = state.lastImport?.bid_id || imported?.bidId;
     return `<div class="radar-import-controls">
-      <p>${title}</p>
-      <div class="radar-import-toolbar"><strong aria-live="polite">${count.toLocaleString("pt-BR")} ${count === 1 ? "item selecionado" : "itens selecionados"}</strong><div class="radar-import-actions">
-        <button class="quiet-action compact-action" type="button" data-radar-select-all ${!eligibleItems.length || state.loading || state.importing ? "disabled" : ""}>${imported ? "Selecionar itens ainda não importados" : "Selecionar todos os itens"}</button>
+      <div class="radar-import-toolbar"><div class="radar-import-actions">
+        <button class="primary-action compact-action" type="button" data-radar-import-start ${!count || state.loading || state.importing ? "disabled" : ""}>${state.importing ? "Importando…" : imported ? "Complementar importação" : "Cadastrar Edital"}</button>
+        <button class="quiet-action compact-action" type="button" data-radar-select-all ${!eligibleItems.length || state.loading || state.importing ? "disabled" : ""}>Selecionar todos</button>
         <button class="quiet-action compact-action" type="button" data-radar-select-none ${!count || state.loading || state.importing ? "disabled" : ""}>Desmarcar seleção</button>
-      </div></div>
+        ${openBidId ? `<button class="quiet-action compact-action" type="button" data-radar-open-bid="${escapeHtml(openBidId)}">Abrir edital no GLL</button>` : ""}
+      </div><strong aria-live="polite">${count.toLocaleString("pt-BR")} ${count === 1 ? "item selecionado" : "itens selecionados"}</strong></div>
+      ${title ? `<p>${title}</p>` : ""}
       ${statusWarning}${feedback}${progress}
-      <div class="radar-import-actions"><button class="primary-action compact-action" type="button" data-radar-import-start ${!count || state.loading || state.importing ? "disabled" : ""}>${state.importing ? "Importando…" : imported ? "Complementar importação" : "Cadastrar Edital"}</button>${openBidId ? `<button class="quiet-action compact-action" type="button" data-radar-open-bid="${escapeHtml(openBidId)}">Abrir edital no GLL</button>` : ""}</div>
     </div>`;
   }
 
