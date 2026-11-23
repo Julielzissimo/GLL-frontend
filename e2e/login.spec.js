@@ -47,30 +47,35 @@ function radarSearchResponse(page, predicate = () => true) {
   }, { timeout: 45_000 });
 }
 
-function radarCacheResponse(context, table, numberControlPncp) {
-  return context.waitForEvent("response", {
-    predicate(response) {
-      const request = response.request();
-      const url = new URL(response.url());
-      return request.method() === "GET"
-        && url.pathname.endsWith(`/rest/v1/${table}`)
-        && url.searchParams.get("numero_controle_pncp") === `eq.${numberControlPncp}`;
-    },
-    timeout: 45_000,
-  });
-}
-
-function radarDocumentsResponse(page, numberControlPncp) {
+function radarDetailsResponse(page, numberControlPncp, action = "details") {
   return page.waitForResponse((response) => {
     const request = response.request();
     if (request.method() !== "POST" || !new URL(response.url()).pathname.endsWith("/functions/v1/radar-details")) return false;
     try {
       const payload = request.postDataJSON();
-      return payload.action === "documents" && payload.numberControlPncp === numberControlPncp;
+      return payload.action === action && payload.numberControlPncp === numberControlPncp;
     } catch {
       return false;
     }
   }, { timeout: 45_000 });
+}
+
+function radarDocumentsResponse(page, numberControlPncp) {
+  return radarDetailsResponse(page, numberControlPncp, "documents");
+}
+
+async function logoutTestSession(page) {
+  const logoutResponsePromise = page.waitForResponse(
+    (response) => new URL(response.url()).pathname.endsWith("/auth/v1/logout") && response.request().method() === "POST",
+    { timeout: 15_000 },
+  );
+  await page.locator("#profileMenuButton").click();
+  await page.locator("#logoutButton").click();
+  const confirmLogoutButton = page.locator("#confirmLogoutButton");
+  if (await confirmLogoutButton.isVisible().catch(() => false)) await confirmLogoutButton.click();
+  const logoutResponse = await logoutResponsePromise;
+  if (!logoutResponse.ok()) throw new Error("O Supabase não confirmou o encerramento da sessão de teste.");
+  await page.locator("#loginForm").waitFor({ state: "visible" });
 }
 
 async function submitRadarSearch(page, predicate, { verifyScrollPersistence = false } = {}) {
@@ -250,6 +255,13 @@ async function validateRadarSearchPage(page) {
   await page.locator("#radarTagInput").press("Enter");
   await expect(page.locator("#radarTagList li")).toHaveCount(1);
   const simple = await submitRadarSearch(page, (payload) => payload.tags?.length === 1 && payload.proposalReceiptState === "open", { verifyScrollPersistence: true });
+  const searchCatalogSource = simple.body.metadata?.catalogSource;
+  if (!["homolog", "production"].includes(searchCatalogSource)) {
+    throw new Error("A pesquisa do Radar não identificou se os resultados vieram de homologação ou produção.");
+  }
+  if (process.env.GLL_E2E_EXPECTED_ENVIRONMENT === "production" && searchCatalogSource !== "production") {
+    throw new Error("A pesquisa do Radar em produção não informou o catálogo de produção.");
+  }
   if (!simple.body.results.some((result) => result.numberControlPncp === knownProcurement.numberControlPncp)) {
     throw new Error("A busca por um termo do edital disponível não retornou o edital esperado.");
   }
@@ -280,34 +292,28 @@ async function validateRadarSearchPage(page) {
   const favoriteBeforeDetails = await resultCard.locator("[data-radar-favorite]").getAttribute("aria-pressed");
   const numberControlPncp = simple.body.results[0].numberControlPncp;
   const context = page.context();
-  const procurementResponsePromise = radarCacheResponse(context, "radar_licitacoes", numberControlPncp);
-  const itemSyncResponsePromise = radarCacheResponse(context, "radar_itens_sync", numberControlPncp);
   // Keep compatibility coverage for previously shared detail URLs.
   const detailsPage = await context.newPage();
+  const detailsResponsePromise = radarDetailsResponse(detailsPage, numberControlPncp);
   const documentsResponsePromise = process.env.GLL_E2E_EXPECTED_ENVIRONMENT === "homolog"
     ? radarDocumentsResponse(detailsPage, numberControlPncp)
     : null;
   const detailUrl = new URL(page.url());
   detailUrl.searchParams.set('radarDetail', numberControlPncp);
   await detailsPage.goto(detailUrl.href);
-  const [procurementResponse, itemSyncResponse] = await Promise.all([
-    procurementResponsePromise,
-    itemSyncResponsePromise,
-  ]);
-  if (!procurementResponse.ok()) throw new Error(`A leitura autenticada do cache do Radar retornou HTTP ${procurementResponse.status()}.`);
-  if (!itemSyncResponse.ok()) throw new Error(`A leitura autenticada da sincronização do Radar retornou HTTP ${itemSyncResponse.status()}.`);
-  const [procurementBody, itemSyncBody] = await Promise.all([
-    procurementResponse.json(),
-    itemSyncResponse.json(),
-  ]);
-  const procurement = Array.isArray(procurementBody) ? procurementBody[0] : procurementBody;
-  const itemSync = Array.isArray(itemSyncBody) ? itemSyncBody[0] ?? null : itemSyncBody;
+  const detailsResponse = await detailsResponsePromise;
+  if (!detailsResponse.ok()) throw new Error(`A leitura dos detalhes do Radar retornou HTTP ${detailsResponse.status()}.`);
+  const detailsBody = await detailsResponse.json();
+  const itemSync = detailsBody.itemSync ?? null;
   const itemSyncStatuses = new Set(["pending", "processing", "complete", "partial", "failed"]);
-  if (!procurement || procurement.numero_controle_pncp !== numberControlPncp) {
-    throw new Error("O cache autenticado não retornou o edital solicitado pelo Radar.");
+  if (detailsBody.status !== "available" || detailsBody.contract?.numeroControlePNCP !== numberControlPncp) {
+    throw new Error("Os detalhes autenticados não retornaram a contratação solicitada pelo Radar.");
+  }
+  if (detailsBody.catalogSource !== searchCatalogSource) {
+    throw new Error("A origem dos detalhes do Radar não corresponde à origem dos resultados da pesquisa.");
   }
   if (itemSync && !itemSyncStatuses.has(itemSync.status)) {
-    throw new Error("O cache do Radar retornou um estado de sincronização de itens desconhecido.");
+    throw new Error("Os detalhes do Radar retornaram um estado de sincronização de itens desconhecido.");
   }
   await expect(detailsPage.locator("#radarDetailsView")).toBeVisible();
   await expect(detailsPage.locator("#radarDetailsTitle")).toBeVisible();
@@ -332,12 +338,22 @@ async function validateRadarSearchPage(page) {
   await expect(page.locator("#radarListView")).toBeVisible();
   await expect(page.locator("#radarDetailsView")).toBeHidden();
   const renderedItems = await detailsPage.locator("#radarDetailsContent [data-radar-select-item]").count();
-  const publishedItemCount = Number(itemSync?.quantidade_itens ?? 0);
-  if (itemSync?.versao_sincronizacao && publishedItemCount > 0 && renderedItems === 0) {
-    throw new Error("O snapshot publicado no cache não foi exibido como itens selecionáveis.");
-  }
-  if (!itemSync?.versao_sincronizacao && renderedItems !== 0) {
-    throw new Error("A interface permitiu selecionar itens antes de existir um snapshot completo publicado.");
+  if (searchCatalogSource === "production") {
+    await expect(detailsPage.locator("#radarDetailsContent #radarGeneralTitle").locator(".."))
+      .toContainText("somente de leitura");
+    await expect(detailsPage.locator("#radarDetailsContent [aria-labelledby='radarImportPanelTitle']"))
+      .toContainText("somente de leitura");
+    if (renderedItems !== 0) {
+      throw new Error("A interface permitiu selecionar itens do catálogo de produção.");
+    }
+  } else {
+    const publishedItemCount = Number(itemSync?.publishedItemCount ?? 0);
+    if (itemSync?.publishedVersion && publishedItemCount > 0 && renderedItems === 0) {
+      throw new Error("O snapshot publicado no catálogo de homologação não foi exibido como itens selecionáveis.");
+    }
+    if (!itemSync?.publishedVersion && renderedItems !== 0) {
+      throw new Error("A interface permitiu selecionar itens antes de existir um snapshot completo publicado.");
+    }
   }
   const favoriteOnDetails = await detailsPage.locator("#radarDetailsFavoriteButton").getAttribute("aria-pressed");
   if (favoriteBeforeDetails !== favoriteOnDetails) {
@@ -529,28 +545,30 @@ test("o login de teste acessa somente a organização de teste", async ({ page }
       throw new Error("A configuração pública do Supabase não foi carregada.");
     }
 
-    await page.locator("#navUsersButton").click();
-    await page.locator("#usersPage").waitFor({ state: "visible" });
-    const organizationLabel = (await page.locator("#workspaceSummary").getAttribute("title"))?.trim();
-    const organizationQuery = await page.evaluate(async ({ supabaseUrl, anonKey, accessToken }) => {
-      const response = await fetch(`${supabaseUrl}/rest/v1/organizations?select=name`, {
-        headers: {
-          apikey: anonKey,
-          Authorization: `Bearer ${accessToken}`,
-        },
-      });
-      return { status: response.status, rows: response.ok ? await response.json() : null };
-    }, { supabaseUrl: runtime.supabaseUrl, anonKey: runtime.supabaseAnonKey, accessToken: authSession.access_token });
+    if (expectedEnvironment === "homolog") {
+      await page.locator("#navUsersButton").click();
+      await page.locator("#usersPage").waitFor({ state: "visible" });
+      const organizationLabel = (await page.locator("#workspaceSummary").getAttribute("title"))?.trim();
+      const organizationQuery = await page.evaluate(async ({ supabaseUrl, anonKey, accessToken }) => {
+        const response = await fetch(`${supabaseUrl}/rest/v1/organizations?select=name`, {
+          headers: {
+            apikey: anonKey,
+            Authorization: `Bearer ${accessToken}`,
+          },
+        });
+        return { status: response.status, rows: response.ok ? await response.json() : null };
+      }, { supabaseUrl: runtime.supabaseUrl, anonKey: runtime.supabaseAnonKey, accessToken: authSession.access_token });
 
-    if (organizationQuery.status !== 200 || !Array.isArray(organizationQuery.rows)) {
-      throw new Error("Não foi possível validar o escopo de organizações pela sessão autenticada.");
-    }
-    if (organizationQuery.rows.length !== 1) {
-      throw new Error("A sessão autenticada consegue consultar uma quantidade inesperada de organizações.");
-    }
-    const sessionOrganizationName = organizationQuery.rows[0].name?.trim();
-    if (!sessionOrganizationName || normalizedOrganizationName(organizationLabel || "") !== normalizedOrganizationName(sessionOrganizationName)) {
-      throw new Error("A organização exibida não corresponde à única organização visível para a sessão.");
+      if (organizationQuery.status !== 200 || !Array.isArray(organizationQuery.rows)) {
+        throw new Error("Não foi possível validar o escopo de organizações pela sessão autenticada.");
+      }
+      if (organizationQuery.rows.length !== 1) {
+        throw new Error("A sessão autenticada consegue consultar uma quantidade inesperada de organizações.");
+      }
+      const sessionOrganizationName = organizationQuery.rows[0].name?.trim();
+      if (!sessionOrganizationName || normalizedOrganizationName(organizationLabel || "") !== normalizedOrganizationName(sessionOrganizationName)) {
+        throw new Error("A organização exibida não corresponde à única organização visível para a sessão.");
+      }
     }
 
     const isolationCheck = await page.evaluate(async ({ supabaseUrl, anonKey, accessToken }) => {
@@ -618,6 +636,13 @@ test("o login de teste acessa somente a organização de teste", async ({ page }
 
     if (!isolationCheck.passed) {
       throw new Error("A sessão não passou na verificação de isolamento das tabelas da organização.");
+    }
+
+    if (expectedEnvironment === "production") {
+      await logoutTestSession(page);
+      loggedOut = true;
+      console.log(`Login validado em ${expectedEnvironment}; ${isolationCheck.tablesChecked} tabelas retornaram apenas dados permitidos pela organiza��o.`);
+      return;
     }
 
     await validateRadarSearchPage(page);
@@ -766,18 +791,7 @@ test("o login de teste acessa somente a organização de teste", async ({ page }
         throw new Error(`A política do Storage rejeitou a ${phase} (HTTP ${avatarUpload.status}${detail}).`);
       }
     }
-
-    const logoutResponsePromise = page.waitForResponse(
-      (response) => new URL(response.url()).pathname.endsWith("/auth/v1/logout") && response.request().method() === "POST",
-      { timeout: 15_000 },
-    );
-    await page.locator("#profileMenuButton").click();
-    await page.locator("#logoutButton").click();
-    const confirmLogoutButton = page.locator("#confirmLogoutButton");
-    if (await confirmLogoutButton.isVisible().catch(() => false)) await confirmLogoutButton.click();
-    const logoutResponse = await logoutResponsePromise;
-    if (!logoutResponse.ok()) throw new Error("O Supabase não confirmou o encerramento da sessão de teste.");
-    await page.locator("#loginForm").waitFor({ state: "visible" });
+    await logoutTestSession(page);
     loggedOut = true;
 
     console.log(`Login validado em ${expectedEnvironment}; ${isolationCheck.tablesChecked} tabelas retornaram apenas dados permitidos pela organização.`);
