@@ -41,22 +41,21 @@ test("respeita os limites documentados de tags da pesquisa", () => {
   assert.throws(() => parseRadarTags("x".repeat(201)), /até 200 caracteres/);
 });
 
-test("seleciona por padrão apenas pregão eletrônico, dispensa e inexigibilidade do catálogo ativo", () => {
+test("seleciona por padrão apenas Pregão - Eletrônico, Dispensa e Inexigibilidade pelos IDs PNCP", () => {
   assert.deepEqual(defaultRadarModalityIds([
-    { pncp_id: 310, name: "Concorrência" },
-    { pncp_id: 210, name: "Pregão - Eletrônico" },
-    { pncp_id: 220, name: "Dispensa" },
-    { pncp_id: 230, name: "Inexigibilidade" },
-    { pncp_id: 211, name: "Pregão Presencial" },
-    { pncp_id: 221, name: "Dispensa Eletrônica" },
-  ]), [210, 220, 230]);
+    { pncp_id: 7, name: "Pregão - Presencial" },
+    { pncp_id: 6, name: "Pregão - Eletrônico" },
+    { pncp_id: 8, name: "Dispensa" },
+    { pncp_id: 9, name: "Inexigibilidade" },
+    { pncp_id: 18, name: "Pregão - Eletrônico Internacional" },
+  ]), [6, 8, 9]);
   assert.deepEqual(defaultRadarModalityIds([
-    { pncp_id: 310, name: "Pregão Eletrônico" },
-  ]), [310]);
+    { pncp_id: 6, name: "Pregão - Eletrônico" },
+  ]), [6]);
 });
 
-test("envia filtros aceitos pelo motor, omite modalidades quando todas estão ativas e preserva paginação e atualização", () => {
-  const activeModalities = [1, 3, 5];
+test("envia somente as modalidades permitidas mesmo quando todas estão selecionadas", () => {
+  const activeModalities = [1, 6, 8, 9, 18];
   const all = buildRadarSearchPayload({
     tags: ["ar condicionado", "mobiliário"],
     modalities: null,
@@ -80,22 +79,23 @@ test("envia filtros aceitos pelo motor, omite modalidades quando todas estão at
     sortDirection: "desc",
     refreshCoverage: true,
     tags: ["ar condicionado", "mobiliário"],
+    modalities: [6, 8, 9],
     bidPhaseFrom: "2026-10-01",
     bidPhaseTo: "2026-10-10",
   });
   assert.equal("descricao" in all, false);
 });
 
-test("envia modalidade parcial, UF e município somente quando relacionados", () => {
+test("envia modalidade parcial permitida, UF e município somente quando relacionados", () => {
   const payload = buildRadarSearchPayload({
     tags: [],
-    modalities: [5],
+    modalities: [8],
     uf: "sp",
     municipalityIbgeId: "3550308",
     proposalReceiptState: "closed",
     pageSize: 20,
-  }, { activeModalities: [1, 3, 5] });
-  assert.deepEqual(payload.modalities, [5]);
+  }, { activeModalities: [6, 8, 9] });
+  assert.deepEqual(payload.modalities, [8]);
   assert.equal(payload.uf, "SP");
   assert.equal(payload.municipalityIbgeId, 3550308);
   assert.equal(payload.proposalReceiptState, "closed");
@@ -110,6 +110,16 @@ test("ignora seleções legadas de plataforma e nunca amplia a pesquisa pública
   assert.equal("platformIds" in payload, false);
   assert.equal("includeUnidentified" in payload, false);
   assert.deepEqual(payload.tags, ["computador"]);
+  assert.deepEqual(payload.modalities, [6, 8, 9]);
+});
+
+test("não amplia pesquisas com modalidades externas ou nenhuma modalidade selecionada", () => {
+  assert.throws(() => buildRadarSearchPayload({
+    modalities: [7],
+  }, { activeModalities: [6, 8, 9] }), /modalidade/u);
+  assert.throws(() => buildRadarSearchPayload({
+    modalities: [],
+  }, { activeModalities: [6, 8, 9] }), /modalidade/u);
 });
 
 test("preserva filtros oficiais e paginação sem enviar seletor de plataforma", () => {
