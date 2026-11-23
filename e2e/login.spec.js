@@ -194,10 +194,11 @@ async function validateRadarSearchPage(page) {
   expect((Date.parse(defaultDates.to) - Date.parse(defaultDates.from)) / 86_400_000).toBe(15);
   await expect(page.locator("#radarSortBy")).toHaveValue("bidPhaseStartAt");
   await expect(page.locator("#radarSortDirection")).toHaveValue("desc");
-  await expect(page.locator("#radarSituation")).toHaveValue("all");
+  await expect(page.locator("#radarSituation")).toHaveValue("open");
+  await expect(page.locator('#radarSituation option:not([value="open"]):not(:disabled)')).toHaveCount(0);
 
   await page.locator("#radarBidPhaseTo").fill("");
-  await page.locator("#radarSituation").selectOption("closed");
+  await expect(page.locator('#radarSituation option[value="closed"]')).toBeDisabled();
   await page.locator("#radarUf").selectOption("ES");
   await expect.poll(() => page.locator("#radarMunicipality option").count()).toBeGreaterThan(1);
   const firstMunicipality = await page.locator('#radarMunicipality option[value]:not([value=""])').first().getAttribute("value");
@@ -206,7 +207,7 @@ async function validateRadarSearchPage(page) {
   await page.locator('[data-radar-action="clear"]').click();
   await expect(page.locator("#radarBidPhaseFrom")).toHaveValue(defaultDates.from);
   await expect(page.locator("#radarBidPhaseTo")).toHaveValue(defaultDates.to);
-  await expect(page.locator("#radarSituation")).toHaveValue("all");
+  await expect(page.locator("#radarSituation")).toHaveValue("open");
   await expect(page.locator("#radarUf")).toHaveValue("");
   await expectDefaultRadarModalities(page);
 
@@ -235,10 +236,9 @@ async function validateRadarSearchPage(page) {
 
   await page.locator("#radarUf").selectOption("ES");
   await expect.poll(() => page.locator("#radarMunicipality option").count()).toBeGreaterThan(1);
-  await page.locator("#radarSituation").selectOption("all");
   await page.locator("#radarBidPhaseFrom").fill("");
   await page.locator("#radarBidPhaseTo").fill("");
-  const availableProcurements = await submitRadarSearch(page, (payload) => payload.tags === undefined && payload.page === 1 && payload.proposalReceiptState === "all");
+  const availableProcurements = await submitRadarSearch(page, (payload) => payload.tags === undefined && payload.page === 1 && payload.proposalReceiptState === "open");
   const knownProcurement = availableProcurements.body.results[0];
   if (!knownProcurement?.numberControlPncp || !knownProcurement.object) {
     throw new Error("A busca pelas modalidades permitidas não retornou um edital para o teste do Radar.");
@@ -248,7 +248,7 @@ async function validateRadarSearchPage(page) {
   await page.locator("#radarTagInput").fill(searchableTerm);
   await page.locator("#radarTagInput").press("Enter");
   await expect(page.locator("#radarTagList li")).toHaveCount(1);
-  const simple = await submitRadarSearch(page, (payload) => payload.tags?.length === 1 && payload.proposalReceiptState === "all", { verifyScrollPersistence: true });
+  const simple = await submitRadarSearch(page, (payload) => payload.tags?.length === 1 && payload.proposalReceiptState === "open", { verifyScrollPersistence: true });
   if (!simple.body.results.some((result) => result.numberControlPncp === knownProcurement.numberControlPncp)) {
     throw new Error("A busca por um termo do edital disponível não retornou o edital esperado.");
   }
@@ -385,16 +385,16 @@ async function validateRadarSearchPage(page) {
 
   await page.locator("#radarTagInput").fill("aquisição");
   await page.locator("#radarTagInput").press("Enter");
-  const multiple = await submitRadarSearch(page, (payload) => payload.tags?.length === 2 && payload.proposalReceiptState === "all");
+  const multiple = await submitRadarSearch(page, (payload) => payload.tags?.length === 2 && payload.proposalReceiptState === "open");
   await expect(multiple.payload.tags).toEqual([searchableTerm, "aquisição"]);
   if (multiple.body.results.length === 0) throw new Error("A pesquisa OR do Radar não retornou resultados para os termos de teste.");
 
   await page.locator('[data-radar-action="clear"]').click();
-  await page.locator("#radarSituation").selectOption("all");
+  await expect(page.locator("#radarSituation")).toHaveValue("open");
   await page.locator("#radarBidPhaseFrom").fill("");
   await page.locator("#radarBidPhaseTo").fill("");
   await page.locator("#radarPageSize").selectOption("20");
-  const firstPage = await submitRadarSearch(page, (payload) => payload.tags === undefined && payload.page === 1 && payload.proposalReceiptState === "all");
+  const firstPage = await submitRadarSearch(page, (payload) => payload.tags === undefined && payload.page === 1 && payload.proposalReceiptState === "open");
   if (!firstPage.body.pagination.hasMore) throw new Error("O conjunto de teste do Radar não oferece uma segunda página para validação.");
   const nextPageResponse = radarSearchResponse(page, (payload) => payload.page === 2);
   await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
