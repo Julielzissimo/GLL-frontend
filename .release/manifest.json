@@ -821,10 +821,13 @@
       "id": "RADAR-01-CATALOGOS-001",
       "backend_commits": [
         "c2a5877fefc148db718247b966eb1e3b89150bb8",
-        "77b1ed5e4bf58dd086b62c019a5e2bf3f2b3963b"
+        "77b1ed5e4bf58dd086b62c019a5e2bf3f2b3963b",
+        "753c7d1a29931f3e52772e98a9f28c8f1ee861ff",
+        "9e8212a0b4e45a7583e29e229410bca7ec29b47e"
       ],
       "frontend_commits": [
-        "1728ccc1c3e66128dffd59a9e5fd9e94f1393fa0"
+        "1728ccc1c3e66128dffd59a9e5fd9e94f1393fa0",
+        "f12380fd32c8059fae050026aae26fc51605daf9"
       ],
       "migrations": [
         "supabase/migrations/20261010131754_radar_catalogs_and_dynamic_contracts.sql"
@@ -839,7 +842,14 @@
         "5aaa254151171bdc5e3a720103890369acc69bdd",
         "c0c6a0715f5ce6abdbfab53be304a1b54ce0a6a6",
         "5f52759f1b6444166beb42108aa5793bcca061ff",
-        "ebdf784e5b7ae25891c004cad78886da35b27a4d"
+        "ebdf784e5b7ae25891c004cad78886da35b27a4d",
+        "1b261360ea6f96f200cfc3a26aae5c2dc8a94a1e",
+        "60e1c3f110942fbe8c61de8f737be407b18f5144",
+        "e1266c68b959cba10ebabf324fd4aff3d81bcaf0",
+        "16b3dcf64fbe245351718476696aeea2505cc1b8",
+        "f8d577f02a342a182c3582663a83505143454038",
+        "26b38ff5c1b9884f750e69e01ac3712bdc038b8d",
+        "f8f12c03e10d1c8ce385f3c49d913a6eeece7bd7"
       ],
       "frontend_commits": [],
       "migrations": [
@@ -882,7 +892,12 @@
         "87eb7465d3c92a11827cbd7ef84fbae682fa6c71",
         "27cae6c40edf7c6b5e309fae0510a6bde67cbb59",
         "beb187f296fb748fcbf80bb0d63ae3e01202db66",
-        "49cf44ec56d07fe726fb98fb51d676582d115265"
+        "49cf44ec56d07fe726fb98fb51d676582d115265",
+        "5cc0b474597ca34d4799edd847ea2a4c5463f3c8",
+        "2302eb5e14e7fea5063c56d9c63c26412591ac7d",
+        "5c4967ec1d43d77394874158f7c6779c08b127b7",
+        "62c84649c330c7c4346949589f0987db88b54aee",
+        "f8f12c03e10d1c8ce385f3c49d913a6eeece7bd7"
       ],
       "frontend_commits": [],
       "migrations": [
@@ -898,7 +913,11 @@
         "3742bdf2fa4743a68ced76cebace71b1be2661d4",
         "047167e50eff15f7afb03403121739ec7cf3956a",
         "c8963cbda02fa71e9e7541e6070cd01321de5454",
-        "6b075c72c47a5fab32ac84972ef5711793ccf0ea"
+        "6b075c72c47a5fab32ac84972ef5711793ccf0ea",
+        "7f47e435e01a8f18be7eb8d18e4d6c8aa5752274",
+        "f8f12c03e10d1c8ce385f3c49d913a6eeece7bd7",
+        "b8c18d2f710939020906dd8ba93f98e10c9e8479",
+        "cfc59ac6786f83d30eee878c585cf50832b554f7"
       ],
       "frontend_commits": [],
       "migrations": [
@@ -910,12 +929,17 @@
       "id": "RADAR-05-FRONTEND-001",
       "backend_commits": [
         "dd9a52cd91acd19619753a5f9b422a198f93f6f2",
-        "857ed182cb8250793bb92907a85358b97399beba"
+        "857ed182cb8250793bb92907a85358b97399beba",
+        "c633847ee52be483c42b5e8f18ed881d3703b5f6",
+        "f8f12c03e10d1c8ce385f3c49d913a6eeece7bd7"
       ],
       "frontend_commits": [
         "b30845c29a18cc5d4c83e09561a62a666914e996",
         "4093c78f26010798716170314b20d4aadf2d36e8",
-        "5a04673a453cf2a965abe6020adaab1f68feb2e2"
+        "5a04673a453cf2a965abe6020adaab1f68feb2e2",
+        "d34f707fa869e15adf146bc8ec474de0adf6354a",
+        "9987e30e3849f09520612dbd6e390e7e6cafdc38",
+        "c845aa5527c0a97a8ed11f7aeefeea93dabd15a9"
       ],
       "migrations": [
         "supabase/migrations/20261010183606_radar_search_default_period.sql"
@@ -925,10 +949,13 @@
       "id": "RADAR-06-DETALHES-001",
       "backend_commits": [
         "d75e82e2256cdb4d55ce317da71893a3402f7f90",
-        "99b7bc6db70654650b1b72acc4d8c91090ad4057"
+        "99b7bc6db70654650b1b72acc4d8c91090ad4057",
+        "8086a4b11787ceedecfc59bd12aa85fcdbb1f983",
+        "f8f12c03e10d1c8ce385f3c49d913a6eeece7bd7"
       ],
       "frontend_commits": [
-        "1c6d984338d927a3469e71b138a24e9302992dcc"
+        "1c6d984338d927a3469e71b138a24e9302992dcc",
+        "5c3a2aee45a4eed933936539e26ac0296da24df6"
       ],
       "migrations": []
     },
@@ -945,16 +972,29 @@
         "4903c8b0224ae5adae08f762df2fbf048580b2aa",
         "1aec087fbe9bc2c4a3ad591eed9979ad254f46c4",
         "611282bc5b67451f95889ff92fce65dc528f65d0",
-        "2525e7abb0c93f66b75d73e0953a77c2d102c081"
+        "2525e7abb0c93f66b75d73e0953a77c2d102c081",
+        "83cb0d5ed57ea2ea9ff12a5cbc541c5d85435e7a",
+        "d34285f5ef20d15198e613642f0bfcf713acd6a8",
+        "ba56ae2b6e6444982a8b532ae8a5da197d068406",
+        "994b0275591d1a7dbd98c554fdb15bef535e2a49",
+        "c6a44c5804f5104adfaaa4990a2ef492e2434e08",
+        "2e9d55c42decdde086e55e5d72abc2c6729c145f",
+        "f3cfded9c58e083f54ad9ad5592708798c2bf949",
+        "a73ddfad28667e2eb7c0f598ce6196fae25b484b",
+        "a53cb3a697d3b928d612943fc0946f43629afab5",
+        "2044f23ed3cedc85d0aa99037e750d529d55ecb9",
+        "f8f12c03e10d1c8ce385f3c49d913a6eeece7bd7"
       ],
       "frontend_commits": [
-        "406afb7e2bf45166537efb70676af169aabc19ef"
+        "406afb7e2bf45166537efb70676af169aabc19ef",
+        "fcd65e0ff974880302e2abf99c2627b279a31635"
       ],
       "migrations": [
         "supabase/migrations/20261010203112_radar_importacao_transacional.sql",
         "supabase/migrations/20261010205946_radar_import_lock_privilege_fix.sql",
         "supabase/migrations/20261010211500_radar_import_rpc_definer.sql",
-        "supabase/migrations/20261010213000_radar_import_revoke_direct_insert.sql"
+        "supabase/migrations/20261010213000_radar_import_revoke_direct_insert.sql",
+        "supabase/migrations/20261022235858_audit_radar_import_links.sql"
       ]
     },
     {
@@ -963,11 +1003,14 @@
         "ece4c1078552ef4d059a00ceb26fac1b21c7b211",
         "089b03d525bd83e6a4a5cd48e58fb9b0c448c781",
         "d654ad10faadedaf54497d0f3c7deb174c4189d4",
-        "bce0a22622a4ce221fd3a03cc814fb05b5d51bf0"
+        "bce0a22622a4ce221fd3a03cc814fb05b5d51bf0",
+        "f8f12c03e10d1c8ce385f3c49d913a6eeece7bd7"
       ],
       "frontend_commits": [
         "ece32c8d52ad76c8c7948c3a9a9cb58b6eaa0c43",
-        "4d4756e2653d24d5ae67a1e9b0e4bdcd6d20d744"
+        "4d4756e2653d24d5ae67a1e9b0e4bdcd6d20d744",
+        "2fba08ef4b0b1e42e8dfbb4ba70c454b2e64d4bd",
+        "b133445e085fadadfa75afd6faa392767a12b628"
       ],
       "migrations": []
     },
@@ -977,10 +1020,15 @@
         "2de15b8dc1f232552b3636c4272c10d0b14cd973",
         "3c363980629d3370363e8f06a71f1f8c4545c570",
         "f24aefbc69c631195062ca943388ba52d2adb968",
-        "91b2e1d991f9693439355cd699bfee562d23ddc5"
+        "91b2e1d991f9693439355cd699bfee562d23ddc5",
+        "5295a803a3a9fea88c40520bb6801836e6e3dee3",
+        "f9314aa036dd3606f92953ae53b3596c523a67a4",
+        "e0b6b2896d416eec59a7b1c77da2fd3722cd325c",
+        "3824d6e83a3b577f78359cf13f57483777fc9c05"
       ],
       "frontend_commits": [
-        "96ca3b954335a17175b952c0ed6ac1a5cf5f2009"
+        "96ca3b954335a17175b952c0ed6ac1a5cf5f2009",
+        "5c7fad10c3321f270bb4208e5884faa9a8948b33"
       ],
       "migrations": [
         "supabase/migrations/20261010223000_radar_platform_identification.sql",
@@ -995,7 +1043,13 @@
         "fe0a2ccdbe5dbc55f4ecf377a2262b1eb03de929",
         "e6a708857f4dfad19f8e11f2e17b6c77f6f80394",
         "249fe0534c6d0d7b5515302bc8a666056b006b47",
-        "858d4118d970ec96362441b4812addeb3ddaf6e4"
+        "858d4118d970ec96362441b4812addeb3ddaf6e4",
+        "6e208c36fefb79888c2537da3d683ad75736a289",
+        "4fee9ab38a420e837bbe3472aa68f754e0a8167e",
+        "722d7a034a00f58d84b04259f2e0035e9dca8ad5",
+        "70cf2c4036db95949f4c19c50a493531696eb172",
+        "0f6a84e702e94726d01fdcb656942122057683d5",
+        "e551a8edd1aba95029d176bd5367f316fb5cb3bf"
       ],
       "frontend_commits": [],
       "migrations": [
@@ -1012,7 +1066,14 @@
         "77a999a004e2f32c6bd8d61e94a1396a385dfd4b",
         "c15c49d003065061259193f395da5023ef5dccd1",
         "32bf434e1327ad8fd8ec1c26b5af736e4bf3fabd",
-        "88c8598ec7301f525f0391c289a89aa1f8d5deb8"
+        "88c8598ec7301f525f0391c289a89aa1f8d5deb8",
+        "a25ff46a0737d5d15563f463eceafac19af3a78f",
+        "811f19ea27f76c1e9b9b158327c5933afb1e1984",
+        "0fcc7e7a85fba8bcaed49eed628e7aca4e027e62",
+        "bfdaed2c5c244f82f481de2e57dfeb914b31b3d5",
+        "cb4d459790018d9106fc25bac2e259bfadf83656",
+        "a8983cb4eecb7edf3db86129f5dad835760d7e49",
+        "8e47683ad4e849b92dc1e210a0f63e5a71a67abf"
       ],
       "migrations": []
     },
@@ -1024,7 +1085,13 @@
         "d4a74cbe93f309dca102fe13c939e2b284e86b17",
         "6f88a0ba625d2e9a733908a6388ff14416d49199",
         "8af3b4fd2ed92d061bed79aed5fa86cfeabc0397",
-        "b10cca19859d35cf1b6e13a3eb72925019bedbc0"
+        "b10cca19859d35cf1b6e13a3eb72925019bedbc0",
+        "1b00a2b5dfd5e8ecda6973637300d0adbcca8e85",
+        "67462eb41b8051b8c7b29c35028f8c14870cb673",
+        "1c61cb6453f9b479bcfb6a911a4b0bc10bbde989",
+        "29f331449d05340f6f152c12a7c1fa13cfa42632",
+        "56542b29ddf5b3b0c297e7c930795f2ebb07cfb5",
+        "f8f12c03e10d1c8ce385f3c49d913a6eeece7bd7"
       ],
       "frontend_commits": [],
       "migrations": [
@@ -1035,7 +1102,9 @@
       "id": "RADAR-13-METADADOS-EVIDENCIAS-001",
       "backend_commits": [
         "84ee9f58243febce5bb44b2985dd27cd8bdccafb",
-        "92dc2799fc8f67e440ad727d3c010cfa1558f6f4"
+        "92dc2799fc8f67e440ad727d3c010cfa1558f6f4",
+        "20605336a8d618b36e88d39825a7266cdfd5ee0b",
+        "f8f12c03e10d1c8ce385f3c49d913a6eeece7bd7"
       ],
       "frontend_commits": [],
       "migrations": [
@@ -1048,17 +1117,22 @@
       "frontend_commits": [
         "cb5b1189aa1227a891767c247a5011299072be67",
         "f10f20754995253ecba2a2ddeacc3e19ef969d4c",
-        "3102b8e6279001c2afb315a2681c3bb8552494c5"
+        "3102b8e6279001c2afb315a2681c3bb8552494c5",
+        "3f3ebb873a93ad84e886559b7b4414493025146f",
+        "3172cffc1c2fef4929a17329cfeb1e2000393a1b",
+        "02cedf3d0796e3a7495252a1a5d0526c7ec76fc0"
       ],
       "migrations": []
     },
     {
       "id": "RADAR-14-INTERFACE-001",
       "backend_commits": [
-        "3eb223d73b0b03ff07a55e1a1d2169a9e68be908"
+        "3eb223d73b0b03ff07a55e1a1d2169a9e68be908",
+        "a1606d6c9946eaaf435867d4c8247b6444f85967"
       ],
       "frontend_commits": [
-        "b7d10532f70ab85c9ca4da9941142f967bbf7187"
+        "b7d10532f70ab85c9ca4da9941142f967bbf7187",
+        "ca765f90b2ca526735f6f85cdce6e8e7ee05685c"
       ],
       "migrations": [
         "supabase/migrations/20261011134423_radar_manual_platform_url_override.sql"
@@ -1069,10 +1143,13 @@
       "backend_commits": [
         "fe11e723f8e629da2a23aaf819f64406e80aaaf6",
         "f7337c0213f19bcc4181c378210691d4e5b823d2",
-        "32f9232daf7eed57827c4369b82943b57250595e"
+        "32f9232daf7eed57827c4369b82943b57250595e",
+        "b2476f09ce120ed30ed3e77e5b5e9eb65f9843d9",
+        "f8f12c03e10d1c8ce385f3c49d913a6eeece7bd7"
       ],
       "frontend_commits": [
-        "b2516b5dbab8b9e313352672a18d31ae0abc8abb"
+        "b2516b5dbab8b9e313352672a18d31ae0abc8abb",
+        "5167a3dae911de034b5e4c4a28912845a32b8fa4"
       ],
       "migrations": [
         "supabase/migrations/20261011142855_radar_pdf_platform_identification.sql"
@@ -1082,7 +1159,8 @@
       "id": "RADAR-17-DETALHE-PLATAFORMA-001",
       "backend_commits": [],
       "frontend_commits": [
-        "abbfa68c277534058b78ac20e9472e0250a98052"
+        "abbfa68c277534058b78ac20e9472e0250a98052",
+        "b7777f728f997372efdbc0d16729a59f8ceb8038"
       ],
       "migrations": []
     },
@@ -1091,7 +1169,9 @@
       "backend_commits": [
         "efc9ca45326a9abcb1536813461d636299478bea",
         "c2f26164d3b86ca05eb7f03f2725fa06161a13ae",
-        "56cd10197ab1e0272cf3e2e22e27d48b028997a7"
+        "56cd10197ab1e0272cf3e2e22e27d48b028997a7",
+        "9d44d99389567a6d58517bb70c40262ca15cbca8",
+        "f8f12c03e10d1c8ce385f3c49d913a6eeece7bd7"
       ],
       "frontend_commits": [],
       "migrations": []
@@ -1138,7 +1218,15 @@
         "af60aa3af15cd966ca51f9c9546fe98717d7e5e1",
         "bf9a880fcc323b41241f248004c52d7da57fca91",
         "10031fc605269ca9f57ffcd657e2bb3fed50dae5",
-        "1bff43a81dacdd3f97935826d54561e5dcabe7c3"
+        "1bff43a81dacdd3f97935826d54561e5dcabe7c3",
+        "ddf3089415b890d56582e47bf79b495e1d6e80c8",
+        "f8f12c03e10d1c8ce385f3c49d913a6eeece7bd7",
+        "4cd8ed87b9e25da4dfaed307e2b8598b71be5be9",
+        "209ab3c64745bc5aae5567fd38de2915f21c530e",
+        "357b0aec7bf47b873dfc0a4f1c1778c858f5fac5",
+        "0a11474736c63f5547a5fd1f2b66c81d5b573e18",
+        "818bf100a724b3904a3d44052c547fa2aeaf7746",
+        "7111d77d3c8ceb26e093ec36b98b16767bbb85f9"
       ],
       "frontend_commits": [],
       "migrations": [
@@ -1210,20 +1298,24 @@
     {
       "id": "RADAR-19-FASE-3-DETALHES-CACHE-ITENS-001",
       "backend_commits": [
-        "a6bf76a4cb94f6e34dc5a6543d762466610f6f08"
+        "a6bf76a4cb94f6e34dc5a6543d762466610f6f08",
+        "1c366286100ea13a951ccbe41cf5f6e323715e97"
       ],
       "frontend_commits": [
-        "a307ccb3bd56c3a7f0573bf70a781f51cf2b3131"
+        "a307ccb3bd56c3a7f0573bf70a781f51cf2b3131",
+        "ad30977969bca59008c44dfecca1f21b2dedead5"
       ],
       "migrations": []
     },
     {
       "id": "RADAR-19-FASE-4-UX-CARREGAMENTO-ITENS-001",
       "backend_commits": [
-        "d9bfbaecfc6e5313f3101cbf728a0d23686cf046"
+        "d9bfbaecfc6e5313f3101cbf728a0d23686cf046",
+        "f8f12c03e10d1c8ce385f3c49d913a6eeece7bd7"
       ],
       "frontend_commits": [
-        "de9a36b47e74b8e8ec36ddcf53b5b06981cbac77"
+        "de9a36b47e74b8e8ec36ddcf53b5b06981cbac77",
+        "58bbfd11a828039ecc06a72b58d8cc3a0824ccff"
       ],
       "migrations": []
     },
@@ -1248,7 +1340,8 @@
       "id": "ISSUE-85",
       "backend_commits": [],
       "frontend_commits": [
-        "1457637b0e6b560057bb2fdbb5848848e9fd10f3"
+        "1457637b0e6b560057bb2fdbb5848848e9fd10f3",
+        "a0b4cc57a73b7faa367722a6ebd2375ce1e52598"
       ],
       "migrations": []
     },
@@ -1270,14 +1363,22 @@
     {
       "id": "RADAR-19-FASE-6-VALIDACAO-HOMOLOGACAO-001",
       "backend_commits": [
-        "e3572382f5e6c98b432544c89124ff86725cf62c"
+        "e3572382f5e6c98b432544c89124ff86725cf62c",
+        "7f20bcc788f36694ee496d8bf41e7ca14642dbe7"
       ],
       "frontend_commits": [
         "d3cd82eb0c1fbcda67e5218b62e5168c78ef9bdb",
-        "4d4756e2653d24d5ae67a1e9b0e4bdcd6d20d744"
+        "4d4756e2653d24d5ae67a1e9b0e4bdcd6d20d744",
+        "e148dd8a624bfd93ad47882b2ee23c617f6fd353",
+        "b133445e085fadadfa75afd6faa392767a12b628"
       ],
       "migrations": [
-        "supabase/migrations/20261012023121_radar_items_operational_metrics.sql"
+        "supabase/migrations/20261012023121_radar_items_operational_metrics.sql",
+        "supabase/migrations/20261011195000_radar_item_worker_runtime.sql",
+        "supabase/migrations/20261011234630_radar_items_scheduling_priority_storage_retention.sql",
+        "supabase/migrations/20261012002730_radar_items_worker_runtime_latency_tuning.sql",
+        "supabase/migrations/20261012005000_radar_items_worker_request_timeout_buffer.sql",
+        "supabase/migrations/20261012014000_radar_items_worker_extended_runtime_budget.sql"
       ]
     },
     {
@@ -1298,7 +1399,8 @@
       "id": "RADAR-20-ABRIR-ITENS-NOVA-GUIA-001",
       "backend_commits": [],
       "frontend_commits": [
-        "9df13b91efe0c53fe8bb339522d78bc2016c3baf"
+        "9df13b91efe0c53fe8bb339522d78bc2016c3baf",
+        "712e0a77a7ded25da07cfae7dd9fd7c4634dfe2a"
       ],
       "migrations": []
     },
@@ -1346,7 +1448,8 @@
     {
       "id": "RECONCILE-APPLIED-RADAR-MIGRATIONS-001",
       "backend_commits": [
-        "eb90ba7247bb0439b6eba7643cd8bebf6f8c931c"
+        "eb90ba7247bb0439b6eba7643cd8bebf6f8c931c",
+        "1dcd2a74848e3dd9de515253497ab0f514f9fbcb"
       ],
       "frontend_commits": [],
       "migrations": [
@@ -1424,7 +1527,12 @@
         "348a1fa1e6d4bde27f1f7a51d0f9aabcd70856ec",
         "626bd131f4ddd1751286ab5459ff29bd5e729066",
         "cdc134203507e92cbffacf7ecdf324ad5a3710d6",
-        "51bc702dfb1789386c652a09daa4af292ba0222c"
+        "51bc702dfb1789386c652a09daa4af292ba0222c",
+        "61e538238448da8a448aaf6870a6d2231f10d8d6",
+        "7efafdbb00bb8ae1b3f301966879fb4489c718cf",
+        "e7456910732383b999aec5bb299a25da411cf82c",
+        "f8f12c03e10d1c8ce385f3c49d913a6eeece7bd7",
+        "80f53fc2b79b141aa6f7d32d8f4605b11ce7bdfa"
       ],
       "frontend_commits": [
         "aedecf77d7ea608d34224f17f5f8195c75030dba",
@@ -1434,7 +1542,15 @@
         "ff67254f60a1b7c710d732239fbc25e681637f04",
         "a4be4f1eae6d846db2db1bcbc6caa1c8dc3987ec",
         "a5c586d97ae1682957445eaf34b09e4c3d6198e4",
-        "772fe5bd5720c1e6c7ca04ea4cb4100f6ff00ebc"
+        "772fe5bd5720c1e6c7ca04ea4cb4100f6ff00ebc",
+        "3172cffc1c2fef4929a17329cfeb1e2000393a1b",
+        "86cd90839ddcd0308d43e10ae3fffcbe7e1faa9c",
+        "de57a8f1a94444344e7e5838926155b7cb6bc447",
+        "85b8b78c4af50deb54cbfde8ca1f8075565aee49",
+        "bc1c7698a5e64fd87e1400986e4e72b958505590",
+        "1c3a4176585b6722356b039c9ce9621630d847b7",
+        "17b3866e35d8e4ed71931e8ffc38d598202690c9",
+        "abbd809b6a1961862031e1e1462b68c230c15e4c"
       ],
       "migrations": [
         "supabase/migrations/20261117004431_radar_engine_sync_diagnostics.sql"
@@ -1443,7 +1559,8 @@
     {
       "id": "ISSUE-95",
       "backend_commits": [
-        "8d2303991279889b5a6aa22f7541093e85be640a"
+        "8d2303991279889b5a6aa22f7541093e85be640a",
+        "f8f12c03e10d1c8ce385f3c49d913a6eeece7bd7"
       ],
       "frontend_commits": [],
       "migrations": []
@@ -2582,7 +2699,9 @@
       "id": "ISSUE-407",
       "backend_commits": [
         "4deb4e984d870e30961336c942dbd599860d5309",
-        "14e86551adf4035a76f4fecba4c5fb9e362c0454"
+        "14e86551adf4035a76f4fecba4c5fb9e362c0454",
+        "76f620cb3768b7c13f9f967df1f7e5a87d5fe5ef",
+        "f8f12c03e10d1c8ce385f3c49d913a6eeece7bd7"
       ],
       "frontend_commits": [],
       "migrations": [
@@ -2593,7 +2712,8 @@
       "id": "ISSUE-413",
       "backend_commits": [],
       "frontend_commits": [
-        "c1244fa08c5eb8cf3381f2dbf30e596238a56200"
+        "c1244fa08c5eb8cf3381f2dbf30e596238a56200",
+        "02c289ed7c87375be13a220ae3308887b2675251"
       ],
       "migrations": []
     },
@@ -2601,7 +2721,8 @@
       "id": "ISSUE-415",
       "backend_commits": [],
       "frontend_commits": [
-        "02dafeddb993c25d3af42584928b32d98a5fb53f"
+        "02dafeddb993c25d3af42584928b32d98a5fb53f",
+        "f1fdc746a1b9fa06d622bd1813d54ffe39941364"
       ],
       "migrations": []
     },
@@ -2609,7 +2730,8 @@
       "id": "ISSUE-417",
       "backend_commits": [],
       "frontend_commits": [
-        "c1359ebf247773d7850760895805c589c19a6ef9"
+        "c1359ebf247773d7850760895805c589c19a6ef9",
+        "8288bd2151e0defd142cf9112d0aca903f706e94"
       ],
       "migrations": []
     },
@@ -2617,7 +2739,8 @@
       "id": "ISSUE-419",
       "backend_commits": [],
       "frontend_commits": [
-        "191fdf6d4f8c465ed23d2078a86640dea27bc5d7"
+        "191fdf6d4f8c465ed23d2078a86640dea27bc5d7",
+        "e4619ce0ed77344e0329765b98db96b0a85cff7f"
       ],
       "migrations": []
     },
@@ -2629,7 +2752,12 @@
         "626a2eb3cdf5f79b3ebc2107bc63b536f9fb12fe",
         "5c5b879dff4f0e855a0671eb74f1d461d2bd69d1",
         "3bdbd1859636f4706a47c090bc385a729414ab1f",
-        "53277264967a850823122e516c2d631ddd34f739"
+        "53277264967a850823122e516c2d631ddd34f739",
+        "c3bb6c3a24d44a6dff027f17edd6a7e105d43525",
+        "783d9c1d82ce6117b108c2b2c57a5e7218b78449",
+        "fdfb885214b3c04eb49a16e557ab67dc0fc43c21",
+        "e867dcedf83cb2b163a2ce2da6c17e8588372ff7",
+        "b4ca0be5a609fcfd57509598623a1633ef6f870e"
       ],
       "migrations": []
     },
@@ -2637,12 +2765,17 @@
       "id": "ISSUE-422",
       "backend_commits": [
         "9f1c368fc69f64582a08dd94fc288562b1715dc5",
-        "ffd3d7741367281f90364bb266f69451b46009cc"
+        "ffd3d7741367281f90364bb266f69451b46009cc",
+        "d331df9d4e0986eb30542bc959ef66a112572509",
+        "eca4638b5371cef6804f41148db5b1b1a61306c7"
       ],
       "frontend_commits": [
         "22acd9c7fa60736afadfe863ef10d3c0a93ee068",
         "fadb3444450273e5b0a0f79e6586498c6355b8f5",
-        "66e17a35846c97009b593181fdfcc8aa833fdeb8"
+        "66e17a35846c97009b593181fdfcc8aa833fdeb8",
+        "678959fb89c1e06911082f10bb14396f5e37370c",
+        "08ff129bdf86de80f164fef46c4321553ee29a32",
+        "2d8efdcb0c23d1e476468bae3189fa462a2e95f6"
       ],
       "migrations": []
     },
@@ -2652,7 +2785,10 @@
       "frontend_commits": [
         "d549d996a52cbcb8605e132140b6e121e5540df4",
         "f690ef8aa63eea71fcde62a0e8d46b63ba15c40d",
-        "192c783d7d8434c7b1df2734dcfd33342e8cd162"
+        "192c783d7d8434c7b1df2734dcfd33342e8cd162",
+        "275116a29bcf8bf6d6401104fa20074471814aa8",
+        "32007fbc27897a0cf59aa44ca4980197b2ecebc5",
+        "5ddf4955bd050bcaf886b5844e16c87b7760e57d"
       ],
       "migrations": []
     },
@@ -2660,7 +2796,8 @@
       "id": "ISSUE-427",
       "backend_commits": [],
       "frontend_commits": [
-        "d97759865ce3415f008eac1d09b212857d79a5e1"
+        "d97759865ce3415f008eac1d09b212857d79a5e1",
+        "292b691b47b28c0f181b1821963f589ca8e5df42"
       ],
       "migrations": []
     },
@@ -2669,7 +2806,9 @@
       "backend_commits": [],
       "frontend_commits": [
         "ad4b5d15941262d51d528b0db071e1b32be85356",
-        "f194cc77d972767dad285978300ebb6babbae97e"
+        "f194cc77d972767dad285978300ebb6babbae97e",
+        "f6bbf0d1a2afa29180aa20348e2fdbbdc01828b0",
+        "4cd44b076ac15b59cc5d8537fbc7afcb0b3ad400"
       ],
       "migrations": []
     },
@@ -2677,7 +2816,8 @@
       "id": "ISSUE-436",
       "backend_commits": [],
       "frontend_commits": [
-        "dd57238022cc8144a38b3e209e03fffb24544861"
+        "dd57238022cc8144a38b3e209e03fffb24544861",
+        "1bc5e46023283df9c2b11c7f97ec41676216533f"
       ],
       "migrations": []
     },
@@ -2685,7 +2825,8 @@
       "id": "ISSUE-440",
       "backend_commits": [],
       "frontend_commits": [
-        "79129dc96ee29f12c972149f40e05616bd7c3353"
+        "79129dc96ee29f12c972149f40e05616bd7c3353",
+        "c27f6a6221e56ec738ef131cbf5dc114ba67e1df"
       ],
       "migrations": []
     },
@@ -2694,7 +2835,9 @@
       "backend_commits": [],
       "frontend_commits": [
         "41d639722eb700a3e77e0f38bf083838beba91c7",
-        "a4df49586ff0796c592931b63209c1a48d58d02a"
+        "a4df49586ff0796c592931b63209c1a48d58d02a",
+        "770e7c52b4c91b9d92e26077f785bd14ecadf413",
+        "918dca6ab31cd151d33dd10b5aa190bb97d93bdd"
       ],
       "migrations": []
     },
@@ -2702,7 +2845,8 @@
       "id": "ISSUE-446",
       "backend_commits": [],
       "frontend_commits": [
-        "1723a58856c1bdbf7f3321390bb06b95226e857e"
+        "1723a58856c1bdbf7f3321390bb06b95226e857e",
+        "298c98e0f1d8a63bd4759a2432fc7e862b17c758"
       ],
       "migrations": []
     },
@@ -2710,7 +2854,8 @@
       "id": "ISSUE-448",
       "backend_commits": [],
       "frontend_commits": [
-        "3bd80094c5bb1637e27c5752bb2724d2274a53eb"
+        "3bd80094c5bb1637e27c5752bb2724d2274a53eb",
+        "b11642a8552eae3146a153ed6666ad0f6676a455"
       ],
       "migrations": []
     },
@@ -2718,7 +2863,8 @@
       "id": "ISSUE-445",
       "backend_commits": [],
       "frontend_commits": [
-        "75f964c62b07f2153d2b0320b892be44ca714928"
+        "75f964c62b07f2153d2b0320b892be44ca714928",
+        "77cd54ab78ebe067cf4a0d2622f071a7c0c22c9f"
       ],
       "migrations": []
     },
@@ -2726,12 +2872,17 @@
       "id": "ISSUE-434",
       "backend_commits": [
         "b97bc59ac6acbde5b419b54406685ab806923755",
-        "a3d49460ef2cbe5976bb12b090b1656b6252769a"
+        "a3d49460ef2cbe5976bb12b090b1656b6252769a",
+        "c30b6e1c21ab33ac9114436828ff1d5253b568ae",
+        "99df62aa1b4ebf711408b2c551a4b84b0af9a342"
       ],
       "frontend_commits": [
         "2fdd9df1ab4dcde5e15424bb419848bc18dbc9d9",
         "b55b85a1523c47094336b7d8f008e389eaafc217",
-        "f18302b11205a7336901d156dbd42af60886b79b"
+        "f18302b11205a7336901d156dbd42af60886b79b",
+        "bfcefd0eaab80a6936289c3f928e5198ee1a047b",
+        "f1ae9cc99390ca3723809f6b240f11cae0be9216",
+        "6793e19a156c2975818521a6ba63ad3ca7cbf386"
       ],
       "migrations": [
         "supabase/migrations/20261118010135_radar_bid_phase_search_filter.sql"
@@ -2746,17 +2897,25 @@
         "d4fbae77fc6fc868a50b0e370e55f6ea9b946c70",
         "15e2d17c1069443c0df6afac54dddb8da91e82ae",
         "1de48e390c31c7681e720fdbdee9b87cb02e3b61",
-        "7f8d987ebcbb085de73df7cf61c78d0ca45e0bb2"
+        "7f8d987ebcbb085de73df7cf61c78d0ca45e0bb2",
+        "2902ac170c28ed1d4e8b7c263e27ad0116c67eaa",
+        "fad56ae611aa08916a084af3b809312a76977e89",
+        "f423c0397b9db78792555457ac56bf66453bd9f6",
+        "ef5a4b5fbfe30ae99cda09b725d7d66a851820fc",
+        "6de842bb9eae3a552493ed8c607cafdec84c6d08",
+        "f94c112321cf9612f443dea40863a8503682ab84"
       ],
       "migrations": []
     },
     {
       "id": "ISSUE-447",
       "backend_commits": [
-        "65778ddd2b2ef6b0617a30e13af13c785b001983"
+        "65778ddd2b2ef6b0617a30e13af13c785b001983",
+        "13073a7b27c0a622b3aa49856237c321f307f3c9"
       ],
       "frontend_commits": [
-        "c909be559c12c0aec65b63dc055f10f525c676b3"
+        "c909be559c12c0aec65b63dc055f10f525c676b3",
+        "e191e40633b8e5451bf642f053d18cf51ea56eab"
       ],
       "migrations": []
     },
@@ -2764,11 +2923,15 @@
       "id": "ISSUE-443",
       "backend_commits": [
         "4aecf5b02dd6a2bce3be975985d4138f19e93563",
-        "aabc579d503e0d92ded305223843004ddcae123e"
+        "aabc579d503e0d92ded305223843004ddcae123e",
+        "fab439686ab398f51f3f22d32eac53e3b81dbe24",
+        "3ac28da653ddec856f5baea0126b3848be5a8113"
       ],
       "frontend_commits": [
         "7a10e7cfdcf2f5207e37556343eb5870c04f9fac",
-        "b3773e79ae18a45c9b052f2660c8d6155f154156"
+        "b3773e79ae18a45c9b052f2660c8d6155f154156",
+        "02c023fbf0695997d0b1c562530520aad28bf8f8",
+        "2cbae53d4fcdfa2a26ad0254ade4dfa2f3d7be36"
       ],
       "migrations": []
     },
@@ -2776,7 +2939,8 @@
       "id": "ISSUE-450",
       "backend_commits": [],
       "frontend_commits": [
-        "617fe29e97fc6d06018e750b8e917974a0e658c0"
+        "617fe29e97fc6d06018e750b8e917974a0e658c0",
+        "db826b024b380ded455c652c3fb4292e74dfcb44"
       ],
       "migrations": []
     },
@@ -2786,7 +2950,10 @@
       "frontend_commits": [
         "91212d6f6d0bfa5bf68cbbdb0627e22d5c789539",
         "439cfc4bf128095a7a8a546b796932e4ef093a35",
-        "9d5d5735796112902d43c8e8ecd47cfa052769a3"
+        "9d5d5735796112902d43c8e8ecd47cfa052769a3",
+        "d8c69b5d600a04658d9aa2fc5736bfcda69e5862",
+        "f5f17de4def3a39751051f88e11347f9d49045fa",
+        "0e46d9b4ed102ba95600ea491cf2769571baba81"
       ],
       "migrations": []
     },
@@ -2794,12 +2961,17 @@
       "id": "ISSUE-464",
       "backend_commits": [
         "66aec1ad189795eb746247a11bc013f026164741",
-        "5d06c7c363c576681ca6a8d3c4c877db5033990f"
+        "5d06c7c363c576681ca6a8d3c4c877db5033990f",
+        "ea4b812837eacf78a1cdc2ed0fe93a6f6bf8089b",
+        "322aa4c54b8776e4b7b089758314b1a6b6c4fa5c"
       ],
       "frontend_commits": [
         "dc4025841fc41f0d7a621a949fbb408276ff97f2",
         "ae7b3279db9f26ee18dcea25b2889eb452a2d4f9",
-        "c0221f6c9db5de7f2d0b408982f799a28602825a"
+        "c0221f6c9db5de7f2d0b408982f799a28602825a",
+        "758cdf0ec49390bc92d5cad8543ecede2f27bfae",
+        "7ccf6ba7cdfda8cd3b3813a353d665f66afa7469",
+        "3172cffc1c2fef4929a17329cfeb1e2000393a1b"
       ],
       "migrations": [
         "supabase/migrations/20261118174507_radar_session_start_datetime.sql"
@@ -2809,7 +2981,8 @@
       "id": "ISSUE-470",
       "backend_commits": [],
       "frontend_commits": [
-        "bc3a8255e03ebe7d3b2013f342a8675859c078cc"
+        "bc3a8255e03ebe7d3b2013f342a8675859c078cc",
+        "970899817603cbe596a030a6f29296042cd3de83"
       ],
       "migrations": []
     },
@@ -2817,7 +2990,8 @@
       "id": "ISSUE-472",
       "backend_commits": [],
       "frontend_commits": [
-        "eaf524e9c7e4d690a24d21ba0bcea0a57b3c28a4"
+        "eaf524e9c7e4d690a24d21ba0bcea0a57b3c28a4",
+        "f66e1f3ae25269b761c1c169b8fcc8a24a77b060"
       ],
       "migrations": []
     },
@@ -2825,14 +2999,16 @@
       "id": "ISSUE-473",
       "backend_commits": [],
       "frontend_commits": [
-        "cbbe3d0ec1f176213549ee25a72f904faf0841a2"
+        "cbbe3d0ec1f176213549ee25a72f904faf0841a2",
+        "d0a34cd49b683e6064963865499263679d634d5f"
       ],
       "migrations": []
     },
     {
       "id": "ISSUE-474",
       "backend_commits": [
-        "ebdd8be8082f2e1b69ce31aeb6da7eab7d86963b"
+        "ebdd8be8082f2e1b69ce31aeb6da7eab7d86963b",
+        "5ebecb8cface5b145acfe40e13e01f462d031dde"
       ],
       "frontend_commits": [],
       "migrations": []
@@ -2841,7 +3017,8 @@
       "id": "ISSUE-480",
       "backend_commits": [],
       "frontend_commits": [
-        "9f5636c1babd9acaf61052463f2b024da36fb551"
+        "9f5636c1babd9acaf61052463f2b024da36fb551",
+        "659dc9ab1863a3014f0fbf995139c772bb5ffa32"
       ],
       "migrations": []
     },
@@ -2851,10 +3028,15 @@
         "ddb0a9444585a6c2cb5f93470ebc35b45e6d45d2",
         "307c23bd7bcade29b9471a8db04a954c5eb36a41",
         "02dee141b280616a38a47afcfe8e30b4547cff57",
-        "884984a4193a3cac452cc45dfc31879e2e400bf7"
+        "884984a4193a3cac452cc45dfc31879e2e400bf7",
+        "04dcee60e79e7dd390dd8c380e5825a75795adc0",
+        "1748371f6b432d4add56a845e64635be69a91bfe",
+        "c92c52f7133f10b0d8151262a5a5f96f19f9e6d5",
+        "f9d2296bdb26aa100570fb9980855efe26a4d799"
       ],
       "frontend_commits": [
-        "537e5be9a882a4f18b64859e151b1a3bd53f67ee"
+        "537e5be9a882a4f18b64859e151b1a3bd53f67ee",
+        "9b5aaa13d2bb4fe1eaa3dc183ce5211f188d43ba"
       ],
       "migrations": [
         "supabase/migrations/20261118200057_radar_future_disputes_catalog.sql"
@@ -2865,11 +3047,16 @@
       "backend_commits": [
         "464f2de73405e8264763f69ccad06317b37fa28e",
         "c844c75dad3b833fd530d37f0b6a4606281d3430",
-        "3678b9cb6361f358f472295389779989107cbad6"
+        "3678b9cb6361f358f472295389779989107cbad6",
+        "3eec69965e4f8a15fc03ee29b73904e771901bdd",
+        "054504a27fe00c2bcc4516ee35d5fd11c04779db",
+        "3d294dc45a2ea2b08cce517770db459c5533c482"
       ],
       "frontend_commits": [
         "5aae7231d237cfec4075a63b11b9f86d88e23bcd",
-        "e62bab06487ae2b71530a4119b4ef0cb56999a56"
+        "e62bab06487ae2b71530a4119b4ef0cb56999a56",
+        "af8dbd4c416cdfe285b90eeb3d2260ee0ee5d362",
+        "29a125e1d409474a897c8ffde033f8a3b9003ff6"
       ],
       "migrations": []
     },
@@ -2877,7 +3064,8 @@
       "id": "ISSUE-488",
       "backend_commits": [],
       "frontend_commits": [
-        "4d4565e079b2ab5b24ae70441688ed6fb8d59dbc"
+        "4d4565e079b2ab5b24ae70441688ed6fb8d59dbc",
+        "53fa730b91bdb704f2d917aab2d3c7bda016ffbd"
       ],
       "migrations": []
     },
@@ -2887,7 +3075,10 @@
       "frontend_commits": [
         "967143765dc1a871debf4704add237caf727938b",
         "cd129d7cba944f615695fd0a1a6dc2e53ce484c0",
-        "428e4ac7bc876048e5d06c7b8bc24ef1100a0ff9"
+        "428e4ac7bc876048e5d06c7b8bc24ef1100a0ff9",
+        "305988c3e43138c07dd27ff22ba2667695dc0e9f",
+        "4b1d34602ce8b68e5f22e85b990b13b31e0add66",
+        "5b409980961812ca82783a422be5bc11d0181136"
       ],
       "migrations": []
     },
@@ -2895,7 +3086,8 @@
       "id": "ISSUE-495",
       "backend_commits": [],
       "frontend_commits": [
-        "5b4ed65a099cefe79bfd48da9aef53706c1f1659"
+        "5b4ed65a099cefe79bfd48da9aef53706c1f1659",
+        "791a316af59c9da9b013917aedc86abee73cf2e0"
       ],
       "migrations": []
     },
@@ -2903,7 +3095,8 @@
       "id": "ISSUE-496",
       "backend_commits": [],
       "frontend_commits": [
-        "eb6863e81883f72c51a53a90e4b077b3ff5787b8"
+        "eb6863e81883f72c51a53a90e4b077b3ff5787b8",
+        "3172cffc1c2fef4929a17329cfeb1e2000393a1b"
       ],
       "migrations": []
     },
@@ -2914,7 +3107,11 @@
         "56b92f2e769784fb4a21d717eceb6b9ab1def31f",
         "823b874ede933ffe3c944cc5442465514cfd5b2c",
         "675061e1bf54f064aa09b333ad901c2325a6c5ef",
-        "8753792a199d4d0719a92d8d41aa23d7c327f76b"
+        "8753792a199d4d0719a92d8d41aa23d7c327f76b",
+        "89adc5919be2ff23e68a1eeedaf5b879754a07e8",
+        "ac91fd14fb0165de994153be08e01050416f9085",
+        "6f652ce626b0b086ef29e805f2bd444b47ecc520",
+        "3172cffc1c2fef4929a17329cfeb1e2000393a1b"
       ],
       "migrations": []
     },
@@ -2922,7 +3119,8 @@
       "id": "ISSUE-503",
       "backend_commits": [],
       "frontend_commits": [
-        "664e9e097b585a4775a86280f8010ae52b22eb58"
+        "664e9e097b585a4775a86280f8010ae52b22eb58",
+        "a1e9ec4f1d13ee8d441124d705b0dff25e185f74"
       ],
       "migrations": []
     },
@@ -2930,14 +3128,16 @@
       "id": "ISSUE-504",
       "backend_commits": [],
       "frontend_commits": [
-        "0a8c5418a07ab1bf9f8eb9b335b5d2eca659c4bf"
+        "0a8c5418a07ab1bf9f8eb9b335b5d2eca659c4bf",
+        "273adbcc32ba1ff476a397fbae90d43e4e1e613a"
       ],
       "migrations": []
     },
     {
       "id": "ISSUE-507",
       "backend_commits": [
-        "03a143704ba69639c5df808ba4d75f740325bd8f"
+        "03a143704ba69639c5df808ba4d75f740325bd8f",
+        "c6518fce7201b5ed3d57a50f9c8475f1144f3ed6"
       ],
       "frontend_commits": [],
       "migrations": [
@@ -2948,24 +3148,28 @@
       "id": "ISSUE-510",
       "backend_commits": [],
       "frontend_commits": [
-        "4909a28832407735ee79cd74aebffd97ac571b2e"
+        "4909a28832407735ee79cd74aebffd97ac571b2e",
+        "0fc778bcbe1fcd8734aacd3c9eb2112b5c9b721e"
       ],
       "migrations": []
     },
     {
       "id": "ISSUE-508",
       "backend_commits": [
-        "a754d993b63d008947cbf7f9e51eae926d1f56b3"
+        "a754d993b63d008947cbf7f9e51eae926d1f56b3",
+        "f9673eb806660986a7e1a152ab67447f95a756cf"
       ],
       "frontend_commits": [
-        "d8bd84459b5cc913c11e0a4ae06253f7041a8caf"
+        "d8bd84459b5cc913c11e0a4ae06253f7041a8caf",
+        "595bcdcbd5cb351b9a44ca75eea8b51f7868e621"
       ],
       "migrations": []
     },
     {
       "id": "ISSUE-515",
       "backend_commits": [
-        "943303eba188ab7a125c50dc10a98b64e9eebc7d"
+        "943303eba188ab7a125c50dc10a98b64e9eebc7d",
+        "4d64b2cdbf6a1fa68ece7e86e669f52e3634ddc0"
       ],
       "frontend_commits": [],
       "migrations": [
@@ -2978,7 +3182,11 @@
         "c27abd4e9a828deb35ea15fee4df43d3a70bb39d",
         "d5f383e1763ac4382a5835cb63a834f1d78eb120",
         "b9d4e8b84189bd33324d151059a0077d58f64255",
-        "45287f35c39de84c2aca3dec950a8596c87cd4d1"
+        "45287f35c39de84c2aca3dec950a8596c87cd4d1",
+        "6c7e87edb9d80148b34e7be1ada8cffa5b3deabc",
+        "4ef416b5ca6cda13f64071ccaf8d0862f8545e21",
+        "f48b81d820acdc792d48727557ec1243c0bd014f",
+        "561b2da288876b316dcda1924fd0ed5a63ff1c50"
       ],
       "frontend_commits": [],
       "migrations": [
@@ -2990,7 +3198,9 @@
       "backend_commits": [],
       "frontend_commits": [
         "55990757bcc18b5e42f08311f6330dba07fc415d",
-        "9f538f71a797042434a9446cbbdc3f4427575f1e"
+        "9f538f71a797042434a9446cbbdc3f4427575f1e",
+        "c031d87b7ae445832e42c2c9cbbe2918267c99f0",
+        "f98ec06d4700428c1f382f4eda507f9b3aa33c86"
       ],
       "migrations": []
     },
@@ -2998,17 +3208,20 @@
       "id": "ISSUE-529",
       "backend_commits": [],
       "frontend_commits": [
-        "77b59c0d8190d6630e42c10503dbcb595884e43d"
+        "77b59c0d8190d6630e42c10503dbcb595884e43d",
+        "6224c892a24685457b5cc0549727f2c4d2b584a3"
       ],
       "migrations": []
     },
     {
       "id": "ISSUE-520",
       "backend_commits": [
-        "4ecd7c7831da106940a482e2934a343f61db249e"
+        "4ecd7c7831da106940a482e2934a343f61db249e",
+        "463bb731603581d64bd254081551a1827a28582a"
       ],
       "frontend_commits": [
-        "a7a6ae2073458036fa6b15f45df19bde4182557f"
+        "a7a6ae2073458036fa6b15f45df19bde4182557f",
+        "563f883649591e6e1b20f24402d431e116c4f930"
       ],
       "migrations": [
         "supabase/migrations/20261121174134_radar_edital_number_filter.sql"
@@ -3018,12 +3231,17 @@
       "id": "ISSUE-531",
       "backend_commits": [
         "4f16e4576c5ecf5e6cedefce55b35ca60d6a5375",
-        "866563442992865781b189d49866aa644ccfdecf"
+        "866563442992865781b189d49866aa644ccfdecf",
+        "b3b7e50cb25fd1a1aeddb2917ab2f24b7ce93092",
+        "f8f12c03e10d1c8ce385f3c49d913a6eeece7bd7"
       ],
       "frontend_commits": [
         "386a80ca26cfc3f772001cd29c3bbf56590e8dd4",
         "057873a010669e2af52743b5405dfabe20235738",
-        "4dcca66b500e21716b85cca965016ec9153d3ab7"
+        "4dcca66b500e21716b85cca965016ec9153d3ab7",
+        "1e980255b9b55ff4b85e1dcdb98cebdb745f48c1",
+        "fc62bb10308ab2a1b11c50ed80dc0351666c49f5",
+        "147c9fc7765f3907fbea594575442e40c6665e24"
       ],
       "migrations": [
         "supabase/migrations/20261122161757_radar_non_receiving_editals_cleanup.sql"
@@ -3034,7 +3252,10 @@
       "backend_commits": [
         "af228bf755f50a1564b74b3f72dd00bc5f278e0f",
         "5fa48fdb0c8070c85595607a41be145de749779e",
-        "8ea70f332a68d28199bdc6c1642b265447c71f68"
+        "8ea70f332a68d28199bdc6c1642b265447c71f68",
+        "4e850650ff0665f96ddb723ff1c7e3e989557262",
+        "ef47f8df0c8bec0b946c7a57e1492623c7a0498a",
+        "207e5428b932cfa057d5a327996e2d291a17fd68"
       ],
       "frontend_commits": [],
       "migrations": [
@@ -3045,10 +3266,12 @@
     {
       "id": "ISSUE-539",
       "backend_commits": [
-        "e91340e9239fe20c54c841064fe68d4b64253503"
+        "e91340e9239fe20c54c841064fe68d4b64253503",
+        "c9fe1d6aa5ae923b14f0fc1d753b29eb1c0d18e8"
       ],
       "frontend_commits": [
-        "f58e1bf0373ca49b494e1f1881362901a5e6d73d"
+        "f58e1bf0373ca49b494e1f1881362901a5e6d73d",
+        "d3ea0660499f8ffbbdfb9e644c7babffe523774e"
       ],
       "migrations": []
     },
@@ -3058,10 +3281,15 @@
         "fc4313f9b58939e8d994fbdda1b064562ca88f23",
         "b346f9bf0c50c8c18bfc90ccb5be5b60df478439",
         "22979af5142e26755efe50b7cedce8b57cd9a872",
-        "1f1ab3486a2407f28b2ac5d87f6b00b150dc314f"
+        "1f1ab3486a2407f28b2ac5d87f6b00b150dc314f",
+        "6869f34258020e5d72729a0b63a3a308d2c5fdd3",
+        "2681f277f70357223a843fc5a302d1f711cfbff8",
+        "08de625ff22b895ffc3a70b85cca23245e4311d1",
+        "14054d7c1874e5407d4030049ae485a1c5bca8b2"
       ],
       "frontend_commits": [
-        "42c0251c8d9734791bac5876389a609754bfa961"
+        "42c0251c8d9734791bac5876389a609754bfa961",
+        "1cadf6fc5726ab9368a3f53f60eea53206e9b752"
       ],
       "migrations": [
         "supabase/migrations/20261123221244_retire_radar_legacy_collection_cron.sql"
