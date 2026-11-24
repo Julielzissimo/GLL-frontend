@@ -248,6 +248,7 @@
             <span class="nav-section-label">ÁREA DE TRABALHO</span>
             <button id="navHomeButton" class="nav-link active" type="button" title="Visão geral" data-navigation-page="home"><span class="nav-icon" aria-hidden="true" data-gll-icon="layoutDashboard"></span><span class="nav-link-label">Visão geral</span></button>
             <button id="navBidsButton" class="nav-link" type="button" title="Licitações" data-navigation-page="bids"><span class="nav-icon" aria-hidden="true" data-gll-icon="briefcaseBusiness"></span><span class="nav-link-label">Licitações</span></button>
+            <button id="navRadarSearchButton" class="nav-link" type="button" title="Radar de Licitações" data-navigation-page="radarSearch"><span class="nav-icon" aria-hidden="true" data-gll-icon="search"></span><span class="nav-link-label">Radar de Licitações</span></button>
             <button id="navQuotationsButton" class="nav-link" type="button" title="Orçamentos" data-navigation-page="quotations"><span class="nav-icon" aria-hidden="true" data-gll-icon="clipboardList"></span><span class="nav-link-label">Orçamentos</span></button>
             <button id="navCashflowButton" class="nav-link hidden" type="button" title="Fluxo de Caixa" data-navigation-page="cashflow"><span class="nav-icon" aria-hidden="true" data-gll-icon="clipboardList"></span><span class="nav-link-label">Fluxo de Caixa</span></button>
           </div>
@@ -459,8 +460,9 @@
                 <input id="buyerAgency" required />
               </label>
               <label>
-                Data e Hora da Sessão *
+                <span id="sessionDatetimeLabel">Data e Hora da Sessão *</span>
                 <input id="sessionDatetime" type="datetime-local" required />
+                <small id="sessionDatetimeHelp" hidden>O PNCP não informou a data da sessão. Você pode completá-la depois.</small>
               </label>
               <label>
                 Data Limite Proposta
@@ -927,6 +929,180 @@
 
         </section>
 
+      </section>
+
+      <section id="radarSearchPage" class="users-page radar-page hidden" aria-labelledby="radarTitle">
+        <div id="radarListView">
+        <div class="page-heading radar-page-heading">
+          <div><h1 id="radarTitle">Radar de Licitações</h1></div>
+        </div>
+        <div class="radar-view-switch" role="group" aria-label="Visualização do Radar">
+          <button id="radarSearchViewButton" class="quiet-action compact-action" type="button" data-radar-action="show-search" aria-pressed="true">Pesquisar</button>
+          <button id="radarFavoritesViewButton" class="quiet-action compact-action" type="button" data-radar-action="show-favorites" aria-pressed="false">Favoritos</button>
+        </div>
+        <p id="radarAnnouncement" class="sr-only" role="status" aria-live="polite"></p>
+        <div id="radarCatalogFeedback" class="radar-feedback" data-tone="info" role="status" aria-live="polite" hidden></div>
+
+        <div id="radarWorkbench" class="radar-workbench">
+          <aside id="radarFilterRail" class="radar-filter-rail" aria-label="Filtros da pesquisa">
+        <form id="radarSearchForm" class="section-band radar-search-form" novalidate>
+          <div class="radar-section-heading"><div><h2 id="radarFilterHeading" tabindex="-1">Filtros da pesquisa</h2></div></div>
+          <div class="radar-filter-grid">
+            <label class="radar-platform-field" for="radarPlatform">Plataforma de disputa elegível
+              <select id="radarPlatform" disabled>
+                <option value="portal-de-compras-publicas" selected>Portal de Compras Públicas</option>
+              </select>
+            </label>
+            <div class="radar-tag-field">
+              <label for="radarTagInput">Objeto da contratação</label>
+              <div class="radar-tag-entry"><ul id="radarTagList" class="radar-tag-list" aria-label="Termos adicionados à pesquisa"></ul><input id="radarTagInput" type="text" maxlength="200" autocomplete="off" placeholder="Digite um termo e pressione Enter" aria-describedby="radarTagsHelp" /></div>
+              <small id="radarTagsHelp">Até 25 termos · a busca combina os termos com OU e consulta o objeto do edital.</small>
+              <p id="radarTagsError" class="form-error" role="alert"></p>
+            </div>
+
+            <label for="radarProcurementNumber">Número do Edital
+              <input id="radarProcurementNumber" type="search" maxlength="40" autocomplete="off" placeholder="Ex.: 15/2026" aria-describedby="radarProcurementNumberHelp" />
+              <small id="radarProcurementNumberHelp">Zeros à esquerda são ignorados na pesquisa.</small>
+            </label>
+
+            <div id="radarModalityDetails" class="radar-modality-field">
+              <label for="radarModalityOpen">Modalidades</label>
+              <button id="radarModalityOpen" class="quiet-action" type="button" data-radar-action="open-modalities" aria-haspopup="dialog" aria-controls="radarModalityDialog"><span id="radarModalitySummary">Todas as modalidades disponíveis</span></button>
+              <p id="radarModalityError" class="form-error" role="alert"></p>
+            </div>
+            <dialog id="radarModalityDialog" class="quotation-item-discard-modal radar-modality-dialog" aria-labelledby="radarModalityTitle">
+              <div class="quotation-item-discard-content">
+                <h2 id="radarModalityTitle">Modalidades</h2>
+                <button id="radarModalityToggle" class="quiet-action compact-action radar-modality-bulk-action" type="button" data-radar-action="toggle-modalities">Desmarcar disponíveis</button>
+                <div id="radarModalities" class="radar-modality-list" role="group" aria-label="Modalidades disponíveis" aria-describedby="radarModalityHelp"></div>
+                <small id="radarModalityHelp">Somente Pregão - Eletrônico, Dispensa e Inexigibilidade estão disponíveis para pesquisa.</small>
+                <div class="button-row end"><button class="quiet-action" type="button" data-radar-action="cancel-modalities">Cancelar</button><button class="primary-action" type="button" data-radar-action="apply-modalities">Aplicar</button></div>
+              </div>
+            </dialog>
+
+            <label for="radarUf">Estado
+              <select id="radarUf"><option value="">Brasil inteiro</option></select>
+            </label>
+            <label for="radarMunicipality">Município
+              <select id="radarMunicipality" disabled><option value="">Selecione uma UF primeiro</option></select>
+              <small id="radarMunicipalityHelp">Escolha uma UF para habilitar este campo.</small>
+            </label>
+            <label for="radarBidPhaseFrom">Fase de lances a partir de
+              <input id="radarBidPhaseFrom" type="date" aria-describedby="radarDateError" />
+            </label>
+            <label for="radarBidPhaseTo">Fase de lances até
+              <input id="radarBidPhaseTo" type="date" aria-describedby="radarDateError" />
+            </label>
+            <label for="radarSituation">Situação das propostas
+              <select id="radarSituation">
+                <option value="open" selected>Recebendo propostas</option>
+                <option value="upcoming" disabled>Propostas futuras</option>
+                <option value="closed" disabled>Propostas encerradas</option>
+                <option value="unknown" disabled>Prazo não informado</option>
+                <option value="all" disabled>Todos os prazos</option>
+              </select>
+            </label>
+          </div>
+          <p id="radarDateError" class="form-error" role="alert"></p>
+          <div class="radar-form-footer">
+            <div class="button-row radar-filter-actions">
+              <button id="radarSearchButton" class="primary-action" type="submit" disabled>Pesquisar</button>
+              <button class="quiet-action" type="button" data-radar-action="clear">Limpar filtros</button>
+            </div>
+          </div>
+        </form>
+
+          </aside>
+
+        <section class="radar-results-panel" aria-labelledby="radarResultsTitle">
+          <div class="radar-results-heading">
+            <div class="radar-results-title">
+              <div class="radar-results-title-copy">
+                <div class="radar-results-title-main">
+                  <button id="radarFilterToggleButton" class="icon-button radar-filter-toggle" type="button" data-radar-action="show-filter-rail" aria-label="Exibir filtros da pesquisa" title="Exibir filtros da pesquisa" aria-controls="radarFilterRail" aria-expanded="true" hidden>
+                    <span aria-hidden="true" data-gll-icon="slidersHorizontal"></span>
+                  </button>
+                  <h2 id="radarResultsTitle" tabindex="-1">Resultados</h2>
+                </div>
+                <p id="radarResultsCount" aria-live="polite">Configure os filtros para iniciar uma pesquisa.</p>
+              </div>
+            </div>
+            <div class="radar-results-controls">
+              <label for="radarSortBy">Ordenar por
+                <select id="radarSortBy"><option value="bidPhaseStartAt" selected>Data da Disputa</option>
+                  <option value="publishedAt">Data de publicação</option><option value="proposalEndsAt">Limite p/ Recebimento das Propostas</option><option value="updatedAt">Atualização no PNCP</option><option value="estimatedValue">Valor estimado</option><option value="organizationName">Órgão responsável</option><option value="object">Objeto da contratação</option><option value="situationCode">Situação</option></select>
+              </label>
+              <label for="radarSortDirection">Direção
+                <select id="radarSortDirection"><option value="desc" selected>Mais recente / maior primeiro</option><option value="asc">Mais antigo / menor primeiro</option></select>
+              </label>
+              <label for="radarPageSize">Por página
+                <select id="radarPageSize"><option value="20">20</option><option value="50" selected>50</option><option value="100">100</option></select>
+              </label>
+            </div>
+          </div>
+          <div id="radarCoverageFeedback" class="radar-feedback" data-tone="info" role="status" aria-live="polite" hidden></div>
+          <div id="radarResultsContent"></div>
+          <nav id="radarPagination" class="radar-pagination" aria-label="Paginação dos resultados do Radar" hidden></nav>
+        </section>
+        </div>
+        </div>
+
+        <div id="radarDetailsView" class="radar-details-view" aria-labelledby="radarDetailsTitle" hidden>
+          <div class="page-heading radar-page-heading">
+            <div><h1 id="radarDetailsTitle">Detalhes da contratação</h1></div>
+            <div class="radar-detail-actions">
+              <button id="radarDetailsBackButton" class="quiet-action" type="button">Voltar</button>
+              <button id="radarDetailsFavoriteButton" class="quiet-action" type="button" aria-pressed="false" disabled>Favoritar</button>
+            </div>
+          </div>
+          <p id="radarDetailsFeedback" class="radar-feedback" data-tone="info" role="status" aria-live="polite" hidden></p>
+          <div id="radarDetailsContent" class="radar-details-content"></div>
+        </div>
+
+        <dialog id="radarCardDialog" class="quotation-item-modal radar-card-dialog" aria-labelledby="radarCardDialogTitle">
+          <div class="quotation-item-modal-shell">
+            <div class="quotation-item-modal-header"><h2 id="radarCardDialogTitle">Dados do edital</h2><button class="quotation-item-modal-close modal-close-button" type="button" data-radar-card-dialog-close aria-label="Fechar">×</button></div>
+            <div id="radarCardDialogContent" class="radar-card-dialog-content"></div>
+          </div>
+        </dialog>
+
+        <dialog id="radarImportConfirmDialog" class="quotation-item-discard-modal radar-import-confirm-dialog" aria-labelledby="radarImportConfirmTitle" aria-describedby="radarImportConfirmSummary">
+          <div class="quotation-item-discard-content">
+            <h2 id="radarImportConfirmTitle">Confirmar cadastro</h2>
+            <p id="radarImportConfirmSummary">Deseja importar os itens selecionados para um novo edital?</p>
+            <div id="radarImportConfirmItems"></div>
+            <div id="radarImportConfirmDocuments"></div>
+            <div class="button-row end">
+              <button class="quiet-action" type="button" data-radar-import-cancel>Cancelar</button>
+              <button id="radarImportConfirmButton" class="primary-action" type="button" data-radar-import-confirm>Confirmar importação</button>
+            </div>
+          </div>
+        </dialog>
+
+        <dialog id="radarPlatformConfirmDialog" class="quotation-item-modal radar-platform-confirmation-modal" aria-labelledby="radarPlatformConfirmTitle" aria-describedby="radarPlatformConfirmSummary">
+          <div class="quotation-item-modal-shell">
+            <div class="quotation-item-modal-header">
+              <div><h2 id="radarPlatformConfirmTitle">Confirmar Portal de Compras Públicas</h2></div>
+              <button class="quotation-item-modal-close modal-close-button" type="button" data-radar-platform-dialog-close aria-label="Fechar confirmação"><span data-gll-icon="close" aria-hidden="true"></span></button>
+            </div>
+            <form id="radarPlatformConfirmForm" class="radar-platform-confirmation-form">
+              <p id="radarPlatformConfirmSummary" class="radar-platform-confirmation-summary"></p>
+              <label for="radarPlatformConfirmSelect">Plataforma elegível
+                <select id="radarPlatformConfirmSelect" required></select>
+              </label>
+              <label for="radarPlatformConfirmUrl">URL corrigida da disputa (opcional)
+                <input id="radarPlatformConfirmUrl" type="url" maxlength="2048" autocomplete="off" placeholder="URL HTTPS da disputa" aria-describedby="radarPlatformConfirmUrlHelp" />
+              </label>
+              <small id="radarPlatformConfirmUrlHelp">Use HTTPS. Deixe em branco para manter a URL corrigida anteriormente ou usar apenas o link informado pelo PNCP.</small>
+              <p id="radarPlatformConfirmError" class="form-error" role="alert"></p>
+              <p id="radarPlatformConfirmStatus" class="radar-feedback" data-tone="info" role="status" aria-live="polite" hidden></p>
+              <div class="button-row end">
+                <button class="quiet-action" type="button" data-radar-platform-dialog-close>Cancelar</button>
+                <button class="primary-action" type="submit">Salvar confirmação</button>
+              </div>
+            </form>
+          </div>
+        </dialog>
       </section>
 
       <section id="quotationsPage" class="users-page quotations-page hidden">
@@ -1790,6 +1966,10 @@
     <script type="module" src="./finance-money.js"></script>
     <script type="module" src="./finance-service.js"></script>
     <script type="module" src="./finance.js"></script>
+    <script type="module" src="./radar-catalogs.js"></script>
+    <script type="module" src="./radar-import.js"></script>
+    <script type="module" src="./radar-details.js"></script>
+    <script type="module" src="./radar-search.js"></script>
     <script src="./organization-chat.js"></script>
     <script type="module" src="./bid-followup.js"></script>
     <script type="module" src="./app.js"></script>

@@ -66,6 +66,8 @@ const DEFAULT_GLL_CONFIG = {
   suppliersEnabled: true,
   commercialProposalsEnabled: true,
   designSystemEnabled: true,
+  radarDetailsFallbackEnabled: false,
+  radarDocumentsFallbackEnabled: false,
   organizationDocumentsEnabled: true,
 };
 const GLL_CONFIG = {
@@ -105,10 +107,23 @@ const createCashflowFeature = window.GLLFinance?.createCashflowFeature || (() =>
   hide: () => undefined,
   reset: () => undefined,
 }));
+const createRadarSearchFeature = window.GLLRadarSearch?.createRadarSearchFeature || (() => ({
+  showPage: async () => undefined,
+  reset: () => undefined,
+}));
+const createRadarDetailsFeature = window.GLLRadarDetails?.createRadarDetailsFeature || (() => ({
+  open: () => undefined,
+  loadFavoriteIds: async () => [],
+  loadFavoritesPage: async () => ({ results: [], favoriteIds: [], totalCount: 0, hasMore: false }),
+  setFavorite: async () => false,
+  isFavorite: () => false,
+  reset: () => undefined,
+}));
 
 const PAGE_ROUTE_NAMES = {
   home: "visao-geral",
   bids: "licitacoes",
+  radarSearch: "radar-de-licitacoes",
   edit: "nova-licitacao",
   items: "itens",
   documents: "documentos",
@@ -280,6 +295,7 @@ const refs = {
   toggleSidebarButton: $("toggleSidebarButton"),
   sidebarPanel: $("sidebarPanel"),
   bidsPage: $("bidsPage"),
+  radarSearchPage: $("radarSearchPage"),
   homePage: $("homePage"),
   bidCatalogPage: $("bidCatalogPage"),
   upcomingBidsList: $("upcomingBidsList"),
@@ -404,6 +420,8 @@ const refs = {
   bidId: $("bidId"),
   buyerAgency: $("buyerAgency"),
   sessionDatetime: $("sessionDatetime"),
+  sessionDatetimeLabel: $("sessionDatetimeLabel"),
+  sessionDatetimeHelp: $("sessionDatetimeHelp"),
   proposalDeadline: $("proposalDeadline"),
   deliveryPlace: $("deliveryPlace"),
   publicSessionLink: $("publicSessionLink"),
@@ -2436,6 +2454,35 @@ const commercialProposalsFeature = createCommercialProposalsFeature({
   toast: (message, tone) => showToast(message, tone),
   runBusy: (operation, message) => withBlockingLoading(operation, message)(),
 });
+let radarSearchFeature = null;
+const radarDetailsFeature = createRadarDetailsFeature({
+  getClient: () => (store.requiresAuthenticationBeforeData ? store.client : null),
+  getUserRole: () => appState.currentUserRole,
+  toast: (message, tone) => showToast(message, tone),
+  onFavoriteChanged: (identifier, isFavorite) => radarSearchFeature?.syncFavorite(identifier, isFavorite),
+  onClassificationChanged: () => radarSearchFeature?.refreshCurrentView(),
+  onOpenBid: async (bidId) => {
+    await reloadData();
+    loadBid(bidId, { history: "none" });
+    setPage("items");
+  },
+});
+radarSearchFeature = createRadarSearchFeature({
+  getClient: () => (store.requiresAuthenticationBeforeData ? store.client : null),
+  getUserRole: () => appState.currentUserRole,
+  toast: (message, tone) => showToast(message, tone),
+  actions: {
+    detailsEnabled: true,
+    loadFavoriteIds: (identifiers) => radarDetailsFeature.loadFavoriteIds(identifiers),
+    loadFavoritesPage: (options) => radarDetailsFeature.loadFavoritesPage(options),
+    setFavorite: (result, shouldFavorite) => radarDetailsFeature.setFavorite(result.numberControlPncp, shouldFavorite),
+    isFavorite: (identifier) => radarDetailsFeature.isFavorite(identifier),
+    syncDetailRoute: () => radarDetailsFeature.syncRoute(),
+    resetDetails: () => radarDetailsFeature.reset(),
+    openCard: (result, view, card) => radarDetailsFeature.openCard(result, view, card),
+    beforeResultsRender: () => radarDetailsFeature.detachCard(),
+  },
+});
 
 const SESSION_ACTIVITY_EVENTS = ["pointerdown", "keydown", "input"];
 const SESSION_POLICY_CHECK_INTERVAL_MS = 60 * 1000;
@@ -2924,13 +2971,32 @@ function updateFilterStatusSummary() {
 }
 
 function setBidType(value) {
-  const isSupportedType = BID_TYPE_OPTIONS.includes(value);
+  const normalizedValue = String(value || "");
+  const options = refs.bidTypeGroup.querySelector(".bid-type-options");
+  options?.querySelector("[data-dynamic-bid-type]")?.remove();
+  const isSupportedType = BID_TYPE_OPTIONS.includes(normalizedValue);
+  if (normalizedValue && !isSupportedType && options) {
+    const label = document.createElement("label");
+    label.className = "bid-type-option";
+    label.setAttribute("for", "bidTypeDynamic");
+    label.dataset.dynamicBidType = "true";
+    const input = document.createElement("input");
+    input.id = "bidTypeDynamic";
+    input.name = "bidType";
+    input.type = "radio";
+    input.value = normalizedValue;
+    input.required = true;
+    const text = document.createElement("span");
+    text.textContent = normalizedValue;
+    label.append(input, text);
+    options.append(label);
+  }
   refs.bidTypeGroup.querySelectorAll('input[name="bidType"]').forEach((input) => {
-    input.checked = isSupportedType && input.value === value;
-    input.toggleAttribute("aria-invalid", Boolean(value) && !isSupportedType);
+    input.checked = input.value === normalizedValue;
+    input.removeAttribute("aria-invalid");
   });
-  refs.bidTypeHelp.textContent = value && !isSupportedType
-    ? "Este edital tem um tipo antigo. Escolha uma das opções disponíveis para atualizá-lo."
+  refs.bidTypeHelp.textContent = normalizedValue && !isSupportedType
+    ? "Modalidade importada do PNCP. Ela será mantida ao salvar este edital."
     : "Selecione o tipo do edital.";
 }
 
@@ -2954,6 +3020,14 @@ function statusOptionList(values) {
     return option.outerHTML;
   }).join("");
 }
+function setSalesUnit(value) {
+  const normalizedValue = String(value || SALES_UNIT_OPTIONS[0]);
+  if (![...refs.salesUnit.options].some((option) => option.value === normalizedValue)) {
+    refs.salesUnit.add(new Option(normalizedValue, normalizedValue));
+  }
+  refs.salesUnit.value = normalizedValue;
+}
+
 // Wrap complete UI operations, including their data refresh, rather than individual requests.
 let blockingOperationActive = false;
 
@@ -4289,6 +4363,7 @@ function resetAuthenticatedView() {
   companyDataFeature.reset();
   organizationDocumentsFeature.reset();
   billingFeature.reset();
+  radarSearchFeature.reset();
   refs.appView.classList.remove("mobile-nav-open");
   updateMainNavigationState();
   for (const key of DATA_KEYS) appState[key] = [];
@@ -4602,6 +4677,11 @@ function breadcrumbItems(page) {
       ? [{ label: "Propostas comerciais" }]
       : [home, { label: "Propostas comerciais" }];
   }
+  if (page === "radarSearch") {
+    return compact
+      ? [{ label: "Radar de Licitações" }]
+      : [home, { label: "Radar de Licitações" }];
+  }
   if (page === "declarations") {
     return compact
       ? [{ label: "Declarações" }]
@@ -4622,6 +4702,7 @@ function breadcrumbItems(page) {
   const topLevelLabels = {
     home: "Visão geral",
     bids: "Licitações",
+    radarSearch: "Radar de Licitações",
     quotations: "Orçamentos",
     commercialProposals: "Propostas comerciais",
     suppliers: "Fornecedores",
@@ -5466,6 +5547,7 @@ function setPage(page, options = {}) {
   const showDeclarations = declarationPages.includes(page);
   const showCommercialProposals = page === "commercialProposals";
   const showCashflow = page === "cashflow";
+  const showRadarSearch = page === "radarSearch";
   $("suppliersPage").classList.toggle("hidden", !showSuppliers);
   refs.declarationsPage.classList.toggle("hidden", !showDeclarations);
   refs.commercialProposalsPage.classList.toggle("hidden", !showCommercialProposals);
@@ -5474,8 +5556,9 @@ function setPage(page, options = {}) {
   const showCatalog = page === "bids";
   const showEditor = page === "edit";
   const showDetail = detailPages.includes(page);
-  refs.bidsPage.classList.toggle("hidden", showUsers || showUserProfile || showCompanyData || showOrganizationDocuments || showDesignSystem || showQuotations || showSuppliers || showDeclarations || showCommercialProposals || showCashflow);
+  refs.bidsPage.classList.toggle("hidden", showUsers || showUserProfile || showCompanyData || showOrganizationDocuments || showDesignSystem || showQuotations || showSuppliers || showDeclarations || showCommercialProposals || showCashflow || showRadarSearch);
   refs.cashflowPage.classList.toggle("hidden", !showCashflow);
+  refs.radarSearchPage.classList.toggle("hidden", !showRadarSearch);
   refs.usersPage.classList.toggle("hidden", !showUsers);
   refs.userProfilePage.classList.toggle("hidden", !showUserProfile);
   refs.companyDataPage.classList.toggle("hidden", !showCompanyData);
@@ -5493,7 +5576,7 @@ function setPage(page, options = {}) {
   refs.bidHistoryPanel.classList.toggle("hidden", page !== "history");
   refs.billingPanel.classList.toggle("hidden", page !== "billing");
   refs.failuresPanel.classList.toggle("hidden", page !== "failures");
-  refs.appView.classList.toggle("users-active", showUsers || showUserProfile || showCompanyData || showOrganizationDocuments || showDesignSystem || showQuotations || showSuppliers || showDeclarations || showCommercialProposals || showCashflow);
+  refs.appView.classList.toggle("users-active", showUsers || showUserProfile || showCompanyData || showOrganizationDocuments || showDesignSystem || showQuotations || showSuppliers || showDeclarations || showCommercialProposals || showCashflow || showRadarSearch);
   refs.itemsTabButton.classList.toggle("active", page === "items");
   refs.documentsTabButton.classList.toggle("active", page === "documents");
   refs.bidHistoryTabButton.classList.toggle("active", page === "history");
@@ -5506,7 +5589,7 @@ function setPage(page, options = {}) {
   refs.failuresTabButton.classList.toggle("active", page === "failures");
   refs.failuresTabButton.setAttribute("aria-selected", String(page === "failures"));
   refs.failuresTabButton.classList.toggle("hidden", !shouldShowFailureHistory());
-  const primaryPage = showOrganizationDocuments ? "organizationDocuments" : showCashflow ? "cashflow" : showCommercialProposals ? "commercialProposals" : showDeclarations ? "declarations" : showSuppliers ? "suppliers" : showUsers || (showUserProfile && isCurrentUserAdmin()) ? "users" : showCompanyData || showDesignSystem ? "settings" : showQuotations ? "quotations" : showHome || showUserProfile ? "home" : "bids";
+  const primaryPage = showRadarSearch ? "radarSearch" : showOrganizationDocuments ? "organizationDocuments" : showCashflow ? "cashflow" : showCommercialProposals ? "commercialProposals" : showDeclarations ? "declarations" : showSuppliers ? "suppliers" : showUsers || (showUserProfile && isCurrentUserAdmin()) ? "users" : showCompanyData || showDesignSystem ? "settings" : showQuotations ? "quotations" : showHome || showUserProfile ? "home" : "bids";
   const activeNavigationPage = ["companyData", "designSystem"].includes(page) ? page : primaryPage;
   renderBreadcrumb(page);
   document.querySelectorAll("[data-navigation-page]").forEach((button) => {
@@ -5529,6 +5612,7 @@ function setPage(page, options = {}) {
   if (showCommercialProposals) void commercialProposalsFeature.showPage().catch((error) => showToast(error.message, "error"));
   if (showCompanyData) void companyDataFeature.showPage().catch((error) => showToast(error.message, "error"));
   if (showOrganizationDocuments) void organizationDocumentsFeature.showPage();
+  if (showRadarSearch) void radarSearchFeature.showPage().catch((error) => showToast(error.message, "error"));
   if (showDesignSystem) window.GLLDesignSystem?.mountCatalog(refs.designSystemCatalog);
   writeNavigationRoute(page, options.history || "push");
   if (page === "history") void loadBidHistoryPage(bidHistoryState.page);
@@ -6306,10 +6390,13 @@ function loadBid(bidId, options = {}) {
   refs.bidId.value = bidDisplayNumber(bid);
   refs.buyerAgency.value = bid.buyer_agency || "";
   refs.sessionDatetime.value = toDateTimeInputValue(bid.session_datetime);
+  refs.sessionDatetime.required = Boolean(bid.session_datetime);
   refs.proposalDeadline.value = toDateTimeInputValue(bid.proposal_deadline);
   refs.deliveryPlace.value = bid.delivery_place || "";
   refs.publicSessionLink.value = bid.public_session_link || "";
-  setBidType(bid.bid_type || BID_TYPE_OPTIONS[0]);
+  setBidType(bid.bid_type);
+  refs.sessionDatetimeLabel.textContent = bid.session_datetime ? "Data e Hora da Sessão *" : "Data e Hora da Sessão";
+  refs.sessionDatetimeHelp.hidden = Boolean(bid.session_datetime);
   refs.bidStatus.value = bid.status || STATUS_OPTIONS[0];
   refs.hasGuaranteeDeposit.checked = Boolean(bid.has_guarantee_deposit);
   refs.bidStatusReason.value = "";
@@ -6615,6 +6702,9 @@ function clearBidForm(options = {}) {
   renderBidAttachment(null);
   renderPublicSessionLink();
   setBidType(BID_TYPE_OPTIONS[0]);
+  refs.sessionDatetime.required = true;
+  refs.sessionDatetimeLabel.textContent = "Data e Hora da Sessão *";
+  refs.sessionDatetimeHelp.hidden = true;
   refs.bidStatus.value = STATUS_OPTIONS[0];
   refs.bidStatusReason.value = "";
   updateBidStatusControls();
@@ -6913,9 +7003,9 @@ function escapeCsvCell(value) {
 function collectBidData() {
   if (!refs.bidId.value.trim()) throw new Error("Preencha o N° do Edital.");
   if (!refs.buyerAgency.value.trim()) throw new Error("Preencha o Órgão Comprador.");
-  if (!refs.sessionDatetime.value) throw new Error("Preencha a Data e Hora da Sessão.");
+  if (refs.sessionDatetime.required && !refs.sessionDatetime.value) throw new Error("Preencha a Data e Hora da Sessão.");
   const bidType = selectedBidType();
-  if (!BID_TYPE_OPTIONS.includes(bidType)) throw new Error("Selecione o tipo do edital.");
+  if (!bidType) throw new Error("Selecione o tipo do edital.");
   const publicSessionLink = refs.publicSessionLink.value.trim();
   const normalizedPublicSessionLink = normalizeUrlValue(publicSessionLink);
   if (publicSessionLink && !normalizedPublicSessionLink) throw new Error("Informe um Link da Sessão Pública válido.");
@@ -7144,7 +7234,7 @@ function loadItem(itemId) {
   appState.currentItemId = item.id;
   refs.itemNumber.value = item.item_number;
   refs.itemName.value = item.name || "";
-  refs.salesUnit.value = item.sales_unit || SALES_UNIT_OPTIONS[0];
+  setSalesUnit(item.sales_unit || SALES_UNIT_OPTIONS[0]);
   refs.estimatedValue.value = item.estimated_value ? money(item.estimated_value) : "";
   refs.supplierCost.value = item.supplier_cost ? money(item.supplier_cost) : "";
   refs.maxValue.value = item.max_acceptable_value ? money(item.max_acceptable_value) : "";
@@ -7165,7 +7255,7 @@ function loadItem(itemId) {
 function clearItemForm() {
   appState.currentItemId = null;
   refs.itemForm.reset();
-  refs.salesUnit.value = SALES_UNIT_OPTIONS[0];
+  setSalesUnit(SALES_UNIT_OPTIONS[0]);
   appState.supplierLinksDraft = [];
   renderSupplierLinks();
   updateValueWithMargin();
@@ -9050,11 +9140,12 @@ function normalizeBidRecord(record) {
     id: String(record.id || "").trim(),
     edital_number: String(record.edital_number || record.id || "").trim(),
     buyer_agency: record.buyer_agency || "",
+    bid_object: record.bid_object || "",
     session_datetime: record.session_datetime || "",
     delivery_place: record.delivery_place || "",
     edital_link: record.edital_link || "",
     public_session_link: record.public_session_link || "",
-    bid_type: record.bid_type || BID_TYPE_OPTIONS[0],
+    bid_type: record.bid_type || "",
     proposal_deadline: record.proposal_deadline || "",
     has_guarantee_deposit: Boolean(record.has_guarantee_deposit),
     status: normalizeBidStatus(record.status),
@@ -9101,23 +9192,28 @@ function normalizeBidAttachments(record) {
     const path = String(file?.path || file?.edital_file_path || "").trim();
     if (!path || paths.has(path)) return [];
     paths.add(path);
+    const radarDocumentId = Number(file.radar_document_id);
     return [{
       path,
       name: String(file.name || file.edital_file_name || "edital"),
       type: String(file.type || file.edital_file_type || "application/octet-stream"),
       size: Number(file.size || file.edital_file_size || 0),
       ...(file.blob ? { blob: file.blob } : {}),
+      ...(Number.isSafeInteger(radarDocumentId) && radarDocumentId > 0 ? { radar_document_id: radarDocumentId } : {}),
     }];
   });
 }
 
 function attachmentMetadata(attachment) {
-  return {
+  const metadata = {
     path: attachment.path,
     name: attachment.name,
     type: attachment.type,
     size: Number(attachment.size || 0),
   };
+  const radarDocumentId = Number(attachment.radar_document_id);
+  if (Number.isSafeInteger(radarDocumentId) && radarDocumentId > 0) metadata.radar_document_id = radarDocumentId;
+  return metadata;
 }
 
 function bidDisplayNumber(bid) {

@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "release_id": "2026-11-16-pacote-melhorias-6",
+  "release_id": "2026-11-23-radar-licitacoes-1.0",
   "environment": "production",
   "target_branch": "main",
   "items": [
@@ -1792,6 +1792,852 @@
         "25ac47046e3aefefc8b8a3b3fa29d2dadf4181ad"
       ],
       "migrations": []
+    },
+    {
+      "id": "RADAR-01-CATALOGOS-001",
+      "backend_commits": [
+        "753c7d1a29931f3e52772e98a9f28c8f1ee861ff",
+        "9e8212a0b4e45a7583e29e229410bca7ec29b47e"
+      ],
+      "frontend_commits": [
+        "f12380fd32c8059fae050026aae26fc51605daf9"
+      ],
+      "migrations": [
+        "supabase/migrations/20261010131754_radar_catalogs_and_dynamic_contracts.sql"
+      ]
+    },
+    {
+      "id": "RADAR-02-BANCO-001",
+      "backend_commits": [
+        "1b261360ea6f96f200cfc3a26aae5c2dc8a94a1e",
+        "60e1c3f110942fbe8c61de8f737be407b18f5144",
+        "e1266c68b959cba10ebabf324fd4aff3d81bcaf0",
+        "16b3dcf64fbe245351718476696aeea2505cc1b8",
+        "f8d577f02a342a182c3582663a83505143454038",
+        "26b38ff5c1b9884f750e69e01ac3712bdc038b8d",
+        "f8f12c03e10d1c8ce385f3c49d913a6eeece7bd7"
+      ],
+      "frontend_commits": [],
+      "migrations": [
+        "supabase/migrations/20261010143828_radar_licitacoes_persistence_storage.sql"
+      ]
+    },
+    {
+      "id": "RADAR-03-COLETOR-001",
+      "backend_commits": [
+        "5cc0b474597ca34d4799edd847ea2a4c5463f3c8",
+        "2302eb5e14e7fea5063c56d9c63c26412591ac7d",
+        "5c4967ec1d43d77394874158f7c6779c08b127b7",
+        "62c84649c330c7c4346949589f0987db88b54aee",
+        "f8f12c03e10d1c8ce385f3c49d913a6eeece7bd7"
+      ],
+      "frontend_commits": [],
+      "migrations": [
+        "supabase/migrations/20261010162217_radar_collector_incremental_sync.sql",
+        "supabase/migrations/20261010172500_radar_collector_rate_and_indexes.sql"
+      ]
+    },
+    {
+      "id": "RADAR-04-PESQUISA-001",
+      "backend_commits": [
+        "7f47e435e01a8f18be7eb8d18e4d6c8aa5752274",
+        "f8f12c03e10d1c8ce385f3c49d913a6eeece7bd7",
+        "b8c18d2f710939020906dd8ba93f98e10c9e8479",
+        "cfc59ac6786f83d30eee878c585cf50832b554f7"
+      ],
+      "frontend_commits": [],
+      "migrations": [
+        "supabase/migrations/20261010175803_radar_search_engine.sql",
+        "supabase/migrations/20261010181715_radar_search_pagination_fix.sql"
+      ]
+    },
+    {
+      "id": "RADAR-05-FRONTEND-001",
+      "backend_commits": [
+        "c633847ee52be483c42b5e8f18ed881d3703b5f6",
+        "f8f12c03e10d1c8ce385f3c49d913a6eeece7bd7"
+      ],
+      "frontend_commits": [
+        "d34f707fa869e15adf146bc8ec474de0adf6354a",
+        "9987e30e3849f09520612dbd6e390e7e6cafdc38",
+        "c845aa5527c0a97a8ed11f7aeefeea93dabd15a9"
+      ],
+      "migrations": [
+        "supabase/migrations/20261010183606_radar_search_default_period.sql"
+      ]
+    },
+    {
+      "id": "RADAR-06-DETALHES-001",
+      "backend_commits": [
+        "8086a4b11787ceedecfc59bd12aa85fcdbb1f983",
+        "f8f12c03e10d1c8ce385f3c49d913a6eeece7bd7"
+      ],
+      "frontend_commits": [
+        "5c3a2aee45a4eed933936539e26ac0296da24df6"
+      ],
+      "migrations": []
+    },
+    {
+      "id": "RADAR-07-IMPORTACAO-001",
+      "backend_commits": [
+        "83cb0d5ed57ea2ea9ff12a5cbc541c5d85435e7a",
+        "d34285f5ef20d15198e613642f0bfcf713acd6a8",
+        "ba56ae2b6e6444982a8b532ae8a5da197d068406",
+        "994b0275591d1a7dbd98c554fdb15bef535e2a49",
+        "c6a44c5804f5104adfaaa4990a2ef492e2434e08",
+        "2e9d55c42decdde086e55e5d72abc2c6729c145f",
+        "f3cfded9c58e083f54ad9ad5592708798c2bf949",
+        "a73ddfad28667e2eb7c0f598ce6196fae25b484b",
+        "a53cb3a697d3b928d612943fc0946f43629afab5",
+        "2044f23ed3cedc85d0aa99037e750d529d55ecb9",
+        "f8f12c03e10d1c8ce385f3c49d913a6eeece7bd7"
+      ],
+      "frontend_commits": [
+        "fcd65e0ff974880302e2abf99c2627b279a31635"
+      ],
+      "migrations": [
+        "supabase/migrations/20261010203112_radar_importacao_transacional.sql",
+        "supabase/migrations/20261010205946_radar_import_lock_privilege_fix.sql",
+        "supabase/migrations/20261010211500_radar_import_rpc_definer.sql",
+        "supabase/migrations/20261010213000_radar_import_revoke_direct_insert.sql",
+        "supabase/migrations/20261022235858_audit_radar_import_links.sql"
+      ]
+    },
+    {
+      "id": "RADAR-08-RELEASE-001",
+      "backend_commits": [
+        "f8f12c03e10d1c8ce385f3c49d913a6eeece7bd7"
+      ],
+      "frontend_commits": [
+        "2fba08ef4b0b1e42e8dfbb4ba70c454b2e64d4bd",
+        "b133445e085fadadfa75afd6faa392767a12b628"
+      ],
+      "migrations": []
+    },
+    {
+      "id": "RADAR-09-PLATAFORMAS-001",
+      "backend_commits": [
+        "5295a803a3a9fea88c40520bb6801836e6e3dee3",
+        "f9314aa036dd3606f92953ae53b3596c523a67a4",
+        "e0b6b2896d416eec59a7b1c77da2fd3722cd325c",
+        "3824d6e83a3b577f78359cf13f57483777fc9c05"
+      ],
+      "frontend_commits": [
+        "5c7fad10c3321f270bb4208e5884faa9a8948b33"
+      ],
+      "migrations": [
+        "supabase/migrations/20261010223000_radar_platform_identification.sql",
+        "supabase/migrations/20261010235000_index_radar_platform_domains.sql"
+      ]
+    },
+    {
+      "id": "RADAR-07-ORCAMENTO-001",
+      "backend_commits": [
+        "6e208c36fefb79888c2537da3d683ad75736a289",
+        "4fee9ab38a420e837bbe3472aa68f754e0a8167e",
+        "722d7a034a00f58d84b04259f2e0035e9dca8ad5",
+        "70cf2c4036db95949f4c19c50a493531696eb172",
+        "0f6a84e702e94726d01fdcb656942122057683d5",
+        "e551a8edd1aba95029d176bd5367f316fb5cb3bf"
+      ],
+      "frontend_commits": [],
+      "migrations": [
+        "supabase/migrations/20261010232844_radar_import_create_linked_quotation.sql"
+      ]
+    },
+    {
+      "id": "RADAR-10-INTERFACE-001",
+      "backend_commits": [],
+      "frontend_commits": [
+        "a25ff46a0737d5d15563f463eceafac19af3a78f",
+        "811f19ea27f76c1e9b9b158327c5933afb1e1984",
+        "0fcc7e7a85fba8bcaed49eed628e7aca4e027e62",
+        "bfdaed2c5c244f82f481de2e57dfeb914b31b3d5",
+        "cb4d459790018d9106fc25bac2e259bfadf83656",
+        "a8983cb4eecb7edf3db86129f5dad835760d7e49",
+        "8e47683ad4e849b92dc1e210a0f63e5a71a67abf"
+      ],
+      "migrations": []
+    },
+    {
+      "id": "RADAR-12-ENRIQUECIMENTO-AUTOMATICO-001",
+      "backend_commits": [
+        "1b00a2b5dfd5e8ecda6973637300d0adbcca8e85",
+        "67462eb41b8051b8c7b29c35028f8c14870cb673",
+        "1c61cb6453f9b479bcfb6a911a4b0bc10bbde989",
+        "29f331449d05340f6f152c12a7c1fa13cfa42632",
+        "56542b29ddf5b3b0c297e7c930795f2ebb07cfb5",
+        "f8f12c03e10d1c8ce385f3c49d913a6eeece7bd7"
+      ],
+      "frontend_commits": [],
+      "migrations": [
+        "supabase/migrations/20261011015020_radar_platform_enrichment.sql"
+      ]
+    },
+    {
+      "id": "RADAR-13-METADADOS-EVIDENCIAS-001",
+      "backend_commits": [
+        "20605336a8d618b36e88d39825a7266cdfd5ee0b",
+        "f8f12c03e10d1c8ce385f3c49d913a6eeece7bd7"
+      ],
+      "frontend_commits": [],
+      "migrations": [
+        "supabase/migrations/20261011032719_radar_platform_metadata_evidence.sql"
+      ]
+    },
+    {
+      "id": "RADAR-15-OBJETO-EXPANSIVEL-001",
+      "backend_commits": [],
+      "frontend_commits": [
+        "3f3ebb873a93ad84e886559b7b4414493025146f",
+        "3172cffc1c2fef4929a17329cfeb1e2000393a1b",
+        "02cedf3d0796e3a7495252a1a5d0526c7ec76fc0"
+      ],
+      "migrations": []
+    },
+    {
+      "id": "RADAR-14-INTERFACE-001",
+      "backend_commits": [
+        "a1606d6c9946eaaf435867d4c8247b6444f85967"
+      ],
+      "frontend_commits": [
+        "ca765f90b2ca526735f6f85cdce6e8e7ee05685c"
+      ],
+      "migrations": [
+        "supabase/migrations/20261011134423_radar_manual_platform_url_override.sql"
+      ]
+    },
+    {
+      "id": "RADAR-16-EDITAL-PDF-001",
+      "backend_commits": [
+        "b2476f09ce120ed30ed3e77e5b5e9eb65f9843d9",
+        "f8f12c03e10d1c8ce385f3c49d913a6eeece7bd7"
+      ],
+      "frontend_commits": [
+        "5167a3dae911de034b5e4c4a28912845a32b8fa4"
+      ],
+      "migrations": [
+        "supabase/migrations/20261011142855_radar_pdf_platform_identification.sql"
+      ]
+    },
+    {
+      "id": "RADAR-17-DETALHE-PLATAFORMA-001",
+      "backend_commits": [],
+      "frontend_commits": [
+        "b7777f728f997372efdbc0d16729a59f8ceb8038"
+      ],
+      "migrations": []
+    },
+    {
+      "id": "RADAR-18-FASE-5-REPROCESSAMENTO-VALIDACAO-001",
+      "backend_commits": [
+        "9d44d99389567a6d58517bb70c40262ca15cbca8",
+        "f8f12c03e10d1c8ce385f3c49d913a6eeece7bd7"
+      ],
+      "frontend_commits": [],
+      "migrations": []
+    },
+    {
+      "id": "RADAR-19-FASE-1-PERSISTENCIA-SYNC-ITENS-001",
+      "backend_commits": [
+        "ddf3089415b890d56582e47bf79b495e1d6e80c8",
+        "f8f12c03e10d1c8ce385f3c49d913a6eeece7bd7",
+        "4cd8ed87b9e25da4dfaed307e2b8598b71be5be9",
+        "209ab3c64745bc5aae5567fd38de2915f21c530e",
+        "357b0aec7bf47b873dfc0a4f1c1778c858f5fac5",
+        "0a11474736c63f5547a5fd1f2b66c81d5b573e18",
+        "818bf100a724b3904a3d44052c547fa2aeaf7746",
+        "7111d77d3c8ceb26e093ec36b98b16767bbb85f9"
+      ],
+      "frontend_commits": [],
+      "migrations": [
+        "supabase/migrations/20261011180000_radar_item_cache_async_sync.sql"
+      ]
+    },
+    {
+      "id": "RADAR-19-FASE-3-DETALHES-CACHE-ITENS-001",
+      "backend_commits": [
+        "1c366286100ea13a951ccbe41cf5f6e323715e97"
+      ],
+      "frontend_commits": [
+        "ad30977969bca59008c44dfecca1f21b2dedead5"
+      ],
+      "migrations": []
+    },
+    {
+      "id": "RADAR-19-FASE-4-UX-CARREGAMENTO-ITENS-001",
+      "backend_commits": [
+        "f8f12c03e10d1c8ce385f3c49d913a6eeece7bd7"
+      ],
+      "frontend_commits": [
+        "58bbfd11a828039ecc06a72b58d8cc3a0824ccff"
+      ],
+      "migrations": []
+    },
+    {
+      "id": "ISSUE-85",
+      "backend_commits": [],
+      "frontend_commits": [
+        "a0b4cc57a73b7faa367722a6ebd2375ce1e52598"
+      ],
+      "migrations": []
+    },
+    {
+      "id": "RADAR-19-FASE-6-VALIDACAO-HOMOLOGACAO-001",
+      "backend_commits": [
+        "7f20bcc788f36694ee496d8bf41e7ca14642dbe7"
+      ],
+      "frontend_commits": [
+        "e148dd8a624bfd93ad47882b2ee23c617f6fd353",
+        "b133445e085fadadfa75afd6faa392767a12b628"
+      ],
+      "migrations": [
+        "supabase/migrations/20261012023121_radar_items_operational_metrics.sql",
+        "supabase/migrations/20261011195000_radar_item_worker_runtime.sql",
+        "supabase/migrations/20261011234630_radar_items_scheduling_priority_storage_retention.sql",
+        "supabase/migrations/20261012002730_radar_items_worker_runtime_latency_tuning.sql",
+        "supabase/migrations/20261012005000_radar_items_worker_request_timeout_buffer.sql",
+        "supabase/migrations/20261012014000_radar_items_worker_extended_runtime_budget.sql"
+      ]
+    },
+    {
+      "id": "RADAR-20-ABRIR-ITENS-NOVA-GUIA-001",
+      "backend_commits": [],
+      "frontend_commits": [
+        "712e0a77a7ded25da07cfae7dd9fd7c4634dfe2a"
+      ],
+      "migrations": []
+    },
+    {
+      "id": "RECONCILE-APPLIED-RADAR-MIGRATIONS-001",
+      "backend_commits": [
+        "1dcd2a74848e3dd9de515253497ab0f514f9fbcb"
+      ],
+      "frontend_commits": [],
+      "migrations": [
+        "supabase/migrations/20261012161530_radar_engine_ingest_receiver.sql",
+        "supabase/migrations/20261012161930_radar_engine_identity_hydration_fix.sql"
+      ]
+    },
+    {
+      "id": "RADAR-ENGINE-T8",
+      "backend_commits": [
+        "61e538238448da8a448aaf6870a6d2231f10d8d6",
+        "7efafdbb00bb8ae1b3f301966879fb4489c718cf",
+        "e7456910732383b999aec5bb299a25da411cf82c",
+        "f8f12c03e10d1c8ce385f3c49d913a6eeece7bd7",
+        "80f53fc2b79b141aa6f7d32d8f4605b11ce7bdfa"
+      ],
+      "frontend_commits": [
+        "3172cffc1c2fef4929a17329cfeb1e2000393a1b",
+        "86cd90839ddcd0308d43e10ae3fffcbe7e1faa9c",
+        "de57a8f1a94444344e7e5838926155b7cb6bc447",
+        "85b8b78c4af50deb54cbfde8ca1f8075565aee49",
+        "bc1c7698a5e64fd87e1400986e4e72b958505590",
+        "1c3a4176585b6722356b039c9ce9621630d847b7",
+        "17b3866e35d8e4ed71931e8ffc38d598202690c9",
+        "abbd809b6a1961862031e1e1462b68c230c15e4c"
+      ],
+      "migrations": [
+        "supabase/migrations/20261117004431_radar_engine_sync_diagnostics.sql"
+      ]
+    },
+    {
+      "id": "ISSUE-95",
+      "backend_commits": [
+        "f8f12c03e10d1c8ce385f3c49d913a6eeece7bd7"
+      ],
+      "frontend_commits": [],
+      "migrations": []
+    },
+    {
+      "id": "ISSUE-407",
+      "backend_commits": [
+        "76f620cb3768b7c13f9f967df1f7e5a87d5fe5ef",
+        "f8f12c03e10d1c8ce385f3c49d913a6eeece7bd7"
+      ],
+      "frontend_commits": [],
+      "migrations": [
+        "supabase/migrations/20261117030354_radar_portal_confirmed_eligibility.sql"
+      ]
+    },
+    {
+      "id": "ISSUE-413",
+      "backend_commits": [],
+      "frontend_commits": [
+        "02c289ed7c87375be13a220ae3308887b2675251"
+      ],
+      "migrations": []
+    },
+    {
+      "id": "ISSUE-415",
+      "backend_commits": [],
+      "frontend_commits": [
+        "f1fdc746a1b9fa06d622bd1813d54ffe39941364"
+      ],
+      "migrations": []
+    },
+    {
+      "id": "ISSUE-417",
+      "backend_commits": [],
+      "frontend_commits": [
+        "8288bd2151e0defd142cf9112d0aca903f706e94"
+      ],
+      "migrations": []
+    },
+    {
+      "id": "ISSUE-419",
+      "backend_commits": [],
+      "frontend_commits": [
+        "e4619ce0ed77344e0329765b98db96b0a85cff7f"
+      ],
+      "migrations": []
+    },
+    {
+      "id": "ISSUE-421",
+      "backend_commits": [],
+      "frontend_commits": [
+        "c3bb6c3a24d44a6dff027f17edd6a7e105d43525",
+        "783d9c1d82ce6117b108c2b2c57a5e7218b78449",
+        "fdfb885214b3c04eb49a16e557ab67dc0fc43c21",
+        "e867dcedf83cb2b163a2ce2da6c17e8588372ff7",
+        "b4ca0be5a609fcfd57509598623a1633ef6f870e"
+      ],
+      "migrations": []
+    },
+    {
+      "id": "ISSUE-422",
+      "backend_commits": [
+        "d331df9d4e0986eb30542bc959ef66a112572509",
+        "eca4638b5371cef6804f41148db5b1b1a61306c7"
+      ],
+      "frontend_commits": [
+        "678959fb89c1e06911082f10bb14396f5e37370c",
+        "08ff129bdf86de80f164fef46c4321553ee29a32",
+        "2d8efdcb0c23d1e476468bae3189fa462a2e95f6"
+      ],
+      "migrations": []
+    },
+    {
+      "id": "ISSUE-424",
+      "backend_commits": [],
+      "frontend_commits": [
+        "275116a29bcf8bf6d6401104fa20074471814aa8",
+        "32007fbc27897a0cf59aa44ca4980197b2ecebc5",
+        "5ddf4955bd050bcaf886b5844e16c87b7760e57d"
+      ],
+      "migrations": []
+    },
+    {
+      "id": "ISSUE-427",
+      "backend_commits": [],
+      "frontend_commits": [
+        "292b691b47b28c0f181b1821963f589ca8e5df42"
+      ],
+      "migrations": []
+    },
+    {
+      "id": "ISSUE-435",
+      "backend_commits": [],
+      "frontend_commits": [
+        "f6bbf0d1a2afa29180aa20348e2fdbbdc01828b0",
+        "4cd44b076ac15b59cc5d8537fbc7afcb0b3ad400"
+      ],
+      "migrations": []
+    },
+    {
+      "id": "ISSUE-436",
+      "backend_commits": [],
+      "frontend_commits": [
+        "1bc5e46023283df9c2b11c7f97ec41676216533f"
+      ],
+      "migrations": []
+    },
+    {
+      "id": "ISSUE-440",
+      "backend_commits": [],
+      "frontend_commits": [
+        "c27f6a6221e56ec738ef131cbf5dc114ba67e1df"
+      ],
+      "migrations": []
+    },
+    {
+      "id": "ISSUE-444",
+      "backend_commits": [],
+      "frontend_commits": [
+        "770e7c52b4c91b9d92e26077f785bd14ecadf413",
+        "918dca6ab31cd151d33dd10b5aa190bb97d93bdd"
+      ],
+      "migrations": []
+    },
+    {
+      "id": "ISSUE-446",
+      "backend_commits": [],
+      "frontend_commits": [
+        "298c98e0f1d8a63bd4759a2432fc7e862b17c758"
+      ],
+      "migrations": []
+    },
+    {
+      "id": "ISSUE-448",
+      "backend_commits": [],
+      "frontend_commits": [
+        "b11642a8552eae3146a153ed6666ad0f6676a455"
+      ],
+      "migrations": []
+    },
+    {
+      "id": "ISSUE-445",
+      "backend_commits": [],
+      "frontend_commits": [
+        "77cd54ab78ebe067cf4a0d2622f071a7c0c22c9f"
+      ],
+      "migrations": []
+    },
+    {
+      "id": "ISSUE-434",
+      "backend_commits": [
+        "c30b6e1c21ab33ac9114436828ff1d5253b568ae",
+        "99df62aa1b4ebf711408b2c551a4b84b0af9a342"
+      ],
+      "frontend_commits": [
+        "bfcefd0eaab80a6936289c3f928e5198ee1a047b",
+        "f1ae9cc99390ca3723809f6b240f11cae0be9216",
+        "6793e19a156c2975818521a6ba63ad3ca7cbf386"
+      ],
+      "migrations": [
+        "supabase/migrations/20261118010135_radar_bid_phase_search_filter.sql"
+      ]
+    },
+    {
+      "id": "ISSUE-453",
+      "backend_commits": [],
+      "frontend_commits": [
+        "2902ac170c28ed1d4e8b7c263e27ad0116c67eaa",
+        "fad56ae611aa08916a084af3b809312a76977e89",
+        "f423c0397b9db78792555457ac56bf66453bd9f6",
+        "ef5a4b5fbfe30ae99cda09b725d7d66a851820fc",
+        "6de842bb9eae3a552493ed8c607cafdec84c6d08",
+        "f94c112321cf9612f443dea40863a8503682ab84"
+      ],
+      "migrations": []
+    },
+    {
+      "id": "ISSUE-447",
+      "backend_commits": [
+        "13073a7b27c0a622b3aa49856237c321f307f3c9"
+      ],
+      "frontend_commits": [
+        "e191e40633b8e5451bf642f053d18cf51ea56eab"
+      ],
+      "migrations": []
+    },
+    {
+      "id": "ISSUE-443",
+      "backend_commits": [
+        "fab439686ab398f51f3f22d32eac53e3b81dbe24",
+        "3ac28da653ddec856f5baea0126b3848be5a8113"
+      ],
+      "frontend_commits": [
+        "02c023fbf0695997d0b1c562530520aad28bf8f8",
+        "2cbae53d4fcdfa2a26ad0254ade4dfa2f3d7be36"
+      ],
+      "migrations": []
+    },
+    {
+      "id": "ISSUE-450",
+      "backend_commits": [],
+      "frontend_commits": [
+        "db826b024b380ded455c652c3fb4292e74dfcb44"
+      ],
+      "migrations": []
+    },
+    {
+      "id": "ISSUE-462",
+      "backend_commits": [],
+      "frontend_commits": [
+        "d8c69b5d600a04658d9aa2fc5736bfcda69e5862",
+        "f5f17de4def3a39751051f88e11347f9d49045fa",
+        "0e46d9b4ed102ba95600ea491cf2769571baba81"
+      ],
+      "migrations": []
+    },
+    {
+      "id": "ISSUE-464",
+      "backend_commits": [
+        "ea4b812837eacf78a1cdc2ed0fe93a6f6bf8089b",
+        "322aa4c54b8776e4b7b089758314b1a6b6c4fa5c"
+      ],
+      "frontend_commits": [
+        "758cdf0ec49390bc92d5cad8543ecede2f27bfae",
+        "7ccf6ba7cdfda8cd3b3813a353d665f66afa7469",
+        "3172cffc1c2fef4929a17329cfeb1e2000393a1b"
+      ],
+      "migrations": [
+        "supabase/migrations/20261118174507_radar_session_start_datetime.sql"
+      ]
+    },
+    {
+      "id": "ISSUE-470",
+      "backend_commits": [],
+      "frontend_commits": [
+        "970899817603cbe596a030a6f29296042cd3de83"
+      ],
+      "migrations": []
+    },
+    {
+      "id": "ISSUE-472",
+      "backend_commits": [],
+      "frontend_commits": [
+        "f66e1f3ae25269b761c1c169b8fcc8a24a77b060"
+      ],
+      "migrations": []
+    },
+    {
+      "id": "ISSUE-473",
+      "backend_commits": [],
+      "frontend_commits": [
+        "d0a34cd49b683e6064963865499263679d634d5f"
+      ],
+      "migrations": []
+    },
+    {
+      "id": "ISSUE-474",
+      "backend_commits": [
+        "5ebecb8cface5b145acfe40e13e01f462d031dde"
+      ],
+      "frontend_commits": [],
+      "migrations": []
+    },
+    {
+      "id": "ISSUE-480",
+      "backend_commits": [],
+      "frontend_commits": [
+        "659dc9ab1863a3014f0fbf995139c772bb5ffa32"
+      ],
+      "migrations": []
+    },
+    {
+      "id": "ISSUE-483",
+      "backend_commits": [
+        "04dcee60e79e7dd390dd8c380e5825a75795adc0",
+        "1748371f6b432d4add56a845e64635be69a91bfe",
+        "c92c52f7133f10b0d8151262a5a5f96f19f9e6d5",
+        "f9d2296bdb26aa100570fb9980855efe26a4d799"
+      ],
+      "frontend_commits": [
+        "9b5aaa13d2bb4fe1eaa3dc183ce5211f188d43ba"
+      ],
+      "migrations": [
+        "supabase/migrations/20261118200057_radar_future_disputes_catalog.sql"
+      ]
+    },
+    {
+      "id": "ISSUE-481",
+      "backend_commits": [
+        "3eec69965e4f8a15fc03ee29b73904e771901bdd",
+        "054504a27fe00c2bcc4516ee35d5fd11c04779db",
+        "3d294dc45a2ea2b08cce517770db459c5533c482"
+      ],
+      "frontend_commits": [
+        "af8dbd4c416cdfe285b90eeb3d2260ee0ee5d362",
+        "29a125e1d409474a897c8ffde033f8a3b9003ff6"
+      ],
+      "migrations": []
+    },
+    {
+      "id": "ISSUE-488",
+      "backend_commits": [],
+      "frontend_commits": [
+        "53fa730b91bdb704f2d917aab2d3c7bda016ffbd"
+      ],
+      "migrations": []
+    },
+    {
+      "id": "ISSUE-491",
+      "backend_commits": [],
+      "frontend_commits": [
+        "305988c3e43138c07dd27ff22ba2667695dc0e9f",
+        "4b1d34602ce8b68e5f22e85b990b13b31e0add66",
+        "5b409980961812ca82783a422be5bc11d0181136"
+      ],
+      "migrations": []
+    },
+    {
+      "id": "ISSUE-495",
+      "backend_commits": [],
+      "frontend_commits": [
+        "791a316af59c9da9b013917aedc86abee73cf2e0"
+      ],
+      "migrations": []
+    },
+    {
+      "id": "ISSUE-496",
+      "backend_commits": [],
+      "frontend_commits": [
+        "3172cffc1c2fef4929a17329cfeb1e2000393a1b"
+      ],
+      "migrations": []
+    },
+    {
+      "id": "FEAT-005",
+      "backend_commits": [],
+      "frontend_commits": [
+        "89adc5919be2ff23e68a1eeedaf5b879754a07e8",
+        "ac91fd14fb0165de994153be08e01050416f9085",
+        "6f652ce626b0b086ef29e805f2bd444b47ecc520",
+        "3172cffc1c2fef4929a17329cfeb1e2000393a1b"
+      ],
+      "migrations": []
+    },
+    {
+      "id": "ISSUE-503",
+      "backend_commits": [],
+      "frontend_commits": [
+        "a1e9ec4f1d13ee8d441124d705b0dff25e185f74"
+      ],
+      "migrations": []
+    },
+    {
+      "id": "ISSUE-504",
+      "backend_commits": [],
+      "frontend_commits": [
+        "273adbcc32ba1ff476a397fbae90d43e4e1e613a"
+      ],
+      "migrations": []
+    },
+    {
+      "id": "ISSUE-507",
+      "backend_commits": [
+        "c6518fce7201b5ed3d57a50f9c8475f1144f3ed6"
+      ],
+      "frontend_commits": [],
+      "migrations": [
+        "supabase/migrations/20261120145213_radar_item_description_search.sql"
+      ]
+    },
+    {
+      "id": "ISSUE-510",
+      "backend_commits": [],
+      "frontend_commits": [
+        "0fc778bcbe1fcd8734aacd3c9eb2112b5c9b721e"
+      ],
+      "migrations": []
+    },
+    {
+      "id": "ISSUE-508",
+      "backend_commits": [
+        "f9673eb806660986a7e1a152ab67447f95a756cf"
+      ],
+      "frontend_commits": [
+        "595bcdcbd5cb351b9a44ca75eea8b51f7868e621"
+      ],
+      "migrations": []
+    },
+    {
+      "id": "ISSUE-515",
+      "backend_commits": [
+        "4d64b2cdbf6a1fa68ece7e86e669f52e3634ddc0"
+      ],
+      "frontend_commits": [],
+      "migrations": [
+        "supabase/migrations/20261120171830_radar_item_cache_retention_25_days.sql"
+      ]
+    },
+    {
+      "id": "ISSUE-517",
+      "backend_commits": [
+        "6c7e87edb9d80148b34e7be1ada8cffa5b3deabc",
+        "4ef416b5ca6cda13f64071ccaf8d0862f8545e21",
+        "f48b81d820acdc792d48727557ec1243c0bd014f",
+        "561b2da288876b316dcda1924fd0ed5a63ff1c50"
+      ],
+      "frontend_commits": [],
+      "migrations": [
+        "supabase/migrations/20261121120425_radar_engine_metadata_only_upsert.sql"
+      ]
+    },
+    {
+      "id": "ISSUE-521",
+      "backend_commits": [],
+      "frontend_commits": [
+        "c031d87b7ae445832e42c2c9cbbe2918267c99f0",
+        "f98ec06d4700428c1f382f4eda507f9b3aa33c86"
+      ],
+      "migrations": []
+    },
+    {
+      "id": "ISSUE-529",
+      "backend_commits": [],
+      "frontend_commits": [
+        "6224c892a24685457b5cc0549727f2c4d2b584a3"
+      ],
+      "migrations": []
+    },
+    {
+      "id": "ISSUE-520",
+      "backend_commits": [
+        "463bb731603581d64bd254081551a1827a28582a"
+      ],
+      "frontend_commits": [
+        "563f883649591e6e1b20f24402d431e116c4f930"
+      ],
+      "migrations": [
+        "supabase/migrations/20261121174134_radar_edital_number_filter.sql"
+      ]
+    },
+    {
+      "id": "ISSUE-531",
+      "backend_commits": [
+        "b3b7e50cb25fd1a1aeddb2917ab2f24b7ce93092",
+        "f8f12c03e10d1c8ce385f3c49d913a6eeece7bd7"
+      ],
+      "frontend_commits": [
+        "1e980255b9b55ff4b85e1dcdb98cebdb745f48c1",
+        "fc62bb10308ab2a1b11c50ed80dc0351666c49f5",
+        "147c9fc7765f3907fbea594575442e40c6665e24"
+      ],
+      "migrations": [
+        "supabase/migrations/20261122161757_radar_non_receiving_editals_cleanup.sql"
+      ]
+    },
+    {
+      "id": "ISSUE-535",
+      "backend_commits": [
+        "4e850650ff0665f96ddb723ff1c7e3e989557262",
+        "ef47f8df0c8bec0b946c7a57e1492623c7a0498a",
+        "207e5428b932cfa057d5a327996e2d291a17fd68"
+      ],
+      "frontend_commits": [],
+      "migrations": [
+        "supabase/migrations/20261123023924_radar_receipt_dates_cleanup.sql",
+        "supabase/migrations/20261123023927_radar_engine_revision_watermark.sql"
+      ]
+    },
+    {
+      "id": "ISSUE-539",
+      "backend_commits": [
+        "c9fe1d6aa5ae923b14f0fc1d753b29eb1c0d18e8"
+      ],
+      "frontend_commits": [
+        "d3ea0660499f8ffbbdfb9e644c7babffe523774e"
+      ],
+      "migrations": []
+    },
+    {
+      "id": "ISSUE-542",
+      "backend_commits": [
+        "6869f34258020e5d72729a0b63a3a308d2c5fdd3",
+        "2681f277f70357223a843fc5a302d1f711cfbff8",
+        "08de625ff22b895ffc3a70b85cca23245e4311d1",
+        "14054d7c1874e5407d4030049ae485a1c5bca8b2"
+      ],
+      "frontend_commits": [
+        "1cadf6fc5726ab9368a3f53f60eea53206e9b752"
+      ],
+      "migrations": [
+        "supabase/migrations/20261123221244_retire_radar_legacy_collection_cron.sql"
+      ]
     }
   ]
 }

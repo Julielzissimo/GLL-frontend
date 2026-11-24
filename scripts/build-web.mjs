@@ -19,6 +19,8 @@ const TARGETS = {
     suppliersEnabled: true,
     commercialProposalsEnabled: true,
     designSystemEnabled: true,
+    radarDetailsFallbackEnabled: false,
+    radarDocumentsFallbackEnabled: true,
     organizationDocumentsEnabled: true,
   },
   production: {
@@ -36,6 +38,8 @@ const TARGETS = {
     suppliersEnabled: false,
     commercialProposalsEnabled: false,
     designSystemEnabled: false,
+    radarDetailsFallbackEnabled: false,
+    radarDocumentsFallbackEnabled: true,
     organizationDocumentsEnabled: true,
   },
   prod: null,
@@ -65,6 +69,11 @@ if (configuredKey && configuredKey === otherTarget.supabaseAnonKey) {
 }
 const storageProvider = process.env[`GLL_STORAGE_PROVIDER_${target.environment === "homolog" ? "HOMOLOG" : "PRODUCTION"}`] || "supabase";
 if (!["supabase", "r2"].includes(storageProvider)) throw new Error("Provedor de armazenamento inválido.");
+const fallbackEnvironment = target.environment === "homolog" ? "HOMOLOG" : "PRODUCTION";
+const fallbackSetting = (process.env[`GLL_RADAR_DETAILS_FALLBACK_${fallbackEnvironment}`] || String(target.radarDetailsFallbackEnabled)).trim().toLowerCase();
+if (!["true", "false"].includes(fallbackSetting)) throw new Error("A flag de contingência do Radar deve ser true ou false.");
+const documentsFallbackSetting = (process.env[`GLL_RADAR_DOCUMENTS_FALLBACK_${fallbackEnvironment}`] || String(target.radarDocumentsFallbackEnabled)).trim().toLowerCase();
+if (!["true", "false"].includes(documentsFallbackSetting)) throw new Error("A flag de consulta de documentos do Radar deve ser true ou false.");
 
 const scriptDir = dirname(fileURLToPath(import.meta.url));
 const rootDir = resolve(scriptDir, "..");
@@ -91,6 +100,8 @@ const runtimeConfig = {
   suppliersEnabled: target.suppliersEnabled,
   commercialProposalsEnabled: target.commercialProposalsEnabled,
   designSystemEnabled: target.designSystemEnabled,
+  radarDetailsFallbackEnabled: fallbackSetting === "true",
+  radarDocumentsFallbackEnabled: documentsFallbackSetting === "true",
   organizationDocumentsEnabled: target.organizationDocumentsEnabled,
 };
 

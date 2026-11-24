@@ -15,6 +15,427 @@ function normalizedOrganizationName(value) {
     .toLocaleUpperCase("pt-BR");
 }
 
+function normalizedRadarModalityName(value) {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/gu, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/gu, " ")
+    .trim();
+}
+
+async function expectDefaultRadarModalities(page) {
+  const checkedNames = await page.locator("#radarModalities .radar-modality-option").evaluateAll((options) => options
+    .filter((option) => option.querySelector('input[name="radarModality"]')?.checked)
+    .map((option) => option.querySelector("span")?.textContent?.trim() || ""));
+  expect(checkedNames.map(normalizedRadarModalityName).sort()).toEqual([
+    "dispensa",
+    "inexigibilidade",
+    "pregao eletronico",
+  ]);
+}
+
+function radarSearchResponse(page, predicate = () => true) {
+  return page.waitForResponse((response) => {
+    const request = response.request();
+    if (request.method() !== "POST" || !new URL(response.url()).pathname.endsWith("/functions/v1/radar-search")) return false;
+    try {
+      return predicate(request.postDataJSON());
+    } catch {
+      return false;
+    }
+  }, { timeout: 45_000 });
+}
+
+function radarDetailsResponse(page, numberControlPncp, action = "details") {
+  return page.waitForResponse((response) => {
+    const request = response.request();
+    if (request.method() !== "POST" || !new URL(response.url()).pathname.endsWith("/functions/v1/radar-details")) return false;
+    try {
+      const payload = request.postDataJSON();
+      return payload.action === action && payload.numberControlPncp === numberControlPncp;
+    } catch {
+      return false;
+    }
+  }, { timeout: 45_000 });
+}
+
+function radarDocumentsResponse(page, numberControlPncp) {
+  return radarDetailsResponse(page, numberControlPncp, "documents");
+}
+
+async function logoutTestSession(page) {
+  const logoutResponsePromise = page.waitForResponse(
+    (response) => new URL(response.url()).pathname.endsWith("/auth/v1/logout") && response.request().method() === "POST",
+    { timeout: 15_000 },
+  );
+  await page.locator("#profileMenuButton").click();
+  await page.locator("#logoutButton").click();
+  const confirmLogoutButton = page.locator("#confirmLogoutButton");
+  if (await confirmLogoutButton.isVisible().catch(() => false)) await confirmLogoutButton.click();
+  const logoutResponse = await logoutResponsePromise;
+  if (!logoutResponse.ok()) throw new Error("O Supabase não confirmou o encerramento da sessão de teste.");
+  await page.locator("#loginForm").waitFor({ state: "visible" });
+}
+
+async function submitRadarSearch(page, predicate, { verifyScrollPersistence = false } = {}) {
+  const responsePromise = radarSearchResponse(page, predicate);
+  await page.locator("#radarSearchButton").click();
+  const response = await responsePromise;
+  if (!response.ok()) throw new Error(`A pesquisa real do Radar retornou HTTP ${response.status()}.`);
+  const body = await response.json();
+  const payload = response.request().postDataJSON();
+  if ("platformIds" in payload || "includeUnidentified" in payload) {
+    throw new Error("A pesquisa pública enviou filtros legados de plataformas.");
+  }
+  if (!Array.isArray(body.results) || !body.pagination || !body.coverage) {
+    throw new Error("A pesquisa real do Radar retornou uma resposta incompatível.");
+  }
+  await expect(page.locator("#radarSearchButton")).toBeEnabled();
+  const filterRail = page.locator("#radarFilterRail");
+  const filterToggle = page.locator("#radarFilterToggleButton");
+  await expect(filterRail).toHaveAttribute("aria-hidden", "true");
+  await expect(filterToggle).toBeVisible();
+  await expect(filterToggle).toHaveAttribute("aria-expanded", "false");
+  await expect(filterToggle).toHaveAccessibleName("Exibir filtros da pesquisa");
+  await expect(filterToggle.locator('[data-gll-icon="slidersHorizontal"]')).toHaveCount(1);
+
+  if (verifyScrollPersistence) {
+    const previousScrollBehavior = await page.evaluate(() => document.documentElement.style.scrollBehavior);
+    await page.evaluate(() => {
+      const spacer = document.createElement("div");
+      spacer.id = "radarFilterScrollTestSpacer";
+      spacer.style.height = "1200px";
+      document.body.append(spacer);
+      document.documentElement.style.scrollBehavior = "auto";
+      window.scrollTo(0, document.body.scrollHeight);
+    });
+    try {
+      await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(0);
+      await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+      await expect(filterRail).toHaveAttribute("aria-hidden", "true");
+      await expect(filterToggle).toBeVisible();
+      await expect(filterToggle).toHaveAttribute("aria-expanded", "false");
+
+      await page.evaluate(() => window.scrollTo(0, 0));
+      await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0);
+      await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+      await expect(filterRail).toHaveAttribute("aria-hidden", "true");
+      await expect(filterToggle).toBeVisible();
+      await filterToggle.click();
+      await expect(filterRail).not.toHaveAttribute("aria-hidden", "true");
+      await expect(filterRail).toBeVisible();
+      await expect(filterToggle).toBeHidden();
+    } finally {
+      await page.evaluate((scrollBehavior) => {
+        document.querySelector("#radarFilterScrollTestSpacer")?.remove();
+        document.documentElement.style.scrollBehavior = scrollBehavior;
+      }, previousScrollBehavior);
+    }
+  } else {
+    const previousScrollBehavior = await page.evaluate(() => document.documentElement.style.scrollBehavior);
+    await page.evaluate(() => {
+      document.documentElement.style.scrollBehavior = "auto";
+      window.scrollTo(0, 0);
+    });
+    await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0);
+    await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+    try {
+      if (await filterRail.getAttribute("aria-hidden") === "true") {
+        await expect(filterToggle).toBeVisible();
+        await filterToggle.click();
+      }
+    } finally {
+      await page.evaluate((scrollBehavior) => {
+        document.documentElement.style.scrollBehavior = scrollBehavior;
+      }, previousScrollBehavior);
+    }
+    await expect(filterRail).not.toHaveAttribute("aria-hidden", "true");
+    await expect(filterRail).toBeVisible();
+    await expect(filterToggle).toBeHidden();
+  }
+  return { payload, body };
+}
+
+async function validateRadarSearchPage(page) {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.locator("#navRadarSearchButton").click();
+  await expect(page.locator("#radarSearchPage")).toBeVisible();
+  await expect(page.locator("#radarWorkbench")).toBeVisible();
+  await expect(page.locator("#radarFilterRail")).toBeVisible();
+  await expect(page.locator(".radar-results-panel")).toBeVisible();
+  await expect(page.locator("#radarPageSize")).toHaveValue("50");
+  await expect(page.locator("#radarSearchPage")).toHaveCSS("max-width", "none");
+  const platformSelect = page.locator("#radarPlatform");
+  await expect(platformSelect).toHaveValue("portal-de-compras-publicas");
+  await expect(platformSelect).toBeDisabled();
+  await expect(platformSelect.locator("option")).toHaveCount(1);
+  await expect(page.locator("#radarPlatformHelp")).toHaveCount(0);
+  await expect(page.locator("#radarPlatformDetails, #radarPlatforms, #radarIncludeUnidentified")).toHaveCount(0);
+  await expect(page.locator('[data-radar-action="add-tag"]')).toHaveCount(0);
+  await expect(page.locator("#radarTagInput")).toHaveAttribute("placeholder", "Digite um termo e pressione Enter");
+  const filterBounds = await page.locator("#radarFilterRail").boundingBox();
+  const resultsBounds = await page.locator(".radar-results-panel").boundingBox();
+  const viewportWidth = page.viewportSize()?.width || await page.evaluate(() => window.innerWidth);
+  if (!filterBounds || !resultsBounds || (viewportWidth >= 761
+    ? filterBounds.x + filterBounds.width > resultsBounds.x
+    : resultsBounds.y < filterBounds.y + filterBounds.height)) {
+    throw new Error("Os filtros do Radar não estão na lateral esquerda em telas amplas nem acima dos resultados em telas estreitas.");
+  }
+  const filterToggle = page.locator("#radarFilterToggleButton");
+  await expect(filterToggle).toBeHidden();
+  await expect(filterToggle).toHaveAttribute("aria-expanded", "true");
+  await expect(filterToggle).toHaveAttribute("aria-label", "Exibir filtros da pesquisa");
+  await expect(filterToggle.locator('[data-gll-icon="slidersHorizontal"]')).toHaveCount(1);
+  await expect.poll(() => page.locator('#radarModalities input[name="radarModality"]').count()).toBeGreaterThan(0);
+  await expect.poll(() => page.locator('#radarModalities input[name="radarModality"]:checked').count()).toBe(3);
+  await expectDefaultRadarModalities(page);
+  await expect.poll(() => page.locator("#radarUf option").count()).toBeGreaterThan(1);
+  await expect(page.locator('label[for="radarBidPhaseFrom"]')).toContainText("Fase de lances a partir de");
+  await expect(page.locator('label[for="radarBidPhaseTo"]')).toContainText("Fase de lances até");
+  const defaultDates = {
+    from: await page.locator("#radarBidPhaseFrom").inputValue(),
+    to: await page.locator("#radarBidPhaseTo").inputValue(),
+  };
+  if (!defaultDates.from || !defaultDates.to) throw new Error("O Radar não aplicou as datas iniciais da fase de lances.");
+  expect((Date.parse(defaultDates.to) - Date.parse(defaultDates.from)) / 86_400_000).toBe(15);
+  await expect(page.locator("#radarSortBy")).toHaveValue("bidPhaseStartAt");
+  await expect(page.locator("#radarSortDirection")).toHaveValue("desc");
+  await expect(page.locator("#radarSituation")).toHaveValue("open");
+  await expect(page.locator('#radarSituation option:not([value="open"]):not(:disabled)')).toHaveCount(0);
+
+  await page.locator("#radarBidPhaseTo").fill("");
+  await page.locator("#radarUf").selectOption("ES");
+  await expect.poll(() => page.locator("#radarMunicipality option").count()).toBeGreaterThan(1);
+  const firstMunicipality = await page.locator('#radarMunicipality option[value]:not([value=""])').first().getAttribute("value");
+  if (!firstMunicipality) throw new Error("O catálogo do Radar não retornou município para a UF selecionada.");
+  await page.locator("#radarMunicipality").selectOption(firstMunicipality);
+  await page.locator('[data-radar-action="clear"]').click();
+  await expect(page.locator("#radarBidPhaseFrom")).toHaveValue(defaultDates.from);
+  await expect(page.locator("#radarBidPhaseTo")).toHaveValue(defaultDates.to);
+  await expect(page.locator("#radarSituation")).toHaveValue("open");
+  await expect(page.locator("#radarUf")).toHaveValue("");
+  await expectDefaultRadarModalities(page);
+
+  await page.locator('#radarModalityOpen').click();
+  const modalityToggle = page.locator('#radarModalityToggle');
+  const modalityBoxes = page.locator('#radarModalities input[name="radarModality"]');
+  const availableModalityBoxes = page.locator('#radarModalities input[name="radarModality"]:not(:disabled)');
+  const disabledModalityBoxes = page.locator('#radarModalities input[name="radarModality"]:disabled');
+  const checkedModalityBoxes = page.locator('#radarModalities input[name="radarModality"]:checked');
+  await expect(availableModalityBoxes).toHaveCount(3);
+  await expect(disabledModalityBoxes).toHaveCount(await modalityBoxes.count() - 3);
+  await expect(checkedModalityBoxes).toHaveCount(3);
+  await checkedModalityBoxes.first().uncheck();
+  await expect(checkedModalityBoxes).toHaveCount(2);
+  await expect(modalityToggle).toHaveText("Marcar disponíveis");
+  await modalityToggle.click();
+  await expect(modalityToggle).toHaveText("Desmarcar disponíveis");
+  await expect(checkedModalityBoxes).toHaveCount(await availableModalityBoxes.count());
+  await modalityToggle.click();
+  await expect(modalityToggle).toHaveText("Marcar disponíveis");
+  await expect(checkedModalityBoxes).toHaveCount(0);
+  await modalityToggle.click();
+  await expect(modalityToggle).toHaveText("Desmarcar disponíveis");
+  await expect(checkedModalityBoxes).toHaveCount(await availableModalityBoxes.count());
+  await page.locator('[data-radar-action="apply-modalities"]').click();
+
+  await page.locator("#radarUf").selectOption("ES");
+  await expect.poll(() => page.locator("#radarMunicipality option").count()).toBeGreaterThan(1);
+  await page.locator("#radarBidPhaseFrom").fill("");
+  await page.locator("#radarBidPhaseTo").fill("");
+  const availableProcurements = await submitRadarSearch(page, (payload) => payload.tags === undefined && payload.page === 1 && payload.proposalReceiptState === "open");
+  const knownProcurement = availableProcurements.body.results[0];
+  if (!knownProcurement?.numberControlPncp || !knownProcurement.object) {
+    throw new Error("A busca pelas modalidades permitidas não retornou um edital para o teste do Radar.");
+  }
+  const searchableTerm = knownProcurement.object.match(/[\p{L}\p{N}]{4,}/u)?.[0];
+  if (!searchableTerm) throw new Error("O edital disponível não contém um termo de objeto pesquisável.");
+  await page.locator("#radarTagInput").fill(searchableTerm);
+  await page.locator("#radarTagInput").press("Enter");
+  await expect(page.locator("#radarTagList li")).toHaveCount(1);
+  const simple = await submitRadarSearch(page, (payload) => payload.tags?.length === 1 && payload.proposalReceiptState === "open", { verifyScrollPersistence: true });
+  const searchCatalogSource = simple.body.metadata?.catalogSource;
+  if (!["homolog", "production"].includes(searchCatalogSource)) {
+    throw new Error("A pesquisa do Radar não identificou se os resultados vieram de homologação ou produção.");
+  }
+  if (process.env.GLL_E2E_EXPECTED_ENVIRONMENT === "production" && searchCatalogSource !== "production") {
+    throw new Error("A pesquisa do Radar em produção não informou o catálogo de produção.");
+  }
+  if (!simple.body.results.some((result) => result.numberControlPncp === knownProcurement.numberControlPncp)) {
+    throw new Error("A busca por um termo do edital disponível não retornou o edital esperado.");
+  }
+  if (simple.body.results.some((result) => result.platformName !== "Portal de Compras Públicas")) {
+    throw new Error("A pesquisa do Radar retornou uma plataforma diferente do Portal de Compras Públicas.");
+  }
+  await expect(page.locator("#radarOperationalSummary, .radar-operational-card")).toHaveCount(0);
+  await expect(page.getByText("Coleta indisponível", { exact: true })).toHaveCount(0);
+  const resultCard = page.locator("#radarResultsContent .radar-result-card").first();
+  await expect(resultCard).toBeVisible();
+  await expect(resultCard).toContainText("Município - UF");
+  await expect(resultCard).toContainText("Data da Disputa");
+  await expect(resultCard).not.toContainText("Abertura das propostas");
+  await expect(resultCard).not.toContainText("Publicação no PNCP");
+  await expect(resultCard).toContainText("Limite p/ Recebimento das Propostas");
+  await expect(resultCard).toContainText("Órgão responsável");
+  await expect(resultCard).toContainText("Modalidade");
+  await expect(resultCard).toContainText("Plataforma");
+  await expect(resultCard).not.toContainText("Fonte:");
+  await expect(resultCard).not.toContainText("Método:");
+  await expect(resultCard.locator(".radar-result-fields > div")).toHaveCount(6);
+  await expect(resultCard.locator(".radar-result-number")).toContainText("PNCP");
+  await expect(resultCard.locator(".radar-result-value")).toContainText("Valor estimado");
+  await expect(resultCard.locator('[data-radar-card-view="items"]')).toBeVisible();
+  await expect(resultCard.getByRole('button', { name: 'Dados', exact: true })).toBeVisible();
+  await expect(resultCard.getByRole('button', { name: 'Plataforma', exact: true })).toHaveCount(0);
+  await expect(resultCard.getByRole('link', { name: 'PNCP', exact: true })).toHaveAttribute('href', /^https:\/\/pncp\.gov\.br\/app\//);
+  const favoriteBeforeDetails = await resultCard.locator("[data-radar-favorite]").getAttribute("aria-pressed");
+  const numberControlPncp = simple.body.results[0].numberControlPncp;
+  const context = page.context();
+  // Keep compatibility coverage for previously shared detail URLs.
+  const detailsPage = await context.newPage();
+  const detailsResponsePromise = radarDetailsResponse(detailsPage, numberControlPncp);
+  const documentsResponsePromise = process.env.GLL_E2E_EXPECTED_ENVIRONMENT === "homolog"
+    ? radarDocumentsResponse(detailsPage, numberControlPncp)
+    : null;
+  const detailUrl = new URL(page.url());
+  detailUrl.searchParams.set('radarDetail', numberControlPncp);
+  await detailsPage.goto(detailUrl.href);
+  const detailsResponse = await detailsResponsePromise;
+  if (!detailsResponse.ok()) throw new Error(`A leitura dos detalhes do Radar retornou HTTP ${detailsResponse.status()}.`);
+  const detailsBody = await detailsResponse.json();
+  const itemSync = detailsBody.itemSync ?? null;
+  const itemSyncStatuses = new Set(["pending", "processing", "complete", "partial", "failed"]);
+  if (detailsBody.status !== "available" || detailsBody.contract?.numeroControlePNCP !== numberControlPncp) {
+    throw new Error("Os detalhes autenticados não retornaram a contratação solicitada pelo Radar.");
+  }
+  if (detailsBody.catalogSource !== searchCatalogSource) {
+    throw new Error("A origem dos detalhes do Radar não corresponde à origem dos resultados da pesquisa.");
+  }
+  if (itemSync && !itemSyncStatuses.has(itemSync.status)) {
+    throw new Error("Os detalhes do Radar retornaram um estado de sincronização de itens desconhecido.");
+  }
+  await expect(detailsPage.locator("#radarDetailsView")).toBeVisible();
+  await expect(detailsPage.locator("#radarDetailsTitle")).toBeVisible();
+  await expect(detailsPage.locator("#radarDetailsContent #radarItemsTitle")).toBeVisible();
+  await expect(detailsPage.locator('#radarDetailsContent section[aria-labelledby="radarImportPanelTitle"]')).toBeVisible();
+  if (process.env.GLL_E2E_EXPECTED_ENVIRONMENT === "homolog") {
+    const documentsFallbackEnabled = await detailsPage.evaluate(() => window.GLL_CONFIG?.radarDocumentsFallbackEnabled === true);
+    if (!documentsFallbackEnabled) throw new Error("A consulta de documentos do Radar não está habilitada em homologação.");
+    await expect(detailsPage.locator("#radarDetailsContent #radarDocumentsTitle")).toBeVisible();
+    await expect(detailsPage.getByRole("button", { name: "Consultar documentos no PNCP" })).toHaveCount(0);
+    const documentsResponse = await documentsResponsePromise;
+    if (!documentsResponse.ok()) {
+      throw new Error(`A consulta de documentos do edital retornou HTTP ${documentsResponse.status()}.`);
+    }
+    const documentsBody = await documentsResponse.json();
+    if (documentsBody.status !== "available"
+      || documentsBody.numberControlPncp !== numberControlPncp
+      || !Array.isArray(documentsBody.documents?.documents)) {
+      throw new Error("A resposta da consulta de documentos do Radar não segue o contrato esperado.");
+    }
+  }
+  await expect(page.locator("#radarListView")).toBeVisible();
+  await expect(page.locator("#radarDetailsView")).toBeHidden();
+  const renderedItems = await detailsPage.locator("#radarDetailsContent [data-radar-select-item]").count();
+  if (searchCatalogSource === "production") {
+    await expect(detailsPage.locator("#radarDetailsContent #radarGeneralTitle").locator(".."))
+      .toContainText("somente de leitura");
+    await expect(detailsPage.locator("#radarDetailsContent [aria-labelledby='radarImportPanelTitle']"))
+      .toContainText("somente de leitura");
+    if (renderedItems !== 0) {
+      throw new Error("A interface permitiu selecionar itens do catálogo de produção.");
+    }
+  } else {
+    const publishedItemCount = Number(itemSync?.publishedItemCount ?? 0);
+    if (itemSync?.publishedVersion && publishedItemCount > 0 && renderedItems === 0) {
+      throw new Error("O snapshot publicado no catálogo de homologação não foi exibido como itens selecionáveis.");
+    }
+    if (!itemSync?.publishedVersion && renderedItems !== 0) {
+      throw new Error("A interface permitiu selecionar itens antes de existir um snapshot completo publicado.");
+    }
+  }
+  const favoriteOnDetails = await detailsPage.locator("#radarDetailsFavoriteButton").getAttribute("aria-pressed");
+  if (favoriteBeforeDetails !== favoriteOnDetails) {
+    throw new Error("Abrir os detalhes alterou o estado do favorito da contratação.");
+  }
+  await detailsPage.locator("#radarDetailsBackButton").click();
+  await expect(detailsPage.locator("#radarListView")).toBeVisible();
+  await expect(resultCard.locator("[data-radar-favorite]")).toHaveAttribute("aria-pressed", favoriteBeforeDetails);
+  await detailsPage.close();
+  const longDescription = Array.from({ length: 8 }, () => "Contratação de serviços especializados para fornecimento, instalação e manutenção de equipamentos destinados às unidades administrativas do município.").join(" ");
+  const objectDisclosureState = await resultCard.evaluate(async (card, text) => {
+    const heading = card.querySelector(".radar-result-object");
+    const objectText = heading?.querySelector(".radar-result-object-toggle, .radar-result-object-text");
+    if (!heading || !objectText) throw new Error("O card não contém o texto do objeto.");
+    objectText.textContent = text;
+    window.dispatchEvent(new Event("resize"));
+    await new Promise((resolve) => window.requestAnimationFrame(resolve));
+    const toggle = heading.querySelector("[data-radar-object-toggle]");
+    if (!toggle) throw new Error("O objeto extenso não possui controle de expansão.");
+    const isTruncated = toggle.classList.contains("is-truncated");
+    const initiallyExpanded = toggle.getAttribute("aria-expanded");
+    toggle.click();
+    const expanded = toggle.getAttribute("aria-expanded");
+    const expandedIsTruncated = toggle.classList.contains("is-truncated");
+    const description = toggle.textContent;
+    toggle.click();
+    return {
+      isTruncated,
+      initiallyExpanded,
+      expanded,
+      expandedIsTruncated,
+      collapsed: toggle.getAttribute("aria-expanded"),
+      collapsedIsTruncated: toggle.classList.contains("is-truncated"),
+      description,
+    };
+  }, longDescription);
+  expect(objectDisclosureState).toEqual({
+    isTruncated: true,
+    initiallyExpanded: "false",
+    expanded: "true",
+    expandedIsTruncated: false,
+    collapsed: "false",
+    collapsedIsTruncated: true,
+    description: longDescription,
+  });
+
+  await page.locator("#radarTagInput").fill("aquisição");
+  await page.locator("#radarTagInput").press("Enter");
+  const multiple = await submitRadarSearch(page, (payload) => payload.tags?.length === 2 && payload.proposalReceiptState === "open");
+  await expect(multiple.payload.tags).toEqual([searchableTerm, "aquisição"]);
+  if (multiple.body.results.length === 0) throw new Error("A pesquisa OR do Radar não retornou resultados para os termos de teste.");
+
+  await page.locator('[data-radar-action="clear"]').click();
+  await expect(page.locator("#radarSituation")).toHaveValue("open");
+  await page.locator("#radarBidPhaseFrom").fill("");
+  await page.locator("#radarBidPhaseTo").fill("");
+  await page.locator("#radarPageSize").selectOption("20");
+  const firstPage = await submitRadarSearch(page, (payload) => payload.tags === undefined && payload.page === 1 && payload.proposalReceiptState === "open");
+  if (!firstPage.body.pagination.hasMore) throw new Error("O conjunto de teste do Radar não oferece uma segunda página para validação.");
+  const nextPageResponse = radarSearchResponse(page, (payload) => payload.page === 2);
+  await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+  const scrollBeforePageChange = await page.evaluate(() => window.scrollY);
+  if (scrollBeforePageChange <= 0) throw new Error("A página do Radar não rolou para validar o retorno ao início dos resultados.");
+  await page.locator('#radarPagination [data-radar-page="2"]').click();
+  const nextPage = await nextPageResponse;
+  if (!nextPage.ok()) throw new Error(`A segunda página do Radar retornou HTTP ${nextPage.status()}.`);
+  const nextPageBody = await nextPage.json();
+  if (nextPageBody.pagination?.page !== 2 || !Array.isArray(nextPageBody.results)) {
+    throw new Error("A paginação do Radar não carregou a segunda página do serviço.");
+  }
+  const resultsOffsetFromTopbar = () => page.evaluate(() => {
+    const titleTop = document.querySelector("#radarResultsTitle")?.getBoundingClientRect().top ?? Number.POSITIVE_INFINITY;
+    const topbarBottom = document.querySelector("#appTopbar")?.getBoundingClientRect().bottom ?? 0;
+    return titleTop - topbarBottom;
+  });
+  await expect.poll(resultsOffsetFromTopbar).toBeGreaterThanOrEqual(8);
+  await expect.poll(resultsOffsetFromTopbar).toBeLessThanOrEqual(48);
+
+  await page.locator("#navUsersButton").click();
+  await expect(page.locator("#usersPage")).toBeVisible();
+}
+
 test("o login de teste acessa somente a organização de teste", async ({ page }) => {
   const baseUrl = requiredSetting("GLL_E2E_BASE_URL");
   const email = requiredSetting("GLL_E2E_EMAIL");
@@ -124,28 +545,30 @@ test("o login de teste acessa somente a organização de teste", async ({ page }
       throw new Error("A configuração pública do Supabase não foi carregada.");
     }
 
-    await page.locator("#navUsersButton").click();
-    await page.locator("#usersPage").waitFor({ state: "visible" });
-    const organizationLabel = (await page.locator("#workspaceSummary").getAttribute("title"))?.trim();
-    const organizationQuery = await page.evaluate(async ({ supabaseUrl, anonKey, accessToken }) => {
-      const response = await fetch(`${supabaseUrl}/rest/v1/organizations?select=name`, {
-        headers: {
-          apikey: anonKey,
-          Authorization: `Bearer ${accessToken}`,
-        },
-      });
-      return { status: response.status, rows: response.ok ? await response.json() : null };
-    }, { supabaseUrl: runtime.supabaseUrl, anonKey: runtime.supabaseAnonKey, accessToken: authSession.access_token });
+    if (expectedEnvironment === "homolog") {
+      await page.locator("#navUsersButton").click();
+      await page.locator("#usersPage").waitFor({ state: "visible" });
+      const organizationLabel = (await page.locator("#workspaceSummary").getAttribute("title"))?.trim();
+      const organizationQuery = await page.evaluate(async ({ supabaseUrl, anonKey, accessToken }) => {
+        const response = await fetch(`${supabaseUrl}/rest/v1/organizations?select=name`, {
+          headers: {
+            apikey: anonKey,
+            Authorization: `Bearer ${accessToken}`,
+          },
+        });
+        return { status: response.status, rows: response.ok ? await response.json() : null };
+      }, { supabaseUrl: runtime.supabaseUrl, anonKey: runtime.supabaseAnonKey, accessToken: authSession.access_token });
 
-    if (organizationQuery.status !== 200 || !Array.isArray(organizationQuery.rows)) {
-      throw new Error("Não foi possível validar o escopo de organizações pela sessão autenticada.");
-    }
-    if (organizationQuery.rows.length !== 1) {
-      throw new Error("A sessão autenticada consegue consultar uma quantidade inesperada de organizações.");
-    }
-    const sessionOrganizationName = organizationQuery.rows[0].name?.trim();
-    if (!sessionOrganizationName || normalizedOrganizationName(organizationLabel || "") !== normalizedOrganizationName(sessionOrganizationName)) {
-      throw new Error("A organização exibida não corresponde à única organização visível para a sessão.");
+      if (organizationQuery.status !== 200 || !Array.isArray(organizationQuery.rows)) {
+        throw new Error("Não foi possível validar o escopo de organizações pela sessão autenticada.");
+      }
+      if (organizationQuery.rows.length !== 1) {
+        throw new Error("A sessão autenticada consegue consultar uma quantidade inesperada de organizações.");
+      }
+      const sessionOrganizationName = organizationQuery.rows[0].name?.trim();
+      if (!sessionOrganizationName || normalizedOrganizationName(organizationLabel || "") !== normalizedOrganizationName(sessionOrganizationName)) {
+        throw new Error("A organização exibida não corresponde à única organização visível para a sessão.");
+      }
     }
 
     const isolationCheck = await page.evaluate(async ({ supabaseUrl, anonKey, accessToken }) => {
@@ -215,6 +638,14 @@ test("o login de teste acessa somente a organização de teste", async ({ page }
       throw new Error("A sessão não passou na verificação de isolamento das tabelas da organização.");
     }
 
+    if (expectedEnvironment === "production") {
+      await logoutTestSession(page);
+      loggedOut = true;
+      console.log(`Login validado em ${expectedEnvironment}; ${isolationCheck.tablesChecked} tabelas retornaram apenas dados permitidos pela organiza��o.`);
+      return;
+    }
+
+    await validateRadarSearchPage(page);
     await expect(page.locator("#editOwnProfileFooterButton")).toHaveCount(0);
     await expect(page.locator(".topbar-actions > #logoutButton")).toHaveCount(0);
     await page.locator("#profileMenuButton").click();
@@ -360,18 +791,7 @@ test("o login de teste acessa somente a organização de teste", async ({ page }
         throw new Error(`A política do Storage rejeitou a ${phase} (HTTP ${avatarUpload.status}${detail}).`);
       }
     }
-
-    const logoutResponsePromise = page.waitForResponse(
-      (response) => new URL(response.url()).pathname.endsWith("/auth/v1/logout") && response.request().method() === "POST",
-      { timeout: 15_000 },
-    );
-    await page.locator("#profileMenuButton").click();
-    await page.locator("#logoutButton").click();
-    const confirmLogoutButton = page.locator("#confirmLogoutButton");
-    if (await confirmLogoutButton.isVisible().catch(() => false)) await confirmLogoutButton.click();
-    const logoutResponse = await logoutResponsePromise;
-    if (!logoutResponse.ok()) throw new Error("O Supabase não confirmou o encerramento da sessão de teste.");
-    await page.locator("#loginForm").waitFor({ state: "visible" });
+    await logoutTestSession(page);
     loggedOut = true;
 
     console.log(`Login validado em ${expectedEnvironment}; ${isolationCheck.tablesChecked} tabelas retornaram apenas dados permitidos pela organização.`);

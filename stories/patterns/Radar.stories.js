@@ -1,0 +1,117 @@
+import applicationHtml from "../../web/index.html?raw";
+import { mountRadarFixture } from "../fixtures/radar-fixture.js";
+export default {
+  title: "Patterns/Radar de Licitações",
+  tags: ["autodocs"],
+};
+
+const frame = (content) => `<main class="users-page radar-page">${content}</main>`;
+
+export const CoberturaParcial = {
+  name: "Resultado vazio sem informativo de cobertura parcial",
+  render: () => frame(`
+    <section class="radar-results-panel">
+      <div class="radar-results-heading"><div><h2>Resultados</h2><p>Nenhum registro nesta página.</p></div></div>
+      <div class="empty-state radar-empty-state" data-empty-kind="partial-empty"><span class="radar-empty-icon" aria-hidden="true">◇</span><strong>Nenhum resultado visível na cobertura atual</strong><p>A coleta está incompleta ou desatualizada. Ainda não é possível concluir que não existam licitações neste período.</p></div>
+    </section>`),
+};
+
+export const Resultados = {
+  name: "Resultados em cartões informativos",
+  render: () => frame(`
+    <div class="radar-workbench"><aside class="radar-filter-rail"><form class="section-band radar-search-form"><div class="radar-section-heading"><h2>Filtros da pesquisa</h2><p>Refine oportunidades publicadas no PNCP.</p></div><div class="radar-filter-grid"><label>Objeto da contratação<input placeholder="Ex.: materiais hospitalares" /></label><label>Número do Edital<input type="search" placeholder="Ex.: 15/2026" /><small>Zeros à esquerda são ignorados na pesquisa.</small></label><details class="radar-modality-filter"><summary><span>Modalidades</span><strong>Todas as modalidades ativas</strong></summary><div class="radar-modality-menu"><button class="quiet-action compact-action radar-modality-bulk-action" type="button">Desmarcar todas</button><div class="radar-modality-list"><label class="radar-modality-option"><input type="checkbox" checked /><span>Pregão eletrônico</span></label><label class="radar-modality-option"><input type="checkbox" checked /><span>Concorrência eletrônica</span></label></div></div></details><details class="radar-modality-filter"><summary><span>Plataforma de disputa</span><strong>Licitanet</strong></summary><div class="radar-modality-menu"><div class="radar-modality-list"><label class="radar-modality-option"><input type="checkbox" checked /><span>Licitanet</span></label></div><label class="radar-modality-option"><input type="checkbox" /><span>Incluir licitações sem plataforma</span></label></div></details><label>Estado<select><option>Brasil inteiro</option></select></label><label>Município<select><option>São Gabriel</option></select></label><label>Fase de lances a partir de<input type="date" value="2026-10-01" /></label><label>Fase de lances até<input type="date" value="2026-10-10" /></label><label>Situação das propostas<select><option>Recebendo propostas</option></select></label></div><div class="radar-form-footer"><div class="button-row radar-filter-actions"><button class="primary-action" type="button">Pesquisar</button><button class="quiet-action" type="button">Limpar filtros</button></div></div></form></aside>
+    <section class="radar-results-panel">
+      <div class="radar-results-heading"><div><h2>Resultados</h2><p>20 licitações encontradas.</p></div><div class="radar-results-controls"><label>Ordenar por<select><option>Data de publicação</option></select></label><label>Direção<select><option>Mais recente / maior primeiro</option></select></label><label>Por página<select><option>20</option></select></label></div></div>
+      <div class="radar-result-list"><article class="radar-result-card"><div class="radar-result-card-heading"><div><p class="radar-result-number"><strong>Edital 90012/2026</strong><span>PNCP 123456780001992026000079</span></p><h3>Aquisição de equipamentos de informática para as unidades de atendimento da rede municipal</h3></div><span class="radar-receipt-status" data-status="open">Recebendo propostas</span></div><dl class="radar-result-fields"><div><dt>Município - UF</dt><dd>Campinas - SP</dd></div><div><dt>Órgão responsável</dt><dd>Secretaria Municipal de Saúde<small>Unidade de Compras</small></dd></div><div><dt>Modalidade</dt><dd>Pregão eletrônico</dd></div><div><dt>Abertura das propostas</dt><dd>04/10/2026, 09:00</dd></div><div><dt>Limite p/ Recebimento das Propostas</dt><dd>20/10/2026, 12:00</dd></div><div><dt>Publicação no PNCP</dt><dd>04/10/2026</dd></div></dl><div class="radar-result-card-footer"><div class="radar-result-value"><small>Valor estimado</small><strong>R$ 184.500,00</strong></div><div class="radar-row-actions"><button class="icon-button radar-favorite-action" type="button" aria-label="Favoritar">☆</button><a class="quiet-action compact-action" href="https://pncp.gov.br" target="_blank" rel="noopener noreferrer">PNCP ↗</a><a class="primary-action compact-action radar-detail-link" href="?page=radar-de-licitacoes&amp;radarDetail=12345678000199-1-000079%2F2026" target="_blank" rel="noopener noreferrer" aria-label="Ver itens (abre em nova guia)">Ver itens</a></div></div></article></div>
+      <nav class="radar-pagination" aria-label="Paginação dos resultados do Radar"><span>Página 1 de 1 <small>20 resultados.</small></span><div class="button-row"><button class="quiet-action compact-action" type="button" disabled>Anterior</button><button class="quiet-action compact-action" type="button" disabled>Próxima</button></div></nav>
+    </section></div>`),
+};
+
+export const SincronizacaoParcialDosItens = {
+  name: "Sincronização parcial dos itens",
+  render: () => frame(`
+    <section class="section-band radar-detail-section" aria-labelledby="storyPartialItemsTitle">
+      <div class="radar-detail-section-heading"><div><h2 id="storyPartialItemsTitle">Itens da contratação</h2></div></div>
+      <div class="radar-feedback" data-tone="info" role="status" aria-live="polite">
+        <span class="radar-spinner" aria-hidden="true"></span>
+        <div><span>A sincronização dos itens está parcial no Radar.</span><small>Páginas processadas: 2 de 4. Itens esperados: 8.</small></div>
+      </div>
+    </section>`),
+};
+
+export const DetalhesDaContratacao = {
+  name: "Detalhes com orçamento sigiloso",
+  render: () => frame(`
+    <section class="radar-detail-page radar-details-content">
+      <div class="page-heading radar-page-heading"><div><h1>Detalhes — 61/2026</h1></div><div class="button-row"><button class="quiet-action" type="button">Voltar aos resultados</button><button class="quiet-action" type="button" aria-pressed="true">Desfavoritar</button></div></div>
+      <div class="radar-detail-layout">
+        <main class="radar-detail-main">
+          <section class="section-band radar-detail-section"><div class="radar-detail-section-heading"><div><h2>Informações gerais</h2><p>Dados armazenados no cache central do Radar.</p></div></div><dl class="radar-detail-grid"><div><dt>Identificador PNCP</dt><dd>88768080000170-1-000478/2026</dd></div><div><dt>Número da contratação</dt><dd>61/2026</dd></div><div><dt>Órgão responsável</dt><dd>Município de São Gabriel</dd></div><div><dt>Município e UF</dt><dd>São Gabriel / RS</dd></div><div><dt>Modalidade</dt><dd>Pregão eletrônico</dd></div><div><dt>Valor estimado</dt><dd>Orçamento sigiloso</dd></div><div><dt>Situação</dt><dd>Divulgada no PNCP</dd></div></dl><section class="radar-platform-detail" aria-labelledby="storyRadarPlatformTitle"><h3 id="storyRadarPlatformTitle">Plataforma de disputa</h3><p><strong>Licitanet</strong></p><p>Link de origem informado pelo PNCP: <a href="https://licitanet.com.br" target="_blank" rel="noopener noreferrer">Acessar plataforma ↗</a></p><small>A identificação automática corresponde ao domínio da URL. Ela não confirma que o endereço seja a sessão efetiva de disputa.</small></section><a class="quiet-action compact-action radar-official-link" href="https://pncp.gov.br/app/editais/88768080000170/2026/478" target="_blank" rel="noopener noreferrer">Abrir contratação no PNCP ↗</a></section>
+        </main>
+        <aside class="radar-detail-aside">
+          <section class="section-band radar-detail-section"><div class="radar-detail-section-heading"><div><h2>Documentos do edital</h2></div></div><ul class="radar-document-list"><li><div><strong>Termo de Referência</strong><span>Outros Documentos</span><small>Publicado em 01/10/2026</small></div><a class="quiet-action compact-action" href="https://pncp.gov.br/pncp-api/v1/orgaos/88768080000170/compras/2026/478/arquivos/1" target="_blank" rel="noopener noreferrer">Baixar ↗</a></li></ul></section>
+          <section class="section-band radar-detail-section"><div class="radar-detail-section-heading"><div><h2>Cadastrar edital</h2><p>Vincule os itens a um edital existente ou crie um novo.</p></div></div><p>Após a importação, o GLL identifica itens existentes e informa possíveis conflitos.</p><button class="quiet-action compact-action" type="button">Abrir edital no GLL</button></section>
+        </aside>
+      </div>
+      <section class="section-band radar-detail-section"><div class="radar-detail-section-heading"><div><h2>Itens da contratação</h2><p>3 itens disponíveis no cache do Radar · Itens atualizados em 10/10/2026, 15:30.</p></div></div><p class="radar-feedback" data-tone="warning" role="status"><strong>Orçamento sigiloso</strong><span>Os valores não serão tratados como preço.</span></p><div class="table-wrap radar-detail-items-wrap" role="region" tabindex="0" aria-label="Itens da contratação"><table class="radar-results-table radar-items-table"><caption class="sr-only">Itens da contratação armazenados no Radar</caption><thead><tr><th scope="col">Item</th><th scope="col">Descrição</th><th scope="col">Quantidade</th><th scope="col">Unidade</th><th scope="col">Valor unitário estimado</th><th scope="col">Valor total</th><th scope="col">Situação</th><th scope="col">Critério</th><th scope="col">Informação complementar</th></tr></thead><tbody><tr><td>1</td><td>Veículo utilitário</td><td>1</td><td>Unidade</td><td>Orçamento sigiloso</td><td>Orçamento sigiloso</td><td>Em andamento</td><td>Menor preço</td><td>Entrega em até 10 dias</td></tr></tbody></table></div></section>
+    </section>`),
+};
+
+// Uses the application's actual DOM, controllers and styles with fictitious data.
+function renderInteractiveRadarStory(documentCount = 1) {
+  const documentCopy = new DOMParser().parseFromString(applicationHtml, "text/html");
+  const root = documentCopy.querySelector("#radarSearchPage");
+  root.classList.remove("hidden");
+  root.fixtureReady = new Promise((resolve) => requestAnimationFrame(async () => {
+    await mountRadarFixture(root, { itemCount: 6, previousImport: false, documentCount });
+    root.querySelector("#radarSearchButton").click();
+    resolve();
+  }));
+  return root;
+}
+
+export const CartaoCompacto = {
+  name: "FEAT-005 · Cartões compactos e filtros laterais recolhíveis",
+  render: () => renderInteractiveRadarStory(),
+};
+
+async function waitForEnabledControl(root, selector) {
+  for (let attempt = 0; attempt < 100; attempt++) {
+    const element = root.querySelector(selector);
+    if (element && !element.disabled) return element;
+    await new Promise((resolve) => setTimeout(resolve, 20));
+  }
+  throw new Error(`Controle não disponível: ${selector}`);
+}
+
+async function showImportConfirmation(root) {
+  await root.fixtureReady;
+  (await waitForEnabledControl(root, '[data-radar-card-view="items"]')).click();
+  (await waitForEnabledControl(root, '[data-radar-select-item="1"]')).click();
+  (await waitForEnabledControl(root, "[data-radar-import-start]")).click();
+}
+
+export const ConfirmacaoDoCadastro = {
+  name: "Confirmação do cadastro do edital",
+  render: CartaoCompacto.render,
+  play: async ({ canvasElement }) => {
+    const root = canvasElement.querySelector("#radarSearchPage");
+    await showImportConfirmation(root);
+  },
+};
+
+export const SelecaoDeDocumentosDoEdital = {
+  name: "Seleção de documentos quando há mais de quatro",
+  render: () => renderInteractiveRadarStory(6),
+  play: async ({ canvasElement }) => {
+    const root = canvasElement.querySelector("#radarSearchPage");
+    await showImportConfirmation(root);
+    const firstDocument = await waitForEnabledControl(root, '[data-radar-import-document="1"]');
+    firstDocument.click();
+    const fifthDocument = await waitForEnabledControl(root, '[data-radar-import-document="5"]');
+    fifthDocument.click();
+    if (root.querySelector("#radarImportDocumentCount")?.textContent !== "4 de 4 selecionados.") {
+      throw new Error("A seleção não respeitou o limite de quatro documentos.");
+    }
+  },
+};
