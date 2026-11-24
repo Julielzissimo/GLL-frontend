@@ -3294,6 +3294,14 @@
       "migrations": [
         "supabase/migrations/20261123221244_retire_radar_legacy_collection_cron.sql"
       ]
+    },
+    {
+      "id": "ISSUE-551",
+      "backend_commits": [],
+      "frontend_commits": [
+        "f4b6c6d2dcab2517be4322e723590f8c313293f9"
+      ],
+      "migrations": []
     }
   ]
 }
