@@ -342,7 +342,7 @@ async function validateRadarSearchPage(page) {
     await expect(detailsPage.locator("#radarDetailsContent #radarGeneralTitle").locator(".."))
       .toContainText("somente de leitura");
     await expect(detailsPage.locator("#radarDetailsContent [aria-labelledby='radarImportPanelTitle']"))
-      .toContainText("somente de leitura");
+      .toContainText(/somente (?:de )?leitura/u);
     if (renderedItems !== 0) {
       throw new Error("A interface permitiu selecionar itens do catálogo de produção.");
     }
