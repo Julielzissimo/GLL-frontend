@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "release_id": "2026-11-23-radar-licitacoes-1.0",
+  "release_id": "2026-11-24-pacote-melhorias-7",
   "environment": "production",
   "target_branch": "main",
   "items": [
@@ -2638,6 +2638,26 @@
       "migrations": [
         "supabase/migrations/20261123221244_retire_radar_legacy_collection_cron.sql"
       ]
+    },
+    {
+      "id": "ISSUE-550",
+      "backend_commits": [
+        "fbf8c08b5731fdf630205a298e5118fb65e77c90"
+      ],
+      "frontend_commits": [
+        "8672d2f8ac075e36ee62e65ca9354dc32347da52"
+      ],
+      "migrations": [
+        "supabase/migrations/20261124141306_radar_catalog_batch_ingestion.sql"
+      ]
+    },
+    {
+      "id": "ISSUE-551",
+      "backend_commits": [],
+      "frontend_commits": [
+        "c7326077432d53386573c5df4ab69a99c3b23c59"
+      ],
+      "migrations": []
     }
   ]
 }
