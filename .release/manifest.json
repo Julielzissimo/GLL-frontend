@@ -3312,6 +3312,27 @@
         "f4b6c6d2dcab2517be4322e723590f8c313293f9"
       ],
       "migrations": []
+    },
+    {
+      "id": "ISSUE-556",
+      "backend_commits": [
+        "6bf19e904b3aa51568f327628a735be174566e64",
+        "8c1eab35424fafdc1d2e14864c30336250e829ec",
+        "ccaa3420f3f52dc09e3b46a37280c3eec3db3e7d",
+        "94789abbfffeb6e89aae688e4a56c64f5fd37db6",
+        "798fc5fa4250e9e47be784b5c921011489159675",
+        "d6d326b7c2bb22a3609a2b8c570e88304dd3d28d",
+        "c6876b9b598697c33eb2b20c3b2f062bf40f1e20"
+      ],
+      "frontend_commits": [
+        "c482fc27dfbf75f6ad665e288bcf684788bf2e39",
+        "501d33ac8652ed797f684b7447ffa19cd48b9a7b"
+      ],
+      "migrations": [
+        "neon/migrations/20261124_001_radar_storage.sql",
+        "neon/migrations/20261124_002_radar_access.sql",
+        "neon/migrations/20261124_003_radar_readiness_gate.sql"
+      ]
     }
   ]
 }
