@@ -13,6 +13,7 @@ const COLLECTIONS = [
   "tenders",
   "item_sync",
   "items",
+  "coverage",
 ];
 const MAX_PAGES_PER_COLLECTION = 100_000;
 
