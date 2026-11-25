@@ -6,10 +6,10 @@ import { unverifiedRadarCollections } from "./backfill_radar_neon_homolog.mjs";
 test("backfill reconciliation accepts only known collections from HTTP 409", () => {
   const error = Object.assign(new Error("incomplete"), {
     status: 409,
-    payload: { unverifiedCollections: ["items", "unknown", "items", "tenders"] },
+    payload: { unverifiedCollections: ["items", "coverage", "unknown", "items", "tenders"] },
   });
 
-  assert.deepEqual(unverifiedRadarCollections(error), ["items", "tenders"]);
+  assert.deepEqual(unverifiedRadarCollections(error), ["items", "coverage", "tenders"]);
 });
 
 test("backfill reconciliation ignores non-conflict and malformed responses", () => {
