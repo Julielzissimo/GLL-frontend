@@ -5,9 +5,13 @@ import test from "node:test";
 const script = await readFile(new URL("./backfill_radar_neon_homolog.mjs", import.meta.url), "utf8");
 const workflow = await readFile(new URL("../.github/workflows/backfill-neon-homolog.yml", import.meta.url), "utf8");
 
-test("Radar Neon backfill is restricted to the homolog environment", () => {
+test("Radar Neon backfill is restricted to homolog and an explicit run marker", () => {
   assert.match(workflow, /workflow_dispatch:/u);
-  assert.match(workflow, /if: github\.ref_name == 'homolog'/u);
+  assert.match(workflow, /push:\s*branches:\s*-\s*homolog\s*paths:/u);
+  assert.match(workflow, /if:\s*>-\s*github\.ref_name == 'homolog'/u);
+  assert.match(workflow, /github\.event_name == 'workflow_dispatch'/u);
+  assert.match(workflow, /github\.event_name == 'push'/u);
+  assert.match(workflow, /contains\(github\.event\.head_commit\.message, '\[RADAR_NEON_BACKFILL\]'\)/u);
   assert.match(workflow, /environment: homolog/u);
   assert.match(workflow, /GLL_E2E_EMAIL: \$\{\{ secrets\.GLL_E2E_EMAIL \}\}/u);
   assert.match(workflow, /GLL_E2E_PASSWORD: \$\{\{ secrets\.GLL_E2E_PASSWORD \}\}/u);

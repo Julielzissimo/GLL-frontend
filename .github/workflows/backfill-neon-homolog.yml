@@ -2,6 +2,13 @@ name: Backfill Radar para Neon (homologação)
 
 on:
   workflow_dispatch:
+  # O GitHub só permite workflow_dispatch quando o arquivo existe na branch padrão.
+  # O gatilho por push permanece restrito a homolog e exige um marcador explícito.
+  push:
+    branches:
+      - homolog
+    paths:
+      - .github/workflows/backfill-neon-homolog.yml
 
 permissions:
   contents: read
@@ -12,7 +19,15 @@ concurrency:
 
 jobs:
   backfill:
-    if: github.ref_name == 'homolog'
+    if: >-
+      github.ref_name == 'homolog' &&
+      (
+        github.event_name == 'workflow_dispatch' ||
+        (
+          github.event_name == 'push' &&
+          contains(github.event.head_commit.message, '[RADAR_NEON_BACKFILL]')
+        )
+      )
     runs-on: ubuntu-latest
     environment: homolog
     timeout-minutes: 360
