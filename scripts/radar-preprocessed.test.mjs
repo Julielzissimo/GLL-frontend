@@ -13,52 +13,25 @@ const platformId = "10000000-0000-4000-8000-000000000001";
 
 function createSupabaseMock({ procurement = null, sync = null, items = [] } = {}) {
   const calls = [];
-  const records = {
-    radar_licitacoes: procurement ? [procurement] : [],
-    radar_itens_sync: sync ? [sync] : [],
-    radar_catalog_modalities: [{ pncp_id: 6, name: "Pregão eletrônico" }],
-    radar_catalog_municipalities: [{ ibge_id: 4318309, name: "São Gabriel" }],
-    radar_plataformas: [{ id: platformId, nome: "Licitanet" }],
-  };
-
   const client = {
-    from(table) {
-      const query = {
-        table,
-        filters: {},
-        rangeValue: null,
-        select(fields, options) { this.fields = fields; this.options = options; return this; },
-        eq(column, value) { this.filters[column] = value; return this; },
-        order(column, options) { this.orderBy = [column, options]; return this; },
-        range(start, end) { this.rangeValue = [start, end]; return this; },
-        async maybeSingle() {
-          calls.push({ table, filters: { ...this.filters }, fields: this.fields });
-          return {
-            data: (records[table] || []).find((row) => Object.entries(this.filters)
-              .every(([key, value]) => String(row[key]) === String(value))) || null,
-            error: null,
-          };
-        },
-        then(resolve, reject) {
-          calls.push({
-            table,
-            filters: { ...this.filters },
-            fields: this.fields,
-            options: this.options,
-            rangeValue: this.rangeValue,
-          });
-          const filtered = items.filter((row) => Object.entries(this.filters)
-            .every(([key, value]) => String(row[key]) === String(value)))
-            .sort((left, right) => left.numero_item - right.numero_item);
-          const [start = 0, end = filtered.length - 1] = this.rangeValue || [];
-          return Promise.resolve({
-            data: table === "radar_itens" ? filtered.slice(start, end + 1) : [],
-            count: table === "radar_itens" ? filtered.length : 0,
-            error: null,
-          }).then(resolve, reject);
-        },
-      };
-      return query;
+    functions: {
+      async invoke(name, { body }) {
+        calls.push({ name, body });
+        return {
+          data: procurement ? {
+            status: "available",
+            procurement,
+            sync,
+            modalityName: "Pregão eletrônico",
+            municipalityName: "São Gabriel",
+            platformName: "Licitanet",
+            items: sync?.versao_sincronizacao && body.knownVersion === sync.versao_sincronizacao
+              ? null
+              : sync?.versao_sincronizacao ? items : [],
+          } : { status: "not_found" },
+          error: null,
+        };
+      },
     },
   };
   return { client, calls };
@@ -161,7 +134,7 @@ function sampleItems() {
   ];
 }
 
-test("carrega edital, plataforma e itens apenas da versão publicada no Supabase", async () => {
+test("carrega edital, plataforma e itens publicados pelo Edge Function do Neon", async () => {
   const mock = createSupabaseMock({
     procurement: sampleProcurement(),
     sync: sampleSync(),
@@ -181,11 +154,10 @@ test("carrega edital, plataforma e itens apenas da versão publicada no Supabase
   assert.equal(result.items.status, "available");
   assert.deepEqual(result.items.items.map((item) => item.number), [1, 2]);
   assert.equal(result.items.items[1].budgetSecret, true);
-  const itemQueries = mock.calls.filter((call) => call.table === "radar_itens");
-  assert.equal(itemQueries.length, 2);
-  assert.ok(itemQueries.every((call) => call.filters.versao_sincronizacao === publishedVersion));
-  assert.ok(itemQueries.every((call) => call.filters.numero_controle_pncp === procurementId));
-  assert.ok(itemQueries.every((call) => call.options.count === "exact"));
+  assert.equal(mock.calls.length, 1);
+  assert.equal(mock.calls[0].name, "radar-details");
+  assert.equal(mock.calls[0].body.action, "preprocessed");
+  assert.equal(mock.calls[0].body.numberControlPncp, procurementId);
 });
 
 test("não expõe linhas parciais sem versão publicada e informa o progresso", async () => {
@@ -210,7 +182,7 @@ test("não expõe linhas parciais sem versão publicada e informa o progresso", 
   assert.equal(result.itemSync.status, "partial");
   assert.equal(result.itemSync.expectedItemCount, 5);
   assert.equal(result.itemSync.pagesProcessed, 2);
-  assert.equal(mock.calls.some((call) => call.table === "radar_itens"), false);
+  assert.equal(mock.calls.some((call) => call.body.action !== "preprocessed"), false);
   const presentation = radarItemSyncPresentation(result.items, result.itemSync);
   assert.equal(presentation.kind, "running");
   assert.match(presentation.message, /parcial/u);
@@ -236,11 +208,11 @@ test("uma versão já carregada atualiza apenas o estado e não repete a pagina�
 
   assert.equal(result.version, publishedVersion);
   assert.equal(result.items, null);
-  assert.equal(mock.calls.some((call) => call.table === "radar_itens"), false);
+  assert.equal(mock.calls.some((call) => call.body.action !== "preprocessed"), false);
   assert.equal(mock.calls.length, 1);
 });
 
-test("sinaliza incompatibilidade entre o contador publicado e as linhas visíveis por RLS", async () => {
+test("sinaliza incompatibilidade entre o contador publicado e os itens lidos no Neon", async () => {
   const mock = createSupabaseMock({ procurement: sampleProcurement(), sync: sampleSync(), items: sampleItems().slice(0, 1) });
   const service = createRadarPreprocessedService({ getClient: () => mock.client });
 
@@ -262,11 +234,11 @@ test("mapeia plataforma sem confirmação e mantém orçamento sigiloso dos iten
   assert.equal(item.totalValue, 0);
 });
 
-test("retorna não encontrado sem consultar tabela de itens", async () => {
+test("retorna não encontrado pelo Edge Function sem consultar itens", async () => {
   const mock = createSupabaseMock();
   const service = createRadarPreprocessedService({ getClient: () => mock.client });
 
   assert.deepEqual(await service.load(procurementId), { status: "not_found" });
   assert.equal(mock.calls.length, 1);
-  assert.equal(mock.calls[0].table, "radar_licitacoes");
+  assert.equal(mock.calls[0].name, "radar-details");
 });

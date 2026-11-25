@@ -1,0 +1,38 @@
+name: Backfill Radar para Neon (homologação)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: radar-neon-backfill-homolog
+  cancel-in-progress: false
+
+jobs:
+  backfill:
+    if: github.ref_name == 'homolog'
+    runs-on: ubuntu-latest
+    environment: homolog
+    timeout-minutes: 360
+    env:
+      GLL_E2E_EMAIL: ${{ secrets.GLL_E2E_EMAIL }}
+      GLL_E2E_PASSWORD: ${{ secrets.GLL_E2E_PASSWORD }}
+    steps:
+      - name: Obter o frontend de homologação
+        uses: actions/checkout@v4
+      - name: Preparar Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+      - name: Validar vínculo da release e executar backfill por cursor
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json
+          manifest=json.load(open('.release/manifest.json', encoding='utf-8'))
+          assert manifest.get('target_branch') == 'homolog', 'manifesto fora de homolog'
+          assert any(item.get('id') == 'ISSUE-556' for item in manifest.get('items', [])), 'ISSUE-556 não está no manifesto'
+          PY
+          node scripts/backfill_radar_neon_homolog.mjs

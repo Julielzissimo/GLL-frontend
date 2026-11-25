@@ -19,6 +19,19 @@ function createSupabaseMock({ initialFavorites = {}, userId = "user-a", metadata
   const calls = [];
   const client = {
     auth: { getUser: async () => ({ data: { user: { id: userId } }, error: null }) },
+    functions: {
+      async invoke(name, { body }) {
+        calls.push({ name, action: body.action, ids: body.ids });
+        return {
+          data: {
+            status: "available",
+            results: metadata.filter((row) => body.ids.includes(row.numero_controle_pncp))
+              .map((row) => ({ ...row, plataforma_nome: row.plataforma_nome || "Licitanet" })),
+          },
+          error: null,
+        };
+      },
+    },
     from(table) {
       const query = {
         table,
@@ -219,6 +232,8 @@ test("carrega a página de favoritos sem gravar os metadados consultados", async
   assert.deepEqual(page.favoriteIds, [procurementId]);
   assert.equal(page.results[0].object, "Compra");
   assert.equal(page.totalCount, 1);
+  assert.equal(mock.calls.some((call) => call.name === "radar-details" && call.action === "favorite-metadata"), true);
+  assert.equal(mock.calls.some((call) => call.table === "radar_licitacoes"), false);
   assert.equal(mock.calls.filter((call) => call.action === "insert").length, 0);
   assert.equal(mock.calls.filter((call) => call.action === "delete").length, 0);
 });
