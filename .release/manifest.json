@@ -3341,7 +3341,8 @@
       ],
       "frontend_commits": [
         "c482fc27dfbf75f6ad665e288bcf684788bf2e39",
-        "501d33ac8652ed797f684b7447ffa19cd48b9a7b"
+        "501d33ac8652ed797f684b7447ffa19cd48b9a7b",
+        "781880e8b983c0a42ad6460c9b85040990ffb0c5"
       ],
       "migrations": [
         "neon/migrations/20261124_001_radar_storage.sql",
