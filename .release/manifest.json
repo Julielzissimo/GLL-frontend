@@ -3326,7 +3326,8 @@
         "bf69d95b98bfa91714ccf4ab367364b5feb09dbd",
         "4736568b41bffefeae94f71b869b6f432e6f5112",
         "74f944e7bf28a3a41a8ae0f25f81037553703467",
-        "5b46cc013a8cfbbd9782ed9eb868bf5f93d0d04f"
+        "5b46cc013a8cfbbd9782ed9eb868bf5f93d0d04f",
+        "656c5cc09c6fc0da4c0cc47c5ea792a86f9be3d7"
       ],
       "frontend_commits": [
         "c482fc27dfbf75f6ad665e288bcf684788bf2e39",
@@ -3336,7 +3337,8 @@
         "neon/migrations/20261124_001_radar_storage.sql",
         "neon/migrations/20261124_002_radar_access.sql",
         "neon/migrations/20261124_003_radar_readiness_gate.sql",
-        "neon/migrations/20261125_004_radar_engine_hmac_ingestion.sql"
+        "neon/migrations/20261125_004_radar_engine_hmac_ingestion.sql",
+        "neon/migrations/20261125_005_radar_engine_runtime_roles.sql"
       ]
     }
   ]
