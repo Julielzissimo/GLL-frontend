@@ -145,7 +145,7 @@ test("a interface omite o resumo operacional e não exibe o aviso normal de cobe
   assert.match(searchFeature, /Nenhum edital encontrado/u);
 });
 
-test("detalhes, favoritos e importação usam o cliente Supabase e preservam os controles da tela", () => {
+test("detalhes, favoritos e importação usam Edge Functions e preservam os controles da tela", () => {
   for (const id of ["radarDetailsView", "radarDetailsFavoriteButton", "radarDetailsContent"]) {
     assert.match(html, new RegExp(`id="${id}"`, "u"));
   }
@@ -161,8 +161,12 @@ test("detalhes, favoritos e importação usam o cliente Supabase e preservam os 
   assert.match(designSystem, /id: "radarImportConfirmDialog", area: "Radar"/u);
   assert.match(radarStory, /name: "Confirmação do cadastro do edital"/u);
   assert.match(importFeature, /functions\.invoke\("radar-import"/u);
-  assert.match(preprocessedFeature, /from\("radar_licitacoes"\)/u);
-  assert.match(preprocessedFeature, /from\("radar_itens_sync"\)/u);
+  assert.match(preprocessedFeature, /functions\.invoke\("radar-details"/u);
+  assert.doesNotMatch(preprocessedFeature, /\.from\("radar_(licitacoes|itens_sync|itens)"\)/u);
+  assert.doesNotMatch(detailsFeature, /\.from\("radar_licitacoes"\)/u);
+  assert.match(searchFeature, /action: "item-counts"/u);
+  assert.match(searchFeature, /action: "municipality-labels"/u);
+  assert.doesNotMatch(searchFeature, /\.from\("radar_(itens_sync|catalog_municipalities)"\)/u);
 });
 
 test("dados de produção são identificados como somente leitura e não permitem importação", () => {
