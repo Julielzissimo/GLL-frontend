@@ -9,38 +9,6 @@ import {
   shouldRenderRadarItemSyncNotice,
 } from "./radar-item-sync.js";
 
-const FAVORITE_METADATA_FIELDS = [
-  "numero_controle_pncp",
-  "numero_compra",
-  "ano_compra",
-  "cnpj_orgao",
-  "nome_orgao",
-  "codigo_unidade_administrativa",
-  "nome_unidade_administrativa",
-  "objeto_compra",
-  "modalidade_pncp_id",
-  "uf",
-  "municipio_ibge_id",
-  "valor_estimado",
-  "data_publicacao",
-  "data_inicio_propostas",
-  "data_inicio_fase_lances",
-  "data_fim_propostas",
-  "situacao_codigo",
-  "situacao_nome",
-  "data_atualizacao_fonte",
-  "plataforma_id",
-  "link_sistema_origem",
-  "link_sistema_origem_manual",
-  "plataforma_status",
-  "plataforma_confianca",
-  "plataforma_metodo_classificacao",
-  "plataforma_fonte_evidencia",
-  "plataforma_evidencia",
-  "plataforma_conflito",
-  "plataforma_confirmada_em",
-].join(", ");
-
 const escapeHtml = (value) => String(value ?? "")
   .replaceAll("&", "&amp;")
   .replaceAll("<", "&lt;")
@@ -307,16 +275,17 @@ export function createRadarFavoritesService({ getClient } = {}) {
 
     const rows = favoriteRows || [];
     const ids = rows.map((row) => row.numero_controle_pncp);
-    const records = ids.length
-      ? await client().from("radar_licitacoes").select(FAVORITE_METADATA_FIELDS).in("numero_controle_pncp", ids)
-      : { data: [], error: null };
-    if (records.error) throw new Error("Não foi possível carregar os dados das licitações favoritas.");
-    const byId = new Map((records.data || []).map((row) => [row.numero_controle_pncp, row]));
-    const platformIds = [...new Set((records.data || []).map((row) => row.plataforma_id).filter(Boolean))];
-    const platforms = platformIds.length
-      ? await client().from("radar_plataformas").select("id, nome").in("id", platformIds)
-      : { data: [], error: null };
-    const platformNames = new Map((platforms.data || []).map((platform) => [platform.id, platform.nome]));
+    const metadataResult = ids.length
+      ? await client().functions.invoke("radar-details", { body: { action: "favorite-metadata", ids } })
+      : { data: { results: [] }, error: null };
+    if (metadataResult.error || !Array.isArray(metadataResult.data?.results)) {
+      throw new Error("Não foi possível carregar os dados das licitações favoritas.");
+    }
+    const metadataRows = metadataResult.data.results;
+    const byId = new Map(metadataRows.map((row) => [row.numero_controle_pncp, row]));
+    const platformNames = new Map(metadataRows
+      .filter((row) => row.plataforma_id && typeof row.plataforma_nome === "string")
+      .map((row) => [row.plataforma_id, row.plataforma_nome]));
     ids.forEach((id) => favoriteIds.add(id));
     const results = ids.map((id) => byId.get(id)
       ? mapRadarFavoriteMetadata(byId.get(id), platformNames)
