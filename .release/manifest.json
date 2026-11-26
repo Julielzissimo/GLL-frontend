@@ -3347,14 +3347,17 @@
         "4a13b7721ada26afdd572a7b779b03f5e2e06f8a",
         "03d27c3faae827c199c7c3106242e0485a9d9d1f",
         "86841a6bb268cf92531d3b6482258067fd73ed36",
-        "79664a2125011a96d620f4457ba7cdc0055a5d5b"
+        "79664a2125011a96d620f4457ba7cdc0055a5d5b",
+        "b2302cc9cc2bb7cd5792c0733152c94c0e51b529",
+        "6523fd3042050c5c65fa221af34b3891e198ab73"
       ],
       "frontend_commits": [
         "c482fc27dfbf75f6ad665e288bcf684788bf2e39",
         "501d33ac8652ed797f684b7447ffa19cd48b9a7b",
         "781880e8b983c0a42ad6460c9b85040990ffb0c5",
         "b15aaadf907946f79b7b30fe2e9936f629e79bcf",
-        "97a62470847bbe152e06ad6ebc5ab681bf2f3708"
+        "97a62470847bbe152e06ad6ebc5ab681bf2f3708",
+        "65fe5325716cde789069fe9e4ebd155b1841214b"
       ],
       "migrations": [
         "neon/migrations/20261124_001_radar_storage.sql",
@@ -3363,7 +3366,11 @@
         "neon/migrations/20261125_004_radar_engine_hmac_ingestion.sql",
         "neon/migrations/20261125_005_radar_engine_runtime_roles.sql",
         "neon/migrations/20261125_006_radar_search_coverage.sql",
-        "supabase/migrations/20261125230000_radar_neon_backfill_items_keyset.sql"
+        "neon/migrations/20261126_007_radar_content_reconciliation.sql",
+        "supabase/migrations/20261125230000_radar_neon_backfill_items_keyset.sql",
+        "supabase/migrations/20261126011500_radar_neon_backfill_fingerprints.sql",
+        "neon/migrations/20261126_008_radar_catalog_claim_mirror.sql",
+        "supabase/migrations/20261126120000_radar_neon_catalog_claim_mirror.sql"
       ]
     }
   ]
