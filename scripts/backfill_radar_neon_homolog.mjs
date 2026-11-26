@@ -39,6 +39,23 @@ export function unverifiedRadarCollections(error) {
   return [...new Set(candidates.filter((value) => COLLECTIONS.includes(value)))];
 }
 
+export function radarBackfillReconciliationDiagnostics(error) {
+  if (error?.status !== 409 || !COLLECTIONS.includes(error.payload?.collection)) return null;
+  const payload = error.payload;
+  const count = (value) => Number.isSafeInteger(value) && value >= 0 ? value : null;
+  return {
+    collection: payload.collection,
+    sourceCount: count(payload.sourceCount),
+    neonCount: count(payload.neonCount),
+    checkedRows: count(payload.checkedRows),
+    missingRows: count(payload.missingRows),
+    contentMismatches: count(payload.contentMismatches),
+    stableDuringReconciliation: typeof payload.stableDuringReconciliation === "boolean"
+      ? payload.stableDuringReconciliation
+      : null,
+  };
+}
+
 export function isRadarBackfillFinalized(result) {
   if (result?.ready !== true
     || result?.reconciliation !== "source_rows_and_contract_fields_match"
@@ -190,6 +207,18 @@ export async function runRadarNeonBackfill(environment) {
         "Ativação da leitura Neon",
       );
     } catch (error) {
+      const diagnostics = radarBackfillReconciliationDiagnostics(error);
+      if (diagnostics) {
+        process.stdout.write(
+          `Reconciliação ${diagnostics.collection}: `
+          + `Supabase=${diagnostics.sourceCount ?? "indisponível"}; `
+          + `Neon=${diagnostics.neonCount ?? "indisponível"}; `
+          + `verificadas=${diagnostics.checkedRows ?? "indisponível"}; `
+          + `ausentes=${diagnostics.missingRows ?? "indisponível"}; `
+          + `divergências=${diagnostics.contentMismatches ?? "indisponível"}; `
+          + `estável=${diagnostics.stableDuringReconciliation ?? "indisponível"}.\n`,
+        );
+      }
       pendingCollections = unverifiedRadarCollections(error);
       if (pendingCollections.length && round < MAX_FINALIZATION_RECONCILIATION_ROUNDS) continue;
       throw error;

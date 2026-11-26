@@ -3,6 +3,7 @@ import test from "node:test";
 
 import {
   isRadarBackfillFinalized,
+  radarBackfillReconciliationDiagnostics,
   unverifiedRadarCollections,
 } from "./backfill_radar_neon_homolog.mjs";
 
@@ -24,6 +25,41 @@ test("backfill reconciliation ignores non-conflict and malformed responses", () 
 test("content reconciliation retries the collection returned by the finalizer", () => {
   assert.deepEqual(unverifiedRadarCollections({ status: 409, payload: { collection: "items" } }), ["items"]);
   assert.deepEqual(unverifiedRadarCollections({ status: 409, payload: { collection: "unknown" } }), []);
+});
+
+test("reconciliation diagnostics expose only safe collection counts", () => {
+  const details = radarBackfillReconciliationDiagnostics({
+    status: 409,
+    payload: {
+      collection: "items",
+      sourceCount: 65_481,
+      neonCount: 65_481,
+      checkedRows: 65_481,
+      missingRows: 0,
+      contentMismatches: 1,
+      stableDuringReconciliation: false,
+      rowKey: "must not be exposed",
+      sourceValue: "must not be exposed",
+    },
+  });
+
+  assert.deepEqual(details, {
+    collection: "items",
+    sourceCount: 65_481,
+    neonCount: 65_481,
+    checkedRows: 65_481,
+    missingRows: 0,
+    contentMismatches: 1,
+    stableDuringReconciliation: false,
+  });
+  assert.equal(radarBackfillReconciliationDiagnostics({
+    status: 409,
+    payload: { collection: "unknown", contentMismatches: 1 },
+  }), null);
+  assert.equal(radarBackfillReconciliationDiagnostics({
+    status: 503,
+    payload: { collection: "items", contentMismatches: 1 },
+  }), null);
 });
 
 test("backfill finalization validates every collection from the content reconciliation response", () => {
