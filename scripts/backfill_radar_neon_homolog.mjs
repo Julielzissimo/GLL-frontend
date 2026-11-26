@@ -4,6 +4,10 @@ import { pathToFileURL } from "node:url";
 const SUPABASE_CONFIG_PATH = new URL("./build-web.mjs", import.meta.url);
 const FUNCTION_NAME = "radar-neon-backfill";
 const MAX_FINALIZATION_RECONCILIATION_ROUNDS = 2;
+const SUPABASE_PROJECTS = {
+  homolog: "dwotbzrjcetizyygzoty",
+  production: "siqsjxohpcrujobkbshn",
+};
 const COLLECTIONS = [
   "modalities",
   "states",
@@ -27,24 +31,44 @@ class RadarHttpError extends Error {
 }
 
 export function unverifiedRadarCollections(error) {
-  if (error?.status !== 409 || !Array.isArray(error.payload?.unverifiedCollections)) return [];
-  return [...new Set(error.payload.unverifiedCollections.filter((value) => COLLECTIONS.includes(value)))];
+  if (error?.status !== 409) return [];
+  const candidates = Array.isArray(error.payload?.unverifiedCollections)
+    ? [...error.payload.unverifiedCollections]
+    : [];
+  if (typeof error.payload?.collection === "string") candidates.push(error.payload.collection);
+  return [...new Set(candidates.filter((value) => COLLECTIONS.includes(value)))];
 }
 
-function requiredEnvironment(name) {
+export function isRadarBackfillFinalized(result) {
+  if (result?.ready !== true
+    || result?.reconciliation !== "source_rows_and_contract_fields_match"
+    || result?.stableAcrossPasses !== true
+    || !Array.isArray(result?.verifiedCollections)) return false;
+  const verified = result.verifiedCollections.map((entry) =>
+    typeof entry === "string" ? entry : entry?.collection
+  );
+  return verified.length === COLLECTIONS.length
+    && new Set(verified).size === COLLECTIONS.length
+    && COLLECTIONS.every((collection) => verified.includes(collection));
+}
+
+function requiredEnvironment(name, environment) {
   const value = process.env[name]?.trim();
-  if (!value) throw new Error(`Configure ${name} no ambiente homolog.`);
+  if (!value) throw new Error(`Configure ${name} no ambiente ${environment}.`);
   return value;
 }
 
-async function readHomologSupabaseConfig() {
+async function readSupabaseConfig(environment) {
+  if (!Object.hasOwn(SUPABASE_PROJECTS, environment)) throw new Error("Ambiente de backfill inválido.");
   const source = await readFile(SUPABASE_CONFIG_PATH, "utf8");
-  const block = source.match(/homolog:\s*\{([\s\S]*?)\n\s{2}\},/u)?.[1];
-  if (!block) throw new Error("Não foi possível identificar a configuração Supabase de homologação.");
+  const block = source.match(new RegExp(`${environment}:\\s*\\{([\\s\\S]*?)\\n\\s{2}\\},`, "u"))?.[1];
+  if (!block) throw new Error(`Não foi possível identificar a configuração Supabase de ${environment}.`);
   const supabaseUrl = block.match(/supabaseUrl:\s*["']([^"']+)["']/u)?.[1];
   const publishableKey = block.match(/supabaseAnonKey:\s*["']([^"']+)["']/u)?.[1];
-  if (!supabaseUrl || !publishableKey?.startsWith("sb_publishable_")) {
-    throw new Error("A configuração pública Supabase de homologação está incompleta.");
+  const expectedHost = `${SUPABASE_PROJECTS[environment]}.supabase.co`;
+  if (!supabaseUrl || new URL(supabaseUrl).hostname !== expectedHost
+    || !publishableKey?.startsWith("sb_publishable_")) {
+    throw new Error(`A configuração pública Supabase de ${environment} está incompleta ou aponta a outro projeto.`);
   }
   return { supabaseUrl, publishableKey };
 }
@@ -61,6 +85,7 @@ async function fetchJson(url, options, label) {
       }
       return result;
     } catch (error) {
+      if (error instanceof RadarHttpError && error.status < 500 && error.status !== 429) throw error;
       lastError = error;
       if (attempt < 3) await new Promise((resolve) => setTimeout(resolve, attempt * 1000));
     }
@@ -106,20 +131,27 @@ async function verifyCollection(collection, supabaseUrl, functionHeaders) {
   return result;
 }
 
-async function main() {
-  const email = requiredEnvironment("GLL_E2E_EMAIL");
-  const password = requiredEnvironment("GLL_E2E_PASSWORD");
-  const { supabaseUrl, publishableKey } = await readHomologSupabaseConfig();
+export async function runRadarNeonBackfill(environment) {
+  const { supabaseUrl, publishableKey } = await readSupabaseConfig(environment);
   const headers = { apikey: publishableKey, "content-type": "application/json" };
-  const session = await fetchJson(
-    `${supabaseUrl}/auth/v1/token?grant_type=password`,
-    { method: "POST", headers, body: JSON.stringify({ email, password }) },
-    "Autenticação do administrador E2E",
-  );
-  const accessToken = session?.access_token;
-  if (typeof accessToken !== "string" || !accessToken) throw new Error("A autenticação não retornou uma sessão válida.");
-  process.stdout.write("::add-mask::" + accessToken + "\n");
-  const functionHeaders = { ...headers, authorization: `Bearer ${accessToken}` };
+  let functionHeaders = headers;
+  if (environment === "homolog") {
+    const email = requiredEnvironment("GLL_E2E_EMAIL", environment);
+    const password = requiredEnvironment("GLL_E2E_PASSWORD", environment);
+    const session = await fetchJson(
+      `${supabaseUrl}/auth/v1/token?grant_type=password`,
+      { method: "POST", headers, body: JSON.stringify({ email, password }) },
+      "Autenticação do administrador E2E",
+    );
+    const accessToken = session?.access_token;
+    if (typeof accessToken !== "string" || !accessToken) throw new Error("A autenticação não retornou uma sessão válida.");
+    functionHeaders = { ...headers, authorization: `Bearer ${accessToken}` };
+  } else if (environment === "production") {
+    const backfillToken = requiredEnvironment("GLL_RADAR_BACKFILL_TOKEN", environment);
+    functionHeaders = { ...headers, "x-radar-backfill-token": backfillToken };
+  } else {
+    throw new Error("Ambiente de backfill inválido.");
+  }
 
   for (const collection of COLLECTIONS) await syncCollection(collection, supabaseUrl, functionHeaders);
 
@@ -162,16 +194,16 @@ async function main() {
       if (pendingCollections.length && round < MAX_FINALIZATION_RECONCILIATION_ROUNDS) continue;
       throw error;
     }
-    if (finalized?.ready !== true || finalized?.verifiedCollections !== COLLECTIONS.length) {
+    if (!isRadarBackfillFinalized(finalized)) {
       throw new Error("O backfill não confirmou todas as coleções; a leitura continua no Supabase.");
     }
-    process.stdout.write("Backfill conferido; leitura Neon liberada em homologação.\n");
+    process.stdout.write(`Backfill conferido; readiness do Neon confirmada em ${environment}.\n`);
     return;
   }
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  main().catch((error) => {
+  runRadarNeonBackfill("homolog").catch((error) => {
     process.stderr.write((error instanceof Error ? error.message : "Falha no backfill Neon do Radar.") + "\n");
     process.exitCode = 1;
   });
