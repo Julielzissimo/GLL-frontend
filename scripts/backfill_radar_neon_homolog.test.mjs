@@ -50,6 +50,8 @@ test("reconciliation diagnostics expose only safe collection counts", () => {
     checkedRows: 65_481,
     missingRows: 0,
     contentMismatches: 1,
+    mismatchDiagnosticsAvailable: false,
+    differingFieldNames: [],
     stableDuringReconciliation: false,
   });
   assert.equal(radarBackfillReconciliationDiagnostics({
