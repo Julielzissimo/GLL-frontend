@@ -3395,6 +3395,17 @@
         "neon/migrations/20261127_011_radar_backfill_equal_revision_timestamps.sql",
         "neon/migrations/20261127_012_radar_item_sync_equal_payload_timestamps.sql"
       ]
+    },
+    {
+      "id": "ISSUE-601",
+      "backend_commits": [
+        "979cb8120e34468c93991beeba5b399df104ee84"
+      ],
+      "frontend_commits": [],
+      "migrations": [
+        "supabase/migrations/20261127211926_radar_neon_semantic_reconciliation.sql",
+        "neon/migrations/20261127_013_radar_semantic_reconciliation.sql"
+      ]
     }
   ]
 }
