@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
+import { radarBackfillReconciliationDiagnostics } from "./backfill_radar_neon_homolog.mjs";
 
 const script = await readFile(new URL("./backfill_radar_neon_homolog.mjs", import.meta.url), "utf8");
 const productionScript = await readFile(new URL("./backfill_radar_neon_production.mjs", import.meta.url), "utf8");
@@ -39,4 +40,27 @@ test("all collections are verified before the backfill readiness gate is enabled
   assert.match(script, /verified\.includes\(collection\)/u);
   assert.match(script, /error\.payload\?\.collection/u);
   assert.match(script, /error\.status < 500 && error\.status !== 429/u);
+});
+
+test("backfill failure output includes only bounded, safe tender field names", () => {
+  const diagnostics = radarBackfillReconciliationDiagnostics({
+    status: 409,
+    payload: {
+      collection: "tenders",
+      mismatchDiagnosticsAvailable: true,
+      mismatchDiagnostics: [
+        { differingFields: ["radar_engine_revision", "atualizado_em", "bad field", "x;secret"] },
+        { differingFields: ["atualizado_em", "objeto_compra"] },
+      ],
+      sourceValue: "sensitive source data",
+      targetValue: "sensitive target data",
+      numero_controle_pncp: "identifier",
+    },
+  });
+
+  assert.deepEqual(diagnostics.differingFieldNames, ["atualizado_em", "objeto_compra", "radar_engine_revision"]);
+  assert.equal(diagnostics.mismatchDiagnosticsAvailable, true);
+  assert.equal(Object.hasOwn(diagnostics, "sourceValue"), false);
+  assert.equal(Object.hasOwn(diagnostics, "targetValue"), false);
+  assert.equal(Object.hasOwn(diagnostics, "numero_controle_pncp"), false);
 });
