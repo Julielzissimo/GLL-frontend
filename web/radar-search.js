@@ -856,7 +856,7 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
     if (state.searching) {
       target.hidden = false;
       target.dataset.tone = "info";
-      target.innerHTML = '<span class="radar-spinner" aria-hidden="true"></span><span>Consultando os resultados sincronizados no Supabase…</span>';
+      target.innerHTML = '<span class="radar-spinner" aria-hidden="true"></span><span>Consultando os resultados sincronizados do Radar…</span>';
       return;
     }
     if (state.error) {
@@ -1148,13 +1148,11 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
       return;
     }
     try {
-      const result = await client().from("radar_catalog_municipalities")
-        .select("ibge_id, name")
-        .eq("is_active", true)
-        .in("ibge_id", ids);
-      if (!result.error) {
-        state.municipalityNames = new Map((result.data || []).map((row) => [Number(row.ibge_id), row.name]));
-      }
+      const { data, error } = await client().functions.invoke("radar-search", {
+        body: { action: "municipality-labels", ids: ids.slice(0, 100) },
+      });
+      if (error || !Array.isArray(data?.municipalities)) return;
+      state.municipalityNames = new Map(data.municipalities.map((row) => [Number(row.ibge_id), row.name]));
     } catch {
       // A falha no rótulo do município não deve invalidar os resultados da busca.
     }
@@ -1168,11 +1166,11 @@ export function createRadarSearchFeature({ getClient, getUserRole = () => null, 
       return;
     }
     try {
-      const { data, error } = await client().from("radar_itens_sync")
-        .select("numero_controle_pncp, quantidade_itens, quantidade_itens_esperada, versao_sincronizacao, disponibilidade_origem")
-        .in("numero_controle_pncp", ids);
+      const { data, error } = await client().functions.invoke("radar-search", {
+        body: { action: "item-counts", ids: [...new Set(ids)].slice(0, 100) },
+      });
       if (error) return;
-      for (const row of data || []) {
+      for (const row of Array.isArray(data?.items) ? data.items : []) {
         const count = row.disponibilidade_origem === "no_items_confirmed" ? 0
           : row.versao_sincronizacao ? row.quantidade_itens : row.quantidade_itens_esperada;
         if (count !== null && count !== undefined && Number.isSafeInteger(Number(count)) && Number(count) >= 0) {

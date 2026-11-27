@@ -1,78 +1,3 @@
-const PROCUREMENT_FIELDS = [
-  "numero_controle_pncp",
-  "numero_compra",
-  "ano_compra",
-  "sequencial_compra",
-  "cnpj_orgao",
-  "nome_orgao",
-  "codigo_unidade_administrativa",
-  "nome_unidade_administrativa",
-  "objeto_compra",
-  "modalidade_pncp_id",
-  "uf",
-  "municipio_ibge_id",
-  "valor_estimado",
-  "data_publicacao",
-  "data_inicio_propostas",
-  "data_inicio_fase_lances",
-  "data_fim_propostas",
-  "situacao_codigo",
-  "situacao_nome",
-  "data_atualizacao_fonte",
-  "sincronizado_em",
-  "link_sistema_origem",
-  "link_sistema_origem_manual",
-  "link_sistema_origem_manual_confirmado_por",
-  "link_sistema_origem_manual_confirmado_em",
-  "link_processo_eletronico",
-  "plataforma_id",
-  "plataforma_status",
-  "plataforma_metodo_classificacao",
-  "plataforma_classificada_em",
-  "plataforma_catalogo_versao",
-  "plataforma_confianca",
-  "plataforma_fonte_evidencia",
-  "plataforma_evidencia",
-  "plataforma_conflito",
-  "plataforma_confirmada_por",
-  "plataforma_confirmada_em",
-  "plataforma_confirmacao_origem",
-].join(", ");
-
-const SYNC_FIELDS = [
-  "status",
-  "disponibilidade_origem",
-  "ultima_tentativa_em",
-  "ultima_sincronizacao_completa_em",
-  "proxima_atualizacao_permitida_em",
-  "quantidade_itens",
-  "quantidade_itens_esperada",
-  "paginas_processadas",
-  "paginas_totais",
-  "pagina_checkpoint",
-  "codigo_erro",
-  "versao_sincronizacao",
-  "tarefa_id",
-].join(", ");
-
-const ITEM_FIELDS = [
-  "numero_item",
-  "descricao",
-  "quantidade",
-  "unidade_medida",
-  "valor_unitario_estimado",
-  "valor_total",
-  "situacao_codigo",
-  "situacao_nome",
-  "criterio_julgamento",
-  "informacao_complementar",
-  "orcamento_sigiloso",
-  "dados_origem",
-].join(", ");
-
-const DEFAULT_ITEM_PAGE_SIZE = 1000;
-const DEFAULT_MAX_ITEMS = 20_000;
-
 function controlIdParts(value) {
   const match = /^(\d{14})-\d-(\d{6})\/(\d{4})$/u.exec(String(value || ""));
   if (!match) return null;
@@ -243,96 +168,42 @@ function itemStateFor(sync, items) {
 
 export function createRadarPreprocessedService({
   getClient,
-  pageSize = DEFAULT_ITEM_PAGE_SIZE,
-  maxItems = DEFAULT_MAX_ITEMS,
 } = {}) {
   function client() {
     const value = getClient?.();
-    if (!value) throw new Error("O Radar exige uma sessão autenticada no Supabase.");
+    if (!value?.functions?.invoke) throw new Error("O Radar exige uma sessão autenticada no Supabase.");
     return value;
   }
 
-  async function loadProcurement(numberControlPncp) {
-    const { data, error } = await client().from("radar_licitacoes")
-      .select(PROCUREMENT_FIELDS)
-      .eq("numero_controle_pncp", numberControlPncp)
-      .maybeSingle();
-    if (error) throw new Error("Não foi possível carregar o edital armazenado no Radar.");
-    return data || null;
-  }
-
-  async function loadSync(numberControlPncp) {
-    const { data, error } = await client().from("radar_itens_sync")
-      .select(SYNC_FIELDS)
-      .eq("numero_controle_pncp", numberControlPncp)
-      .maybeSingle();
-    if (error) throw new Error("Não foi possível consultar o estado dos itens no Radar.");
-    return data || null;
-  }
-
-  async function loadItemRows(numberControlPncp, version) {
-    const size = Math.max(1, Math.min(1000, Math.floor(Number(pageSize) || DEFAULT_ITEM_PAGE_SIZE)));
-    const max = Math.max(size, Math.floor(Number(maxItems) || DEFAULT_MAX_ITEMS));
-    const rows = [];
-    let offset = 0;
-    let total = null;
-    do {
-      const { data, error, count } = await client().from("radar_itens")
-        .select(ITEM_FIELDS, { count: "exact" })
-        .eq("numero_controle_pncp", numberControlPncp)
-        .eq("versao_sincronizacao", version)
-        .order("numero_item", { ascending: true })
-        .range(offset, offset + size - 1);
-      if (error) throw new Error("Não foi possível carregar os itens publicados no cache do Radar.");
-      const batch = Array.isArray(data) ? data : [];
-      if (Number.isSafeInteger(count)) total = count;
-      rows.push(...batch);
-      if (rows.length > max || (total !== null && total > max)) {
-        throw new Error("A contratação excede o limite de itens que o Radar pode exibir de uma vez.");
-      }
-      if (total !== null && rows.length >= total) break;
-      if (batch.length < size) {
-        if (total !== null && rows.length < total) {
-          throw new Error("A leitura paginada dos itens do Radar retornou uma página incompleta.");
-        }
-        break;
-      }
-      offset += batch.length;
-      if (offset >= max && total === null) {
-        throw new Error("A contratação excede o limite de itens que o Radar pode exibir de uma vez.");
-      }
-    } while (true);
-    return rows.map(mapRadarPreprocessedItem);
-  }
-
-  async function loadCatalogValue(table, key, value, columns, resultColumn) {
-    if (value === null || value === undefined || value === "") return null;
-    const { data, error } = await client().from(table).select(columns).eq(key, value).maybeSingle();
-    if (error) return null;
-    return typeof data?.[resultColumn] === "string" ? data[resultColumn] : null;
+  async function loadSnapshot(numberControlPncp, knownVersion = null) {
+    const { data, error } = await client().functions.invoke("radar-details", {
+      body: { action: "preprocessed", numberControlPncp, knownVersion },
+    });
+    if (error) throw new Error("Não foi possível carregar os dados armazenados no Radar.");
+    return data;
   }
 
   async function load(numberControlPncp, { knownVersion = null } = {}) {
-    const row = await loadProcurement(numberControlPncp);
-    if (!row) return { status: "not_found" };
-
-    const [syncRow, modalityName, municipalityName, platformName] = await Promise.all([
-      loadSync(numberControlPncp),
-      loadCatalogValue("radar_catalog_modalities", "pncp_id", row.modalidade_pncp_id, "name", "name"),
-      loadCatalogValue("radar_catalog_municipalities", "ibge_id", row.municipio_ibge_id, "name", "name"),
-      loadCatalogValue("radar_plataformas", "id", row.plataforma_id, "nome", "nome"),
-    ]);
+    const snapshot = await loadSnapshot(numberControlPncp, knownVersion);
+    if (snapshot?.status === "not_found") return { status: "not_found" };
+    if (snapshot?.status !== "available" || !snapshot.procurement) {
+      throw new Error("Não foi possível carregar o edital armazenado no Radar.");
+    }
+    const row = snapshot.procurement;
+    const syncRow = snapshot.sync || null;
     const itemSync = mapRadarPreprocessedSync(syncRow);
     const version = itemSync.publishedVersion;
-    const items = version && version !== knownVersion
-      ? await loadItemRows(numberControlPncp, version)
-      : version
-        ? null
-        : [];
+    const items = Array.isArray(snapshot.items)
+      ? snapshot.items.map(mapRadarPreprocessedItem)
+      : version ? null : [];
     if (version && Array.isArray(items) && items.length !== itemSync.publishedItemCount) {
       throw new Error("A quantidade de itens publicada não corresponde ao cache visível para esta sessão.");
     }
-    const mapped = mapRadarPreprocessedContract(row, { modalityName, municipalityName, platformName });
+    const mapped = mapRadarPreprocessedContract(row, {
+      modalityName: snapshot.modalityName,
+      municipalityName: snapshot.municipalityName,
+      platformName: snapshot.platformName,
+    });
     const result = {
       status: "available",
       ...mapped,
@@ -344,13 +215,12 @@ export function createRadarPreprocessedService({
   }
 
   async function loadItemSyncSnapshot(numberControlPncp, { knownVersion = null } = {}) {
-    const itemSync = mapRadarPreprocessedSync(await loadSync(numberControlPncp));
+    const snapshot = await loadSnapshot(numberControlPncp, knownVersion);
+    if (snapshot?.status === "not_found") return { status: "not_found" };
+    if (snapshot?.status !== "available") throw new Error("Não foi possível consultar o estado dos itens no Radar.");
+    const itemSync = mapRadarPreprocessedSync(snapshot.sync || null);
     const version = itemSync.publishedVersion;
-    const items = version && version !== knownVersion
-      ? await loadItemRows(numberControlPncp, version)
-      : version
-        ? null
-        : [];
+    const items = Array.isArray(snapshot.items) ? snapshot.items.map(mapRadarPreprocessedItem) : version ? null : [];
     if (version && Array.isArray(items) && items.length !== itemSync.publishedItemCount) {
       throw new Error("A quantidade de itens publicada não corresponde ao cache visível para esta sessão.");
     }
