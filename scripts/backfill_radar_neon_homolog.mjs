@@ -43,13 +43,32 @@ export function radarBackfillReconciliationDiagnostics(error) {
   if (error?.status !== 409 || !COLLECTIONS.includes(error.payload?.collection)) return null;
   const payload = error.payload;
   const count = (value) => Number.isSafeInteger(value) && value >= 0 ? value : null;
+  const differingFieldNames = [...new Set((Array.isArray(payload.mismatchDiagnostics)
+    ? payload.mismatchDiagnostics
+    : []).flatMap((diagnostic) => Array.isArray(diagnostic?.differingFields)
+    ? diagnostic.differingFields.filter((field) => typeof field === "string" && /^[a-z][a-z0-9_]{0,63}$/u.test(field))
+    : []))].sort();
+  const mismatchDiagnostics = Array.isArray(payload.mismatchDiagnostics) ? payload.mismatchDiagnostics : [];
+  const contentMismatches = count(payload.contentMismatches);
+  const mismatchDiagnosticsComplete = payload.mismatchDiagnosticsAvailable === true
+    && contentMismatches !== null
+    && contentMismatches > 0
+    && mismatchDiagnostics.length === contentMismatches;
   return {
     collection: payload.collection,
     sourceCount: count(payload.sourceCount),
     neonCount: count(payload.neonCount),
     checkedRows: count(payload.checkedRows),
     missingRows: count(payload.missingRows),
-    contentMismatches: count(payload.contentMismatches),
+    contentMismatches,
+    mismatchDiagnosticsAvailable: payload.mismatchDiagnosticsAvailable === true,
+    differingFieldNames,
+    neonRevisionIsHigher: mismatchDiagnosticsComplete
+      ? mismatchDiagnostics.every((diagnostic) => diagnostic?.neonRevisionIsHigher === true)
+      : null,
+    neonUpdatedAtIsLater: mismatchDiagnosticsComplete
+      ? mismatchDiagnostics.every((diagnostic) => diagnostic?.neonUpdatedAtIsLater === true)
+      : null,
     stableDuringReconciliation: typeof payload.stableDuringReconciliation === "boolean"
       ? payload.stableDuringReconciliation
       : null,
@@ -216,6 +235,11 @@ export async function runRadarNeonBackfill(environment) {
           + `verificadas=${diagnostics.checkedRows ?? "indisponível"}; `
           + `ausentes=${diagnostics.missingRows ?? "indisponível"}; `
           + `divergências=${diagnostics.contentMismatches ?? "indisponível"}; `
+          + `campos=${diagnostics.differingFieldNames.length
+            ? diagnostics.differingFieldNames.join(",")
+            : diagnostics.mismatchDiagnosticsAvailable ? "nenhum identificado" : "indisponível"}; `
+          + `neonRevisionMaior=${diagnostics.neonRevisionIsHigher ?? "indisponível"}; `
+          + `neonAtualizacaoPosterior=${diagnostics.neonUpdatedAtIsLater ?? "indisponível"}; `
           + `estável=${diagnostics.stableDuringReconciliation ?? "indisponível"}.\n`,
         );
       }
