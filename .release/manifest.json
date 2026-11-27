@@ -3399,9 +3399,12 @@
     {
       "id": "ISSUE-601",
       "backend_commits": [
-        "979cb8120e34468c93991beeba5b399df104ee84"
+        "979cb8120e34468c93991beeba5b399df104ee84",
+        "50b4dc5e1dbca0904ab2397936f3d16a7b499e0e"
       ],
-      "frontend_commits": [],
+      "frontend_commits": [
+        "b71fc4c5badf841b48805a8d47fa42555f07f506"
+      ],
       "migrations": [
         "supabase/migrations/20261127211926_radar_neon_semantic_reconciliation.sql",
         "neon/migrations/20261127_013_radar_semantic_reconciliation.sql"
