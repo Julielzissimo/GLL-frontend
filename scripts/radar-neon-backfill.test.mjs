@@ -47,10 +47,19 @@ test("backfill failure output includes only bounded, safe tender field names", (
     status: 409,
     payload: {
       collection: "tenders",
+      contentMismatches: 2,
       mismatchDiagnosticsAvailable: true,
       mismatchDiagnostics: [
-        { differingFields: ["radar_engine_revision", "atualizado_em", "bad field", "x;secret"] },
-        { differingFields: ["atualizado_em", "objeto_compra"] },
+        {
+          differingFields: ["radar_engine_revision", "atualizado_em", "bad field", "x;secret"],
+          neonRevisionIsHigher: true,
+          neonUpdatedAtIsLater: true,
+        },
+        {
+          differingFields: ["atualizado_em", "objeto_compra"],
+          neonRevisionIsHigher: true,
+          neonUpdatedAtIsLater: true,
+        },
       ],
       sourceValue: "sensitive source data",
       targetValue: "sensitive target data",
@@ -60,7 +69,28 @@ test("backfill failure output includes only bounded, safe tender field names", (
 
   assert.deepEqual(diagnostics.differingFieldNames, ["atualizado_em", "objeto_compra", "radar_engine_revision"]);
   assert.equal(diagnostics.mismatchDiagnosticsAvailable, true);
+  assert.equal(diagnostics.neonRevisionIsHigher, true);
+  assert.equal(diagnostics.neonUpdatedAtIsLater, true);
   assert.equal(Object.hasOwn(diagnostics, "sourceValue"), false);
   assert.equal(Object.hasOwn(diagnostics, "targetValue"), false);
   assert.equal(Object.hasOwn(diagnostics, "numero_controle_pncp"), false);
+});
+
+test("newer-version diagnostics remain unknown when only a subset of mismatches is described", () => {
+  const diagnostics = radarBackfillReconciliationDiagnostics({
+    status: 409,
+    payload: {
+      collection: "tenders",
+      contentMismatches: 6,
+      mismatchDiagnosticsAvailable: true,
+      mismatchDiagnostics: [{
+        differingFields: ["radar_engine_revision"],
+        neonRevisionIsHigher: true,
+        neonUpdatedAtIsLater: true,
+      }],
+    },
+  });
+
+  assert.equal(diagnostics.neonRevisionIsHigher, null);
+  assert.equal(diagnostics.neonUpdatedAtIsLater, null);
 });
