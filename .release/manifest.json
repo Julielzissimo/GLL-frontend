@@ -3364,7 +3364,8 @@
         "226e027ba35fc3da4ec1b45877ae8f900c1238b6",
         "989438146b11e1c6d9c22aa6b834555667251594",
         "0e638b1861278aa987f5b7d2f411096eb8c2e131",
-        "659b120a4149a7e9dfd93d3e573957d8517913d2"
+        "659b120a4149a7e9dfd93d3e573957d8517913d2",
+        "ce648ba52fdb3a6617e0f44182d4ab8a1e14a26e"
       ],
       "frontend_commits": [
         "c482fc27dfbf75f6ad665e288bcf684788bf2e39",
@@ -3391,7 +3392,8 @@
         "supabase/migrations/20261126120000_radar_neon_catalog_claim_mirror.sql",
         "neon/migrations/20261126_009_radar_backfill_preserve_classification.sql",
         "neon/migrations/20261126_010_radar_task_stub_compatibility.sql",
-        "neon/migrations/20261127_011_radar_backfill_equal_revision_timestamps.sql"
+        "neon/migrations/20261127_011_radar_backfill_equal_revision_timestamps.sql",
+        "neon/migrations/20261127_012_radar_item_sync_equal_payload_timestamps.sql"
       ]
     }
   ]
