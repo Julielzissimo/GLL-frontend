@@ -70,12 +70,13 @@ test("backfill finalization validates every collection from the content reconcil
   const collections = ["modalities", "states", "municipalities", "platforms", "domains", "tenders", "item_sync", "items", "coverage"];
   const result = {
     ready: true,
-    reconciliation: "source_rows_and_contract_fields_match",
+    reconciliation: "source_content_matches_and_target_watermarks_are_monotonic",
     stableAcrossPasses: true,
     verifiedCollections: collections.map((collection) => ({ collection, checkedRows: 1 })),
   };
 
   assert.equal(isRadarBackfillFinalized(result), true);
+  assert.equal(isRadarBackfillFinalized({ ...result, reconciliation: "source_rows_and_contract_fields_match" }), false);
   assert.equal(isRadarBackfillFinalized({ ...result, verifiedCollections: collections.length }), false);
   assert.equal(isRadarBackfillFinalized({ ...result, verifiedCollections: result.verifiedCollections.slice(1) }), false);
   assert.equal(isRadarBackfillFinalized({ ...result, verifiedCollections: [...result.verifiedCollections.slice(1), result.verifiedCollections[1]] }), false);
