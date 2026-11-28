@@ -77,7 +77,7 @@ export function radarBackfillReconciliationDiagnostics(error) {
 
 export function isRadarBackfillFinalized(result) {
   if (result?.ready !== true
-    || result?.reconciliation !== "source_rows_and_contract_fields_match"
+    || result?.reconciliation !== "source_content_matches_and_target_watermarks_are_monotonic"
     || result?.stableAcrossPasses !== true
     || !Array.isArray(result?.verifiedCollections)) return false;
   const verified = result.verifiedCollections.map((entry) =>
