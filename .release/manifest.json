@@ -3400,7 +3400,8 @@
       "id": "ISSUE-601",
       "backend_commits": [
         "979cb8120e34468c93991beeba5b399df104ee84",
-        "50b4dc5e1dbca0904ab2397936f3d16a7b499e0e"
+        "50b4dc5e1dbca0904ab2397936f3d16a7b499e0e",
+        "2b27b12666c5a24c939ce53a7029df0ba24e5c5a"
       ],
       "frontend_commits": [
         "b71fc4c5badf841b48805a8d47fa42555f07f506"
