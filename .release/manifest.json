@@ -2743,6 +2743,18 @@
         "neon/migrations/20261127_011_radar_backfill_equal_revision_timestamps.sql",
         "neon/migrations/20261127_012_radar_item_sync_equal_payload_timestamps.sql"
       ]
+    },
+    {
+      "id": "ISSUE-601",
+      "backend_commits": [
+        "a04c49c1bad554f5ea3fb46400c202e54d65829b",
+        "6fd6bf497c1c6cb304575acfa27d94cb8f752cda"
+      ],
+      "frontend_commits": [],
+      "migrations": [
+        "neon/migrations/20261127_013_radar_semantic_reconciliation.sql",
+        "supabase/migrations/20261127211926_radar_neon_semantic_reconciliation.sql"
+      ]
     }
   ]
 }
